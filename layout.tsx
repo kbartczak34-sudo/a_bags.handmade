@@ -1,0 +1,40 @@
+import type { Metadata } from "next";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
+import "./globals.css";
+
+const display = Cormorant_Garamond({
+  variable: "--font-display",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
+});
+
+const sans = Manrope({
+  variable: "--font-sans",
+  subsets: ["latin", "latin-ext"],
+});
+
+export const metadata: Metadata = {
+  title: "a_bags.handmade",
+  description:
+    "Ręcznie plecione torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.",
+  manifest: "/manifest.webmanifest",
+  other: {
+    "codex-preview": "development",
+  },
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.svg",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="pl">
+      <body className={`${display.variable} ${sans.variable}`}>{children}</body>
+    </html>
+  );
+}
