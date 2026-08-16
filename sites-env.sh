@@ -49,4 +49,4 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 cd "${project_root}"
-exec "$@"
+exec bash "$@"
