@@ -212,8 +212,8 @@ export const defaultSiteContent: SiteContent = {
     reviewsLink: "Opinie",
     instagramLink: "Instagram",
     emailLink: "E-mail",
-    copyright: "Copyright 2026 a_bags.handmade",
-    statusText: "Full-Stack/all-in-one Developer:\nKlaudia Weronika Bartczak\nAll rights reserved",
+    copyright: "Copyright 2026 a_bags.handmade All rights reserved",
+    statusText: "Full-Stack/all-in-one Developer: Klaudia Weronika Bartczak",
   },
   theme: {
     ink: "#5a4245",

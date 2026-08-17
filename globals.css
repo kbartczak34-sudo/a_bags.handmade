@@ -1308,10 +1308,6 @@ footer {
   text-transform: uppercase;
 }
 
-.footer-bottom > span:last-child {
-  white-space: pre-line;
-}
-
 .modal-open {
   overflow: hidden;
 }
