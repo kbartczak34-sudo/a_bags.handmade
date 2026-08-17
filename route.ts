@@ -1,39 +1,58 @@
-import {
-  getProductBucket,
-  getProductImageRecord,
-} from "../../../lib/products";
+import { desc } from "drizzle-orm";
+import { getDb } from "../../../../../db";
+import { notes } from "../../../db/schema";
 
-export const dynamic = "force-dynamic";
+function toRouteErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected error";
+  const detail =
+    error instanceof Error && error.cause instanceof Error ? error.cause.message : "";
+  const combined = `${message}\n${detail}`;
 
-export async function GET(request: Request) {
-  const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
-  if (!id || id.length > 80) {
-    return new Response("Nieprawidłowy produkt.", { status: 400 });
+  if (combined.includes("no such table") || combined.includes('from "notes"')) {
+    return "The notes table is unavailable. Generate the migration locally with `npm run db:generate`, then deploy so the platform can apply the generated SQL to the real D1 database.";
   }
 
+  return message;
+}
+
+export async function GET() {
   try {
-    const record = await getProductImageRecord(id);
-    if (!record?.image_key) {
-      return new Response("Brak zdjęcia.", { status: 404 });
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(notes)
+      .orderBy(desc(notes.createdAt), desc(notes.id))
+      .limit(20);
+
+    return Response.json({ notes: rows });
+  } catch (error) {
+    return Response.json(
+      { error: toRouteErrorMessage(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const payload = (await request.json()) as {
+      title?: string;
+      content?: string;
+    };
+    const title = payload.title?.trim() ?? "";
+    const content = payload.content?.trim() ?? "";
+
+    if (!title) {
+      return Response.json({ error: "title is required" }, { status: 400 });
     }
 
-    const object = await getProductBucket().get(record.image_key);
-    if (!object) return new Response("Brak zdjęcia.", { status: 404 });
-
-    const headers = new Headers();
-    object.writeHttpMetadata(headers);
-    headers.set(
-      "Content-Type",
-      record.image_content_type || headers.get("Content-Type") || "image/jpeg",
-    );
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    headers.set("ETag", object.httpEtag);
-    headers.set("X-Content-Type-Options", "nosniff");
-    return new Response(object.body, { headers });
+    const db = getDb();
+    const [note] = await db.insert(notes).values({ title, content }).returning();
+    return Response.json({ note }, { status: 201 });
   } catch (error) {
-    console.error("Product image read failed", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return new Response("Nie udało się wczytać zdjęcia.", { status: 500 });
+    return Response.json(
+      { error: toRouteErrorMessage(error) },
+      { status: 500 }
+    );
   }
 }
