@@ -26,10 +26,10 @@ const cloudflareConfig = {
   images: {
     binding: "IMAGES",
   },
-  // Use unique internal binding names so automatic provisioning does not
-  // collide with stale resources left by previous failed deploy attempts.
-  d1_databases: d1 ? [{ binding: "STOREDB" }] : [],
-  r2_buckets: r2 ? [{ binding: "STOREMEDIA" }] : [],
+  // Versioned internal binding names avoid collisions with resources left by
+  // previous failed auto-provisioning attempts while preserving the app API.
+  d1_databases: d1 ? [{ binding: "ABAGSDB26081901" }] : [],
+  r2_buckets: r2 ? [{ binding: "ABAGSMEDIA26081901" }] : [],
 };
 
 export default defineConfig(async () => {
