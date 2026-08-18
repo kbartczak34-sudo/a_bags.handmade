@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "A-Bags deploy pipeline: artifact-binding-patch-v2"
+echo "A-Bags deploy pipeline: artifact-binding-patch-v3"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
