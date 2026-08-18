@@ -26,9 +26,10 @@ const cloudflareConfig = {
   images: {
     binding: "IMAGES",
   },
-  // Let Wrangler provision and persist the production resources on first deploy.
-  d1_databases: d1 ? [{ binding: d1 }] : [],
-  r2_buckets: r2 ? [{ binding: r2 }] : [],
+  // Use unique internal binding names so automatic provisioning does not
+  // collide with stale resources left by previous failed deploy attempts.
+  d1_databases: d1 ? [{ binding: "STOREDB" }] : [],
+  r2_buckets: r2 ? [{ binding: "STOREMEDIA" }] : [],
 };
 
 export default defineConfig(async () => {
