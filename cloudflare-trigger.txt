@@ -1,0 +1,3 @@
+Trigger fresh Cloudflare deployment from synchronized scripts branch.
+Expected build marker: A-Bags deploy pipeline: artifact-binding-patch-v2
+Expected bindings: ABAGSDB26081901 / ABAGSMEDIA26081901
