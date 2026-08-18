@@ -9,8 +9,8 @@ import { setRuntimeBindings } from "../lib/runtime-env";
 
 interface Env {
   ASSETS: Fetcher;
-  STOREDB: D1Database;
-  STOREMEDIA: R2Bucket;
+  ABAGSDB26081901: D1Database;
+  ABAGSMEDIA26081901: R2Bucket;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -31,8 +31,8 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setRuntimeBindings({
-      DB: env.STOREDB,
-      BUCKET: env.STOREMEDIA,
+      DB: env.ABAGSDB26081901,
+      BUCKET: env.ABAGSMEDIA26081901,
     });
 
     const url = new URL(request.url);
