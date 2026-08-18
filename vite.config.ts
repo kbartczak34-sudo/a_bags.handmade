@@ -1,36 +1,9 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
-
-const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
-
-const cloudflareConfig = {
-  name: "a-bags-handmade",
-  main: "./worker/index.ts",
-  compatibility_date: "2026-08-19",
-  compatibility_flags: ["nodejs_compat"],
-  observability: {
-    enabled: true,
-    head_sampling_rate: 1,
-    traces: {
-      enabled: true,
-    },
-  },
-  assets: {
-    binding: "ASSETS",
-  },
-  images: {
-    binding: "IMAGES",
-  },
-  // Versioned internal binding names avoid collisions with resources left by
-  // previous failed auto-provisioning attempts while preserving the app API.
-  d1_databases: d1 ? [{ binding: "ABAGSDB26081901" }] : [],
-  r2_buckets: r2 ? [{ binding: "ABAGSMEDIA26081901" }] : [],
-};
 
 export default defineConfig(async () => {
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -51,9 +24,24 @@ export default defineConfig(async () => {
       vinext(),
       sites(),
       cloudflare({
+        configPath: "./wrangler.jsonc",
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
-        config: cloudflareConfig,
+        config: (userConfig) => {
+          userConfig.name = "a-bags-handmade";
+          userConfig.main = "./worker/index.ts";
+          userConfig.compatibility_date = "2026-08-19";
+          userConfig.compatibility_flags = ["nodejs_compat"];
+          userConfig.observability = {
+            enabled: true,
+            head_sampling_rate: 1,
+            traces: { enabled: true },
+          };
+          userConfig.assets = { binding: "ASSETS" };
+          userConfig.images = { binding: "IMAGES" };
+          userConfig.d1_databases = [{ binding: "ABAGSDB26081901" }];
+          userConfig.r2_buckets = [{ binding: "ABAGSMEDIA26081901" }];
+        },
       }),
     ],
   };
