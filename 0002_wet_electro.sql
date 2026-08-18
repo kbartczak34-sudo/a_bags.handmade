@@ -1,1 +1,0 @@
-CREATE INDEX `reviews_status_created_at_idx` ON `reviews` (`status`,`created_at`);
