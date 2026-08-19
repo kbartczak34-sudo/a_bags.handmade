@@ -1,0 +1,3 @@
+A-Bags Handmade production deploy trigger.
+Expected production branch: main
+Postbuild resource binding patch enabled.
