@@ -19,19 +19,22 @@ hosting="${SITES_PROJECT_ROOT}/dist/.openai/hosting.json"
   exit 66
 }
 
+# Validate the generated artifact without importing it in plain Node.js.
+# The Vinext/Cloudflare bundle legitimately contains cloudflare:* module imports,
+# which Node's default ESM loader cannot resolve outside the Workers runtime.
+node --check "${worker}"
 node --input-type=module - "${worker}" "${hosting}" <<'NODE'
 import { readFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
 
 const [workerPath, hostingPath] = process.argv.slice(2);
 JSON.parse(await readFile(hostingPath, "utf8"));
+const source = await readFile(workerPath, "utf8");
 
-const workerUrl = pathToFileURL(workerPath);
-workerUrl.searchParams.set("sites-validation", `${process.pid}-${Date.now()}`);
-const worker = await import(workerUrl.href);
-if (!worker.default || typeof worker.default.fetch !== "function") {
-  throw new Error("dist/server/index.js must have an ESM default export with fetch(request, env, ctx)");
+const hasDefaultExport = /export\s*\{[^}]*\bas\s+default\b[^}]*\}/s.test(source) ||
+  /export\s+default\b/.test(source);
+if (!hasDefaultExport) {
+  throw new Error("dist/server/index.js must expose an ESM default export");
 }
 NODE
 
-echo "Validated Sites artifact: ESM Worker default.fetch and hosting manifest are present."
+echo "Validated Sites artifact: Worker syntax, default export marker, and hosting manifest are present."
