@@ -11,6 +11,8 @@ interface Env {
   ASSETS: Fetcher;
   ABAGSDB26081901: D1Database;
   ABAGSMEDIA26081901: R2Bucket;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -51,16 +53,11 @@ async function getVerifiedAccessIdentity(
   request: Request,
   ctx: ExecutionContext,
 ): Promise<AccessIdentity | null> {
-  // Preferred path for Workers deployments that expose Access identity natively.
   if (ctx.access) {
     const identity = await ctx.access.getIdentity();
     if (identity?.email) return identity;
   }
 
-  // Fallback for deployments where ctx.access is not populated even though
-  // Cloudflare Access successfully authenticated the browser. The special
-  // /cdn-cgi/access/get-identity endpoint validates the CF_Authorization
-  // session cookie at Cloudflare's edge and returns the verified identity.
   const cookie = request.headers.get("cookie");
   if (!cookie) return null;
 
@@ -91,6 +88,8 @@ const worker = {
     setRuntimeBindings({
       DB: env.ABAGSDB26081901,
       BUCKET: env.ABAGSMEDIA26081901,
+      STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY,
+      STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET,
     });
 
     const url = new URL(request.url);
