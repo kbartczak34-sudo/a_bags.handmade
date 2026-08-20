@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       locale: "pl",
-      payment_method_types: ["blik", "card"],
+      automatic_payment_methods: { enabled: true },
       line_items: lineItems,
       customer_email: payload.email,
       customer_creation: "always",
