@@ -7,7 +7,10 @@ export type ChatGPTUser = {
   fullName: string | null;
 };
 
-const USER_EMAIL_HEADER = "oai-authenticated-user-email";
+const AUTH_EMAIL_HEADERS = [
+  "cf-access-authenticated-user-email",
+  "oai-authenticated-user-email",
+] as const;
 const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER =
   "oai-authenticated-user-full-name-encoding";
@@ -18,7 +21,16 @@ const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
+
+  let email: string | null = null;
+  for (const headerName of AUTH_EMAIL_HEADERS) {
+    const value = requestHeaders.get(headerName);
+    if (value) {
+      email = value.trim().toLowerCase();
+      break;
+    }
+  }
+
   if (!email) return null;
 
   const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
