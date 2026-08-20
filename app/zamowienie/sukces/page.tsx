@@ -85,8 +85,8 @@ export default function OrderSuccessPage() {
             <p className="eyebrow">Płatność potwierdzona</p>
             <h1>Dziękujemy za zamówienie.</h1>
             <p>
-              Potwierdzenie trafi na adres <strong>{state.confirmation.email}</strong>.
-              Agata rozpocznie przygotowanie Twojej torebki.
+              Adres e-mail zamówienia: <strong>{state.confirmation.email}</strong>.
+              Pracownia a_bags.handmade rozpocznie przygotowanie Twojej torebki.
             </p>
             <div className="confirmation-details">
               <span>Zamówienie <strong>#{state.confirmation.id.slice(-8).toUpperCase()}</strong></span>
