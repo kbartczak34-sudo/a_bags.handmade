@@ -9,64 +9,57 @@ export const dynamic = "force-dynamic";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_CONTENT_BYTES = 60 * 1024;
-const IMAGE_TYPES = new Map([
-  ["image/jpeg", "jpg"],
-  ["image/png", "png"],
-  ["image/webp", "webp"],
-]);
+
+type DetectedImage = {
+  contentType: "image/jpeg" | "image/png" | "image/webp";
+  extension: "jpg" | "png" | "webp";
+};
 
 function json(data: unknown, status = 200) {
-  return Response.json(data, {
-    status,
-    headers: { "Cache-Control": "no-store" },
-  });
+  return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 function unauthorized() {
   return json({ error: "Brak dostępu do panelu." }, 403);
 }
 
-function hasFileSignature(bytes: Uint8Array, contentType: string) {
-  if (contentType === "image/jpeg") {
-    return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+function detectImage(bytes: Uint8Array): DetectedImage | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return { contentType: "image/jpeg", extension: "jpg" };
   }
-  if (contentType === "image/png") {
-    return (
-      bytes[0] === 0x89 &&
-      bytes[1] === 0x50 &&
-      bytes[2] === 0x4e &&
-      bytes[3] === 0x47
-    );
+  if (
+    bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 &&
+    bytes[2] === 0x4e && bytes[3] === 0x47 && bytes[4] === 0x0d &&
+    bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  ) {
+    return { contentType: "image/png", extension: "png" };
   }
-  if (contentType === "image/webp") {
-    return (
-      String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
-      String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
-    );
+  if (
+    bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+  ) {
+    return { contentType: "image/webp", extension: "webp" };
   }
-  return false;
+  return null;
 }
 
 async function storeHeroImage(file: File) {
-  const extension = IMAGE_TYPES.get(file.type);
-  if (!extension || file.size < 12 || file.size > MAX_IMAGE_BYTES) {
-    throw new Error(
-      "Zdjęcie jest zbyt duże. Wybierz je ponownie, aby panel mógł je automatycznie zmniejszyć.",
-    );
+  if (file.size < 12) throw new Error("Wybrane zdjęcie jest puste lub uszkodzone.");
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error("Zdjęcie jest zbyt duże. Wybierz je ponownie, aby panel mógł je automatycznie zmniejszyć.");
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!hasFileSignature(bytes, file.type)) {
-    throw new Error("Format wybranego zdjęcia jest nieprawidłowy.");
-  }
+  const detected = detectImage(bytes);
+  if (!detected) throw new Error("Format wybranego zdjęcia jest nieprawidłowy. Użyj JPG, PNG lub WEBP.");
 
-  const key = `site/hero/${crypto.randomUUID()}.${extension}`;
+  const key = `site/hero/${crypto.randomUUID()}.${detected.extension}`;
   await getSiteContentBucket().put(key, bytes, {
     httpMetadata: {
-      contentType: file.type,
+      contentType: detected.contentType,
       cacheControl: "public, max-age=31536000, immutable",
     },
   });
-  return { key, contentType: file.type };
+  return { key, contentType: detected.contentType };
 }
 
 export async function GET(request: Request) {
@@ -74,9 +67,7 @@ export async function GET(request: Request) {
   try {
     return json(await getSiteContentPayload());
   } catch (error) {
-    console.error("Admin site content read failed", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
+    console.error("Admin site content read failed", { message: error instanceof Error ? error.message : "Unknown error" });
     return json({ error: "Nie udało się wczytać ustawień strony." }, 500);
   }
 }
@@ -113,42 +104,24 @@ export async function POST(request: Request) {
     else if (removeHeroImage) newImage = null;
 
     const saved = await saveSiteContent(content, newImage);
-    if (
-      saved.oldHeroImageKey &&
-      newImage !== undefined &&
-      saved.oldHeroImageKey !== newImage?.key
-    ) {
+    if (saved.oldHeroImageKey && newImage !== undefined && saved.oldHeroImageKey !== newImage?.key) {
       try {
         await getSiteContentBucket().delete(saved.oldHeroImageKey);
       } catch (cleanupError) {
-        console.warn("old site image cleanup failed", {
-          message: cleanupError instanceof Error ? cleanupError.message : "Unknown error",
-        });
+        console.warn("old site image cleanup failed", { message: cleanupError instanceof Error ? cleanupError.message : "Unknown error" });
       }
     }
     return json({ ...saved.payload, message: "Zmiany na stronie zostały zapisane." });
   } catch (error) {
     if (newImage?.key) {
-      try {
-        await getSiteContentBucket().delete(newImage.key);
-      } catch {
-        // Best-effort cleanup after a failed settings write.
-      }
+      try { await getSiteContentBucket().delete(newImage.key); } catch { /* best effort */ }
     }
-    const validationError =
-      error instanceof Error &&
-      (error.message.startsWith("Zdjęcie") || error.message.startsWith("Format"));
-    console.error("Admin site content save failed", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
+    const validationError = error instanceof Error &&
+      (error.message.startsWith("Zdjęcie") || error.message.startsWith("Format") || error.message.startsWith("Wybrane"));
+    console.error("Admin site content save failed", { message: error instanceof Error ? error.message : "Unknown error" });
     return json(
-      {
-        error: validationError
-          ? (error as Error).message
-          : "Nie udało się zapisać zmian na stronie.",
-      },
+      { error: validationError ? (error as Error).message : "Nie udało się zapisać zmian na stronie." },
       validationError ? 400 : 500,
     );
   }
 }
-
