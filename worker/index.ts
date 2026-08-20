@@ -38,6 +38,15 @@ interface ExecutionContext {
   access?: AccessContext;
 }
 
+function isOwnerProtectedPath(pathname: string): boolean {
+  return (
+    pathname === "/site-admin" ||
+    pathname.startsWith("/site-admin/") ||
+    pathname === "/api/admin" ||
+    pathname.startsWith("/api/admin/")
+  );
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setRuntimeBindings({
@@ -65,23 +74,42 @@ const worker = {
       );
     }
 
-    // Cloudflare Access authenticates protected Worker requests before they
-    // reach the application. Forward the verified identity into the headers
-    // consumed by the existing Next/vinext owner-panel authorization layer.
-    if (url.pathname === "/site-admin" || url.pathname.startsWith("/site-admin/")) {
-      const identity = ctx.access ? await ctx.access.getIdentity() : null;
-
-      if (identity?.email) {
-        const headers = new Headers(request.headers);
-        headers.set("cf-access-authenticated-user-email", identity.email.trim().toLowerCase());
-
-        if (identity.name) {
-          headers.set("oai-authenticated-user-full-name", encodeURIComponent(identity.name));
-          headers.set("oai-authenticated-user-full-name-encoding", "percent-encoded-utf-8");
-        }
-
-        request = new Request(request, { headers });
+    // Owner routes must have been authenticated by Cloudflare Access.
+    // Cloudflare exposes the verified identity directly on ctx.access.
+    if (isOwnerProtectedPath(url.pathname)) {
+      if (!ctx.access) {
+        return new Response("Cloudflare Access authentication required.", {
+          status: 403,
+          headers: { "cache-control": "no-store" },
+        });
       }
+
+      const identity = await ctx.access.getIdentity();
+      const email = identity?.email?.trim().toLowerCase();
+
+      if (!email) {
+        return new Response("Cloudflare Access identity is missing an email address.", {
+          status: 403,
+          headers: { "cache-control": "no-store" },
+        });
+      }
+
+      const headers = new Headers(request.headers);
+      headers.set("cf-access-authenticated-user-email", email);
+      headers.set("oai-authenticated-user-email", email);
+
+      if (identity?.name) {
+        headers.set(
+          "oai-authenticated-user-full-name",
+          encodeURIComponent(identity.name),
+        );
+        headers.set(
+          "oai-authenticated-user-full-name-encoding",
+          "percent-encoded-utf-8",
+        );
+      }
+
+      request = new Request(request, { headers });
     }
 
     return handler.fetch(request, env, ctx);
