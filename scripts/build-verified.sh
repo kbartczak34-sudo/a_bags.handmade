@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "A-Bags deploy pipeline: artifact-binding-patch-v3"
+echo "A-Bags deploy pipeline: artifact-binding-patch-v4"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
@@ -21,6 +21,7 @@ if [[ ! -x "${vinext}" ]]; then
 fi
 
 node "${script_dir}/remove-free-shipping.mjs"
+node "${script_dir}/patch-admin-mobile-upload.mjs"
 
 echo "Running bounded vinext build..."
 timeout \
