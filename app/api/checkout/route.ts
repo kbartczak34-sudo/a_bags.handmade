@@ -1,8 +1,5 @@
 import type Stripe from "stripe";
-import {
-  freeShippingThreshold,
-  standardShippingAmount,
-} from "../../../lib/catalog";
+import { standardShippingAmount } from "../../../lib/catalog";
 import { findVisibleProductsByIds } from "../../../lib/products";
 import { getStripe, StripeConfigurationError } from "../../../lib/stripe";
 
@@ -87,12 +84,7 @@ export async function POST(request: Request) {
     product: productMap.get(item.id)!,
     quantity: item.quantity,
   }));
-  const subtotal = selectedProducts.reduce(
-    (sum, item) => sum + item.product.unitAmount * item.quantity,
-    0,
-  );
-  const shippingAmount =
-    subtotal >= freeShippingThreshold ? 0 : standardShippingAmount;
+  const shippingAmount = standardShippingAmount;
   const cartReference = selectedProducts
     .map(({ product, quantity }) => `${product.id}:${quantity}`)
     .join(",");
@@ -129,8 +121,7 @@ export async function POST(request: Request) {
           shipping_rate_data: {
             type: "fixed_amount",
             fixed_amount: { amount: shippingAmount, currency: "pln" },
-            display_name:
-              shippingAmount === 0 ? "Darmowa dostawa" : "Dostawa w Polsce",
+            display_name: "Dostawa w Polsce",
             delivery_estimate: {
               minimum: { unit: "business_day", value: 2 },
               maximum: { unit: "business_day", value: 5 },
