@@ -4,9 +4,23 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    return Response.json(await getSiteContentPayload(), {
-      headers: { "Cache-Control": "no-store" },
-    });
+    const payload = await getSiteContentPayload();
+
+    return Response.json(
+      {
+        ...payload,
+        content: {
+          ...payload.content,
+          announcement: {
+            ...payload.content.announcement,
+            visible: false,
+          },
+        },
+      },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (error) {
     console.error("Site content read failed", {
       message: error instanceof Error ? error.message : "Unknown error",
