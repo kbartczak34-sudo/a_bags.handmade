@@ -31,6 +31,8 @@ export interface R2BucketBinding {
 export type RuntimeBindings = {
   DB?: D1DatabaseBinding;
   BUCKET?: R2BucketBinding;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
 };
 
 const runtimeKey = "__ABAGS_RUNTIME_BINDINGS__";
