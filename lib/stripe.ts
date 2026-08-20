@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getRuntimeBindings } from "./runtime-env";
 
 export class StripeConfigurationError extends Error {
   constructor() {
@@ -8,7 +9,8 @@ export class StripeConfigurationError extends Error {
 }
 
 function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
-  return process.env[name];
+  const runtime = getRuntimeBindings();
+  return runtime[name] ?? process.env[name];
 }
 
 export function getStripe() {
