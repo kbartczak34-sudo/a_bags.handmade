@@ -1,4 +1,3 @@
-import { env } from "cloudflare:workers";
 import Stripe from "stripe";
 
 export class StripeConfigurationError extends Error {
@@ -9,8 +8,7 @@ export class StripeConfigurationError extends Error {
 }
 
 function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
-  const workerEnv = env as unknown as Record<string, string | undefined>;
-  return workerEnv[name] ?? process.env[name];
+  return process.env[name];
 }
 
 export function getStripe() {
