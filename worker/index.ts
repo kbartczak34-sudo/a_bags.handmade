@@ -47,6 +47,45 @@ function isOwnerProtectedPath(pathname: string): boolean {
   );
 }
 
+async function getVerifiedAccessIdentity(
+  request: Request,
+  ctx: ExecutionContext,
+): Promise<AccessIdentity | null> {
+  // Preferred path for Workers deployments that expose Access identity natively.
+  if (ctx.access) {
+    const identity = await ctx.access.getIdentity();
+    if (identity?.email) return identity;
+  }
+
+  // Fallback for deployments where ctx.access is not populated even though
+  // Cloudflare Access successfully authenticated the browser. The special
+  // /cdn-cgi/access/get-identity endpoint validates the CF_Authorization
+  // session cookie at Cloudflare's edge and returns the verified identity.
+  const cookie = request.headers.get("cookie");
+  if (!cookie) return null;
+
+  const url = new URL(request.url);
+  const identityUrl = new URL("/cdn-cgi/access/get-identity", url.origin);
+
+  try {
+    const response = await fetch(identityUrl.toString(), {
+      method: "GET",
+      headers: {
+        cookie,
+        accept: "application/json",
+      },
+      redirect: "manual",
+    });
+
+    if (!response.ok) return null;
+
+    const identity = (await response.json()) as AccessIdentity;
+    return identity?.email ? identity : null;
+  } catch {
+    return null;
+  }
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setRuntimeBindings({
@@ -74,21 +113,12 @@ const worker = {
       );
     }
 
-    // Owner routes must have been authenticated by Cloudflare Access.
-    // Cloudflare exposes the verified identity directly on ctx.access.
     if (isOwnerProtectedPath(url.pathname)) {
-      if (!ctx.access) {
-        return new Response("Cloudflare Access authentication required.", {
-          status: 403,
-          headers: { "cache-control": "no-store" },
-        });
-      }
-
-      const identity = await ctx.access.getIdentity();
+      const identity = await getVerifiedAccessIdentity(request, ctx);
       const email = identity?.email?.trim().toLowerCase();
 
       if (!email) {
-        return new Response("Cloudflare Access identity is missing an email address.", {
+        return new Response("Cloudflare Access authentication required.", {
           status: 403,
           headers: { "cache-control": "no-store" },
         });
