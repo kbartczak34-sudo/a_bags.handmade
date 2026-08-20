@@ -23,9 +23,19 @@ interface Env {
   };
 }
 
+type AccessIdentity = {
+  email?: string;
+  name?: string;
+};
+
+type AccessContext = {
+  getIdentity(): Promise<AccessIdentity | null>;
+};
+
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
+  access?: AccessContext;
 }
 
 const worker = {
@@ -53,6 +63,25 @@ const worker = {
         },
         allowedWidths,
       );
+    }
+
+    // Cloudflare Access authenticates protected Worker requests before they
+    // reach the application. Forward the verified identity into the headers
+    // consumed by the existing Next/vinext owner-panel authorization layer.
+    if (url.pathname === "/site-admin" || url.pathname.startsWith("/site-admin/")) {
+      const identity = ctx.access ? await ctx.access.getIdentity() : null;
+
+      if (identity?.email) {
+        const headers = new Headers(request.headers);
+        headers.set("cf-access-authenticated-user-email", identity.email.trim().toLowerCase());
+
+        if (identity.name) {
+          headers.set("oai-authenticated-user-full-name", encodeURIComponent(identity.name));
+          headers.set("oai-authenticated-user-full-name-encoding", "percent-encoded-utf-8");
+        }
+
+        request = new Request(request, { headers });
+      }
     }
 
     return handler.fetch(request, env, ctx);
