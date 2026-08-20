@@ -107,7 +107,7 @@ export type SiteContentPayload = {
 
 export const defaultSiteContent: SiteContent = {
   announcement: {
-    visible: true,
+    visible: false,
     primary: "Darmowa dostawa od 300 zł",
     secondary: "Każda torebka tworzona ręcznie",
   },
