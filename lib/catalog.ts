@@ -54,5 +54,6 @@ export const catalogById = new Map(
   products.map((product) => [product.id, product]),
 );
 
-export const freeShippingThreshold = 30_000;
+// Dostawa jest zawsze płatna. Nie utrzymujemy progu darmowej dostawy,
+// aby UI i Stripe Checkout zawsze korzystały z tej samej reguły cenowej.
 export const standardShippingAmount = 1_499;
