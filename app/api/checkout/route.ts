@@ -111,6 +111,7 @@ export async function POST(request: Request) {
       mode: "payment",
       locale: "pl",
       automatic_payment_methods: { enabled: true },
+      excluded_payment_method_types: ["blik"],
       line_items: lineItems,
       customer_email: payload.email,
       customer_creation: "always",
@@ -135,11 +136,13 @@ export async function POST(request: Request) {
       metadata: {
         store: "a_bags.handmade",
         cart: cartReference,
+        checkout_variant: "non_blik",
       },
       payment_intent_data: {
         metadata: {
           store: "a_bags.handmade",
           cart: cartReference,
+          checkout_variant: "non_blik",
         },
       },
       custom_text: {
