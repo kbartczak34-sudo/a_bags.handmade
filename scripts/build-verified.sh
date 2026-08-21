@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "A-Bags deploy pipeline: verified-source-v1"
+echo "A-Bags deploy pipeline: verified-source-v2"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
@@ -16,18 +16,15 @@ command -v timeout || {
 
 vinext="${SITES_PROJECT_ROOT}/node_modules/.bin/vinext"
 if [[ ! -x "${vinext}" ]]; then
-  echo "vinext is unavailable. Run npm run install:ci and wait for it to finish before building." >&2
+  echo "vinext is unavailable. Run npm run install:ci before building." >&2
   exit 69
 fi
 
-# Product/catalog migration scripts are intentionally left out of the non-product
-# hardening path. The production build must compile the committed source as-is.
+# Build committed source as-is. Cloudflare account/resource discovery belongs to
+# the deployment preparation step, not to compilation or CI.
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \
   --kill-after="${SITES_BUILD_KILL_AFTER:-10s}" \
   "${SITES_BUILD_TIMEOUT:-3m}" \
   "${vinext}" build
-
-node "${script_dir}/patch-deploy-config.mjs"
-bash "${script_dir}/validate-artifact.sh"
