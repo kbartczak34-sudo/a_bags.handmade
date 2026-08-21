@@ -1,4 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
-Redeploy reason: personal pickup + carrier/tracking/shipped-at workflow 2026-08-21 21:50 Europe/Warsaw.
+Redeploy reason: correct Stripe wallet presentation: BLIK or card with Apple Pay / Google Pay / Link 2026-08-21 23:12 Europe/Warsaw.
