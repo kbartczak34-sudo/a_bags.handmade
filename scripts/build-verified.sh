@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "A-Bags deploy pipeline: verified-source-v2"
+echo "A-Bags deploy pipeline: verified-source-v3"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
@@ -20,8 +20,16 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
-# Build committed source as-is. Cloudflare account/resource discovery belongs to
-# the deployment preparation step, not to compilation or CI.
+# Preserve the existing product/catalog migration behavior for normal builds.
+# Non-product CI opts out explicitly so this hardening branch does not evaluate
+# or mutate product behavior while testing unrelated production readiness work.
+if [[ "${SITES_SKIP_PRODUCT_PATCHES:-0}" != "1" ]]; then
+  node "${script_dir}/remove-free-shipping.mjs"
+  node "${script_dir}/patch-admin-mobile-upload.mjs"
+else
+  echo "Skipping product/catalog source patches for non-product CI."
+fi
+
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \
