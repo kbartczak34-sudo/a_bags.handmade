@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { recordStripeOrderEvent } from "../../../../lib/orders";
 import {
   getStripe,
   getStripeWebhookSecret,
@@ -32,7 +33,8 @@ export async function POST(request: Request) {
     if (supportedEvents.has(event.type)) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.store === "a_bags.handmade") {
-        console.info("Stripe order event", {
+        await recordStripeOrderEvent(event, session);
+        console.info("Stripe order event persisted", {
           eventId: event.id,
           eventType: event.type,
           sessionId: session.id,
@@ -47,7 +49,9 @@ export async function POST(request: Request) {
       return new Response("Stripe webhook is not configured", { status: 503 });
     }
 
-    console.warn("Stripe webhook signature verification failed");
-    return new Response("Invalid Stripe signature", { status: 400 });
+    console.warn("Stripe webhook processing failed", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return new Response("Webhook processing failed", { status: 400 });
   }
 }
