@@ -42,6 +42,8 @@ interface ExecutionContext {
 
 function isOwnerProtectedPath(pathname: string): boolean {
   return (
+    pathname === "/panel" ||
+    pathname.startsWith("/panel/") ||
     pathname === "/site-admin" ||
     pathname.startsWith("/site-admin/") ||
     pathname === "/api/admin" ||
