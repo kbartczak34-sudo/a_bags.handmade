@@ -32,10 +32,12 @@ function parsePayload(value: unknown) {
     if (!isObject(rawItem)) return null;
     const id = typeof rawItem.id === "string" ? rawItem.id : "";
     const quantity = rawItem.quantity;
+
     if (!/^[a-zA-Z0-9-]{1,80}$/.test(id) || !Number.isInteger(quantity)) {
       return null;
     }
     if ((quantity as number) < 1 || (quantity as number) > 10) return null;
+
     quantities.set(id, (quantities.get(id) ?? 0) + (quantity as number));
   }
 
@@ -48,14 +50,37 @@ function parsePayload(value: unknown) {
   return { email, items };
 }
 
-function stripeErrorCode(error: unknown) {
-  if (!error || typeof error !== "object") return undefined;
-  const value = error as { code?: unknown; type?: unknown; requestId?: unknown };
+function stripeErrorDetails(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return { code: "stripe_checkout_error" };
+  }
+
+  const value = error as {
+    code?: unknown;
+    type?: unknown;
+    requestId?: unknown;
+    message?: unknown;
+  };
+
   return {
-    code: typeof value.code === "string" ? value.code : undefined,
+    code: typeof value.code === "string" ? value.code : "stripe_checkout_error",
     type: typeof value.type === "string" ? value.type : undefined,
     requestId: typeof value.requestId === "string" ? value.requestId : undefined,
+    message: typeof value.message === "string" ? value.message : undefined,
   };
+}
+
+function publicStripeErrorMessage(code: string) {
+  if (code === "api_key_expired" || code === "invalid_api_key") {
+    return "Stripe odrzucił klucz API używany przez sklep. Sprawdź STRIPE_SECRET_KEY w Cloudflare.";
+  }
+  if (code === "parameter_unknown" || code === "parameter_invalid_empty") {
+    return "Konfiguracja Stripe Checkout zawiera nieobsługiwany parametr.";
+  }
+  if (code === "payment_method_unactivated") {
+    return "Metoda płatności nie jest aktywna na koncie Stripe używanym przez sklep.";
+  }
+  return "Płatność jest chwilowo niedostępna. Spróbuj ponownie za moment.";
 }
 
 export async function POST(request: Request) {
@@ -94,11 +119,11 @@ export async function POST(request: Request) {
     product: productMap.get(item.id)!,
     quantity: item.quantity,
   }));
+
   const shippingAmount = standardShippingAmount;
   const cartReference = selectedProducts
     .map(({ product, quantity }) => `${product.id}:${quantity}`)
     .join(",");
-
   const origin = new URL(request.url).origin;
 
   try {
@@ -120,7 +145,6 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       locale: "pl",
-      automatic_payment_methods: { enabled: true },
       line_items: lineItems,
       customer_email: payload.email,
       customer_creation: "always",
@@ -157,8 +181,7 @@ export async function POST(request: Request) {
           message: "Dostawa jest obecnie dostępna na terenie Polski.",
         },
         submit: {
-          message:
-            "Po płatności otrzymasz potwierdzenie na podany adres e-mail.",
+          message: "Po płatności otrzymasz potwierdzenie na podany adres e-mail.",
         },
       },
     });
@@ -171,21 +194,19 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
       return json(
-        { error: "Płatności Stripe są jeszcze w trakcie bezpiecznej konfiguracji." },
+        { error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym." },
         503,
       );
     }
 
-    const details = stripeErrorCode(error);
-    console.error("Stripe Checkout Session error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      ...details,
-    });
+    const details = stripeErrorDetails(error);
+    console.error("Stripe Checkout Session error", details);
+
     return json(
       {
-        error: "Płatność jest chwilowo niedostępna. Spróbuj ponownie za moment.",
-        code: details?.code ?? "stripe_checkout_error",
-        requestId: details?.requestId,
+        error: `${publicStripeErrorMessage(details.code)} [${details.code}]`,
+        code: details.code,
+        requestId: details.requestId,
       },
       502,
     );
