@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
+import PaymentMethodEnhancer from "./payment-method-enhancer";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -34,7 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl">
-      <body className={`${display.variable} ${sans.variable}`}>{children}</body>
+      <body className={`${display.variable} ${sans.variable}`}>
+        <PaymentMethodEnhancer />
+        {children}
+      </body>
     </html>
   );
 }
