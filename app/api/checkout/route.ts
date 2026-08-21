@@ -10,6 +10,8 @@ type RequestedItem = {
   quantity: number;
 };
 
+type PaymentChoice = "blik" | "card" | "wallet";
+
 type StripeCheckoutResponse = {
   id?: string;
   url?: string | null;
@@ -62,6 +64,12 @@ function parsePayload(value: unknown) {
   return { email, items };
 }
 
+function readPaymentChoice(request: Request): PaymentChoice {
+  const cookie = request.headers.get("cookie") ?? "";
+  const match = cookie.match(/(?:^|;\s*)abags-payment-method=(blik|card|wallet)(?:;|$)/);
+  return (match?.[1] as PaymentChoice | undefined) ?? "blik";
+}
+
 function publicStripeErrorMessage(code: string) {
   if (code === "api_key_expired" || code === "invalid_api_key") {
     return "Stripe odrzucił klucz API używany przez sklep. Sprawdź STRIPE_SECRET_KEY w Cloudflare.";
@@ -79,7 +87,7 @@ function publicStripeErrorMessage(code: string) {
     return "Konfiguracja Stripe Checkout zawiera nieobsługiwany parametr.";
   }
   if (code === "payment_method_unactivated") {
-    return "Metoda płatności nie jest aktywna na koncie Stripe używanym przez sklep.";
+    return "Wybrana metoda płatności nie jest aktywna na koncie Stripe używanym przez sklep.";
   }
   if (code === "stripe_network_error") {
     return "Worker nie może połączyć się z API Stripe.";
@@ -181,6 +189,7 @@ export async function POST(request: Request) {
     quantity: item.quantity,
   }));
 
+  const paymentChoice = readPaymentChoice(request);
   const shippingAmount = standardShippingAmount;
   const cartReference = selectedProducts
     .map(({ product, quantity }) => `${product.id}:${quantity}`)
@@ -193,6 +202,10 @@ export async function POST(request: Request) {
 
     form.set("mode", "payment");
     form.set("locale", "pl");
+    form.set(
+      "payment_method_types[0]",
+      paymentChoice === "blik" ? "blik" : "card",
+    );
     form.set("customer_email", payload.email);
     form.set("customer_creation", "always");
     form.set("phone_number_collection[enabled]", "true");
@@ -234,8 +247,10 @@ export async function POST(request: Request) {
     form.set("client_reference_id", `abags-${crypto.randomUUID()}`);
     form.set("metadata[store]", "a_bags.handmade");
     form.set("metadata[cart]", cartReference);
+    form.set("metadata[payment_choice]", paymentChoice);
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][cart]", cartReference);
+    form.set("payment_intent_data[metadata][payment_choice]", paymentChoice);
     form.set(
       "custom_text[shipping_address][message]",
       "Dostawa jest obecnie dostępna na terenie Polski.",
@@ -290,6 +305,7 @@ export async function POST(request: Request) {
         type: stripeBody.error?.type,
         message: stripeBody.error?.message,
         requestId,
+        paymentChoice,
       });
 
       return json(
