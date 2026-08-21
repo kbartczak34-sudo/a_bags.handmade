@@ -8,10 +8,29 @@ export class StripeConfigurationError extends Error {
   }
 }
 
+function normalizeSecret(name: string, raw: string) {
+  let value = raw.trim();
+
+  const assignmentPrefix = `${name}=`;
+  if (value.startsWith(assignmentPrefix)) {
+    value = value.slice(assignmentPrefix.length).trim();
+  }
+
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+
+  return value;
+}
+
 function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
   const runtime = getRuntimeBindings();
-  const value = runtime[name] ?? process.env[name];
-  return typeof value === "string" ? value.trim() : undefined;
+  const raw = runtime[name] ?? process.env[name];
+  return typeof raw === "string" ? normalizeSecret(name, raw) : undefined;
 }
 
 export function getStripeSecretKey() {
