@@ -9,6 +9,11 @@ type ReviewRow = {
   updated_at: string;
 };
 
+type ReviewRateLimitRow = {
+  attempts: number;
+  window_start: number;
+};
+
 export type ReviewStatus = "pending" | "approved" | "rejected";
 
 export type StorefrontReview = {
@@ -39,6 +44,17 @@ const createReviewsStatusIndexSql = `
   ON reviews (status, created_at)
 `;
 
+const createReviewRateLimitsSql = `
+  CREATE TABLE IF NOT EXISTS review_rate_limits (
+    fingerprint TEXT PRIMARY KEY NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    window_start INTEGER NOT NULL
+  )
+`;
+
+const REVIEW_WINDOW_SECONDS = 60 * 60;
+const REVIEW_MAX_ATTEMPTS = 5;
+
 let readyPromise: Promise<void> | null = null;
 
 function getReviewDb() {
@@ -52,6 +68,7 @@ async function initializeReviews() {
   await db.batch([
     db.prepare(createReviewsSql),
     db.prepare(createReviewsStatusIndexSql),
+    db.prepare(createReviewRateLimitsSql),
   ]);
 }
 
@@ -96,6 +113,52 @@ export async function listApprovedReviews(limit = 6) {
     .bind(safeLimit)
     .all<ReviewRow>();
   return result.results.map(toStorefrontReview);
+}
+
+export async function consumeReviewSubmission(fingerprint: string) {
+  await ensureReviewsReady();
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff = now - REVIEW_WINDOW_SECONDS;
+  const db = getReviewDb();
+
+  await db
+    .prepare(
+      `INSERT INTO review_rate_limits (fingerprint, attempts, window_start)
+       VALUES (?, 1, ?)
+       ON CONFLICT(fingerprint) DO UPDATE SET
+         attempts = CASE
+           WHEN review_rate_limits.window_start <= ? THEN 1
+           ELSE review_rate_limits.attempts + 1
+         END,
+         window_start = CASE
+           WHEN review_rate_limits.window_start <= ? THEN excluded.window_start
+           ELSE review_rate_limits.window_start
+         END`,
+    )
+    .bind(fingerprint, now, cutoff, cutoff)
+    .run();
+
+  const row = await db
+    .prepare(
+      `SELECT attempts, window_start
+       FROM review_rate_limits
+       WHERE fingerprint = ?
+       LIMIT 1`,
+    )
+    .bind(fingerprint)
+    .first<ReviewRateLimitRow>();
+
+  const attempts = row?.attempts ?? 1;
+  const retryAfter = Math.max(
+    1,
+    (row?.window_start ?? now) + REVIEW_WINDOW_SECONDS - now,
+  );
+
+  return {
+    allowed: attempts <= REVIEW_MAX_ATTEMPTS,
+    remaining: Math.max(0, REVIEW_MAX_ATTEMPTS - attempts),
+    retryAfter,
+  };
 }
 
 export async function createPendingReview(authorName: string, content: string) {
