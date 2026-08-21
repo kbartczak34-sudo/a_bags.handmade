@@ -1,6 +1,36 @@
 import type Stripe from "stripe";
 import { getRuntimeBindings } from "./runtime-env";
 
+export type AdminOrder = {
+  sessionId: string;
+  paymentIntentId: string | null;
+  customerEmail: string | null;
+  paymentStatus: string;
+  checkoutStatus: string | null;
+  amountTotal: number | null;
+  currency: string | null;
+  cartReference: string | null;
+  lastEventId: string;
+  lastEventType: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type OrderRow = {
+  session_id: string;
+  payment_intent_id: string | null;
+  customer_email: string | null;
+  payment_status: string;
+  checkout_status: string | null;
+  amount_total: number | null;
+  currency: string | null;
+  cart_reference: string | null;
+  last_event_id: string;
+  last_event_type: string;
+  created_at: string;
+  updated_at: string;
+};
+
 const createOrdersSql = `
   CREATE TABLE IF NOT EXISTS orders (
     session_id TEXT PRIMARY KEY NOT NULL,
@@ -64,6 +94,23 @@ function paymentIntentId(session: Stripe.Checkout.Session) {
   return session.payment_intent?.id ?? null;
 }
 
+function toAdminOrder(row: OrderRow): AdminOrder {
+  return {
+    sessionId: row.session_id,
+    paymentIntentId: row.payment_intent_id,
+    customerEmail: row.customer_email,
+    paymentStatus: row.payment_status,
+    checkoutStatus: row.checkout_status,
+    amountTotal: row.amount_total,
+    currency: row.currency,
+    cartReference: row.cart_reference,
+    lastEventId: row.last_event_id,
+    lastEventType: row.last_event_type,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export async function recordStripeOrderEvent(
   event: Stripe.Event,
   session: Stripe.Checkout.Session,
@@ -118,4 +165,32 @@ export async function recordStripeOrderEvent(
       now,
     ),
   ]);
+}
+
+export async function listAdminOrders(limit = 100) {
+  await ensureOrdersReady();
+  const safeLimit = Math.max(1, Math.min(250, Math.trunc(limit)));
+  const result = await getOrderDb()
+    .prepare(
+      `SELECT
+         session_id,
+         payment_intent_id,
+         customer_email,
+         payment_status,
+         checkout_status,
+         amount_total,
+         currency,
+         cart_reference,
+         last_event_id,
+         last_event_type,
+         created_at,
+         updated_at
+       FROM orders
+       ORDER BY updated_at DESC
+       LIMIT ?`,
+    )
+    .bind(safeLimit)
+    .all<OrderRow>();
+
+  return result.results.map(toAdminOrder);
 }
