@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "A-Bags deploy pipeline: artifact-binding-patch-v4"
+echo "A-Bags deploy pipeline: verified-source-v1"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
@@ -20,9 +20,8 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
-node "${script_dir}/remove-free-shipping.mjs"
-node "${script_dir}/patch-admin-mobile-upload.mjs"
-
+# Product/catalog migration scripts are intentionally left out of the non-product
+# hardening path. The production build must compile the committed source as-is.
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \
