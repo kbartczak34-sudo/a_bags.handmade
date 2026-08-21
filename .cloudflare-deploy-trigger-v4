@@ -1,4 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
-Redeploy reason: Worker-native Stripe Checkout transport 2026-08-21 18:32 Europe/Warsaw.
+Redeploy reason: interactive payment selector + Stripe error classification 2026-08-21 18:37 Europe/Warsaw.
