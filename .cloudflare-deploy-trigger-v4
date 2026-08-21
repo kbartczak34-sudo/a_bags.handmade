@@ -1,4 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
-Redeploy reason: product quick view with large image, details, price and cart actions 2026-08-22 00:42 Europe/Warsaw.
+Redeploy reason: made-to-order limited availability messaging in product quick view 2026-08-22 00:44 Europe/Warsaw.
