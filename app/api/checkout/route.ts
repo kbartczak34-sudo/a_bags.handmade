@@ -1,11 +1,23 @@
-import type Stripe from "stripe";
 import { standardShippingAmount } from "../../../lib/catalog";
 import { findVisibleProductsByIds } from "../../../lib/products";
-import { getStripe, StripeConfigurationError } from "../../../lib/stripe";
+import {
+  getStripeSecretKey,
+  StripeConfigurationError,
+} from "../../../lib/stripe";
 
 type RequestedItem = {
   id: string;
   quantity: number;
+};
+
+type StripeCheckoutResponse = {
+  id?: string;
+  url?: string | null;
+  error?: {
+    code?: string;
+    type?: string;
+    message?: string;
+  };
 };
 
 function json(data: unknown, status = 200) {
@@ -50,26 +62,6 @@ function parsePayload(value: unknown) {
   return { email, items };
 }
 
-function stripeErrorDetails(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return { code: "stripe_checkout_error" };
-  }
-
-  const value = error as {
-    code?: unknown;
-    type?: unknown;
-    requestId?: unknown;
-    message?: unknown;
-  };
-
-  return {
-    code: typeof value.code === "string" ? value.code : "stripe_checkout_error",
-    type: typeof value.type === "string" ? value.type : undefined,
-    requestId: typeof value.requestId === "string" ? value.requestId : undefined,
-    message: typeof value.message === "string" ? value.message : undefined,
-  };
-}
-
 function publicStripeErrorMessage(code: string) {
   if (code === "api_key_expired" || code === "invalid_api_key") {
     return "Stripe odrzucił klucz API używany przez sklep. Sprawdź STRIPE_SECRET_KEY w Cloudflare.";
@@ -80,7 +72,35 @@ function publicStripeErrorMessage(code: string) {
   if (code === "payment_method_unactivated") {
     return "Metoda płatności nie jest aktywna na koncie Stripe używanym przez sklep.";
   }
+  if (code === "stripe_network_error") {
+    return "Worker nie może połączyć się z API Stripe.";
+  }
   return "Płatność jest chwilowo niedostępna. Spróbuj ponownie za moment.";
+}
+
+function addProductLineItem(
+  form: URLSearchParams,
+  index: number,
+  product: {
+    id: string;
+    name: string;
+    detail: string;
+    unitAmount: number;
+  },
+  quantity: number,
+) {
+  const prefix = `line_items[${index}]`;
+  form.set(`${prefix}[quantity]`, String(quantity));
+  form.set(`${prefix}[price_data][currency]`, "pln");
+  form.set(`${prefix}[price_data][unit_amount]`, String(product.unitAmount));
+  form.set(`${prefix}[price_data][product_data][name]`, product.name);
+  if (product.detail) {
+    form.set(`${prefix}[price_data][product_data][description]`, product.detail);
+  }
+  form.set(
+    `${prefix}[price_data][product_data][metadata][catalog_id]`,
+    product.id,
+  );
 }
 
 export async function POST(request: Request) {
@@ -127,86 +147,154 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
 
   try {
-    const stripe = getStripe();
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      selectedProducts.map(({ product, quantity }) => ({
-        quantity,
-        price_data: {
-          currency: "pln",
-          unit_amount: product.unitAmount,
-          product_data: {
-            name: product.name,
-            description: product.detail,
-            metadata: { catalog_id: product.id },
-          },
-        },
-      }));
+    const secretKey = getStripeSecretKey();
+    const form = new URLSearchParams();
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      locale: "pl",
-      line_items: lineItems,
-      customer_email: payload.email,
-      customer_creation: "always",
-      phone_number_collection: { enabled: true },
-      shipping_address_collection: { allowed_countries: ["PL"] },
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: { amount: shippingAmount, currency: "pln" },
-            display_name: "Dostawa w Polsce",
-            delivery_estimate: {
-              minimum: { unit: "business_day", value: 2 },
-              maximum: { unit: "business_day", value: 5 },
-            },
-          },
-        },
-      ],
-      success_url: `${origin}/zamowienie/sukces?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?platnosc=anulowana#kolekcja`,
-      client_reference_id: `abags-${crypto.randomUUID()}`,
-      metadata: {
-        store: "a_bags.handmade",
-        cart: cartReference,
-      },
-      payment_intent_data: {
-        metadata: {
-          store: "a_bags.handmade",
-          cart: cartReference,
-        },
-      },
-      custom_text: {
-        shipping_address: {
-          message: "Dostawa jest obecnie dostępna na terenie Polski.",
-        },
-        submit: {
-          message: "Po płatności otrzymasz potwierdzenie na podany adres e-mail.",
-        },
-      },
+    form.set("mode", "payment");
+    form.set("locale", "pl");
+    form.set("customer_email", payload.email);
+    form.set("customer_creation", "always");
+    form.set("phone_number_collection[enabled]", "true");
+    form.set("shipping_address_collection[allowed_countries][0]", "PL");
+    form.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
+    form.set(
+      "shipping_options[0][shipping_rate_data][fixed_amount][amount]",
+      String(shippingAmount),
+    );
+    form.set(
+      "shipping_options[0][shipping_rate_data][fixed_amount][currency]",
+      "pln",
+    );
+    form.set(
+      "shipping_options[0][shipping_rate_data][display_name]",
+      "Dostawa w Polsce",
+    );
+    form.set(
+      "shipping_options[0][shipping_rate_data][delivery_estimate][minimum][unit]",
+      "business_day",
+    );
+    form.set(
+      "shipping_options[0][shipping_rate_data][delivery_estimate][minimum][value]",
+      "2",
+    );
+    form.set(
+      "shipping_options[0][shipping_rate_data][delivery_estimate][maximum][unit]",
+      "business_day",
+    );
+    form.set(
+      "shipping_options[0][shipping_rate_data][delivery_estimate][maximum][value]",
+      "5",
+    );
+    form.set(
+      "success_url",
+      `${origin}/zamowienie/sukces?session_id={CHECKOUT_SESSION_ID}`,
+    );
+    form.set("cancel_url", `${origin}/?platnosc=anulowana#kolekcja`);
+    form.set("client_reference_id", `abags-${crypto.randomUUID()}`);
+    form.set("metadata[store]", "a_bags.handmade");
+    form.set("metadata[cart]", cartReference);
+    form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
+    form.set("payment_intent_data[metadata][cart]", cartReference);
+    form.set(
+      "custom_text[shipping_address][message]",
+      "Dostawa jest obecnie dostępna na terenie Polski.",
+    );
+    form.set(
+      "custom_text[submit][message]",
+      "Po płatności otrzymasz potwierdzenie na podany adres e-mail.",
+    );
+
+    selectedProducts.forEach(({ product, quantity }, index) => {
+      addProductLineItem(form, index, product, quantity);
     });
 
-    if (!session.url) {
-      return json({ error: "Nie udało się otworzyć bezpiecznej płatności." }, 502);
+    let response: Response;
+    try {
+      response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": `abags-checkout-${crypto.randomUUID()}`,
+        },
+        body: form.toString(),
+      });
+    } catch (error) {
+      console.error("Stripe native fetch failed", {
+        message: error instanceof Error ? error.message : "Unknown network error",
+      });
+      return json(
+        {
+          error: `${publicStripeErrorMessage("stripe_network_error")} [stripe_network_error]`,
+          code: "stripe_network_error",
+        },
+        502,
+      );
     }
 
-    return json({ url: session.url });
+    const requestId = response.headers.get("request-id") ?? undefined;
+    let stripeBody: StripeCheckoutResponse;
+
+    try {
+      stripeBody = (await response.json()) as StripeCheckoutResponse;
+    } catch {
+      stripeBody = {};
+    }
+
+    if (!response.ok) {
+      const code = stripeBody.error?.code ?? "stripe_api_error";
+      console.error("Stripe Checkout API error", {
+        status: response.status,
+        code,
+        type: stripeBody.error?.type,
+        message: stripeBody.error?.message,
+        requestId,
+      });
+
+      return json(
+        {
+          error: `${publicStripeErrorMessage(code)} [${code}]`,
+          code,
+          requestId,
+        },
+        502,
+      );
+    }
+
+    if (!stripeBody.url) {
+      console.error("Stripe Checkout response missing URL", {
+        sessionId: stripeBody.id,
+        requestId,
+      });
+      return json(
+        {
+          error: "Stripe utworzył sesję bez adresu przekierowania. [stripe_missing_url]",
+          code: "stripe_missing_url",
+          requestId,
+        },
+        502,
+      );
+    }
+
+    return json({ url: stripeBody.url });
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
       return json(
-        { error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym." },
+        {
+          error:
+            "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym.",
+        },
         503,
       );
     }
 
-    const details = stripeErrorDetails(error);
-    console.error("Stripe Checkout Session error", details);
-
+    console.error("Checkout initialization error", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     return json(
       {
-        error: `${publicStripeErrorMessage(details.code)} [${details.code}]`,
-        code: details.code,
-        requestId: details.requestId,
+        error: "Płatność jest chwilowo niedostępna. [checkout_initialization_error]",
+        code: "checkout_initialization_error",
       },
       502,
     );
