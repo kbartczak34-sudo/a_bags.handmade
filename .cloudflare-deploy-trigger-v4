@@ -1,4 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
-Redeploy reason: normalize Stripe secret values from Cloudflare 2026-08-21 19:07 Europe/Warsaw.
+Redeploy reason: persist verified Stripe orders and admin order API 2026-08-21 20:05 Europe/Warsaw.
