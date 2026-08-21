@@ -66,6 +66,15 @@ function publicStripeErrorMessage(code: string) {
   if (code === "api_key_expired" || code === "invalid_api_key") {
     return "Stripe odrzucił klucz API używany przez sklep. Sprawdź STRIPE_SECRET_KEY w Cloudflare.";
   }
+  if (code === "stripe_permission_error") {
+    return "Klucz Stripe nie ma uprawnień do tworzenia płatności Checkout.";
+  }
+  if (code === "stripe_rate_limit") {
+    return "Stripe chwilowo ogranicza liczbę żądań. Spróbuj ponownie za moment.";
+  }
+  if (code === "stripe_service_error") {
+    return "Stripe ma chwilowy problem po swojej stronie. Spróbuj ponownie za moment.";
+  }
   if (code === "parameter_unknown" || code === "parameter_invalid_empty") {
     return "Konfiguracja Stripe Checkout zawiera nieobsługiwany parametr.";
   }
@@ -76,6 +85,38 @@ function publicStripeErrorMessage(code: string) {
     return "Worker nie może połączyć się z API Stripe.";
   }
   return "Płatność jest chwilowo niedostępna. Spróbuj ponownie za moment.";
+}
+
+function classifyStripeApiError(
+  status: number,
+  stripeError: StripeCheckoutResponse["error"],
+) {
+  if (stripeError?.code) return stripeError.code;
+
+  const type = stripeError?.type ?? "";
+  const message = stripeError?.message?.toLowerCase() ?? "";
+
+  if (
+    status === 401 ||
+    message.includes("invalid api key") ||
+    message.includes("api key provided")
+  ) {
+    return "invalid_api_key";
+  }
+
+  if (status === 403 || type === "permission_error") {
+    return "stripe_permission_error";
+  }
+
+  if (status === 429) {
+    return "stripe_rate_limit";
+  }
+
+  if (status >= 500) {
+    return "stripe_service_error";
+  }
+
+  return "stripe_api_error";
 }
 
 function addProductLineItem(
@@ -242,7 +283,7 @@ export async function POST(request: Request) {
     }
 
     if (!response.ok) {
-      const code = stripeBody.error?.code ?? "stripe_api_error";
+      const code = classifyStripeApiError(response.status, stripeBody.error);
       console.error("Stripe Checkout API error", {
         status: response.status,
         code,
