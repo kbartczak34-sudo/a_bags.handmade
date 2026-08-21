@@ -10,7 +10,8 @@ export class StripeConfigurationError extends Error {
 
 function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
   const runtime = getRuntimeBindings();
-  return runtime[name] ?? process.env[name];
+  const value = runtime[name] ?? process.env[name];
+  return typeof value === "string" ? value.trim() : undefined;
 }
 
 export function getStripeSecretKey() {
