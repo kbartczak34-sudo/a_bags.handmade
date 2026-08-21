@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
+import AccessibilityClient from "./accessibility-client";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -13,13 +14,44 @@ const sans = Manrope({
   subsets: ["latin", "latin-ext"],
 });
 
+const siteUrl = "https://abagshandmade.pl";
+const description =
+  "Ręcznie plecione torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
+
 export const metadata: Metadata = {
-  title: "a_bags.handmade",
-  description:
-    "Ręcznie plecione torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "a_bags.handmade",
+    template: "%s | a_bags.handmade",
+  },
+  description,
+  alternates: {
+    canonical: "/",
+  },
   manifest: "/manifest.webmanifest",
-  other: {
-    "codex-preview": "development",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "pl_PL",
+    url: siteUrl,
+    siteName: "a_bags.handmade",
+    title: "a_bags.handmade",
+    description,
+  },
+  twitter: {
+    card: "summary",
+    title: "a_bags.handmade",
+    description,
   },
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
@@ -34,7 +66,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl">
-      <body className={`${display.variable} ${sans.variable}`}>{children}</body>
+      <body className={`${display.variable} ${sans.variable}`}>
+        {children}
+        <AccessibilityClient />
+      </body>
     </html>
   );
 }

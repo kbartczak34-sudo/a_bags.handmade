@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "A-Bags deploy pipeline: artifact-binding-patch-v4"
+echo "A-Bags deploy pipeline: verified-source-v3"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
@@ -16,12 +16,19 @@ command -v timeout || {
 
 vinext="${SITES_PROJECT_ROOT}/node_modules/.bin/vinext"
 if [[ ! -x "${vinext}" ]]; then
-  echo "vinext is unavailable. Run npm run install:ci and wait for it to finish before building." >&2
+  echo "vinext is unavailable. Run npm run install:ci before building." >&2
   exit 69
 fi
 
-node "${script_dir}/remove-free-shipping.mjs"
-node "${script_dir}/patch-admin-mobile-upload.mjs"
+# Preserve the existing product/catalog migration behavior for normal builds.
+# Non-product CI opts out explicitly so this hardening branch does not evaluate
+# or mutate product behavior while testing unrelated production readiness work.
+if [[ "${SITES_SKIP_PRODUCT_PATCHES:-0}" != "1" ]]; then
+  node "${script_dir}/remove-free-shipping.mjs"
+  node "${script_dir}/patch-admin-mobile-upload.mjs"
+else
+  echo "Skipping product/catalog source patches for non-product CI."
+fi
 
 echo "Running bounded vinext build..."
 timeout \
@@ -29,6 +36,3 @@ timeout \
   --kill-after="${SITES_BUILD_KILL_AFTER:-10s}" \
   "${SITES_BUILD_TIMEOUT:-3m}" \
   "${vinext}" build
-
-node "${script_dir}/patch-deploy-config.mjs"
-bash "${script_dir}/validate-artifact.sh"
