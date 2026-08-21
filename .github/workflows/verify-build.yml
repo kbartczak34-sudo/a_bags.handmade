@@ -2,7 +2,9 @@ name: Verify production build
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - "audit/**"
   pull_request:
     branches: [main]
   workflow_dispatch:
