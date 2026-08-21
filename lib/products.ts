@@ -1,4 +1,5 @@
 import type { CatalogProduct } from "./catalog";
+import { grossFromNetCents, VAT_RATE_PERCENT } from "./catalog";
 import { getRuntimeBindings } from "./runtime-env";
 
 type ProductRow = {
@@ -175,14 +176,19 @@ function toAdminProduct(row: ProductRow): AdminProduct {
 }
 
 function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
+  const netAmount = row.price_cents;
+  const unitAmount = grossFromNetCents(netAmount);
   return {
     id: row.id,
     number: String(index + 1).padStart(2, "0"),
     name: row.name,
     detail: row.detail,
     tone: row.tone,
-    price: row.price_cents / 100,
-    unitAmount: row.price_cents,
+    price: unitAmount / 100,
+    unitAmount,
+    netAmount,
+    vatAmount: unitAmount - netAmount,
+    vatRate: VAT_RATE_PERCENT,
     imageUrl: productImageUrl(row),
     isVisible: Boolean(row.is_visible),
     sortOrder: row.sort_order,
