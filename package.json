@@ -12,7 +12,10 @@
     "postbuild": "bash scripts/validate-artifact.sh",
     "prepare:deploy": "node scripts/patch-deploy-config.mjs && bash scripts/validate-artifact.sh",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run test:non-product",
+    "test:non-product": "npm run build && node --test tests/rendered-html.test.mjs tests/worker-security.test.mjs",
+    "test:products": "node --test tests/remove-free-shipping.test.mjs",
+    "test:all": "npm run build && node --test tests/*.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
