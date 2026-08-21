@@ -1,3 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
+Redeploy reason: Stripe Checkout runtime fix 2026-08-21 18:05 Europe/Warsaw.
