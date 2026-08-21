@@ -1,4 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
-Redeploy reason: made-to-order limited availability messaging in product quick view 2026-08-22 00:44 Europe/Warsaw.
+Redeploy reason: net product prices with automatic 23 percent Polish VAT added to storefront and Stripe Checkout 2026-08-22 01:05 Europe/Warsaw.
