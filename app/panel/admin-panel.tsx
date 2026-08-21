@@ -5,8 +5,9 @@ import Link from "next/link";
 import ProductPanel from "./product-panel";
 import ReviewManager from "./review-manager";
 import SiteContentEditor from "./site-content-editor";
+import OrdersManager from "./orders-manager";
 
-type AdminTab = "page" | "products" | "reviews";
+type AdminTab = "page" | "products" | "reviews" | "orders";
 
 export default function AdminPanel({ ownerName }: { ownerName: string }) {
   const [activeTab, setActiveTab] = useState<AdminTab>("page");
@@ -29,8 +30,8 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <p className="eyebrow">Panel właścicielki</p>
           <h1>Zarządzaj sklepem</h1>
           <p>
-            Zmieniaj całą stronę, produkty i opinie w jednym miejscu — bez
-            edycji kodu.
+            Zmieniaj całą stronę, produkty, opinie i sprawdzaj zamówienia w jednym
+            miejscu — bez edycji kodu.
           </p>
         </div>
       </section>
@@ -60,14 +61,22 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <span>03</span>
           Opinie
         </button>
+        <button
+          type="button"
+          className={activeTab === "orders" ? "is-active" : ""}
+          onClick={() => setActiveTab("orders")}
+        >
+          <span>04</span>
+          Zamówienia
+        </button>
       </nav>
 
       <div className="admin-tab-content">
         {activeTab === "page" && <SiteContentEditor />}
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "reviews" && <ReviewManager />}
+        {activeTab === "orders" && <OrdersManager />}
       </div>
     </main>
   );
 }
-
