@@ -51,6 +51,22 @@ function isOwnerProtectedPath(pathname: string): boolean {
   );
 }
 
+function withSecurityHeaders(response: Response) {
+  const headers = new Headers(response.headers);
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "SAMEORIGIN");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(self)",
+  );
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function getVerifiedAccessIdentity(
   request: Request,
   ctx: ExecutionContext,
@@ -98,7 +114,7 @@ const worker = {
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(
+      const response = await handleImageOptimization(
         request,
         {
           fetchAsset: (path) =>
@@ -112,6 +128,7 @@ const worker = {
         },
         allowedWidths,
       );
+      return withSecurityHeaders(response);
     }
 
     if (isOwnerProtectedPath(url.pathname)) {
@@ -119,10 +136,12 @@ const worker = {
       const email = identity?.email?.trim().toLowerCase();
 
       if (!email) {
-        return new Response("Cloudflare Access authentication required.", {
-          status: 403,
-          headers: { "cache-control": "no-store" },
-        });
+        return withSecurityHeaders(
+          new Response("Cloudflare Access authentication required.", {
+            status: 403,
+            headers: { "cache-control": "no-store" },
+          }),
+        );
       }
 
       const headers = new Headers(request.headers);
@@ -143,7 +162,7 @@ const worker = {
       request = new Request(request, { headers });
     }
 
-    return handler.fetch(request, env, ctx);
+    return withSecurityHeaders(await handler.fetch(request, env, ctx));
   },
 };
 
