@@ -13,14 +13,18 @@ function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
   return runtime[name] ?? process.env[name];
 }
 
-export function getStripe() {
+export function getStripeSecretKey() {
   const secretKey = readSecret("STRIPE_SECRET_KEY");
 
   if (!secretKey) {
     throw new StripeConfigurationError();
   }
 
-  return new Stripe(secretKey, {
+  return secretKey;
+}
+
+export function getStripe() {
+  return new Stripe(getStripeSecretKey(), {
     httpClient: Stripe.createFetchHttpClient(),
     maxNetworkRetries: 2,
   });
