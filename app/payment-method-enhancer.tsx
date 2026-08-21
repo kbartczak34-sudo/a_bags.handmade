@@ -2,13 +2,7 @@
 
 import { useEffect } from "react";
 
-type PaymentChoice = "blik" | "card" | "wallet";
-
-const labels: Record<string, PaymentChoice> = {
-  BLIK: "blik",
-  Karta: "card",
-  "Portfel mobilny": "wallet",
-};
+type PaymentChoice = "blik" | "card";
 
 function setPaymentCookie(value: PaymentChoice) {
   document.cookie = `abags-payment-method=${value}; Path=/; Max-Age=3600; SameSite=Lax`;
@@ -18,11 +12,46 @@ function enhancePaymentOptions() {
   const container = document.querySelector<HTMLElement>(".payment-options");
   if (!container || container.dataset.enhanced === "true") return;
 
-  const options = Array.from(container.querySelectorAll<HTMLElement>(":scope > span"));
-  if (options.length === 0) return;
+  const originalOptions = Array.from(
+    container.querySelectorAll<HTMLElement>(":scope > span"),
+  );
+  if (originalOptions.length === 0) return;
+
+  // Apple Pay i Google Pay nie są osobnymi payment_method_types w Stripe Checkout.
+  // Są prezentowane w ramach płatności kartowej, gdy urządzenie/przeglądarka je obsługuje.
+  const blikOption = originalOptions.find(
+    (option) => option.textContent?.trim() === "BLIK",
+  );
+  const cardOption = originalOptions.find(
+    (option) => option.textContent?.trim() === "Karta",
+  );
+  const walletOption = originalOptions.find(
+    (option) => option.textContent?.trim() === "Portfel mobilny",
+  );
+
+  if (!blikOption || !cardOption) return;
+
+  cardOption.textContent = "Karta / Apple Pay / Google Pay / Link";
+  walletOption?.remove();
+
+  const options = [blikOption, cardOption];
+  const values = new Map<HTMLElement, PaymentChoice>([
+    [blikOption, "blik"],
+    [cardOption, "card"],
+  ]);
 
   container.dataset.enhanced = "true";
   container.setAttribute("role", "radiogroup");
+  container.setAttribute(
+    "aria-label",
+    "Wybierz BLIK albo kartę z obsługiwanym portfelem mobilnym",
+  );
+
+  const helpText = container.parentElement?.querySelector("p");
+  if (helpText) {
+    helpText.textContent =
+      "Apple Pay, Google Pay i Link pojawią się w Stripe automatycznie, jeśli są dostępne na Twoim urządzeniu i koncie.";
+  }
 
   const select = (selected: HTMLElement) => {
     options.forEach((option) => {
@@ -32,7 +61,7 @@ function enhancePaymentOptions() {
       option.classList.toggle("payment-primary", active);
     });
 
-    const choice = labels[selected.textContent?.trim() ?? ""];
+    const choice = values.get(selected);
     if (choice) setPaymentCookie(choice);
   };
 
