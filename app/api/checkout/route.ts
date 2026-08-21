@@ -1,4 +1,5 @@
 import { standardShippingAmount } from "../../../lib/catalog";
+import { getOrderSettings } from "../../../lib/orders";
 import { findVisibleProductsByIds } from "../../../lib/products";
 import {
   getStripeSecretKey,
@@ -196,6 +197,15 @@ export async function POST(request: Request) {
     .join(",");
   const origin = new URL(request.url).origin;
 
+  let orderSettings = { pickupEnabled: false, pickupAddress: "" };
+  try {
+    orderSettings = await getOrderSettings();
+  } catch (error) {
+    console.warn("Pickup settings unavailable", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+
   try {
     const secretKey = getStripeSecretKey();
     const form = new URLSearchParams();
@@ -210,6 +220,7 @@ export async function POST(request: Request) {
     form.set("customer_creation", "always");
     form.set("phone_number_collection[enabled]", "true");
     form.set("shipping_address_collection[allowed_countries][0]", "PL");
+
     form.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
     form.set(
       "shipping_options[0][shipping_rate_data][fixed_amount][amount]",
@@ -239,6 +250,23 @@ export async function POST(request: Request) {
       "shipping_options[0][shipping_rate_data][delivery_estimate][maximum][value]",
       "5",
     );
+
+    if (orderSettings.pickupEnabled && orderSettings.pickupAddress) {
+      form.set("shipping_options[1][shipping_rate_data][type]", "fixed_amount");
+      form.set(
+        "shipping_options[1][shipping_rate_data][fixed_amount][amount]",
+        "0",
+      );
+      form.set(
+        "shipping_options[1][shipping_rate_data][fixed_amount][currency]",
+        "pln",
+      );
+      form.set(
+        "shipping_options[1][shipping_rate_data][display_name]",
+        "Odbiór osobisty",
+      );
+    }
+
     form.set(
       "success_url",
       `${origin}/zamowienie/sukces?session_id={CHECKOUT_SESSION_ID}`,
@@ -251,10 +279,12 @@ export async function POST(request: Request) {
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][cart]", cartReference);
     form.set("payment_intent_data[metadata][payment_choice]", paymentChoice);
-    form.set(
-      "custom_text[shipping_address][message]",
-      "Dostawa jest obecnie dostępna na terenie Polski.",
-    );
+
+    const shippingMessage =
+      orderSettings.pickupEnabled && orderSettings.pickupAddress
+        ? `Dostawa na terenie Polski lub bezpłatny odbiór osobisty: ${orderSettings.pickupAddress}`
+        : "Dostawa jest obecnie dostępna na terenie Polski.";
+    form.set("custom_text[shipping_address][message]", shippingMessage.slice(0, 1200));
     form.set(
       "custom_text[submit][message]",
       "Po płatności otrzymasz potwierdzenie na podany adres e-mail.",
