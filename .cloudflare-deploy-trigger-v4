@@ -1,4 +1,4 @@
 A-Bags Handmade production deploy trigger.
 Expected production branch: main
 Postbuild resource binding patch enabled.
-Redeploy reason: restore full storefront styling after CSS regression and keep footer refinements isolated 2026-08-22 04:50 Europe/Warsaw.
+Redeploy reason: first 10 paid orders gift campaign with unique -35% Stripe promotion codes and transactional email integration 2026-08-22 13:50 Europe/Warsaw.
