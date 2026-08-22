@@ -28,6 +28,8 @@ type LegalStatus = {
 
 type PrivacyChoice = "undecided" | "essential" | "external";
 
+type StoredPrivacyChoice = "accepted" | "rejected";
+
 const money = new Intl.NumberFormat("pl-PL", {
   style: "currency",
   currency: "PLN",
@@ -79,6 +81,17 @@ function createLink(href: string, text: string) {
   link.href = href;
   link.textContent = text;
   return link;
+}
+
+function setExternalContentPreference(value: StoredPrivacyChoice) {
+  window.localStorage.setItem("abags-external-content", value);
+  document.cookie = `abags-external-content=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
+}
+
+function clearExternalContentPreference() {
+  window.localStorage.removeItem("abags-external-content");
+  document.cookie =
+    "abags-external-content=; Path=/; Max-Age=0; SameSite=Lax";
 }
 
 function blockInstagramEmbed() {
@@ -260,7 +273,20 @@ export default function LegalComplianceEnhancer() {
 
   useEffect(() => {
     const stored = window.localStorage.getItem("abags-external-content");
-    setPrivacyChoice(stored === "accepted" ? "external" : stored === "rejected" ? "essential" : "undecided");
+    const cookieAccepted =
+      /(?:^|;\s*)abags-external-content=accepted(?:;|$)/.test(document.cookie);
+    const cookieRejected =
+      /(?:^|;\s*)abags-external-content=rejected(?:;|$)/.test(document.cookie);
+
+    if (stored === "accepted" || (!stored && cookieAccepted)) {
+      setPrivacyChoice("external");
+      return;
+    }
+    if (stored === "rejected" || (!stored && cookieRejected)) {
+      setPrivacyChoice("essential");
+      return;
+    }
+    setPrivacyChoice("undecided");
   }, []);
 
   useEffect(() => {
@@ -289,7 +315,7 @@ export default function LegalComplianceEnhancer() {
     if (!status) return;
 
     const openPrivacySettings = () => {
-      window.localStorage.removeItem("abags-external-content");
+      clearExternalContentPreference();
       setPrivacyChoice("undecided");
     };
 
@@ -312,12 +338,13 @@ export default function LegalComplianceEnhancer() {
   }, [status, privacyChoice]);
 
   const chooseEssential = () => {
-    window.localStorage.setItem("abags-external-content", "rejected");
+    setExternalContentPreference("rejected");
     setPrivacyChoice("essential");
+    window.location.reload();
   };
 
   const chooseExternal = () => {
-    window.localStorage.setItem("abags-external-content", "accepted");
+    setExternalContentPreference("accepted");
     setPrivacyChoice("external");
     window.location.reload();
   };
