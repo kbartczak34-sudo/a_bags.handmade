@@ -65,6 +65,42 @@ function isOwnerProtectedPath(pathname: string): boolean {
   );
 }
 
+function hasExternalContentConsent(request: Request) {
+  const cookie = request.headers.get("cookie") ?? "";
+  return /(?:^|;\s*)abags-external-content=accepted(?:;|$)/.test(cookie);
+}
+
+function withBrowserPrivacyHeaders(request: Request, response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("text/html")) return response;
+
+  const externalContentAllowed = hasExternalContentConsent(request);
+  const instagramScriptSources = externalContentAllowed
+    ? " https://www.instagram.com https://*.instagram.com https://*.cdninstagram.com"
+    : "";
+  const frameSources = externalContentAllowed
+    ? "'self' https://www.instagram.com https://*.instagram.com"
+    : "'self'";
+
+  const headers = new Headers(response.headers);
+  headers.set(
+    "Content-Security-Policy",
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval'${instagramScriptSources}; object-src 'none'; base-uri 'self'; frame-src ${frameSources}; frame-ancestors 'self'`,
+  );
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(self)",
+  );
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function legalReadinessIssues(env: Env) {
   const clean = (value: string | undefined) => (value ?? "").trim();
   const issues: string[] = [];
@@ -230,7 +266,8 @@ const worker = {
       request = new Request(request, { headers });
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    return withBrowserPrivacyHeaders(request, response);
   },
 };
 
