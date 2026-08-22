@@ -1,0 +1,121 @@
+/* Footer refinement kept separate from the global stylesheet to avoid regressions. */
+footer {
+  padding: clamp(72px, 8vw, 104px) clamp(22px, 4.4vw, 72px) 34px;
+  background: linear-gradient(145deg, #493336 0%, #553b3f 100%);
+  color: #fffaf5;
+}
+
+.footer-brand {
+  align-items: flex-start;
+  gap: 48px;
+}
+
+.footer-wordmark span {
+  color: #fffaf5;
+  font-size: clamp(46px, 5vw, 62px);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
+
+.footer-wordmark small {
+  color: rgba(255,250,245,.78);
+  font-size: 10px;
+}
+
+.footer-brand > p:last-child {
+  max-width: 430px;
+  color: rgba(255,250,245,.76);
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.footer-links {
+  gap: clamp(64px, 10vw, 150px);
+  margin: 72px 0 64px;
+}
+
+.footer-links div {
+  min-width: 150px;
+  gap: 13px;
+}
+
+.footer-links p {
+  margin-bottom: 7px;
+  color: rgba(255,250,245,.58);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.footer-links a {
+  display: inline-block;
+  color: rgba(255,250,245,.94);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.footer-bottom {
+  align-items: center;
+  gap: 28px;
+  padding-top: 28px;
+  color: rgba(255,250,245,.68);
+  font-size: 10px;
+  line-height: 1.65;
+  letter-spacing: .06em;
+  text-transform: none;
+}
+
+.footer-bottom span:last-child {
+  color: rgba(255,250,245,.9);
+  font-weight: 600;
+  text-align: right;
+}
+
+@media (max-width: 620px) {
+  footer {
+    padding: 54px 24px 28px;
+  }
+
+  .footer-brand {
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .footer-wordmark span {
+    font-size: clamp(42px, 13vw, 52px);
+    line-height: .9;
+  }
+
+  .footer-brand > p:last-child {
+    max-width: 32rem;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .footer-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 34px 28px;
+    margin: 48px 0 46px;
+  }
+
+  .footer-links div {
+    min-width: 0;
+    gap: 14px;
+  }
+
+  .footer-links a {
+    width: fit-content;
+    font-size: 14px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 10px;
+  }
+
+  .footer-bottom span:last-child {
+    text-align: left;
+  }
+}

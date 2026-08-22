@@ -4,6 +4,7 @@ import PaymentMethodEnhancer from "./payment-method-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
 import VatDisplayEnhancer from "./vat-display-enhancer";
 import "./globals.css";
+import "./footer-overrides.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
