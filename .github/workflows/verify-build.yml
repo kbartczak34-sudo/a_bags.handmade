@@ -11,6 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
