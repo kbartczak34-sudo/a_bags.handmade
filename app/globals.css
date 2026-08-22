@@ -1,79 +1,187 @@
 @import url("https://raw.githubusercontent.com/kbartczak34-sudo/a_bags.handmade/1dcf4488d3e765940a1da9e8db65cb094c25cc83/app/globals.css");
 
-/* Professional footer refinement */
+/* Self-contained footer styles: do not depend on the imported legacy footer rules. */
 footer {
-  padding-top: clamp(72px, 8vw, 104px);
-  padding-bottom: 34px;
+  width: 100%;
+  padding: clamp(72px, 8vw, 104px) clamp(22px, 4.4vw, 72px) 34px;
+  overflow: hidden;
   background: linear-gradient(145deg, #493336 0%, #553b3f 100%);
+  color: #fffaf5;
 }
 
 .footer-brand {
+  display: flex;
   align-items: flex-start;
+  justify-content: space-between;
+  gap: 48px;
   padding-bottom: 8px;
 }
 
+.footer-wordmark {
+  width: fit-content;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  margin: 0;
+  color: #fffaf5;
+  line-height: .8;
+}
+
 .footer-wordmark span {
+  color: #fffaf5;
+  font-family: var(--font-display), Georgia, serif;
   font-size: clamp(46px, 5vw, 62px);
   font-weight: 600;
-  letter-spacing: -0.045em;
+  letter-spacing: -.045em;
 }
 
 .footer-wordmark small {
-  margin-top: 11px;
+  margin-top: 12px;
+  padding-left: 2px;
+  color: rgba(255,250,245,.78);
   font-size: 10px;
-  letter-spacing: .34em;
-  opacity: .82;
+  letter-spacing: .30em;
+  text-transform: uppercase;
 }
 
 .footer-brand > p:last-child {
   max-width: 430px;
-  color: rgba(255,250,245,.72);
+  margin: 0;
+  color: rgba(255,250,245,.76);
   font-size: 14px;
   line-height: 1.85;
 }
 
 .footer-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: clamp(64px, 10vw, 150px);
   margin: 72px 0 64px;
 }
 
+.footer-links div {
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 13px;
+}
+
 .footer-links p {
-  margin-bottom: 14px;
-  color: rgba(255,250,245,.55);
+  margin: 0 0 7px;
+  color: rgba(255,250,245,.58);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .16em;
+  text-transform: uppercase;
 }
 
 .footer-links a {
-  color: rgba(255,250,245,.9);
+  position: relative;
+  display: inline-block;
+  color: rgba(255,250,245,.94);
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.5;
+  text-decoration: none;
 }
 
+.footer-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -3px;
+  height: 1px;
+  background: currentColor;
+  transition: right 180ms ease;
+}
+
+.footer-links a:hover::after { right: 0; }
+
 .footer-bottom {
+  display: flex;
   align-items: center;
-  gap: 24px;
+  justify-content: space-between;
+  gap: 28px;
   padding-top: 28px;
+  border-top: 1px solid rgba(255,250,245,.16);
   color: rgba(255,250,245,.68);
   font-size: 10px;
-  line-height: 1.6;
-  letter-spacing: .08em;
+  line-height: 1.65;
+  letter-spacing: .06em;
   text-transform: none;
 }
 
 .footer-bottom span:last-child {
-  color: rgba(255,250,245,.86);
+  color: rgba(255,250,245,.9);
   font-weight: 600;
   text-align: right;
 }
 
 @media (max-width: 620px) {
-  footer { padding: 62px 20px 30px; }
-  .footer-brand { gap: 26px; }
-  .footer-wordmark span { font-size: 46px; }
-  .footer-brand > p:last-child { font-size: 13px; }
-  .footer-links { gap: 52px; margin: 52px 0 48px; }
-  .footer-links a { font-size: 13px; }
-  .footer-bottom { gap: 14px; font-size: 10px; }
-  .footer-bottom span:last-child { text-align: left; }
+  footer {
+    padding: 54px 24px 28px;
+  }
+
+  .footer-brand {
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .footer-wordmark {
+    max-width: 100%;
+  }
+
+  .footer-wordmark span {
+    font-size: clamp(42px, 13vw, 52px);
+    line-height: .9;
+  }
+
+  .footer-wordmark small {
+    margin-top: 10px;
+    font-size: 9px;
+    letter-spacing: .24em;
+  }
+
+  .footer-brand > p:last-child {
+    max-width: 32rem;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .footer-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 34px 28px;
+    margin: 48px 0 46px;
+  }
+
+  .footer-links div {
+    min-width: 0;
+    gap: 14px;
+  }
+
+  .footer-links p {
+    margin-bottom: 5px;
+    font-size: 10px;
+  }
+
+  .footer-links a {
+    width: fit-content;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding-top: 24px;
+    font-size: 10px;
+  }
+
+  .footer-bottom span:last-child {
+    max-width: 100%;
+    text-align: left;
+  }
 }
