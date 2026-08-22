@@ -96,6 +96,13 @@ function legalReadinessIssues(env: Env) {
   if (!manufacturerName) issues.push("manufacturer_name");
   if (!manufacturerAddress) issues.push("manufacturer_address");
   if (!manufacturerEmail) issues.push("manufacturer_email");
+  if (
+    !clean(env.RESEND_API_KEY) ||
+    !clean(env.ORDER_EMAIL_FROM) ||
+    !clean(env.STRIPE_WEBHOOK_SECRET)
+  ) {
+    issues.push("durable_order_confirmation");
+  }
 
   return issues;
 }
