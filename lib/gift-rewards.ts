@@ -41,20 +41,15 @@ function getDb() {
 async function initializeGiftSlots() {
   const db = getDb();
   await db.prepare(createGiftSlotsSql).run();
-  const statements = Array.from({ length: GIFT_LIMIT }, (_, index) =>
+  await db.batch(Array.from({ length: GIFT_LIMIT }, (_, index) =>
     db.prepare("INSERT OR IGNORE INTO gift_slots (slot) VALUES (?)").bind(index + 1),
-  );
-  await db.batch(statements);
+  ));
 }
 
 async function ensureGiftSlotsReady() {
   readyPromise ??= initializeGiftSlots();
-  try {
-    await readyPromise;
-  } catch (error) {
-    readyPromise = null;
-    throw error;
-  }
+  try { await readyPromise; }
+  catch (error) { readyPromise = null; throw error; }
 }
 
 function makeCode(slot: number) {
@@ -65,27 +60,20 @@ function makeCode(slot: number) {
 async function claimOrReadSlot(session: Stripe.Checkout.Session) {
   await ensureGiftSlotsReady();
   const db = getDb();
-  const existing = await db
-    .prepare("SELECT slot, session_id, customer_email, promotion_code, promotion_code_id, email_status, email_error FROM gift_slots WHERE session_id = ?")
-    .bind(session.id)
-    .first<GiftSlotRow>();
+  const existing = await db.prepare("SELECT slot, session_id, customer_email, promotion_code, promotion_code_id, email_status, email_error FROM gift_slots WHERE session_id = ?")
+    .bind(session.id).first<GiftSlotRow>();
   if (existing) return existing;
 
   const email = session.customer_details?.email ?? session.customer_email ?? null;
   if (!email) return null;
   const now = new Date().toISOString();
-  return db
-    .prepare(`
+  return db.prepare(`
       UPDATE gift_slots
       SET session_id = ?, customer_email = ?, email_status = 'claimed', claimed_at = ?, updated_at = ?
-      WHERE slot = (
-        SELECT slot FROM gift_slots WHERE session_id IS NULL ORDER BY slot ASC LIMIT 1
-      )
+      WHERE slot = (SELECT slot FROM gift_slots WHERE session_id IS NULL ORDER BY slot ASC LIMIT 1)
       AND session_id IS NULL
       RETURNING slot, session_id, customer_email, promotion_code, promotion_code_id, email_status, email_error
-    `)
-    .bind(session.id, email, now, now)
-    .first<GiftSlotRow>();
+    `).bind(session.id, email, now, now).first<GiftSlotRow>();
 }
 
 async function getOrCreateCoupon() {
@@ -97,7 +85,6 @@ async function getOrCreateCoupon() {
     const status = (error as { statusCode?: number }).statusCode;
     if (status !== 404) throw error;
   }
-
   const coupon = await stripe.coupons.create({
     id: COUPON_ID,
     percent_off: GIFT_PERCENT,
@@ -110,10 +97,13 @@ async function getOrCreateCoupon() {
 
 async function ensurePromotionCode(row: GiftSlotRow) {
   if (row.promotion_code && row.promotion_code_id) return row;
+  const stripe = getStripe();
   const code = row.promotion_code ?? makeCode(row.slot);
-  const couponId = await getOrCreateCoupon();
-  const promotion = await getStripe().promotionCodes.create({
-    promotion: { type: "coupon", coupon: couponId },
+
+  const existing = await stripe.promotionCodes.list({ code, active: true, limit: 1 });
+  const existingPromotion = existing.data[0];
+  const promotion = existingPromotion ?? await stripe.promotionCodes.create({
+    promotion: { type: "coupon", coupon: await getOrCreateCoupon() },
     code,
     max_redemptions: 1,
     metadata: {
@@ -124,10 +114,8 @@ async function ensurePromotionCode(row: GiftSlotRow) {
   });
 
   const now = new Date().toISOString();
-  await getDb()
-    .prepare(`UPDATE gift_slots SET promotion_code = ?, promotion_code_id = ?, email_status = 'ready', email_error = NULL, updated_at = ? WHERE slot = ?`)
-    .bind(code, promotion.id, now, row.slot)
-    .run();
+  await getDb().prepare("UPDATE gift_slots SET promotion_code = ?, promotion_code_id = ?, email_status = 'ready', email_error = NULL, updated_at = ? WHERE slot = ?")
+    .bind(code, promotion.id, now, row.slot).run();
   return { ...row, promotion_code: code, promotion_code_id: promotion.id, email_status: "ready", email_error: null };
 }
 
@@ -146,7 +134,6 @@ function escapeHtml(value: string) {
 async function sendGiftEmail(row: GiftSlotRow) {
   if (!row.customer_email || !row.promotion_code) return false;
   if (row.email_status === "sent") return true;
-
   const config = readEmailConfig();
   if (!config) {
     await getDb().prepare("UPDATE gift_slots SET email_status = 'pending_email_config', email_error = ?, updated_at = ? WHERE slot = ?")
@@ -155,26 +142,24 @@ async function sendGiftEmail(row: GiftSlotRow) {
   }
 
   const code = escapeHtml(row.promotion_code);
+  const orderNumber = escapeHtml((row.session_id ?? "").slice(-8).toUpperCase());
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: config.from,
       to: [row.customer_email],
-      subject: "Prezent od a_bags.handmade — -35% na kolejny zakup",
+      subject: `Potwierdzenie zamówienia #${orderNumber} + prezent -35%`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#4f383b;line-height:1.6">
           <h1 style="font-size:30px;margin-bottom:12px">Dziękujemy za zamówienie 🤍</h1>
-          <p>Twoje zamówienie znalazło się wśród pierwszych 10 zamówień a_bags.handmade.</p>
-          <p>W prezencie otrzymujesz <strong>35% rabatu na kolejny zakup</strong>.</p>
+          <p>Zamówienie <strong>#${orderNumber}</strong> zostało opłacone i przyjęte do realizacji.</p>
+          <p>Jesteś wśród pierwszych 10 klientów a_bags.handmade, dlatego mamy dla Ciebie prezent: <strong>35% rabatu na kolejny zakup</strong>.</p>
           <div style="margin:28px 0;padding:22px;border:1px solid #d6a3a7;background:#fffaf8;text-align:center">
             <div style="font-size:13px;margin-bottom:8px">Twój jednorazowy kod rabatowy</div>
             <strong style="font-size:26px;letter-spacing:1px">${code}</strong>
           </div>
-          <p>Kod jest jednorazowy i może zostać użyty przy kolejnym zamówieniu w sklepie. Wpisz go w polu kodu promocyjnego w Stripe Checkout.</p>
+          <p>Kod jest jednorazowy. Przy kolejnym zamówieniu wpisz go w polu kodu promocyjnego w bezpiecznym Stripe Checkout.</p>
           <p style="margin-top:28px">Z ciepłymi pozdrowieniami,<br><strong>a_bags.handmade</strong></p>
         </div>`,
     }),
@@ -187,7 +172,6 @@ async function sendGiftEmail(row: GiftSlotRow) {
       .bind(body || `HTTP ${response.status}`, now, row.slot).run();
     throw new Error(`Gift email failed: ${response.status}`);
   }
-
   await getDb().prepare("UPDATE gift_slots SET email_status = 'sent', email_error = NULL, updated_at = ? WHERE slot = ?")
     .bind(now, row.slot).run();
   return true;
@@ -198,9 +182,8 @@ export async function processFirstTenGift(session: Stripe.Checkout.Session) {
   const claimed = await claimOrReadSlot(session);
   if (!claimed) return null;
   const ready = await ensurePromotionCode(claimed);
-  try {
-    await sendGiftEmail(ready);
-  } catch (error) {
+  try { await sendGiftEmail(ready); }
+  catch (error) {
     console.error("First-ten gift email failed", {
       sessionId: session.id,
       slot: ready.slot,
