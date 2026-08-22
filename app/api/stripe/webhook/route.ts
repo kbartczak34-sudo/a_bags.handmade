@@ -37,10 +37,14 @@ export async function POST(request: Request) {
       if (session.metadata?.store === "a_bags.handmade") {
         await recordStripeOrderEvent(event, session);
 
-        if (
+        const isSuccessfulPaymentEvent =
           event.type === "checkout.session.completed" ||
-          event.type === "checkout.session.async_payment_succeeded"
-        ) {
+          event.type === "checkout.session.async_payment_succeeded";
+        const isPaid =
+          session.payment_status === "paid" ||
+          session.payment_status === "no_payment_required";
+
+        if (isSuccessfulPaymentEvent && isPaid) {
           const gift = await processFirstTenGift(session);
           if (gift) {
             console.info("First-ten order gift processed", {
@@ -49,17 +53,12 @@ export async function POST(request: Request) {
             });
           }
 
-          if (
-            session.payment_status === "paid" ||
-            session.payment_status === "no_payment_required"
-          ) {
-            const confirmation = await sendOrderConfirmationEmail(session);
-            console.info("Order confirmation processed", {
-              sessionId: session.id,
-              sent: confirmation.sent,
-              reason: "reason" in confirmation ? confirmation.reason : undefined,
-            });
-          }
+          const confirmation = await sendOrderConfirmationEmail(session);
+          console.info("Order confirmation processed", {
+            sessionId: session.id,
+            sent: confirmation.sent,
+            reason: "reason" in confirmation ? confirmation.reason : undefined,
+          });
         }
 
         console.info("Stripe order event persisted", {
