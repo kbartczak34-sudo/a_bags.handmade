@@ -65,6 +65,41 @@ function isOwnerProtectedPath(pathname: string): boolean {
   );
 }
 
+function legalReadinessIssues(env: Env) {
+  const clean = (value: string | undefined) => (value ?? "").trim();
+  const issues: string[] = [];
+  const businessMode = clean(env.LEGAL_BUSINESS_MODE);
+  const vatMode = clean(env.LEGAL_VAT_MODE);
+  const sellerName = clean(env.LEGAL_SELLER_NAME);
+  const sellerAddress = clean(env.LEGAL_SELLER_ADDRESS);
+  const sellerPhone = clean(env.LEGAL_SELLER_PHONE);
+  const sellerEmail = clean(env.LEGAL_SELLER_EMAIL) || "a_bags.handmade@outlook.com";
+  const returnsAddress = clean(env.LEGAL_RETURNS_ADDRESS) || sellerAddress;
+  const manufacturerName = clean(env.LEGAL_MANUFACTURER_NAME) || sellerName;
+  const manufacturerAddress = clean(env.LEGAL_MANUFACTURER_ADDRESS) || sellerAddress;
+  const manufacturerEmail = clean(env.LEGAL_MANUFACTURER_EMAIL) || sellerEmail;
+
+  if (businessMode !== "jdg" && businessMode !== "unregistered") {
+    issues.push("business_mode");
+  }
+  if (!sellerName) issues.push("seller_name");
+  if (!sellerAddress) issues.push("seller_address");
+  if (!sellerPhone) issues.push("seller_phone");
+  if (!sellerEmail) issues.push("seller_email");
+  if (!returnsAddress) issues.push("returns_address");
+  if (businessMode === "jdg" && !clean(env.LEGAL_SELLER_NIP)) {
+    issues.push("seller_nip");
+  }
+  if (vatMode !== "active_23" && vatMode !== "exempt") {
+    issues.push("vat_mode");
+  }
+  if (!manufacturerName) issues.push("manufacturer_name");
+  if (!manufacturerAddress) issues.push("manufacturer_address");
+  if (!manufacturerEmail) issues.push("manufacturer_email");
+
+  return issues;
+}
+
 async function getVerifiedAccessIdentity(
   request: Request,
   ctx: ExecutionContext,
@@ -140,6 +175,23 @@ const worker = {
         },
         allowedWidths,
       );
+    }
+
+    if (url.pathname === "/api/checkout" && request.method === "POST") {
+      const issues = legalReadinessIssues(env);
+      if (issues.length > 0) {
+        return Response.json(
+          {
+            error:
+              "Sprzedaż jest wstrzymana do czasu uzupełnienia wymaganych danych prawnych sklepu. [legal_configuration_incomplete]",
+            code: "legal_configuration_incomplete",
+          },
+          {
+            status: 503,
+            headers: { "cache-control": "no-store" },
+          },
+        );
+      }
     }
 
     if (isOwnerProtectedPath(url.pathname)) {
