@@ -26,10 +26,16 @@ test("required Polish legal pages are present", () => {
 
 test("production checkout fails closed when legal configuration is incomplete", () => {
   const worker = read("worker/index.ts");
+  const legalConfig = read("lib/legal-config.ts");
   assert.match(worker, /url\.pathname === "\/api\/checkout"/);
-  assert.match(worker, /legalReadinessIssues\(env\)/);
+  assert.match(worker, /getPublicLegalConfig\(\)/);
+  assert.match(worker, /readinessIssues\.length > 0/);
   assert.match(worker, /legal_configuration_incomplete/);
-  assert.match(worker, /durable_order_confirmation/);
+  assert.match(legalConfig, /transactionalEmailReady/);
+  assert.match(legalConfig, /LEGAL_PRODUCT_COMPLIANCE_CONFIRMED/);
+  assert.match(legalConfig, /LEGAL_PACKAGING_COMPLIANCE_CONFIRMED/);
+  assert.match(legalConfig, /LEGAL_FISCAL_COMPLIANCE_CONFIRMED/);
+  assert.match(legalConfig, /LEGAL_PRIVACY_COMPLIANCE_CONFIRMED/);
 });
 
 test("VAT display is driven by legal status instead of always claiming 23 percent", () => {
