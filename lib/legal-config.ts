@@ -50,7 +50,9 @@ export function getPublicLegalConfig(): PublicLegalConfig {
   const businessMode = readBusinessMode(clean(env.LEGAL_BUSINESS_MODE));
   const vatMode = readVatMode(clean(env.LEGAL_VAT_MODE));
   const transactionalEmailReady =
-    Boolean(clean(env.RESEND_API_KEY)) && Boolean(clean(env.ORDER_EMAIL_FROM));
+    Boolean(clean(env.RESEND_API_KEY)) &&
+    Boolean(clean(env.ORDER_EMAIL_FROM)) &&
+    Boolean(clean(env.STRIPE_WEBHOOK_SECRET));
 
   const seller = {
     legalName: clean(env.LEGAL_SELLER_NAME),
@@ -102,7 +104,7 @@ export function getPublicLegalConfig(): PublicLegalConfig {
   }
   if (!transactionalEmailReady) {
     readinessIssues.push(
-      "Skonfiguruj RESEND_API_KEY i ORDER_EMAIL_FROM dla potwierdzeń zamówienia na trwałym nośniku.",
+      "Skonfiguruj RESEND_API_KEY, ORDER_EMAIL_FROM i STRIPE_WEBHOOK_SECRET dla potwierdzeń zamówienia na trwałym nośniku.",
     );
   }
 
