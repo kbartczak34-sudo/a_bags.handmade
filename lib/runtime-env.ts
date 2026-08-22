@@ -33,6 +33,8 @@ export type RuntimeBindings = {
   BUCKET?: R2BucketBinding;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  RESEND_API_KEY?: string;
+  ORDER_EMAIL_FROM?: string;
 };
 
 const runtimeKey = "__ABAGS_RUNTIME_BINDINGS__";
