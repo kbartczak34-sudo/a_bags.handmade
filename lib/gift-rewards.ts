@@ -135,11 +135,7 @@ async function sendGiftEmail(row: GiftSlotRow) {
   if (!row.customer_email || !row.promotion_code) return false;
   if (row.email_status === "sent") return true;
   const config = readEmailConfig();
-  if (!config) {
-    await getDb().prepare("UPDATE gift_slots SET email_status = 'pending_email_config', email_error = ?, updated_at = ? WHERE slot = ?")
-      .bind("Brak RESEND_API_KEY lub ORDER_EMAIL_FROM", new Date().toISOString(), row.slot).run();
-    return false;
-  }
+  if (!config) return false;
 
   const code = escapeHtml(row.promotion_code);
   const orderNumber = escapeHtml((row.session_id ?? "").slice(-8).toUpperCase());
@@ -179,6 +175,10 @@ async function sendGiftEmail(row: GiftSlotRow) {
 
 export async function processFirstTenGift(session: Stripe.Checkout.Session) {
   if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") return null;
+  if (!readEmailConfig()) {
+    console.warn("First-ten gift campaign waiting for transactional email configuration");
+    return null;
+  }
   const claimed = await claimOrReadSlot(session);
   if (!claimed) return null;
   const ready = await ensurePromotionCode(claimed);
