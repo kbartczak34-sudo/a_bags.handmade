@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { processFirstTenGift } from "../../../../lib/gift-rewards";
+import { sendOrderConfirmationEmail } from "../../../../lib/order-email";
 import { recordStripeOrderEvent } from "../../../../lib/orders";
 import {
   getStripe,
@@ -45,6 +46,18 @@ export async function POST(request: Request) {
             console.info("First-ten order gift processed", {
               sessionId: session.id,
               slot: gift.slot,
+            });
+          }
+
+          if (
+            session.payment_status === "paid" ||
+            session.payment_status === "no_payment_required"
+          ) {
+            const confirmation = await sendOrderConfirmationEmail(session);
+            console.info("Order confirmation processed", {
+              sessionId: session.id,
+              sent: confirmation.sent,
+              reason: "reason" in confirmation ? confirmation.reason : undefined,
             });
           }
         }
