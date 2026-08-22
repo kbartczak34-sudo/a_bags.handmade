@@ -35,6 +35,22 @@ export type RuntimeBindings = {
   STRIPE_WEBHOOK_SECRET?: string;
   RESEND_API_KEY?: string;
   ORDER_EMAIL_FROM?: string;
+
+  // Public legal/compliance identity. These values are intentionally kept
+  // outside source control because the seller's address and phone number are
+  // personal/business data that should only be published once verified.
+  LEGAL_BUSINESS_MODE?: string;
+  LEGAL_SELLER_NAME?: string;
+  LEGAL_SELLER_ADDRESS?: string;
+  LEGAL_SELLER_EMAIL?: string;
+  LEGAL_SELLER_PHONE?: string;
+  LEGAL_SELLER_NIP?: string;
+  LEGAL_SELLER_REGON?: string;
+  LEGAL_RETURNS_ADDRESS?: string;
+  LEGAL_VAT_MODE?: string;
+  LEGAL_MANUFACTURER_NAME?: string;
+  LEGAL_MANUFACTURER_ADDRESS?: string;
+  LEGAL_MANUFACTURER_EMAIL?: string;
 };
 
 const runtimeKey = "__ABAGS_RUNTIME_BINDINGS__";
