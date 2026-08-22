@@ -51,6 +51,14 @@ export type RuntimeBindings = {
   LEGAL_MANUFACTURER_NAME?: string;
   LEGAL_MANUFACTURER_ADDRESS?: string;
   LEGAL_MANUFACTURER_EMAIL?: string;
+
+  // Explicit go-live attestations for obligations that cannot be proven by
+  // application code. Set to "true" only after the relevant records/checks
+  // actually exist outside the repository.
+  LEGAL_PRODUCT_COMPLIANCE_CONFIRMED?: string;
+  LEGAL_PACKAGING_COMPLIANCE_CONFIRMED?: string;
+  LEGAL_FISCAL_COMPLIANCE_CONFIRMED?: string;
+  LEGAL_PRIVACY_COMPLIANCE_CONFIRMED?: string;
 };
 
 const runtimeKey = "__ABAGS_RUNTIME_BINDINGS__";
