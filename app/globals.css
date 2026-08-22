@@ -1,1 +1,79 @@
-PLACEHOLDER
+@import url("https://raw.githubusercontent.com/kbartczak34-sudo/a_bags.handmade/1dcf4488d3e765940a1da9e8db65cb094c25cc83/app/globals.css");
+
+/* Professional footer refinement */
+footer {
+  padding-top: clamp(72px, 8vw, 104px);
+  padding-bottom: 34px;
+  background: linear-gradient(145deg, #493336 0%, #553b3f 100%);
+}
+
+.footer-brand {
+  align-items: flex-start;
+  padding-bottom: 8px;
+}
+
+.footer-wordmark span {
+  font-size: clamp(46px, 5vw, 62px);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
+
+.footer-wordmark small {
+  margin-top: 11px;
+  font-size: 10px;
+  letter-spacing: .34em;
+  opacity: .82;
+}
+
+.footer-brand > p:last-child {
+  max-width: 430px;
+  color: rgba(255,250,245,.72);
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.footer-links {
+  margin: 72px 0 64px;
+}
+
+.footer-links p {
+  margin-bottom: 14px;
+  color: rgba(255,250,245,.55);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .16em;
+}
+
+.footer-links a {
+  color: rgba(255,250,245,.9);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.footer-bottom {
+  align-items: center;
+  gap: 24px;
+  padding-top: 28px;
+  color: rgba(255,250,245,.68);
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: .08em;
+  text-transform: none;
+}
+
+.footer-bottom span:last-child {
+  color: rgba(255,250,245,.86);
+  font-weight: 600;
+  text-align: right;
+}
+
+@media (max-width: 620px) {
+  footer { padding: 62px 20px 30px; }
+  .footer-brand { gap: 26px; }
+  .footer-wordmark span { font-size: 46px; }
+  .footer-brand > p:last-child { font-size: 13px; }
+  .footer-links { gap: 52px; margin: 52px 0 48px; }
+  .footer-links a { font-size: 13px; }
+  .footer-bottom { gap: 14px; font-size: 10px; }
+  .footer-bottom span:last-child { text-align: left; }
+}
