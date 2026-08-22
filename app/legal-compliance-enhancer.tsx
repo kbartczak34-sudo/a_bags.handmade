@@ -189,7 +189,16 @@ function enhanceCheckout(status: LegalStatus) {
       );
 
       const identity = document.createElement("p");
-      identity.innerHTML = `<strong>Sprzedawca:</strong> ${status.seller.legalName || "dane wymagają uzupełnienia"}${status.seller.nip ? ` · NIP ${status.seller.nip}` : ""}`;
+      const identityLabel = document.createElement("strong");
+      identityLabel.textContent = "Sprzedawca:";
+      identity.append(
+        identityLabel,
+        document.createTextNode(
+          ` ${status.seller.legalName || "dane wymagają uzupełnienia"}${
+            status.seller.nip ? ` · NIP ${status.seller.nip}` : ""
+          }`,
+        ),
+      );
 
       box.append(label, privacy, identity);
       payButton.insertAdjacentElement("beforebegin", box);
