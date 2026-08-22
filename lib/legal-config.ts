@@ -44,6 +44,10 @@ function readVatMode(value: string | undefined): VatMode {
   return value === "active_23" || value === "exempt" ? value : "unknown";
 }
 
+function confirmed(value: string | undefined) {
+  return clean(value).toLowerCase() === "true";
+}
+
 export function getPublicLegalConfig(): PublicLegalConfig {
   const env = getRuntimeBindings();
 
@@ -105,6 +109,27 @@ export function getPublicLegalConfig(): PublicLegalConfig {
   if (!transactionalEmailReady) {
     readinessIssues.push(
       "Skonfiguruj RESEND_API_KEY, ORDER_EMAIL_FROM i STRIPE_WEBHOOK_SECRET dla potwierdzeń zamówienia na trwałym nośniku.",
+    );
+  }
+
+  if (!confirmed(env.LEGAL_PRODUCT_COMPLIANCE_CONFIRMED)) {
+    readinessIssues.push(
+      "Potwierdź dokumentację i zgodność produktów (GPSR/REACH oraz właściwe oznaczenia) przez LEGAL_PRODUCT_COMPLIANCE_CONFIRMED=true.",
+    );
+  }
+  if (!confirmed(env.LEGAL_PACKAGING_COMPLIANCE_CONFIRMED)) {
+    readinessIssues.push(
+      "Potwierdź obowiązki BDO/opakowania/PPWR przez LEGAL_PACKAGING_COMPLIANCE_CONFIRMED=true.",
+    );
+  }
+  if (!confirmed(env.LEGAL_FISCAL_COMPLIANCE_CONFIRMED)) {
+    readinessIssues.push(
+      "Potwierdź sposób dokumentowania sprzedaży, kasę fiskalną/KSeF i rozliczenia przez LEGAL_FISCAL_COMPLIANCE_CONFIRMED=true.",
+    );
+  }
+  if (!confirmed(env.LEGAL_PRIVACY_COMPLIANCE_CONFIRMED)) {
+    readinessIssues.push(
+      "Potwierdź rzeczywisty rejestr dostawców, role RODO i dokumentację prywatności przez LEGAL_PRIVACY_COMPLIANCE_CONFIRMED=true.",
     );
   }
 
