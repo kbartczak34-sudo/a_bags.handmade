@@ -176,8 +176,11 @@ function toAdminProduct(row: ProductRow): AdminProduct {
 }
 
 function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
-  const netAmount = row.price_cents;
-  const unitAmount = grossFromNetCents(netAmount);
+  const baseAmount = row.price_cents;
+  const vatMode = getRuntimeBindings().LEGAL_VAT_MODE;
+  const vatActive = vatMode === "active_23";
+  const unitAmount = vatActive ? grossFromNetCents(baseAmount) : baseAmount;
+
   return {
     id: row.id,
     number: String(index + 1).padStart(2, "0"),
@@ -186,9 +189,9 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
     tone: row.tone,
     price: unitAmount / 100,
     unitAmount,
-    netAmount,
-    vatAmount: unitAmount - netAmount,
-    vatRate: VAT_RATE_PERCENT,
+    netAmount: baseAmount,
+    vatAmount: vatActive ? unitAmount - baseAmount : 0,
+    vatRate: vatActive ? VAT_RATE_PERCENT : 0,
     imageUrl: productImageUrl(row),
     isVisible: Boolean(row.is_visible),
     sortOrder: row.sort_order,

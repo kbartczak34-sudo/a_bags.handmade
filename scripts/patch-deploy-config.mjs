@@ -10,6 +10,8 @@ const projectRoot = path.resolve(scriptDir, "..");
 const configPath = path.join(projectRoot, "dist/server/wrangler.json");
 const wranglerBin = path.join(projectRoot, "node_modules/.bin/wrangler");
 const sourceConfig = path.join(projectRoot, "wrangler.jsonc");
+const skipRemoteDiscovery =
+  process.env.ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY === "1";
 
 const raw = await readFile(configPath, "utf8");
 const config = JSON.parse(raw);
@@ -38,7 +40,7 @@ const d1Binding = Array.isArray(config.d1_databases)
   ? config.d1_databases[0]
   : undefined;
 
-if (d1Binding) {
+if (d1Binding && !skipRemoteDiscovery) {
   const d1Raw = await runWrangler(["d1", "list", "--json"]);
   const databases = normalizeArray(JSON.parse(d1Raw));
   const derivedName =
@@ -66,7 +68,7 @@ const r2Binding = Array.isArray(config.r2_buckets)
   ? config.r2_buckets[0]
   : undefined;
 
-if (r2Binding && !r2Binding.bucket_name) {
+if (r2Binding && !r2Binding.bucket_name && !skipRemoteDiscovery) {
   const candidateNames = [
     "a-bags-handmade-storemedia",
     `${config.name || "a-bags-handmade"}-${String(r2Binding.binding || "media").toLowerCase()}`,
@@ -89,6 +91,12 @@ if (r2Binding && !r2Binding.bucket_name) {
   } else {
     console.log("No existing R2 bucket matched; leaving R2 binding for provisioning.");
   }
+}
+
+if (skipRemoteDiscovery) {
+  console.log(
+    "Remote Cloudflare resource discovery skipped for offline CI artifact validation.",
+  );
 }
 
 await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");

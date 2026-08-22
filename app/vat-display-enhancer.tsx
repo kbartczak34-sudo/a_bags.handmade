@@ -2,6 +2,13 @@
 
 import { useEffect } from "react";
 
+type VatMode = "active_23" | "exempt" | "unknown";
+
+type LegalStatus = {
+  vatMode: VatMode;
+  vatLabel: string;
+};
+
 const VAT_RATE = 23;
 
 function parseMoney(text: string) {
@@ -11,80 +18,131 @@ function parseMoney(text: string) {
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(value);
+  return new Intl.NumberFormat("pl-PL", {
+    style: "currency",
+    currency: "PLN",
+  }).format(value);
 }
 
-function enhanceAdminNetPrice() {
+function enhanceAdminPrice(vatMode: VatMode) {
   document.querySelectorAll<HTMLElement>(".admin-price-input").forEach((wrapper) => {
-    if (wrapper.dataset.vatReady === "true") return;
     const label = wrapper.closest("label");
     const title = label?.querySelector<HTMLElement>(":scope > span");
     const input = wrapper.querySelector<HTMLInputElement>("input");
     if (!label || !title || !input) return;
 
-    title.textContent = "Cena netto";
-    wrapper.dataset.vatReady = "true";
+    title.textContent =
+      vatMode === "active_23"
+        ? "Cena netto"
+        : vatMode === "exempt"
+          ? "Cena dla klienta"
+          : "Cena bazowa";
 
-    const preview = document.createElement("small");
-    preview.className = "admin-vat-preview";
-    preview.style.display = "block";
-    preview.style.marginTop = ".45rem";
-    preview.style.lineHeight = "1.5";
-    label.appendChild(preview);
+    let preview = label.querySelector<HTMLElement>(".admin-vat-preview");
+    if (!preview) {
+      preview = document.createElement("small");
+      preview.className = "admin-vat-preview";
+      preview.style.display = "block";
+      preview.style.marginTop = ".45rem";
+      preview.style.lineHeight = "1.5";
+      label.appendChild(preview);
+    }
 
     const update = () => {
-      const net = parseMoney(input.value);
-      if (net === null || net < 0) {
-        preview.textContent = `Sklep automatycznie doliczy VAT ${VAT_RATE}%.`;
+      const base = parseMoney(input.value);
+      if (base === null || base < 0) {
+        preview!.textContent = "Wpisz prawidłową kwotę.";
         return;
       }
-      const gross = Math.round(net * (100 + VAT_RATE)) / 100;
-      const vat = Math.round((gross - net) * 100) / 100;
-      preview.textContent = `Cena dla klienta: ${formatMoney(gross)} brutto · VAT ${VAT_RATE}%: ${formatMoney(vat)}`;
+
+      if (vatMode === "active_23") {
+        const gross = Math.round(base * (100 + VAT_RATE)) / 100;
+        const vat = Math.round((gross - base) * 100) / 100;
+        preview!.textContent = `Cena dla klienta: ${formatMoney(gross)} brutto · VAT ${VAT_RATE}%: ${formatMoney(vat)}`;
+        return;
+      }
+
+      if (vatMode === "exempt") {
+        preview!.textContent = `Cena dla klienta: ${formatMoney(base)} · VAT nie jest doliczany zgodnie ze skonfigurowanym statusem zwolnienia.`;
+        return;
+      }
+
+      preview!.textContent =
+        "Status VAT nie został potwierdzony. Checkout pozostaje zablokowany do czasu konfiguracji LEGAL_VAT_MODE.";
     };
 
-    input.addEventListener("input", update);
+    if (wrapper.dataset.vatListenerReady !== "true") {
+      input.addEventListener("input", update);
+      wrapper.dataset.vatListenerReady = "true";
+    }
     update();
   });
 
   document.querySelectorAll<HTMLElement>(".admin-product-row small").forEach((node) => {
-    if (node.dataset.vatReady === "true") return;
-    const net = parseMoney(node.textContent ?? "");
-    if (net === null) return;
-    node.dataset.vatReady = "true";
-    const gross = Math.round(net * (100 + VAT_RATE)) / 100;
-    node.textContent = `${formatMoney(net)} netto · ${formatMoney(gross)} brutto`;
+    if (node.dataset.vatReady === vatMode) return;
+    const base = parseMoney(node.textContent ?? "");
+    if (base === null) return;
+    node.dataset.vatReady = vatMode;
+
+    if (vatMode === "active_23") {
+      const gross = Math.round(base * (100 + VAT_RATE)) / 100;
+      node.textContent = `${formatMoney(base)} netto · ${formatMoney(gross)} brutto`;
+    } else if (vatMode === "exempt") {
+      node.textContent = `${formatMoney(base)} · cena dla klienta (bez doliczania VAT)`;
+    } else {
+      node.textContent = `${formatMoney(base)} · status VAT do konfiguracji`;
+    }
   });
 }
 
-function enhanceStorefrontPrices() {
+function enhanceStorefrontPrices(status: LegalStatus) {
   document.querySelectorAll<HTMLElement>(".product-info").forEach((info) => {
-    if (info.dataset.vatReady === "true") return;
     const price = info.querySelector<HTMLElement>(":scope > strong");
     if (!price) return;
-    info.dataset.vatReady = "true";
-    const note = document.createElement("small");
-    note.className = "product-vat-note";
-    note.textContent = `cena brutto · zawiera VAT ${VAT_RATE}%`;
-    note.style.display = "block";
-    note.style.marginTop = ".2rem";
-    note.style.fontSize = ".68rem";
-    note.style.opacity = ".62";
-    price.insertAdjacentElement("afterend", note);
-  });
-}
 
-function enhance() {
-  enhanceAdminNetPrice();
-  enhanceStorefrontPrices();
+    let note = info.querySelector<HTMLElement>(".product-vat-note");
+    if (!note) {
+      note = document.createElement("small");
+      note.className = "product-vat-note";
+      note.style.display = "block";
+      note.style.marginTop = ".2rem";
+      note.style.fontSize = ".68rem";
+      note.style.opacity = ".62";
+      price.insertAdjacentElement("afterend", note);
+    }
+    note.textContent = status.vatLabel;
+  });
 }
 
 export default function VatDisplayEnhancer() {
   useEffect(() => {
-    enhance();
-    const observer = new MutationObserver(enhance);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    let active = true;
+    let observer: MutationObserver | null = null;
+
+    fetch("/api/legal-status", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("VAT status unavailable");
+        return (await response.json()) as LegalStatus;
+      })
+      .then((status) => {
+        if (!active) return;
+        const enhance = () => {
+          enhanceAdminPrice(status.vatMode);
+          enhanceStorefrontPrices(status);
+        };
+        enhance();
+        observer = new MutationObserver(enhance);
+        observer.observe(document.body, { childList: true, subtree: true });
+      })
+      .catch(() => {
+        // The checkout legal gate fails closed when legal configuration is missing.
+      });
+
+    return () => {
+      active = false;
+      observer?.disconnect();
+    };
   }, []);
+
   return null;
 }
