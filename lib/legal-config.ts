@@ -10,6 +10,7 @@ export type PublicLegalConfig = {
   vatMode: VatMode;
   vatLabel: string;
   shippingAmount: number;
+  transactionalEmailReady: boolean;
   seller: {
     legalName: string;
     address: string;
@@ -48,6 +49,8 @@ export function getPublicLegalConfig(): PublicLegalConfig {
 
   const businessMode = readBusinessMode(clean(env.LEGAL_BUSINESS_MODE));
   const vatMode = readVatMode(clean(env.LEGAL_VAT_MODE));
+  const transactionalEmailReady =
+    Boolean(clean(env.RESEND_API_KEY)) && Boolean(clean(env.ORDER_EMAIL_FROM));
 
   const seller = {
     legalName: clean(env.LEGAL_SELLER_NAME),
@@ -97,6 +100,11 @@ export function getPublicLegalConfig(): PublicLegalConfig {
   if (!manufacturer.email) {
     readinessIssues.push("Uzupełnij LEGAL_MANUFACTURER_EMAIL.");
   }
+  if (!transactionalEmailReady) {
+    readinessIssues.push(
+      "Skonfiguruj RESEND_API_KEY i ORDER_EMAIL_FROM dla potwierdzeń zamówienia na trwałym nośniku.",
+    );
+  }
 
   const vatLabel =
     vatMode === "active_23"
@@ -111,6 +119,7 @@ export function getPublicLegalConfig(): PublicLegalConfig {
     vatMode,
     vatLabel,
     shippingAmount: standardShippingAmount,
+    transactionalEmailReady,
     seller,
     manufacturer,
     launchReady: readinessIssues.length === 0,
