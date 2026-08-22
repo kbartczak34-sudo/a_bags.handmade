@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { processFirstTenGift } from "../../../../lib/gift-rewards";
 import { recordStripeOrderEvent } from "../../../../lib/orders";
 import {
   getStripe,
@@ -34,6 +35,20 @@ export async function POST(request: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.store === "a_bags.handmade") {
         await recordStripeOrderEvent(event, session);
+
+        if (
+          event.type === "checkout.session.completed" ||
+          event.type === "checkout.session.async_payment_succeeded"
+        ) {
+          const gift = await processFirstTenGift(session);
+          if (gift) {
+            console.info("First-ten order gift processed", {
+              sessionId: session.id,
+              slot: gift.slot,
+            });
+          }
+        }
+
         console.info("Stripe order event persisted", {
           eventId: event.id,
           eventType: event.type,
