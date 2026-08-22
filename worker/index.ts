@@ -5,6 +5,7 @@ import {
   DEFAULT_IMAGE_SIZES,
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { getPublicLegalConfig } from "../lib/legal-config";
 import { setRuntimeBindings } from "../lib/runtime-env";
 
 interface Env {
@@ -28,6 +29,10 @@ interface Env {
   LEGAL_MANUFACTURER_NAME?: string;
   LEGAL_MANUFACTURER_ADDRESS?: string;
   LEGAL_MANUFACTURER_EMAIL?: string;
+  LEGAL_PRODUCT_COMPLIANCE_CONFIRMED?: string;
+  LEGAL_PACKAGING_COMPLIANCE_CONFIRMED?: string;
+  LEGAL_FISCAL_COMPLIANCE_CONFIRMED?: string;
+  LEGAL_PRIVACY_COMPLIANCE_CONFIRMED?: string;
 
   IMAGES: {
     input(stream: ReadableStream): {
@@ -101,48 +106,6 @@ function withBrowserPrivacyHeaders(request: Request, response: Response) {
   });
 }
 
-function legalReadinessIssues(env: Env) {
-  const clean = (value: string | undefined) => (value ?? "").trim();
-  const issues: string[] = [];
-  const businessMode = clean(env.LEGAL_BUSINESS_MODE);
-  const vatMode = clean(env.LEGAL_VAT_MODE);
-  const sellerName = clean(env.LEGAL_SELLER_NAME);
-  const sellerAddress = clean(env.LEGAL_SELLER_ADDRESS);
-  const sellerPhone = clean(env.LEGAL_SELLER_PHONE);
-  const sellerEmail = clean(env.LEGAL_SELLER_EMAIL) || "a_bags.handmade@outlook.com";
-  const returnsAddress = clean(env.LEGAL_RETURNS_ADDRESS) || sellerAddress;
-  const manufacturerName = clean(env.LEGAL_MANUFACTURER_NAME) || sellerName;
-  const manufacturerAddress = clean(env.LEGAL_MANUFACTURER_ADDRESS) || sellerAddress;
-  const manufacturerEmail = clean(env.LEGAL_MANUFACTURER_EMAIL) || sellerEmail;
-
-  if (businessMode !== "jdg" && businessMode !== "unregistered") {
-    issues.push("business_mode");
-  }
-  if (!sellerName) issues.push("seller_name");
-  if (!sellerAddress) issues.push("seller_address");
-  if (!sellerPhone) issues.push("seller_phone");
-  if (!sellerEmail) issues.push("seller_email");
-  if (!returnsAddress) issues.push("returns_address");
-  if (businessMode === "jdg" && !clean(env.LEGAL_SELLER_NIP)) {
-    issues.push("seller_nip");
-  }
-  if (vatMode !== "active_23" && vatMode !== "exempt") {
-    issues.push("vat_mode");
-  }
-  if (!manufacturerName) issues.push("manufacturer_name");
-  if (!manufacturerAddress) issues.push("manufacturer_address");
-  if (!manufacturerEmail) issues.push("manufacturer_email");
-  if (
-    !clean(env.RESEND_API_KEY) ||
-    !clean(env.ORDER_EMAIL_FROM) ||
-    !clean(env.STRIPE_WEBHOOK_SECRET)
-  ) {
-    issues.push("durable_order_confirmation");
-  }
-
-  return issues;
-}
-
 async function getVerifiedAccessIdentity(
   request: Request,
   ctx: ExecutionContext,
@@ -198,6 +161,14 @@ const worker = {
       LEGAL_MANUFACTURER_NAME: env.LEGAL_MANUFACTURER_NAME,
       LEGAL_MANUFACTURER_ADDRESS: env.LEGAL_MANUFACTURER_ADDRESS,
       LEGAL_MANUFACTURER_EMAIL: env.LEGAL_MANUFACTURER_EMAIL,
+      LEGAL_PRODUCT_COMPLIANCE_CONFIRMED:
+        env.LEGAL_PRODUCT_COMPLIANCE_CONFIRMED,
+      LEGAL_PACKAGING_COMPLIANCE_CONFIRMED:
+        env.LEGAL_PACKAGING_COMPLIANCE_CONFIRMED,
+      LEGAL_FISCAL_COMPLIANCE_CONFIRMED:
+        env.LEGAL_FISCAL_COMPLIANCE_CONFIRMED,
+      LEGAL_PRIVACY_COMPLIANCE_CONFIRMED:
+        env.LEGAL_PRIVACY_COMPLIANCE_CONFIRMED,
     });
 
     const url = new URL(request.url);
@@ -221,12 +192,12 @@ const worker = {
     }
 
     if (url.pathname === "/api/checkout" && request.method === "POST") {
-      const issues = legalReadinessIssues(env);
-      if (issues.length > 0) {
+      const { readinessIssues } = getPublicLegalConfig();
+      if (readinessIssues.length > 0) {
         return Response.json(
           {
             error:
-              "Sprzedaż jest wstrzymana do czasu uzupełnienia wymaganych danych prawnych sklepu. [legal_configuration_incomplete]",
+              "Sprzedaż jest wstrzymana do czasu uzupełnienia wymaganych danych i potwierdzeń prawnych sklepu. [legal_configuration_incomplete]",
             code: "legal_configuration_incomplete",
           },
           {
