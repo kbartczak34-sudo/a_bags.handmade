@@ -55,3 +55,13 @@ test("public review UI discloses that purchases are not verified", () => {
   assert.match(enhancer, /zakup nieweryfikowany/);
   assert.match(enhancer, /nie są obecnie weryfikowane na podstawie numeru zamówienia/);
 });
+
+test("optional Instagram scripts are blocked by CSP until server-visible consent exists", () => {
+  const worker = read("worker/index.ts");
+  const enhancer = read("app/legal-compliance-enhancer.tsx");
+  assert.match(worker, /hasExternalContentConsent/);
+  assert.match(worker, /Content-Security-Policy/);
+  assert.match(worker, /abags-external-content=accepted/);
+  assert.match(enhancer, /document\.cookie = `abags-external-content=/);
+  assert.match(enhancer, /clearExternalContentPreference/);
+});
