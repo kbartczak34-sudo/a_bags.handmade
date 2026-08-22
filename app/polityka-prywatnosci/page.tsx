@@ -41,7 +41,7 @@ export default function PrivacyPage() {
           <li><strong>Rozliczenia i obowiązki prawne</strong> — przetwarzanie wymagane przez przepisy podatkowe, rachunkowe i inne obowiązki ciążące na sprzedawcy.</li>
           <li><strong>Reklamacje, zwroty i dochodzenie lub obrona roszczeń</strong> — wykonanie obowiązków umownych i prawnie uzasadniony interes administratora.</li>
           <li><strong>Bezpieczeństwo sklepu</strong> — prawnie uzasadniony interes polegający na ochronie systemu, przeciwdziałaniu nadużyciom i diagnozowaniu błędów.</li>
-          <li><strong>Publikacja opinii</strong> — na podstawie dobrowolnego działania osoby przesyłającej opinię oraz — w zakresie publikacji oznaczenia autora — jej wyraźnej zgody wyrażonej w formularzu.</li>
+          <li><strong>Obsługa, moderacja i publikacja opinii</strong> — prawnie uzasadniony interes administratora polegający na umożliwieniu użytkownikom dzielenia się doświadczeniami oraz prezentowaniu opinii o produktach. Przesłanie opinii jest dobrowolne, a formularz informuje, że po akceptacji opinia może zostać opublikowana. Osoba, której dane dotyczą, może wnieść sprzeciw wobec takiego przetwarzania lub zwrócić się o usunięcie swojej opinii.</li>
           <li><strong>Marketing elektroniczny</strong> — wyłącznie po spełnieniu wymogów dotyczących zgody, jeżeli taka funkcja zostanie w przyszłości uruchomiona.</li>
         </ul>
         <p className={styles.notice}>
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
       <section className={styles.section}>
         <h2>5. Jak długo przechowujemy dane</h2>
         <p>
-          Dane związane z zamówieniem są przechowywane przez okres niezbędny do wykonania umowy, realizacji obowiązków podatkowych i rachunkowych oraz do upływu właściwych terminów przedawnienia roszczeń. Dane dotyczące opinii są przechowywane do czasu jej usunięcia, cofnięcia zgody w zakresie, w którym zgoda jest podstawą, albo ustania celu publikacji. Logi bezpieczeństwa są przechowywane przez okres uzasadniony bezpieczeństwem i diagnostyką systemu.
+          Dane związane z zamówieniem są przechowywane przez okres niezbędny do wykonania umowy, realizacji obowiązków podatkowych i rachunkowych oraz do upływu właściwych terminów przedawnienia roszczeń. Dane dotyczące opinii są przechowywane do czasu usunięcia opinii, uwzględnienia skutecznego sprzeciwu albo ustania celu publikacji. Logi bezpieczeństwa są przechowywane przez okres uzasadniony bezpieczeństwem i diagnostyką systemu.
         </p>
       </section>
 
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
           <li>ograniczenia przetwarzania,</li>
           <li>przeniesienia danych,</li>
           <li>wniesienia sprzeciwu wobec przetwarzania opartego na prawnie uzasadnionym interesie,</li>
-          <li>cofnięcia zgody w dowolnym momencie, jeżeli dane są przetwarzane na podstawie zgody.</li>
+          <li>cofnięcia zgody w dowolnym momencie, jeżeli określone dane są przetwarzane na podstawie zgody.</li>
         </ul>
         <p>
           Cofnięcie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej cofnięciem. Osoba, która uważa, że jej dane są przetwarzane niezgodnie z prawem, może złożyć skargę do Prezesa Urzędu Ochrony Danych Osobowych.
