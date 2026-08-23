@@ -116,7 +116,13 @@
   isolation: isolate;
 }
 
-body:has(.privacy-banner-server) > .privacy-banner:not(.privacy-banner-server) {
+/*
+ * The initial consent UI is server-rendered before the client enhancer.
+ * Hide only a later client duplicate while the server form is present.
+ * The general-sibling selector is supported by old Android WebViews and
+ * avoids :has(), which is unreliable in some vendor browsers.
+ */
+.privacy-banner-server ~ .privacy-banner:not(.privacy-banner-server) {
   display: none !important;
 }
 
