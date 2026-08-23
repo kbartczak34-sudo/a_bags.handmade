@@ -75,7 +75,7 @@ test("optional Instagram scripts are blocked by CSP until server-visible consent
 test("server privacy form is never covered by a duplicate client banner on older Android browsers", () => {
   const css = read("app/legal-compliance.css");
   const banner = read("app/privacy-consent-banner.tsx");
-  assert.match(css, /\.privacy-banner:not\(\.privacy-banner-server\)\s*\{[\s\S]*?display:\s*none\s*!important/);
+  assert.match(css, /\.privacy-banner-server\s*~\s*\.privacy-banner:not\(\.privacy-banner-server\)\s*\{[\s\S]*?display:\s*none\s*!important/);
   assert.doesNotMatch(css, /body:has\(/);
   assert.match(banner, /method="post"/);
   assert.match(banner, /action="\/api\/privacy-choice"/);
