@@ -49,3 +49,78 @@ jobs:
 
       - name: Wrangler dry-run validation
         run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars --dry-run
+
+      - name: Controlled production deploy
+        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
+
+      - name: Verify Android-safe privacy banner in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const origin = 'https://abagshandmade.pl';
+          const headers = {
+            'user-agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 Chrome/83.0 Mobile Safari/537.36',
+          };
+
+          const home = await fetch(origin + '/', { headers, redirect: 'manual' });
+          if (!home.ok) throw new Error(`home returned ${home.status}`);
+          const html = await home.text();
+          console.log('HOME_STATUS', home.status);
+          console.log('SERVER_BANNER_PRESENT', html.includes('privacy-banner-server'));
+          console.log('SERVER_FORM_PRESENT', html.includes('action="/api/privacy-choice"'));
+          if (!html.includes('privacy-banner-server') || !html.includes('action="/api/privacy-choice"')) {
+            throw new Error('server-backed privacy form missing');
+          }
+
+          const cssHrefs = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi)]
+            .map((match) => match[1]);
+          if (cssHrefs.length === 0) throw new Error('no stylesheet found');
+
+          let combinedCss = '';
+          for (const href of cssHrefs) {
+            const response = await fetch(new URL(href, origin), { headers });
+            if (!response.ok) throw new Error(`stylesheet ${href} returned ${response.status}`);
+            combinedCss += '\n' + await response.text();
+          }
+
+          const compactCss = combinedCss.replace(/\s+/g, '');
+          const legacySafeRule = '.privacy-banner-server~.privacy-banner:not(.privacy-banner-server){display:none!important';
+          console.log('LEGACY_SAFE_DUPLICATE_RULE', compactCss.includes(legacySafeRule));
+          console.log('HAS_DEPENDENCY_PRESENT', compactCss.includes('body:has(.privacy-banner-server)'));
+          if (!compactCss.includes(legacySafeRule)) {
+            throw new Error('legacy-safe duplicate banner rule missing from production CSS');
+          }
+          if (compactCss.includes('body:has(.privacy-banner-server)')) {
+            throw new Error(':has dependency still present in production CSS');
+          }
+
+          const choice = await fetch(origin + '/api/privacy-choice', {
+            method: 'POST',
+            redirect: 'manual',
+            headers: {
+              ...headers,
+              'content-type': 'application/x-www-form-urlencoded',
+            },
+            body: 'choice=essential',
+          });
+          const setCookie = choice.headers.get('set-cookie') ?? '';
+          console.log('CHOICE_STATUS', choice.status);
+          console.log('COOKIE_SET', setCookie.includes('abags-external-content=rejected'));
+          if (choice.status !== 303 || !setCookie.includes('abags-external-content=rejected')) {
+            throw new Error('server consent POST did not persist the choice');
+          }
+
+          const acceptedHome = await fetch(origin + '/', {
+            headers: {
+              ...headers,
+              cookie: 'abags-external-content=rejected',
+            },
+          });
+          if (!acceptedHome.ok) throw new Error(`accepted home returned ${acceptedHome.status}`);
+          const acceptedHtml = await acceptedHome.text();
+          console.log('SERVER_BANNER_AFTER_COOKIE', acceptedHtml.includes('privacy-banner-server'));
+          if (acceptedHtml.includes('privacy-banner-server')) {
+            throw new Error('server banner still present after saved choice');
+          }
+          NODE
