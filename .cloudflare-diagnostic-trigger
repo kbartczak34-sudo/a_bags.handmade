@@ -1,1 +1,1 @@
-Cloudflare diagnostic rerun after removing the missing package-lock cache dependency.
+Controlled production Cloudflare deployment after successful authentication, D1/R2 resolution, artifact validation, and Wrangler dry-run.
