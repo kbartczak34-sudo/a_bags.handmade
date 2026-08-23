@@ -49,3 +49,55 @@ jobs:
 
       - name: Wrangler dry-run validation
         run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars --dry-run
+
+      - name: Controlled production deploy
+        if: github.head_ref == 'cloudflare-diagnostic/mobile-privacy-production'
+        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
+
+      - name: Verify server-backed privacy choice in production
+        if: github.head_ref == 'cloudflare-diagnostic/mobile-privacy-production'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const origin = 'https://abagshandmade.pl';
+          const home = await fetch(origin + '/', { redirect: 'manual' });
+          if (!home.ok) throw new Error(`home returned ${home.status}`);
+          const html = await home.text();
+          console.log('HOME_STATUS', home.status);
+          console.log('SERVER_BANNER_PRESENT', html.includes('privacy-banner-server'));
+          console.log('SERVER_FORM_PRESENT', html.includes('action="/api/privacy-choice"'));
+          if (!html.includes('privacy-banner-server') || !html.includes('action="/api/privacy-choice"')) {
+            throw new Error('server-backed privacy banner/form missing');
+          }
+
+          const choice = await fetch(origin + '/api/privacy-choice', {
+            method: 'POST',
+            redirect: 'manual',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: 'choice=essential',
+          });
+          const setCookie = choice.headers.get('set-cookie') ?? '';
+          console.log('CHOICE_STATUS', choice.status);
+          console.log('CHOICE_LOCATION', choice.headers.get('location'));
+          console.log('COOKIE_SET', setCookie.includes('abags-external-content=rejected'));
+          if (choice.status !== 303 || !setCookie.includes('abags-external-content=rejected')) {
+            throw new Error('privacy choice did not persist cookie and redirect');
+          }
+
+          const consented = await fetch(origin + '/', {
+            headers: { cookie: 'abags-external-content=rejected' },
+          });
+          if (!consented.ok) throw new Error(`consented home returned ${consented.status}`);
+          const consentedHtml = await consented.text();
+          console.log('BANNER_AFTER_COOKIE', consentedHtml.includes('privacy-banner-server'));
+          if (consentedHtml.includes('privacy-banner-server')) {
+            throw new Error('privacy banner still rendered after saved choice');
+          }
+
+          for (const path of ['/regulamin', '/polityka-prywatnosci', '/cookies', '/zwroty-i-reklamacje', '/bezpieczenstwo-produktow']) {
+            const response = await fetch(origin + path);
+            console.log('LEGAL_ROUTE', path, response.status);
+            if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+          }
+          NODE
