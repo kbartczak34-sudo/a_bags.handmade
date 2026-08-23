@@ -86,8 +86,9 @@ jobs:
           cd /tmp/abags-browser-probe
           npm init -y >/dev/null 2>&1
           npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
-          CHROME_PATH="$CHROME" node <<'NODE'
-          const puppeteer = require('puppeteer-core');
+          CHROME_PATH="$CHROME" node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core';
+
           const browser = await puppeteer.launch({
             executablePath: process.env.CHROME_PATH,
             headless: true,
