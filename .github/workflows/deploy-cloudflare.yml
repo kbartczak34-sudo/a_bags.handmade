@@ -85,6 +85,21 @@ jobs:
           set -o pipefail
           npx wrangler deploy --config dist/server/wrangler.json --keep-vars 2>&1 | tee /tmp/cloudflare-deploy.log
 
+      - name: Report Cloudflare deployment success
+        if: steps.deploy.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 6 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "### Cloudflare deployment succeeded
+
+- Commit: \`${GITHUB_SHA}\`
+- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+- Production Worker deploy completed successfully."
+
       - name: Report Cloudflare deployment failure
         if: >-
           ${{ always() && (
