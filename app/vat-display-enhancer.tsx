@@ -24,6 +24,10 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
+function setTextIfChanged(node: HTMLElement, value: string) {
+  if (node.textContent !== value) node.textContent = value;
+}
+
 function enhanceAdminPrice(vatMode: VatMode) {
   document.querySelectorAll<HTMLElement>(".admin-price-input").forEach((wrapper) => {
     const label = wrapper.closest("label");
@@ -31,12 +35,13 @@ function enhanceAdminPrice(vatMode: VatMode) {
     const input = wrapper.querySelector<HTMLInputElement>("input");
     if (!label || !title || !input) return;
 
-    title.textContent =
+    const titleText =
       vatMode === "active_23"
         ? "Cena netto"
         : vatMode === "exempt"
           ? "Cena dla klienta"
           : "Cena bazowa";
+    setTextIfChanged(title, titleText);
 
     let preview = label.querySelector<HTMLElement>(".admin-vat-preview");
     if (!preview) {
@@ -51,24 +56,32 @@ function enhanceAdminPrice(vatMode: VatMode) {
     const update = () => {
       const base = parseMoney(input.value);
       if (base === null || base < 0) {
-        preview!.textContent = "Wpisz prawidłową kwotę.";
+        setTextIfChanged(preview!, "Wpisz prawidłową kwotę.");
         return;
       }
 
       if (vatMode === "active_23") {
         const gross = Math.round(base * (100 + VAT_RATE)) / 100;
         const vat = Math.round((gross - base) * 100) / 100;
-        preview!.textContent = `Cena dla klienta: ${formatMoney(gross)} brutto · VAT ${VAT_RATE}%: ${formatMoney(vat)}`;
+        setTextIfChanged(
+          preview!,
+          `Cena dla klienta: ${formatMoney(gross)} brutto · VAT ${VAT_RATE}%: ${formatMoney(vat)}`,
+        );
         return;
       }
 
       if (vatMode === "exempt") {
-        preview!.textContent = `Cena dla klienta: ${formatMoney(base)} · VAT nie jest doliczany zgodnie ze skonfigurowanym statusem zwolnienia.`;
+        setTextIfChanged(
+          preview!,
+          `Cena dla klienta: ${formatMoney(base)} · VAT nie jest doliczany zgodnie ze skonfigurowanym statusem zwolnienia.`,
+        );
         return;
       }
 
-      preview!.textContent =
-        "Status VAT nie został potwierdzony. Checkout pozostaje zablokowany do czasu konfiguracji LEGAL_VAT_MODE.";
+      setTextIfChanged(
+        preview!,
+        "Status VAT nie został potwierdzony. Checkout pozostaje zablokowany do czasu konfiguracji LEGAL_VAT_MODE.",
+      );
     };
 
     if (wrapper.dataset.vatListenerReady !== "true") {
@@ -86,11 +99,11 @@ function enhanceAdminPrice(vatMode: VatMode) {
 
     if (vatMode === "active_23") {
       const gross = Math.round(base * (100 + VAT_RATE)) / 100;
-      node.textContent = `${formatMoney(base)} netto · ${formatMoney(gross)} brutto`;
+      setTextIfChanged(node, `${formatMoney(base)} netto · ${formatMoney(gross)} brutto`);
     } else if (vatMode === "exempt") {
-      node.textContent = `${formatMoney(base)} · cena dla klienta (bez doliczania VAT)`;
+      setTextIfChanged(node, `${formatMoney(base)} · cena dla klienta (bez doliczania VAT)`);
     } else {
-      node.textContent = `${formatMoney(base)} · status VAT do konfiguracji`;
+      setTextIfChanged(node, `${formatMoney(base)} · status VAT do konfiguracji`);
     }
   });
 }
@@ -110,7 +123,7 @@ function enhanceStorefrontPrices(status: LegalStatus) {
       note.style.opacity = ".62";
       price.insertAdjacentElement("afterend", note);
     }
-    note.textContent = status.vatLabel;
+    setTextIfChanged(note, status.vatLabel);
   });
 }
 
