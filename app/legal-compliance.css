@@ -99,7 +99,7 @@
 
 .privacy-banner {
   position: fixed;
-  z-index: 9999;
+  z-index: 2147483000;
   left: 50%;
   bottom: 1rem;
   transform: translateX(-50%);
@@ -111,6 +111,13 @@
   color: #5a4245;
   box-shadow: 0 16px 60px rgba(76, 50, 54, .18);
   font-family: var(--font-sans), system-ui, sans-serif;
+  pointer-events: auto;
+  touch-action: manipulation;
+  isolation: isolate;
+}
+
+body:has(.privacy-banner-server) > .privacy-banner:not(.privacy-banner-server) {
+  display: none !important;
 }
 
 .privacy-banner p {
@@ -128,6 +135,8 @@
 .privacy-banner a {
   color: inherit;
   font-weight: 700;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .privacy-actions {
@@ -135,11 +144,14 @@
   flex-wrap: wrap;
   gap: .65rem;
   margin-top: .85rem;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .privacy-actions button {
-  min-height: 2.5rem;
-  padding: .55rem .9rem;
+  min-height: 2.75rem;
+  padding: .65rem .9rem;
   border: 1px solid rgba(90, 66, 69, .25);
   border-radius: 999px;
   background: transparent;
@@ -148,6 +160,10 @@
   font-size: .76rem;
   font-weight: 800;
   cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .privacy-actions button:last-child {
@@ -157,7 +173,11 @@
 
 @media (max-width: 640px) {
   .privacy-banner {
-    bottom: .65rem;
+    bottom: max(.65rem, env(safe-area-inset-bottom));
+    width: calc(100% - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .privacy-actions {
@@ -166,5 +186,6 @@
 
   .privacy-actions button {
     width: 100%;
+    min-height: 3rem;
   }
 }
