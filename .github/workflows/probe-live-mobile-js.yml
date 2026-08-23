@@ -1,0 +1,109 @@
+name: Probe live mobile JS interactions
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: startsWith(github.head_ref, 'cloudflare-diagnostic/live-mobile-js')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe production in mobile Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          mkdir -p /tmp/abags-live-probe && cd /tmp/abags-live-probe
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
+          CHROME_PATH="$CHROME" node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core';
+
+          const browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_PATH,
+            headless: true,
+            args: ['--no-sandbox', '--disable-dev-shm-usage'],
+          });
+
+          const page = await browser.newPage();
+          const consoleErrors = [];
+          const pageErrors = [];
+          const failedRequests = [];
+          page.on('console', msg => {
+            if (msg.type() === 'error') consoleErrors.push(msg.text());
+          });
+          page.on('pageerror', err => pageErrors.push(String(err)));
+          page.on('requestfailed', req => failedRequests.push(`${req.method()} ${req.url()} :: ${req.failure()?.errorText ?? 'unknown'}`));
+
+          try {
+            await page.setViewport({ width: 674, height: 1462, deviceScaleFactor: 1 });
+            await page.setUserAgent('Mozilla/5.0 (Linux; Android 13; Infinix X6837) AppleWebKit/537.36 Chrome/139.0.0.0 Mobile Safari/537.36');
+            const started = Date.now();
+            const response = await page.goto(`https://abagshandmade.pl/?probe=${Date.now()}`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 20000,
+            });
+            console.log('NAV_STATUS', response?.status());
+            console.log('DOMCONTENTLOADED_MS', Date.now() - started);
+            await new Promise(r => setTimeout(r, 4000));
+
+            const before = await page.evaluate(() => ({
+              readyState: document.readyState,
+              banners: [...document.querySelectorAll('.privacy-banner')].map(el => ({ cls: el.className, display: getComputedStyle(el).display })),
+              menuButton: !!document.querySelector('.menu-button'),
+              cartButton: !!document.querySelector('.cart-button'),
+              scripts: [...document.scripts].map(s => s.src || '[inline]').length,
+            }));
+            console.log('BEFORE', JSON.stringify(before));
+
+            const consent = await page.$('.privacy-banner-server button[value="essential"]');
+            if (consent) {
+              await Promise.all([
+                page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
+                consent.click(),
+              ]);
+              await new Promise(r => setTimeout(r, 2500));
+            }
+
+            const consentCookie = (await page.cookies()).find(c => c.name === 'abags-external-content');
+            console.log('CONSENT_COOKIE', consentCookie?.value ?? 'missing');
+
+            const menuBefore = await page.$eval('.menu-button', el => ({ expanded: el.getAttribute('aria-expanded'), disabled: el.disabled }));
+            await page.click('.menu-button');
+            await new Promise(r => setTimeout(r, 300));
+            const menuAfter = await page.$eval('.menu-button', el => ({ expanded: el.getAttribute('aria-expanded'), disabled: el.disabled }));
+            const mobileNav = await page.$('#mobile-navigation');
+            console.log('MENU_BEFORE', JSON.stringify(menuBefore));
+            console.log('MENU_AFTER', JSON.stringify(menuAfter));
+            console.log('MOBILE_NAV_PRESENT', !!mobileNav);
+
+            await page.click('.menu-button');
+            await page.click('.cart-button');
+            await new Promise(r => setTimeout(r, 300));
+            const cartState = await page.evaluate(() => ({
+              modalOpen: document.body.classList.contains('modal-open'),
+              dialogCount: document.querySelectorAll('[role="dialog"]').length,
+              bodyOverflow: getComputedStyle(document.body).overflow,
+            }));
+            console.log('CART_STATE', JSON.stringify(cartState));
+
+            console.log('PAGE_ERRORS', JSON.stringify(pageErrors));
+            console.log('CONSOLE_ERRORS', JSON.stringify(consoleErrors));
+            console.log('FAILED_REQUESTS', JSON.stringify(failedRequests));
+
+            if (!response || response.status() >= 400) throw new Error('navigation failed');
+            if (before.readyState === 'loading') throw new Error('document still loading after 4s');
+            if (consentCookie?.value !== 'rejected') throw new Error('consent did not persist');
+            if (menuAfter.expanded !== 'true' || !mobileNav) throw new Error('menu click did not hydrate/respond');
+            if (!cartState.modalOpen || cartState.dialogCount < 1) throw new Error('cart click did not respond');
+            if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
+          } finally {
+            await browser.close();
+          }
+          NODE
