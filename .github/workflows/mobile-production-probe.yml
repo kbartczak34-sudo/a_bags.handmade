@@ -28,45 +28,49 @@ jobs:
           if (!response.ok) process.exit(1);
 
           const html = await response.text();
-          console.log('HTML_LENGTH', html.length);
           const scriptTags = [...html.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)].map((m) => m[0]);
-          const srcs = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
-            .map((match) => match[1])
-            .filter((value, index, all) => all.indexOf(value) === index);
           const modulePreloads = [...html.matchAll(/<link[^>]+rel=["']modulepreload["'][^>]+href=["']([^"']+)["']/gi)]
             .map((match) => match[1]);
-          const allAssetRefs = [...html.matchAll(/(?:src|href)=["']([^"']*\/assets\/[^"']+)["']/gi)]
-            .map((match) => match[1])
-            .filter((value, index, all) => all.indexOf(value) === index);
+          const inlineImports = [...html.matchAll(/import\(["']([^"']+\.js)["']\)/g)]
+            .map((match) => match[1]);
+          const assetRefs = [...html.matchAll(/(?:src|href)=["']([^"']*\/assets\/[^"']+)["']/gi)]
+            .map((match) => match[1]);
+          const jsRefs = [...new Set([
+            ...modulePreloads.filter((ref) => ref.includes('.js')),
+            ...inlineImports,
+            ...assetRefs.filter((ref) => ref.includes('.js')),
+          ])];
 
+          console.log('HTML_LENGTH', html.length);
           console.log('SCRIPT_TAG_COUNT', scriptTags.length);
-          console.log('EXTERNAL_SCRIPT_COUNT', srcs.length);
           console.log('MODULEPRELOAD_COUNT', modulePreloads.length);
-          console.log('ASSET_REF_COUNT', allAssetRefs.length);
-          for (const tag of scriptTags.slice(0, 8)) {
+          console.log('INLINE_IMPORT_COUNT', inlineImports.length);
+          console.log('JS_REF_COUNT', jsRefs.length);
+          for (const tag of scriptTags.slice(0, 3)) {
             console.log('SCRIPT_TAG', tag.replace(/\s+/g, ' ').slice(0, 500));
           }
-          for (const ref of allAssetRefs.slice(0, 20)) {
-            console.log('ASSET_REF', ref);
-          }
-          console.log('HTML_TAIL', html.slice(-2500).replace(/\s+/g, ' '));
 
-          let failed = srcs.length === 0 && modulePreloads.length === 0 && allAssetRefs.length === 0;
-          for (const src of srcs) {
-            const url = new URL(src, origin).toString();
+          if (jsRefs.length === 0) {
+            console.error('No client hydration JavaScript references found.');
+            process.exit(2);
+          }
+
+          let failed = false;
+          for (const ref of jsRefs) {
+            const url = new URL(ref, origin).toString();
             const asset = await fetch(url, {
               headers: { 'user-agent': 'A-Bags-CI-Hydration-Probe/1.0' },
             });
             const type = asset.headers.get('content-type') ?? '';
             const body = await asset.arrayBuffer();
-            console.log('SCRIPT', asset.status, type, body.byteLength, url);
+            console.log('JS_ASSET', asset.status, type, body.byteLength, url);
             if (!asset.ok || (!type.includes('javascript') && !type.includes('ecmascript'))) {
               failed = true;
             }
           }
 
           if (failed) {
-            console.error('Production HTML does not expose usable client hydration assets.');
+            console.error('At least one hydration JavaScript asset is unavailable or served with the wrong MIME type.');
             process.exit(3);
           }
           NODE
