@@ -47,3 +47,5 @@ If those resource names are changed in Cloudflare, update `scripts/patch-deploy-
 ## Production safety
 
 The Worker keeps checkout fail-closed until the Legal & Compliance runtime configuration is complete. A successful code deployment does not bypass the legal go-live gate.
+
+<!-- deployment trigger: 2026-08-24 -->
