@@ -117,12 +117,12 @@
 }
 
 /*
- * The initial consent UI is server-rendered. Always suppress the old client
- * duplicate instead of relying on :has(), which is not reliable in some
- * Android WebViews / vendor browsers. This guarantees that taps land on the
- * native server-backed form below.
+ * The initial consent UI is server-rendered before the client enhancer.
+ * Hide only a later client duplicate while the server form is present.
+ * The general-sibling selector is supported by old Android WebViews and
+ * avoids :has(), which is unreliable in some vendor browsers.
  */
-.privacy-banner:not(.privacy-banner-server) {
+.privacy-banner-server ~ .privacy-banner:not(.privacy-banner-server) {
   display: none !important;
 }
 
