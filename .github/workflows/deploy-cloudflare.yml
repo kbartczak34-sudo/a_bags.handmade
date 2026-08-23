@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: cloudflare-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -21,6 +21,19 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Report deployment start
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 6 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "### Cloudflare deployment started
+
+- Commit: \`${GITHUB_SHA}\`
+- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
       - name: Checkout
         uses: actions/checkout@v6
 
