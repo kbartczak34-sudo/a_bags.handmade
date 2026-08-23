@@ -1,99 +1,170 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const execFileAsync = promisify(execFile);
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, "..");
 const configPath = path.join(projectRoot, "dist/server/wrangler.json");
-const wranglerBin = path.join(projectRoot, "node_modules/.bin/wrangler");
-const sourceConfig = path.join(projectRoot, "wrangler.jsonc");
 const skipRemoteDiscovery =
   process.env.ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY === "1";
 
 const raw = await readFile(configPath, "utf8");
 const config = JSON.parse(raw);
 
-const runWrangler = async (args) => {
-  const { stdout } = await execFileAsync(
-    wranglerBin,
-    [...args, "--config", sourceConfig],
-    {
-      cwd: projectRoot,
-      env: process.env,
-      maxBuffer: 10 * 1024 * 1024,
+const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
+
+const normalizeName = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+const cloudflareGet = async (pathname) => {
+  if (!accountId || !apiToken) {
+    throw new Error(
+      "Cloudflare remote discovery requires CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.",
+    );
+  }
+
+  const response = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      Accept: "application/json",
     },
-  );
-  return stdout.trim();
+  });
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(
+      `Cloudflare API returned a non-JSON response for ${pathname} (HTTP ${response.status}).`,
+    );
+  }
+
+  if (!response.ok || payload?.success === false) {
+    const messages = [
+      ...(Array.isArray(payload?.errors) ? payload.errors : []),
+      ...(Array.isArray(payload?.messages) ? payload.messages : []),
+    ]
+      .map((entry) => entry?.message || entry?.code)
+      .filter(Boolean)
+      .join("; ");
+
+    throw new Error(
+      `Cloudflare API request failed for ${pathname} (HTTP ${response.status})${
+        messages ? `: ${messages}` : ""
+      }`,
+    );
+  }
+
+  return payload;
 };
 
-const normalizeArray = (value) => {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.result)) return value.result;
-  if (Array.isArray(value?.databases)) return value.databases;
-  return [];
+const pickNamedResource = ({ items, exactNames, label }) => {
+  const usable = items.filter((item) => item?.name);
+
+  for (const name of exactNames.filter(Boolean)) {
+    const exact = usable.find((item) => item.name === name);
+    if (exact) return exact;
+  }
+
+  const fuzzy = usable.filter((item) => {
+    const normalized = normalizeName(item.name);
+    return (
+      normalized.includes("abagshandmade") ||
+      normalized.includes("abagshandmade") ||
+      normalized.startsWith("abags")
+    );
+  });
+
+  if (fuzzy.length === 1) return fuzzy[0];
+  if (usable.length === 1) return usable[0];
+
+  const available = usable.map((item) => item.name).join(", ") || "none";
+  throw new Error(
+    `Could not safely resolve ${label}. Available resources: ${available}. ` +
+      `Set the matching ABAGS_*_NAME environment override if more than one candidate exists.`,
+  );
 };
 
 const d1Binding = Array.isArray(config.d1_databases)
   ? config.d1_databases[0]
   : undefined;
-
-if (d1Binding && !skipRemoteDiscovery) {
-  const d1Raw = await runWrangler(["d1", "list", "--json"]);
-  const databases = normalizeArray(JSON.parse(d1Raw));
-  const derivedName =
-    d1Binding.database_name ||
-    `${config.name || "a-bags-handmade"}-${String(d1Binding.binding || "db").toLowerCase()}`;
-
-  const database =
-    databases.find((item) => item?.name === "a-bags-handmade-storedb") ||
-    databases.find((item) => item?.name === derivedName);
-
-  if (!database?.uuid && !database?.id) {
-    throw new Error(
-      `Existing D1 database not found. Expected a-bags-handmade-storedb or ${derivedName}.`,
-    );
-  }
-
-  d1Binding.database_name = database.name;
-  d1Binding.database_id = database.uuid || database.id;
-  delete d1Binding.preview_database_id;
-
-  console.log(`Resolved existing D1 database: ${database.name}`);
-}
-
 const r2Binding = Array.isArray(config.r2_buckets)
   ? config.r2_buckets[0]
   : undefined;
 
-if (r2Binding && !r2Binding.bucket_name && !skipRemoteDiscovery) {
-  const candidateNames = [
-    "a-bags-handmade-storemedia",
-    `${config.name || "a-bags-handmade"}-${String(r2Binding.binding || "media").toLowerCase()}`,
-  ];
+if (!skipRemoteDiscovery) {
+  if (!accountId || !apiToken) {
+    throw new Error(
+      "Missing Cloudflare CI credentials. Configure CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.",
+    );
+  }
 
-  let resolvedBucket = null;
-  for (const bucketName of candidateNames) {
-    try {
-      await runWrangler(["r2", "bucket", "info", bucketName, "--json"]);
-      resolvedBucket = bucketName;
-      break;
-    } catch {
-      // Try the next candidate. If none exists, Wrangler may provision the draft binding.
+  config.account_id = accountId;
+
+  if (d1Binding) {
+    const d1Payload = await cloudflareGet(
+      `/accounts/${encodeURIComponent(accountId)}/d1/database?per_page=100`,
+    );
+    const databases = Array.isArray(d1Payload?.result) ? d1Payload.result : [];
+    const derivedName =
+      d1Binding.database_name ||
+      `${config.name || "a-bags-handmade"}-${String(
+        d1Binding.binding || "db",
+      ).toLowerCase()}`;
+
+    const database = pickNamedResource({
+      items: databases,
+      exactNames: [
+        process.env.ABAGS_D1_DATABASE_NAME?.trim(),
+        "a-bags-handmade-storedb",
+        derivedName,
+      ],
+      label: "the production D1 database",
+    });
+
+    const databaseId = database.uuid || database.id;
+    if (!databaseId) {
+      throw new Error(
+        `Resolved D1 database ${database.name} does not expose a UUID/id.`,
+      );
     }
+
+    d1Binding.database_name = database.name;
+    d1Binding.database_id = databaseId;
+    delete d1Binding.preview_database_id;
+    console.log(`Resolved existing D1 database: ${database.name}`);
   }
 
-  if (resolvedBucket) {
-    r2Binding.bucket_name = resolvedBucket;
-    console.log(`Resolved existing R2 bucket: ${resolvedBucket}`);
-  } else {
-    console.log("No existing R2 bucket matched; leaving R2 binding for provisioning.");
-  }
-}
+  if (r2Binding) {
+    const r2Payload = await cloudflareGet(
+      `/accounts/${encodeURIComponent(accountId)}/r2/buckets?per_page=100`,
+    );
+    const buckets = Array.isArray(r2Payload?.result?.buckets)
+      ? r2Payload.result.buckets
+      : [];
+    const derivedName =
+      r2Binding.bucket_name ||
+      `${config.name || "a-bags-handmade"}-${String(
+        r2Binding.binding || "media",
+      ).toLowerCase()}`;
 
-if (skipRemoteDiscovery) {
+    const bucket = pickNamedResource({
+      items: buckets,
+      exactNames: [
+        process.env.ABAGS_R2_BUCKET_NAME?.trim(),
+        "a-bags-handmade-storemedia",
+        derivedName,
+      ],
+      label: "the production R2 bucket",
+    });
+
+    r2Binding.bucket_name = bucket.name;
+    console.log(`Resolved existing R2 bucket: ${bucket.name}`);
+  }
+} else {
   console.log(
     "Remote Cloudflare resource discovery skipped for offline CI artifact validation.",
   );
