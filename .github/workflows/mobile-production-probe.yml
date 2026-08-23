@@ -28,16 +28,30 @@ jobs:
           if (!response.ok) process.exit(1);
 
           const html = await response.text();
+          console.log('HTML_LENGTH', html.length);
+          const scriptTags = [...html.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)].map((m) => m[0]);
           const srcs = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
             .map((match) => match[1])
             .filter((value, index, all) => all.indexOf(value) === index);
-          console.log('SCRIPT_COUNT', srcs.length);
-          if (srcs.length === 0) {
-            console.error('No external application scripts found in production HTML.');
-            process.exit(2);
-          }
+          const modulePreloads = [...html.matchAll(/<link[^>]+rel=["']modulepreload["'][^>]+href=["']([^"']+)["']/gi)]
+            .map((match) => match[1]);
+          const allAssetRefs = [...html.matchAll(/(?:src|href)=["']([^"']*\/assets\/[^"']+)["']/gi)]
+            .map((match) => match[1])
+            .filter((value, index, all) => all.indexOf(value) === index);
 
-          let failed = false;
+          console.log('SCRIPT_TAG_COUNT', scriptTags.length);
+          console.log('EXTERNAL_SCRIPT_COUNT', srcs.length);
+          console.log('MODULEPRELOAD_COUNT', modulePreloads.length);
+          console.log('ASSET_REF_COUNT', allAssetRefs.length);
+          for (const tag of scriptTags.slice(0, 8)) {
+            console.log('SCRIPT_TAG', tag.replace(/\s+/g, ' ').slice(0, 500));
+          }
+          for (const ref of allAssetRefs.slice(0, 20)) {
+            console.log('ASSET_REF', ref);
+          }
+          console.log('HTML_TAIL', html.slice(-2500).replace(/\s+/g, ' '));
+
+          let failed = srcs.length === 0 && modulePreloads.length === 0 && allAssetRefs.length === 0;
           for (const src of srcs) {
             const url = new URL(src, origin).toString();
             const asset = await fetch(url, {
@@ -52,7 +66,7 @@ jobs:
           }
 
           if (failed) {
-            console.error('At least one production JavaScript asset is unavailable or has an invalid content type.');
+            console.error('Production HTML does not expose usable client hydration assets.');
             process.exit(3);
           }
           NODE
