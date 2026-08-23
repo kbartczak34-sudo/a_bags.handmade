@@ -49,7 +49,3 @@ jobs:
 
       - name: Wrangler dry-run validation
         run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars --dry-run
-
-      - name: Controlled production deploy
-        if: github.event_name == 'pull_request' && github.head_ref == 'cloudflare-diagnostic/auth-and-bindings'
-        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
