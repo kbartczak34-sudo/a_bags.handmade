@@ -1,0 +1,76 @@
+name: Probe live mobile clicks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.head_ref == 'fix/mobile-privacy-interaction'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Exercise consent and cart in mobile Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          mkdir -p /tmp/abags-browser-probe
+          cd /tmp/abags-browser-probe
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
+          CHROME_PATH="$CHROME" node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core';
+
+          const browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_PATH,
+            headless: true,
+            args: ['--no-sandbox', '--disable-dev-shm-usage'],
+          });
+          try {
+            const page = await browser.newPage();
+            await page.setViewport({ width: 674, height: 1462, deviceScaleFactor: 1 });
+            const pageErrors = [];
+            page.on('pageerror', (error) => pageErrors.push(String(error)));
+
+            await page.goto('https://abagshandmade.pl/', {
+              waitUntil: 'domcontentloaded',
+              timeout: 20000,
+            });
+            await new Promise((resolve) => setTimeout(resolve, 4000));
+
+            console.log('PAGE_ERRORS_AFTER_LOAD', JSON.stringify(pageErrors));
+            console.log('BANNER_BEFORE', await page.$$eval('.privacy-banner', (nodes) => nodes.length));
+
+            const consentButton = await page.$('.privacy-actions button');
+            if (!consentButton) throw new Error('Privacy consent button not found');
+            await consentButton.click();
+            await new Promise((resolve) => setTimeout(resolve, 2500));
+
+            const bannerAfter = await page.$$eval('.privacy-banner', (nodes) => nodes.length);
+            const privacyCookie = (await page.cookies()).find((cookie) => cookie.name === 'abags-external-content')?.value ?? 'missing';
+            console.log('BANNER_AFTER', bannerAfter);
+            console.log('PRIVACY_COOKIE', privacyCookie);
+
+            const cartButton = await page.$('.cart-button');
+            if (!cartButton) throw new Error('Cart button not found');
+            await cartButton.click();
+            await new Promise((resolve) => setTimeout(resolve, 700));
+
+            const modalOpen = await page.$eval('body', (body) => body.classList.contains('modal-open'));
+            const cartPanels = await page.$$eval('.cart-panel', (nodes) => nodes.length);
+            console.log('BODY_MODAL_OPEN', modalOpen);
+            console.log('CART_PANEL_COUNT', cartPanels);
+            console.log('PAGE_ERRORS_FINAL', JSON.stringify(pageErrors));
+
+            if (bannerAfter !== 0 || privacyCookie === 'missing' || !modalOpen || cartPanels === 0) {
+              process.exitCode = 2;
+            }
+          } finally {
+            await browser.close();
+          }
+          NODE
