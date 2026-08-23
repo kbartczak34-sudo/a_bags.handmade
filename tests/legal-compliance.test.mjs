@@ -80,3 +80,11 @@ test("server privacy form is never covered by a duplicate client banner on older
   assert.match(banner, /method="post"/);
   assert.match(banner, /action="\/api\/privacy-choice"/);
 });
+
+test("VAT MutationObserver writes only when displayed text actually changes", () => {
+  const vatEnhancer = read("app/vat-display-enhancer.tsx");
+  assert.match(vatEnhancer, /function setTextIfChanged/);
+  assert.match(vatEnhancer, /if \(node\.textContent !== value\) node\.textContent = value/);
+  assert.match(vatEnhancer, /setTextIfChanged\(note, status\.vatLabel\)/);
+  assert.doesNotMatch(vatEnhancer, /note\.textContent = status\.vatLabel/);
+});
