@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
+import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
 import VatDisplayEnhancer from "./vat-display-enhancer";
 import "./globals.css";
@@ -41,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="pl">
       <body className={`${display.variable} ${sans.variable}`}>
+        <PrivacyConsentBanner />
         <LegalComplianceEnhancer />
         <PaymentMethodEnhancer />
         <ProductPreviewEnhancer />
