@@ -1,0 +1,54 @@
+name: Cloudflare deployment diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'cloudflare-diagnostic/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+          package-manager-cache: false
+
+      - name: Verify Cloudflare secrets exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo "CLOUDFLARE_API_TOKEN is missing"; exit 1; }
+          [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo "CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          echo "Cloudflare secrets are present."
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build and run regression tests
+        env:
+          ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
+        run: npm test
+
+      - name: Resolve production D1/R2 bindings through Cloudflare API
+        run: node scripts/patch-deploy-config.mjs
+
+      - name: Validate deployment artifact
+        run: npm run validate:artifact
+
+      - name: Wrangler dry-run validation
+        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars --dry-run
