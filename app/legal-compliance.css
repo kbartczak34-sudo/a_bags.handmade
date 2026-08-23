@@ -116,7 +116,13 @@
   isolation: isolate;
 }
 
-body:has(.privacy-banner-server) > .privacy-banner:not(.privacy-banner-server) {
+/*
+ * The initial consent UI is server-rendered. Always suppress the old client
+ * duplicate instead of relying on :has(), which is not reliable in some
+ * Android WebViews / vendor browsers. This guarantees that taps land on the
+ * native server-backed form below.
+ */
+.privacy-banner:not(.privacy-banner-server) {
   display: none !important;
 }
 
