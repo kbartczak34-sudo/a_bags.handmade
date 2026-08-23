@@ -21,19 +21,6 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Report deployment start
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh issue comment 6 \
-            --repo "$GITHUB_REPOSITORY" \
-            --body "### Cloudflare deployment started
-
-- Commit: \`${GITHUB_SHA}\`
-- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -41,9 +28,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-          package-manager-cache: false
 
       - name: Verify Cloudflare credentials are configured
         id: credentials
@@ -63,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.credentials.outcome == 'success'
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build and run regression tests
         if: steps.credentials.outcome == 'success'
