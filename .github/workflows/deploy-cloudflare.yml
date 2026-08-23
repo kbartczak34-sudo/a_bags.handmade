@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: cloudflare-production
@@ -30,130 +29,26 @@ jobs:
           node-version: 22
 
       - name: Verify Cloudflare credentials are configured
-        id: credentials
-        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
-            echo "Missing GitHub Actions secret CLOUDFLARE_API_TOKEN" | tee /tmp/cloudflare-credentials.log
-            exit 1
-          fi
-          if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
-            echo "Missing GitHub Actions secret CLOUDFLARE_ACCOUNT_ID" | tee /tmp/cloudflare-credentials.log
-            exit 1
-          fi
-          echo "Cloudflare CI credentials are configured." | tee /tmp/cloudflare-credentials.log
+          [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo "Missing GitHub Actions secret CLOUDFLARE_API_TOKEN"; exit 1; }
+          [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo "Missing GitHub Actions secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          echo "Cloudflare CI credentials are configured."
 
       - name: Install dependencies
-        if: steps.credentials.outcome == 'success'
         run: npm install --no-audit --no-fund
 
       - name: Build and run regression tests
-        if: steps.credentials.outcome == 'success'
         env:
           ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
         run: npm test
 
       - name: Resolve production D1/R2 bindings
-        id: resolve
-        if: steps.credentials.outcome == 'success'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          node scripts/patch-deploy-config.mjs 2>&1 | tee /tmp/cloudflare-resolve.log
+        run: node scripts/patch-deploy-config.mjs
 
       - name: Validate deployment artifact
-        id: validate
-        if: steps.resolve.outcome == 'success'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run validate:artifact 2>&1 | tee /tmp/cloudflare-validate.log
+        run: npm run validate:artifact
 
       - name: Deploy production Worker
-        id: deploy
-        if: steps.resolve.outcome == 'success' && steps.validate.outcome == 'success'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          npx wrangler deploy --config dist/server/wrangler.json --keep-vars 2>&1 | tee /tmp/cloudflare-deploy.log
-
-      - name: Report Cloudflare deployment success
-        if: steps.deploy.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh issue comment 6 \
-            --repo "$GITHUB_REPOSITORY" \
-            --body "### Cloudflare deployment succeeded
-
-- Commit: \`${GITHUB_SHA}\`
-- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-- Production Worker deploy completed successfully."
-
-      - name: Report Cloudflare deployment failure
-        if: >-
-          ${{ always() && (
-            steps.credentials.outcome == 'failure' ||
-            steps.resolve.outcome == 'failure' ||
-            steps.validate.outcome == 'failure' ||
-            steps.deploy.outcome == 'failure'
-          ) }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          stage="unknown"
-          log_file=""
-
-          if [[ "${{ steps.credentials.outcome }}" == "failure" ]]; then
-            stage="credentials"
-            log_file="/tmp/cloudflare-credentials.log"
-          elif [[ "${{ steps.resolve.outcome }}" == "failure" ]]; then
-            stage="resource resolution (D1/R2)"
-            log_file="/tmp/cloudflare-resolve.log"
-          elif [[ "${{ steps.validate.outcome }}" == "failure" ]]; then
-            stage="artifact validation"
-            log_file="/tmp/cloudflare-validate.log"
-          elif [[ "${{ steps.deploy.outcome }}" == "failure" ]]; then
-            stage="wrangler deploy"
-            log_file="/tmp/cloudflare-deploy.log"
-          fi
-
-          {
-            echo "### Cloudflare deployment failed"
-            echo
-            echo "- Commit: \`${GITHUB_SHA}\`"
-            echo "- Stage: **${stage}**"
-            echo "- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-            echo
-            echo '```text'
-            if [[ -f "$log_file" ]]; then
-              tail -n 80 "$log_file" \
-                | sed -E 's/[A-Za-z0-9_=-]{40,}/[redacted]/g'
-            else
-              echo "No stage log was produced."
-            fi
-            echo '```'
-          } > /tmp/cloudflare-failure-comment.md
-
-          gh issue comment 6 \
-            --repo "$GITHUB_REPOSITORY" \
-            --body-file /tmp/cloudflare-failure-comment.md
-
-      - name: Mark deployment failed
-        if: >-
-          ${{ always() && (
-            steps.credentials.outcome == 'failure' ||
-            steps.resolve.outcome == 'failure' ||
-            steps.validate.outcome == 'failure' ||
-            steps.deploy.outcome == 'failure'
-          ) }}
-        run: exit 1
+        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
