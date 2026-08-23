@@ -1,0 +1,99 @@
+name: Probe mobile no-JS consent click
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.head_ref == 'cloudflare-diagnostic/android-touch-fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Click server privacy form with JavaScript disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          mkdir -p /tmp/abags-nojs-probe
+          cd /tmp/abags-nojs-probe
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
+          CHROME_PATH="$CHROME" node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core';
+
+          const browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_PATH,
+            headless: true,
+            args: ['--no-sandbox', '--disable-dev-shm-usage'],
+          });
+
+          try {
+            const page = await browser.newPage();
+            await page.setJavaScriptEnabled(false);
+            await page.setViewport({ width: 674, height: 1462, deviceScaleFactor: 1 });
+            await page.setUserAgent('Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 Chrome/83.0 Mobile Safari/537.36');
+
+            await page.goto('https://abagshandmade.pl/', {
+              waitUntil: 'domcontentloaded',
+              timeout: 20000,
+            });
+
+            const snapshot = await page.evaluate(() => {
+              const banners = [...document.querySelectorAll('.privacy-banner')].map((el) => ({
+                classes: el.className,
+                display: getComputedStyle(el).display,
+                visibility: getComputedStyle(el).visibility,
+                pointerEvents: getComputedStyle(el).pointerEvents,
+              }));
+              const button = document.querySelector('.privacy-banner-server button[value="essential"]');
+              if (!(button instanceof HTMLElement)) return { banners, target: null };
+              const rect = button.getBoundingClientRect();
+              const x = rect.left + rect.width / 2;
+              const y = rect.top + rect.height / 2;
+              const hit = document.elementFromPoint(x, y);
+              return {
+                banners,
+                target: {
+                  x,
+                  y,
+                  buttonTag: button.tagName,
+                  hitTag: hit?.tagName ?? null,
+                  hitValue: hit instanceof HTMLButtonElement ? hit.value : null,
+                  hitClasses: hit instanceof HTMLElement ? hit.className : null,
+                },
+              };
+            });
+
+            console.log('BANNER_SNAPSHOT', JSON.stringify(snapshot.banners));
+            console.log('HIT_TARGET', JSON.stringify(snapshot.target));
+
+            if (!snapshot.target || snapshot.target.hitTag !== 'BUTTON' || snapshot.target.hitValue !== 'essential') {
+              throw new Error('tap target is covered by another element');
+            }
+
+            const button = await page.$('.privacy-banner-server button[value="essential"]');
+            if (!button) throw new Error('server essential button missing');
+            await Promise.all([
+              page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
+              button.click(),
+            ]);
+
+            const cookies = await page.cookies();
+            const consent = cookies.find((cookie) => cookie.name === 'abags-external-content');
+            const bannerCount = await page.$$eval('.privacy-banner-server', (nodes) => nodes.length);
+            console.log('URL_AFTER_CLICK', page.url());
+            console.log('CONSENT_COOKIE', consent?.value ?? 'missing');
+            console.log('SERVER_BANNER_AFTER_CLICK', bannerCount);
+
+            if (consent?.value !== 'rejected' || bannerCount !== 0) {
+              throw new Error('native no-JS consent click did not persist or dismiss banner');
+            }
+          } finally {
+            await browser.close();
+          }
+          NODE
