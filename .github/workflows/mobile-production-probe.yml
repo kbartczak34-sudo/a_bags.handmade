@@ -1,0 +1,58 @@
+name: Probe production hydration
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.head_ref == 'fix/mobile-privacy-interaction'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe production HTML and JavaScript assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const origin = 'https://abagshandmade.pl';
+          const response = await fetch(origin + '/', {
+            headers: { 'user-agent': 'A-Bags-CI-Hydration-Probe/1.0' },
+          });
+          console.log('HOME_STATUS', response.status);
+          console.log('HOME_CONTENT_TYPE', response.headers.get('content-type'));
+          console.log('HOME_CSP', response.headers.get('content-security-policy'));
+          if (!response.ok) process.exit(1);
+
+          const html = await response.text();
+          const srcs = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
+            .map((match) => match[1])
+            .filter((value, index, all) => all.indexOf(value) === index);
+          console.log('SCRIPT_COUNT', srcs.length);
+          if (srcs.length === 0) {
+            console.error('No external application scripts found in production HTML.');
+            process.exit(2);
+          }
+
+          let failed = false;
+          for (const src of srcs) {
+            const url = new URL(src, origin).toString();
+            const asset = await fetch(url, {
+              headers: { 'user-agent': 'A-Bags-CI-Hydration-Probe/1.0' },
+            });
+            const type = asset.headers.get('content-type') ?? '';
+            const body = await asset.arrayBuffer();
+            console.log('SCRIPT', asset.status, type, body.byteLength, url);
+            if (!asset.ok || (!type.includes('javascript') && !type.includes('ecmascript'))) {
+              failed = true;
+            }
+          }
+
+          if (failed) {
+            console.error('At least one production JavaScript asset is unavailable or has an invalid content type.');
+            process.exit(3);
+          }
+          NODE
