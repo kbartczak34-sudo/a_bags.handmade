@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: cloudflare-production
@@ -51,4 +52,51 @@ jobs:
         run: npm run validate:artifact
 
       - name: Deploy production Worker
+        id: deploy
         run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
+
+      - name: Smoke test deployed production
+        id: smoke
+        if: steps.deploy.outcome == 'success'
+        continue-on-error: true
+        env:
+          ABAGS_PRODUCTION_URL: https://abagshandmade.pl
+        run: bash scripts/smoke-production.sh
+
+      - name: Record deployment status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" ]]; then
+            RESULT="✅ PASS"
+          elif [[ "${DEPLOY_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ DEPLOY FAIL"
+          else
+            RESULT="❌ SMOKE FAIL"
+          fi
+
+          BODY="$(cat <<EOF
+          ### ${RESULT}
+
+          - Commit: \`${COMMIT_SHA}\`
+          - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
+          - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
+          - Run: ${RUN_URL}
+
+          Automated deployment record for \`main\`.
+          EOF
+          )"
+          gh issue comment 21 --body "$BODY"
+
+      - name: Fail when production smoke test fails
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome != 'success'
+        run: |
+          echo "Production deployment completed, but the live smoke test failed." >&2
+          exit 1
