@@ -1,7 +1,10 @@
 import type Stripe from "stripe";
 import { processFirstTenGift } from "../../../../lib/gift-rewards";
 import { sendOrderConfirmationEmail } from "../../../../lib/order-email";
-import { recordStripeOrderEvent } from "../../../../lib/orders";
+import {
+  recordStripeOrderEvent,
+  recordStripeRefundEvent,
+} from "../../../../lib/orders";
 import {
   getStripe,
   getStripeWebhookSecret,
@@ -68,6 +71,21 @@ export async function POST(request: Request) {
           paymentStatus: session.payment_status,
         });
       }
+    }
+
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const refund = await recordStripeRefundEvent(event, charge);
+      console.info("Stripe refund event processed", {
+        eventId: event.id,
+        chargeId: charge.id,
+        paymentIntentId:
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id,
+        matched: refund.matched,
+        refundStatus: refund.refundStatus,
+      });
     }
 
     return Response.json({ received: true });
