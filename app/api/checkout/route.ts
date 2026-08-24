@@ -1,4 +1,4 @@
-import { standardShippingAmount } from "../../../lib/catalog";
+import { standardShippingAmount, type CatalogProduct } from "../../../lib/catalog";
 import { getOrderSettings } from "../../../lib/orders";
 import { findVisibleProductsByIds } from "../../../lib/products";
 import {
@@ -71,6 +71,15 @@ function readPaymentChoice(request: Request): PaymentChoice {
   return (match?.[1] as PaymentChoice | undefined) ?? "blik";
 }
 
+function productComplianceComplete(product: CatalogProduct) {
+  return Boolean(
+    product.productIdentifier.trim() &&
+      product.materials.trim() &&
+      product.careInstructions.trim() &&
+      product.safetyInfo.trim(),
+  );
+}
+
 function publicStripeErrorMessage(code: string) {
   if (code === "api_key_expired" || code === "invalid_api_key") return "Stripe odrzucił klucz API używany przez sklep. Sprawdź STRIPE_SECRET_KEY w Cloudflare.";
   if (code === "stripe_permission_error") return "Klucz Stripe nie ma uprawnień do tworzenia płatności Checkout.";
@@ -93,7 +102,12 @@ function classifyStripeApiError(status: number, stripeError: StripeCheckoutRespo
   return "stripe_api_error";
 }
 
-function addProductLineItem(form: URLSearchParams,index: number,product: { id: string; name: string; detail: string; unitAmount: number },quantity: number) {
+function addProductLineItem(
+  form: URLSearchParams,
+  index: number,
+  product: { id: string; name: string; detail: string; unitAmount: number },
+  quantity: number,
+) {
   const prefix = `line_items[${index}]`;
   form.set(`${prefix}[quantity]`, String(quantity));
   form.set(`${prefix}[price_data][currency]`, "pln");
@@ -105,33 +119,73 @@ function addProductLineItem(form: URLSearchParams,index: number,product: { id: s
 
 export async function POST(request: Request) {
   let payload: ReturnType<typeof parsePayload>;
-  try { payload = parsePayload(await request.json()); } catch { return json({ error: "Nieprawidłowe dane zamówienia." }, 400); }
+  try {
+    payload = parsePayload(await request.json());
+  } catch {
+    return json({ error: "Nieprawidłowe dane zamówienia." }, 400);
+  }
   if (!payload) return json({ error: "Sprawdź koszyk i adres e-mail." }, 400);
 
   let productMap: Awaited<ReturnType<typeof findVisibleProductsByIds>>;
-  try { productMap = await findVisibleProductsByIds(payload.items.map((item) => item.id)); }
-  catch (error) {
-    console.error("Checkout catalog read failed", { message: error instanceof Error ? error.message : "Unknown error" });
+  try {
+    productMap = await findVisibleProductsByIds(payload.items.map((item) => item.id));
+  } catch (error) {
+    console.error("Checkout catalog read failed", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     return json({ error: "Nie udało się sprawdzić produktów w koszyku." }, 503);
   }
-  if (productMap.size !== payload.items.length) return json({ error: "Jeden z produktów nie jest już dostępny. Odśwież koszyk." }, 409);
+  if (productMap.size !== payload.items.length) {
+    return json({ error: "Jeden z produktów nie jest już dostępny. Odśwież koszyk." }, 409);
+  }
 
-  const selectedProducts = payload.items.map((item) => ({ product: productMap.get(item.id)!, quantity: item.quantity }));
+  const selectedProducts = payload.items.map((item) => ({
+    product: productMap.get(item.id)!,
+    quantity: item.quantity,
+  }));
+
+  const incompleteProducts = selectedProducts
+    .filter(({ product }) => !productComplianceComplete(product))
+    .map(({ product }) => product.name);
+  if (incompleteProducts.length > 0) {
+    console.warn("Checkout blocked by incomplete product compliance", {
+      productIds: selectedProducts
+        .filter(({ product }) => !productComplianceComplete(product))
+        .map(({ product }) => product.id),
+    });
+    return json(
+      {
+        error:
+          "Sprzedaż wybranego produktu jest chwilowo wstrzymana do czasu uzupełnienia jego danych bezpieczeństwa i identyfikacji.",
+        code: "product_compliance_incomplete",
+      },
+      503,
+    );
+  }
+
   const paymentChoice = readPaymentChoice(request);
   const shippingAmount = standardShippingAmount;
-  const cartReference = selectedProducts.map(({ product, quantity }) => `${product.id}:${quantity}`).join(",");
+  const cartReference = selectedProducts
+    .map(({ product, quantity }) => `${product.id}:${quantity}`)
+    .join(",");
   const origin = new URL(request.url).origin;
 
   let orderSettings = { pickupEnabled: false, pickupAddress: "" };
-  try { orderSettings = await getOrderSettings(); }
-  catch (error) { console.warn("Pickup settings unavailable", { message: error instanceof Error ? error.message : "Unknown error" }); }
+  try {
+    orderSettings = await getOrderSettings();
+  } catch (error) {
+    console.warn("Pickup settings unavailable", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 
   try {
     const secretKey = getStripeSecretKey();
     const form = new URLSearchParams();
     form.set("mode", "payment");
     form.set("locale", "pl");
-    form.set("allow_promotion_codes", "true");
+    // Promotion codes stay disabled until the store has a compliant 30-day
+    // price-history mechanism for price-reduction disclosures.
     form.set("payment_method_types[0]", paymentChoice === "blik" ? "blik" : "card");
     form.set("customer_email", payload.email);
     form.set("customer_creation", "always");
@@ -168,38 +222,92 @@ export async function POST(request: Request) {
       ? `Dostawa na terenie Polski lub bezpłatny odbiór osobisty: ${orderSettings.pickupAddress}`
       : "Dostawa jest obecnie dostępna na terenie Polski.";
     form.set("custom_text[shipping_address][message]", shippingMessage.slice(0, 1200));
-    form.set("custom_text[submit][message]", "Po płatności otrzymasz potwierdzenie na podany adres e-mail.");
+    form.set(
+      "custom_text[submit][message]",
+      "Po płatności otrzymasz potwierdzenie na podany adres e-mail.",
+    );
 
-    selectedProducts.forEach(({ product, quantity }, index) => addProductLineItem(form, index, product, quantity));
+    selectedProducts.forEach(({ product, quantity }, index) =>
+      addProductLineItem(form, index, product, quantity),
+    );
 
     let response: Response;
     try {
       response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": `abags-checkout-${crypto.randomUUID()}` },
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": `abags-checkout-${crypto.randomUUID()}`,
+        },
         body: form.toString(),
       });
     } catch (error) {
-      console.error("Stripe native fetch failed", { message: error instanceof Error ? error.message : "Unknown network error" });
-      return json({ error: `${publicStripeErrorMessage("stripe_network_error")} [stripe_network_error]`, code: "stripe_network_error" }, 502);
+      console.error("Stripe native fetch failed", {
+        message: error instanceof Error ? error.message : "Unknown network error",
+      });
+      return json(
+        {
+          error: `${publicStripeErrorMessage("stripe_network_error")} [stripe_network_error]`,
+          code: "stripe_network_error",
+        },
+        502,
+      );
     }
 
     const requestId = response.headers.get("request-id") ?? undefined;
     let stripeBody: StripeCheckoutResponse;
-    try { stripeBody = (await response.json()) as StripeCheckoutResponse; } catch { stripeBody = {}; }
+    try {
+      stripeBody = (await response.json()) as StripeCheckoutResponse;
+    } catch {
+      stripeBody = {};
+    }
     if (!response.ok) {
       const code = classifyStripeApiError(response.status, stripeBody.error);
-      console.error("Stripe Checkout API error", { status: response.status, code, type: stripeBody.error?.type, message: stripeBody.error?.message, requestId, paymentChoice });
-      return json({ error: `${publicStripeErrorMessage(code)} [${code}]`, code, requestId }, 502);
+      console.error("Stripe Checkout API error", {
+        status: response.status,
+        code,
+        type: stripeBody.error?.type,
+        message: stripeBody.error?.message,
+        requestId,
+        paymentChoice,
+      });
+      return json(
+        { error: `${publicStripeErrorMessage(code)} [${code}]`, code, requestId },
+        502,
+      );
     }
     if (!stripeBody.url) {
-      console.error("Stripe Checkout response missing URL", { sessionId: stripeBody.id, requestId });
-      return json({ error: "Stripe utworzył sesję bez adresu przekierowania. [stripe_missing_url]", code: "stripe_missing_url", requestId }, 502);
+      console.error("Stripe Checkout response missing URL", {
+        sessionId: stripeBody.id,
+        requestId,
+      });
+      return json(
+        {
+          error: "Stripe utworzył sesję bez adresu przekierowania. [stripe_missing_url]",
+          code: "stripe_missing_url",
+          requestId,
+        },
+        502,
+      );
     }
     return json({ url: stripeBody.url });
   } catch (error) {
-    if (error instanceof StripeConfigurationError) return json({ error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym." }, 503);
-    console.error("Checkout initialization error", { message: error instanceof Error ? error.message : "Unknown error" });
-    return json({ error: "Płatność jest chwilowo niedostępna. [checkout_initialization_error]", code: "checkout_initialization_error" }, 502);
+    if (error instanceof StripeConfigurationError) {
+      return json(
+        { error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym." },
+        503,
+      );
+    }
+    console.error("Checkout initialization error", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return json(
+      {
+        error: "Płatność jest chwilowo niedostępna. [checkout_initialization_error]",
+        code: "checkout_initialization_error",
+      },
+      502,
+    );
   }
 }

@@ -22,6 +22,11 @@ export type CatalogProduct = {
   imageUrl: string | null;
   isVisible: boolean;
   sortOrder: number;
+  productIdentifier: string;
+  batchCode: string;
+  materials: string;
+  careInstructions: string;
+  safetyInfo: string;
 };
 
 function fallbackProduct(input: Omit<CatalogProduct, "price" | "unitAmount" | "vatAmount" | "vatRate">): CatalogProduct {
@@ -46,6 +51,11 @@ export const products: CatalogProduct[] = [
     imageUrl: null,
     isVisible: true,
     sortOrder: 10,
+    productIdentifier: "",
+    batchCode: "",
+    materials: "",
+    careInstructions: "",
+    safetyInfo: "",
   }),
   fallbackProduct({
     id: "rose",
@@ -57,6 +67,11 @@ export const products: CatalogProduct[] = [
     imageUrl: null,
     isVisible: true,
     sortOrder: 20,
+    productIdentifier: "",
+    batchCode: "",
+    materials: "",
+    careInstructions: "",
+    safetyInfo: "",
   }),
   fallbackProduct({
     id: "natural",
@@ -68,6 +83,11 @@ export const products: CatalogProduct[] = [
     imageUrl: null,
     isVisible: true,
     sortOrder: 30,
+    productIdentifier: "",
+    batchCode: "",
+    materials: "",
+    careInstructions: "",
+    safetyInfo: "",
   }),
 ];
 

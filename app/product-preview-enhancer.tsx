@@ -175,14 +175,14 @@ export default function ProductPreviewEnhancer() {
               <span className="abags-preview-number">Model {product.number || "a_bags"}</span>
               <h2 id="abags-preview-title">{product.name}</h2>
               <p className="abags-preview-detail">{product.detail || "Ręcznie wykonana torebka a_bags.handmade."}</p>
-              <div className="abags-preview-availability"><strong>Wykonywana na zamówienie</strong><span>Dostępność ograniczona — każda sztuka powstaje ręcznie i indywidualnie.</span></div>
-              <strong className="abags-preview-price">{product.price}<small>Cena brutto · zawiera VAT 23%</small></strong>
+              <div className="abags-preview-availability"><strong>Ręcznie wykonany model</strong><span>Dostępność może być ograniczona ze względu na ręczny proces wykonania.</span></div>
+              <strong className="abags-preview-price">{product.price}<small>Cena dla konsumenta · status VAT zgodny z konfiguracją sklepu</small></strong>
               <div className="abags-preview-actions">
                 <button className="abags-preview-add" type="button" onClick={addToCart}>Zamów / dodaj do koszyka →</button>
                 <button className="abags-preview-cart" type="button" onClick={openCart}>Przejdź do koszyka</button>
               </div>
               <button className="abags-preview-return" type="button" onClick={closePreview}>← Wróć do katalogu produktów</button>
-              <p className="abags-preview-note">Produkt handmade wykonywany na zamówienie · bezpieczna płatność Stripe · wysyłka lub odbiór osobisty</p>
+              <p className="abags-preview-note">Produkt handmade · bezpieczna płatność Stripe · wysyłka lub odbiór osobisty</p>
             </div>
           </section>
         </div>
