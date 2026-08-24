@@ -49,3 +49,88 @@ jobs:
 
       - name: Wrangler dry-run validation
         run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars --dry-run
+
+      - name: Controlled production deploy
+        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
+
+      - name: Verify privacy banner dismisses in restricted Android WebView
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          mkdir -p /tmp/abags-privacy-probe && cd /tmp/abags-privacy-probe
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
+          CHROME_PATH="$CHROME" node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core';
+
+          const browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_PATH,
+            headless: true,
+            protocolTimeout: 30000,
+            args: ['--no-sandbox', '--disable-dev-shm-usage'],
+          });
+          const page = await browser.newPage();
+          const pageErrors = [];
+          page.on('pageerror', error => pageErrors.push(String(error)));
+
+          try {
+            await page.setViewport({ width: 674, height: 1462, deviceScaleFactor: 1 });
+            await page.setUserAgent('Mozilla/5.0 (Linux; Android 13; Infinix X6837) AppleWebKit/537.36 Chrome/139.0.0.0 Mobile Safari/537.36');
+
+            await page.evaluateOnNewDocument(() => {
+              const originalSetItem = Storage.prototype.setItem;
+              Storage.prototype.setItem = function(key, value) {
+                if (key === 'abags-external-content') {
+                  throw new DOMException('Storage denied by WebView', 'SecurityError');
+                }
+                return originalSetItem.call(this, key, value);
+              };
+            });
+
+            const response = await page.goto(`https://abagshandmade.pl/?privacyProbe=${Date.now()}`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 20000,
+            });
+            console.log('NAV_STATUS', response?.status());
+            await new Promise(resolve => setTimeout(resolve, 1800));
+
+            const button = await page.$('.privacy-banner-server button[value="essential"]');
+            if (!button) throw new Error('server privacy button missing');
+
+            await button.click();
+            await new Promise(resolve => setTimeout(resolve, 250));
+
+            const immediate = await page.evaluate(() => ({
+              visibleServer: [...document.querySelectorAll('.privacy-banner-server')].some(el => {
+                const style = getComputedStyle(el);
+                return !el.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+              }),
+              visibleAny: [...document.querySelectorAll('.privacy-banner')].some(el => {
+                const style = getComputedStyle(el);
+                return !el.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+              }),
+            }));
+            console.log('IMMEDIATE', JSON.stringify(immediate));
+            if (immediate.visibleServer || immediate.visibleAny) {
+              throw new Error('privacy banner remained visible after tap');
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            const cookie = (await page.cookies()).find(c => c.name === 'abags-external-content');
+            console.log('CONSENT_COOKIE', cookie?.value ?? 'missing');
+            if (cookie?.value !== 'rejected') throw new Error('server consent cookie missing');
+
+            await page.click('.menu-button');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const menuOpen = await page.$eval('.menu-button', el => el.getAttribute('aria-expanded'));
+            console.log('MENU_EXPANDED', menuOpen);
+            if (menuOpen !== 'true') throw new Error('menu not interactive after privacy dismissal');
+
+            console.log('PAGE_ERRORS', JSON.stringify(pageErrors));
+            if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
+          } finally {
+            await browser.close();
+          }
+          NODE
