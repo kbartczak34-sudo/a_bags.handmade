@@ -63,6 +63,8 @@ interface ExecutionContext {
 
 function isOwnerProtectedPath(pathname: string): boolean {
   return (
+    pathname === "/panel" ||
+    pathname.startsWith("/panel/") ||
     pathname === "/site-admin" ||
     pathname.startsWith("/site-admin/") ||
     pathname === "/api/admin" ||
@@ -73,6 +75,16 @@ function isOwnerProtectedPath(pathname: string): boolean {
 function hasExternalContentConsent(request: Request) {
   const cookie = request.headers.get("cookie") ?? "";
   return /(?:^|;\s*)abags-external-content=accepted(?:;|$)/.test(cookie);
+}
+
+function appendVary(headers: Headers, token: string) {
+  const current = headers.get("Vary");
+  if (!current) {
+    headers.set("Vary", token);
+    return;
+  }
+  const values = current.split(",").map((value) => value.trim().toLowerCase());
+  if (!values.includes(token.toLowerCase())) headers.set("Vary", `${current}, ${token}`);
 }
 
 function withBrowserPrivacyHeaders(request: Request, response: Response) {
@@ -92,8 +104,12 @@ function withBrowserPrivacyHeaders(request: Request, response: Response) {
     "Content-Security-Policy",
     `script-src 'self' 'unsafe-inline' 'unsafe-eval'${instagramScriptSources}; object-src 'none'; base-uri 'self'; frame-src ${frameSources}; frame-ancestors 'self'`,
   );
+  headers.set("Cache-Control", "no-store, max-age=0");
+  appendVary(headers, "Cookie");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "SAMEORIGIN");
+  headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   headers.set(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), payment=(self)",
