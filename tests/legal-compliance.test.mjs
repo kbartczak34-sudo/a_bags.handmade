@@ -88,3 +88,13 @@ test("VAT MutationObserver writes only when displayed text actually changes", ()
   assert.match(vatEnhancer, /setTextIfChanged\(note, status\.vatLabel\)/);
   assert.doesNotMatch(vatEnhancer, /note\.textContent = status\.vatLabel/);
 });
+
+test("privacy dismissal survives restricted Android WebViews and hides immediately", () => {
+  const enhancer = read("app/legal-compliance-enhancer.tsx");
+  assert.match(enhancer, /function readStoredExternalContentPreference/);
+  assert.match(enhancer, /window\.localStorage\.setItem\([\s\S]*?catch/);
+  assert.match(enhancer, /serverBanner\.hidden = true/);
+  assert.match(enhancer, /setPrivacyChoice\(choice\)/);
+  assert.match(enhancer, /persistPrivacyChoice\(choice\)/);
+  assert.match(enhancer, /submitPrivacyChoiceNatively\(choice\)/);
+});
