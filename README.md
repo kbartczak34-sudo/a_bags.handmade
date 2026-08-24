@@ -1,108 +1,242 @@
-# vinext-starter
+# A-Bags Handmade
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Production-oriented e-commerce application for **a_bags.handmade**, a Polish handmade handbag brand.
 
-## Prerequisites
+**Live storefront:** https://abagshandmade.pl  
+**Primary deployment target:** Cloudflare Workers
 
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
+> The application uses a fail-closed go-live model: checkout remains blocked until required seller, tax, product-safety, packaging, privacy and transactional-email configuration is explicitly completed and confirmed.
 
-## Sites Lifecycle
+## Product scope
 
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
+A-Bags Handmade combines a public storefront with an owner-only management panel and a Cloudflare-native backend.
 
-This starter does not use `wrangler.jsonc`.
+Core capabilities include:
 
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
+- responsive storefront for handmade bags;
+- persistent cart and checkout flow;
+- Stripe Checkout with card/BLIK payment selection;
+- fixed delivery pricing and optional owner-configured local pickup;
+- Stripe webhook processing and order persistence;
+- transactional order-confirmation e-mails;
+- product management with image upload to R2;
+- review submission, moderation and rate limiting;
+- editable storefront content;
+- order fulfilment management with carrier/tracking data;
+- Polish consumer/legal information pages;
+- privacy-consent handling with server fallback for restricted Android WebViews;
+- protected owner/admin surfaces;
+- production-readiness dashboard;
+- PWA metadata for standalone mobile use.
 
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
+## Architecture
 
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```text
+Browser / installed PWA
+        │
+        ▼
+Cloudflare Worker
+        │
+        ├── Vinext / React application
+        ├── Cloudflare Access → owner routes
+        ├── D1 → products, reviews, orders, settings
+        ├── R2 → product media
+        ├── Stripe → checkout + BLIK/cards + webhook
+        └── Resend → transactional order e-mail
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+### Runtime stack
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+- **React 19**
+- **Next.js 16 application model** compiled through **Vinext / Vite**
+- **TypeScript**
+- **Cloudflare Workers**
+- **Cloudflare D1**
+- **Cloudflare R2**
+- **Stripe**
+- **Drizzle ORM / Drizzle Kit**
+- **GitHub Actions** for build verification and production deployment
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+## Repository structure
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+```text
+app/                       storefront, legal pages, owner panel, API routes
+lib/                       catalog, products, orders, reviews, Stripe and legal config
+worker/                    Cloudflare Worker entry point and security/access layer
+scripts/                   deterministic build, artifact validation and deploy patching
+tests/                     regression and production-hardening tests
+public/                    PWA manifest, brand icon and public assets
+.github/workflows/         CI and Cloudflare deployment workflows
+LEGAL-COMPLIANCE-PL-2026.md
+```
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## Production security model
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+The Worker is the outer security boundary for production traffic.
 
-## Diagnostic Commands
+Implemented controls include:
 
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+- Cloudflare Access gate for `/panel`, `/site-admin` and `/api/admin/*`;
+- application-level admin e-mail allowlist checks;
+- checkout fail-closed when legal readiness is incomplete;
+- server-side Stripe amount/product validation;
+- signed Stripe webhook verification;
+- public review rate limiting using a SHA-256 client fingerprint rather than persisting raw IP addresses;
+- CSP with optional Instagram sources enabled only after consent;
+- `Strict-Transport-Security`;
+- `X-Content-Type-Options: nosniff`;
+- `X-Frame-Options: SAMEORIGIN`;
+- restricted `Permissions-Policy`;
+- HTML `Cache-Control: no-store` plus `Vary: Cookie` where consent affects rendered content/security policy;
+- image type validation from file bytes rather than trusting browser MIME metadata.
 
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
+## Owner panel
 
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
+The protected owner dashboard includes five areas:
 
-## Learn More
+1. **Status sklepu** — D1, R2, Stripe, webhook, transactional e-mail and legal go-live blockers.
+2. **Treść strony** — editable storefront content.
+3. **Produkty** — catalog, visibility, pricing and media.
+4. **Opinie** — moderation workflow.
+5. **Zamówienia** — payment/fulfilment status, tracking and pickup settings.
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+The readiness screen exposes only Boolean configuration states; secret values are never returned to the browser.
+
+## Payments and orders
+
+Checkout is created server-side. Product IDs and quantities are validated against the current visible catalog before Stripe line items are generated.
+
+Supported payment presentation includes:
+
+- card payments;
+- BLIK;
+- Stripe-supported wallet options when available to the customer/device.
+
+A successful Stripe webhook persists/updates the order and triggers the durable order-confirmation e-mail path. Checkout remains unavailable when the production legal/configuration gate reports unresolved blockers.
+
+## Polish legal-compliance layer
+
+The repository contains implementation support for the Polish/EU e-commerce compliance workstream, including:
+
+- `/regulamin`
+- `/polityka-prywatnosci`
+- `/cookies`
+- `/zwroty-i-reklamacje`
+- `/bezpieczenstwo-produktow`
+
+`LEGAL-COMPLIANCE-PL-2026.md` and the go-live issue track obligations that cannot be truthfully proven by code alone, such as the seller's actual business/VAT status, GPSR documentation, BDO/packaging obligations and privacy/vendor records.
+
+The source code intentionally does **not** invent or auto-confirm those facts.
+
+## Privacy and mobile compatibility
+
+The consent flow is designed to remain usable when React hydration, JavaScript storage or vendor Android WebViews behave differently from desktop Chrome.
+
+Key properties:
+
+- initial server-rendered consent form;
+- native POST fallback for the privacy choice;
+- cookie-backed server-visible consent;
+- defensive `localStorage` access;
+- immediate banner dismissal after selection;
+- optional Instagram content blocked until consent;
+- regression coverage for restricted Android WebView behaviour.
+
+The PWA manifest uses a standalone presentation with `/` as the application ID/scope and the a_bags brand icon.
+
+## Accessibility
+
+Current hardening includes:
+
+- semantic dialogs where applicable;
+- keyboard focus trap inside active modals;
+- initial focus management;
+- focus restoration after modal close;
+- accessible labels/ARIA state on interactive storefront controls;
+- responsive mobile layout.
+
+Accessibility is treated as an ongoing QA gate rather than a one-time certification claim.
+
+## Development
+
+Requirements:
+
+- Node.js `>=22.13.0`
+- npm
+- Linux/CI environment for the full build helper scripts
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run development mode:
+
+```bash
+npm run dev
+```
+
+Run the production build plus regression tests:
+
+```bash
+npm test
+```
+
+Validate an already generated deployment artifact:
+
+```bash
+npm run validate:artifact
+```
+
+## Deployment
+
+Production deployment is handled by GitHub Actions after changes reach `main`.
+
+The workflow:
+
+1. checks Cloudflare CI credentials;
+2. installs dependencies;
+3. runs the production build and regression suite;
+4. resolves the existing D1 database and R2 bucket;
+5. validates the generated Worker artifact;
+6. deploys with Wrangler while preserving production variables/secrets.
+
+Required GitHub Actions secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+Application/payment/legal secrets belong in the Cloudflare Worker environment and must not be committed to the repository.
+
+## Quality gates
+
+Regression coverage currently targets high-risk production behaviour, including:
+
+- legal pages and checkout gating;
+- VAT presentation modes;
+- Stripe order-confirmation path;
+- review transparency and rate limiting;
+- privacy/CSP behaviour;
+- Android privacy interaction regressions;
+- VAT MutationObserver loop prevention;
+- owner-route protection;
+- stale HTML/privacy cache prevention;
+- baseline browser security headers;
+- PWA manifest configuration;
+- robots/sitemap exposure;
+- modal focus management;
+- owner production-readiness dashboard.
+
+## Go-live status
+
+A successful build/deployment does **not** automatically mean consumer sales are legally enabled. The production checkout gate remains the source of truth for go-live readiness.
+
+See:
+
+- `LEGAL-COMPLIANCE-PL-2026.md`
+- GitHub issue: **Go-live PL 2026: zadania prawne i operacyjne poza kodem**
+
+## License
+
+This repository currently contains a **GNU General Public License v3.0** license file. Any future relicensing should be preceded by a copyright/contributor/dependency-license review rather than simply removing the existing license.
