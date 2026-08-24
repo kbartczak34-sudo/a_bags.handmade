@@ -85,8 +85,22 @@ export async function POST(request: Request) {
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return json({ error: "Podaj prawidłowy adres e-mail." }, 400);
   }
-  if (description.length < 20) {
-    return json({ error: "Opis zgłoszenia powinien mieć co najmniej 20 znaków." }, 400);
+  if (type === "complaint" && description.length < 20) {
+    return json({ error: "Opis reklamacji powinien mieć co najmniej 20 znaków." }, 400);
+  }
+  if (
+    type === "withdrawal" &&
+    !orderReference &&
+    !productName &&
+    description.length < 2
+  ) {
+    return json(
+      {
+        error:
+          "Wskaż numer zamówienia, produkt albo krótką informację pozwalającą zidentyfikować umowę.",
+      },
+      400,
+    );
   }
   if (type === "complaint" && requestedResolution.length < 2) {
     return json({ error: "Wskaż oczekiwane rozwiązanie reklamacji." }, 400);
@@ -111,6 +125,10 @@ export async function POST(request: Request) {
       type === "withdrawal"
         ? requestedResolution || "Odstąpienie od umowy"
         : requestedResolution;
+    const normalizedDescription =
+      type === "withdrawal" && !description
+        ? "Jednoznaczne oświadczenie o odstąpieniu od umowy złożone przez formularz online."
+        : description;
 
     const created = await createCustomerCase({
       type,
@@ -118,7 +136,7 @@ export async function POST(request: Request) {
       customerName,
       email,
       productName,
-      description,
+      description: normalizedDescription,
       requestedResolution: normalizedResolution,
     });
 
