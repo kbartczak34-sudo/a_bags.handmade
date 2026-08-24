@@ -86,13 +86,15 @@ export default function OrdersManager() {
   };
 
   const loadOrders = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/admin/orders", { cache: "no-store" });
       const data = (await response.json()) as OrdersPayload;
       if (!response.ok) throw new Error(data.error ?? "Nie udało się wczytać zamówień.");
-      applyPayload(data);
+      if (data.orders) setOrders(data.orders);
+      if (data.settings) setSettings(data.settings);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Nie udało się wczytać zamówień.");
     } finally {
@@ -102,7 +104,13 @@ export default function OrdersManager() {
   }, []);
 
   useEffect(() => {
-    void loadOrders(false);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void loadOrders(false);
+    });
+    return () => {
+      active = false;
+    };
   }, [loadOrders]);
 
   async function patch(body: Record<string, unknown>) {
