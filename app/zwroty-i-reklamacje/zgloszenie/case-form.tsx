@@ -8,6 +8,7 @@ type ApiPayload = {
   ok?: boolean;
   caseId?: string;
   responseDueAt?: string | null;
+  confirmationEmailSent?: boolean;
   message?: string;
   error?: string;
 };
@@ -93,15 +94,16 @@ export default function CaseForm() {
         </p>
         {success.responseDueAt && (
           <p>
-            Termin odpowiedzi zapisany w systemie: {" "}
+            Termin odpowiedzi zapisany w systemie:{" "}
             <strong>
               {new Date(success.responseDueAt).toLocaleDateString("pl-PL")}
             </strong>
           </p>
         )}
         <p style={{ marginBottom: 0 }}>
-          Zachowaj numer sprawy. Dalszy kontakt będzie prowadzony na podany adres
-          e-mail.
+          {success.confirmationEmailSent
+            ? "Potwierdzenie zgłoszenia zostało wysłane na podany adres e-mail."
+            : "Zachowaj numer sprawy. Jeżeli nie otrzymasz potwierdzenia e-mail, możesz skontaktować się ze sklepem, podając ten numer."}
         </p>
       </div>
     );
@@ -201,20 +203,30 @@ export default function CaseForm() {
       </label>
 
       <label style={fieldStyle}>
-        <span>{type === "complaint" ? "Opis problemu" : "Treść oświadczenia / dodatkowe informacje"}</span>
+        <span>
+          {type === "complaint"
+            ? "Opis problemu"
+            : "Dodatkowe informacje (opcjonalnie)"}
+        </span>
         <textarea
           style={{ ...inputStyle, resize: "vertical" }}
           name="description"
-          minLength={20}
+          minLength={type === "complaint" ? 20 : undefined}
           maxLength={3000}
           rows={7}
-          required
+          required={type === "complaint"}
           placeholder={
             type === "complaint"
               ? "Opisz, na czym polega problem i kiedy został zauważony."
-              : "Napisz, którego zamówienia lub produktu dotyczy odstąpienie."
+              : "Możesz doprecyzować, którego produktu lub zamówienia dotyczy odstąpienie."
           }
         />
+        {type === "withdrawal" && (
+          <small>
+            Przy odstąpieniu wskaż przynajmniej numer zamówienia, produkt albo krótką
+            informację pozwalającą zidentyfikować umowę.
+          </small>
+        )}
       </label>
 
       {type === "complaint" && (
