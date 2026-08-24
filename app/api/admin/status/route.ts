@@ -2,6 +2,7 @@ import { isAdminRequest } from "../../../../lib/admin-auth";
 import { getPublicLegalConfig } from "../../../../lib/legal-config";
 import { listAdminProducts } from "../../../../lib/products";
 import { getRuntimeBindings } from "../../../../lib/runtime-env";
+import { getStripeKeyMode } from "../../../../lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
 
   const env = getRuntimeBindings();
   const legal = getPublicLegalConfig();
+  const stripeMode = getStripeKeyMode();
 
   let databaseReady = false;
   if (env.DB) {
@@ -46,7 +48,7 @@ export async function GET(request: Request) {
   const technical = {
     databaseReady,
     mediaReady: Boolean(env.BUCKET),
-    stripeReady: hasValue(env.STRIPE_SECRET_KEY),
+    stripeReady: stripeMode === "live",
     webhookReady: hasValue(env.STRIPE_WEBHOOK_SECRET),
     emailReady: hasValue(env.RESEND_API_KEY) && hasValue(env.ORDER_EMAIL_FROM),
   };
@@ -87,6 +89,7 @@ export async function GET(request: Request) {
     checkedAt: new Date().toISOString(),
     launchReady,
     checkoutGate: launchReady ? "ready" : "blocked",
+    stripeMode,
     technical,
     productCompliance,
     legal: {

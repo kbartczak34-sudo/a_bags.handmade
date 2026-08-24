@@ -14,6 +14,7 @@ type StoreStatusPayload = {
   checkedAt: string;
   launchReady: boolean;
   checkoutGate: "ready" | "blocked";
+  stripeMode: "live" | "test" | "unknown" | "missing";
   technical: TechnicalStatus;
   productCompliance: {
     ready: boolean;
@@ -49,6 +50,13 @@ function readableVatMode(value: StoreStatusPayload["legal"]["vatMode"]) {
   if (value === "active_23") return "VAT czynny 23%";
   if (value === "exempt") return "Zwolnienie z VAT";
   return "Nieustalone";
+}
+
+function readableStripeMode(value: StoreStatusPayload["stripeMode"]) {
+  if (value === "live") return "LIVE";
+  if (value === "test") return "TEST";
+  if (value === "missing") return "BRAK KLUCZA";
+  return "NIEZNANY TRYB";
 }
 
 export default function StoreStatus() {
@@ -133,7 +141,10 @@ export default function StoreStatus() {
                   <div className="admin-review-meta">
                     <div>
                       <strong>{title}</strong>
-                      <small>{description}</small>
+                      <small>
+                        {description}
+                        {key === "stripeReady" ? ` · tryb ${readableStripeMode(status.stripeMode)}` : ""}
+                      </small>
                     </div>
                     <span className={ready ? "is-approved" : "is-rejected"}>
                       {ready ? "OK" : "BRAK"}

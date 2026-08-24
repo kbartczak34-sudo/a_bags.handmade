@@ -8,6 +8,8 @@ export class StripeConfigurationError extends Error {
   }
 }
 
+export type StripeKeyMode = "live" | "test" | "unknown" | "missing";
+
 function normalizeSecret(name: string, raw: string) {
   let value = raw.trim();
 
@@ -31,6 +33,18 @@ function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
   const runtime = getRuntimeBindings();
   const raw = runtime[name] ?? process.env[name];
   return typeof raw === "string" ? normalizeSecret(name, raw) : undefined;
+}
+
+export function detectStripeKeyMode(secretKey: string | undefined): StripeKeyMode {
+  const value = secretKey?.trim();
+  if (!value) return "missing";
+  if (/^(?:sk|rk)_live_/.test(value)) return "live";
+  if (/^(?:sk|rk)_test_/.test(value)) return "test";
+  return "unknown";
+}
+
+export function getStripeKeyMode() {
+  return detectStripeKeyMode(readSecret("STRIPE_SECRET_KEY"));
 }
 
 export function getStripeSecretKey() {

@@ -2,6 +2,7 @@ import { standardShippingAmount, type CatalogProduct } from "../../../lib/catalo
 import { getOrderSettings } from "../../../lib/orders";
 import { findVisibleProductsByIds } from "../../../lib/products";
 import {
+  detectStripeKeyMode,
   getStripeSecretKey,
   StripeConfigurationError,
 } from "../../../lib/stripe";
@@ -168,7 +169,11 @@ export async function POST(request: Request) {
   const cartReference = selectedProducts
     .map(({ product, quantity }) => `${product.id}:${quantity}`)
     .join(",");
-  const origin = new URL(request.url).origin;
+  const requestUrl = new URL(request.url);
+  const origin = requestUrl.origin;
+  const isProductionHost = ["abagshandmade.pl", "www.abagshandmade.pl"].includes(
+    requestUrl.hostname.toLowerCase(),
+  );
 
   let orderSettings = { pickupEnabled: false, pickupAddress: "" };
   try {
@@ -181,6 +186,20 @@ export async function POST(request: Request) {
 
   try {
     const secretKey = getStripeSecretKey();
+    const stripeMode = detectStripeKeyMode(secretKey);
+    if (isProductionHost && stripeMode !== "live") {
+      console.error("Checkout blocked because production host is not using Stripe live mode", {
+        stripeMode,
+      });
+      return json(
+        {
+          error: "Płatności produkcyjne nie są jeszcze aktywne. [stripe_live_required]",
+          code: "stripe_live_required",
+        },
+        503,
+      );
+    }
+
     const form = new URLSearchParams();
     form.set("mode", "payment");
     form.set("locale", "pl");
