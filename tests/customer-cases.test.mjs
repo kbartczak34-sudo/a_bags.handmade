@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const store = fs.readFileSync("lib/customer-cases.ts", "utf8");
+const email = fs.readFileSync("lib/customer-case-email.ts", "utf8");
 const publicApi = fs.readFileSync("app/api/customer-cases/route.ts", "utf8");
 const adminApi = fs.readFileSync("app/api/admin/customer-cases/route.ts", "utf8");
 const form = fs.readFileSync("app/zwroty-i-reklamacje/zgloszenie/case-form.tsx", "utf8");
@@ -26,6 +27,19 @@ test("public case submission is rate limited without storing raw IP addresses", 
   assert.match(publicApi, /consumeCustomerCaseSubmission/);
   assert.match(publicApi, /429/);
   assert.doesNotMatch(store, /ip_address|raw_ip/i);
+});
+
+test("customer case submission sends a durable idempotent email confirmation and records delivery", () => {
+  assert.match(email, /https:\/\/api\.resend\.com\/emails/);
+  assert.match(email, /Idempotency-Key/);
+  assert.match(email, /customer-case-confirmation\/\$\{input\.id\}/);
+  assert.match(email, /Zachowaj tę wiadomość jako potwierdzenie wysłania zgłoszenia/);
+  assert.match(publicApi, /sendCustomerCaseConfirmationEmail/);
+  assert.match(publicApi, /markCustomerCaseConfirmationSent/);
+  assert.match(publicApi, /confirmationEmailSent/);
+  assert.match(store, /confirmation_email_sent_at TEXT/);
+  assert.match(adminManager, /Potwierdzenie e-mail/);
+  assert.match(adminManager, /brak potwierdzonej wysyłki/);
 });
 
 test("customer case form minimizes data and does not require a RODO consent checkbox", () => {
