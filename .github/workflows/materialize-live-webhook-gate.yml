@@ -1,0 +1,69 @@
+name: Materialize live webhook gate
+
+on:
+  push:
+    branches: [build/stripe-live-webhook-gate]
+    paths:
+      - ".github/workflows/materialize-live-webhook-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: build/stripe-live-webhook-gate
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Patch Worker, checkout and dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+
+          async function patchFile(path, replacements) {
+            let source = await readFile(path, "utf8");
+            for (const [from, to, label] of replacements) {
+              if (!source.includes(from)) throw new Error(`${path}: missing ${label}`);
+              source = source.replace(from, to);
+            }
+            await writeFile(path, source);
+          }
+
+          await patchFile("worker/index.ts", [
+            ['  STRIPE_WEBHOOK_SECRET?: string;\n  RESEND_API_KEY?: string;', '  STRIPE_WEBHOOK_SECRET?: string;\n  STRIPE_LIVE_WEBHOOK_CONFIRMED?: string;\n  RESEND_API_KEY?: string;', "worker env webhook confirmation"],
+            ['      STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET,\n      RESEND_API_KEY: env.RESEND_API_KEY,', '      STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET,\n      STRIPE_LIVE_WEBHOOK_CONFIRMED: env.STRIPE_LIVE_WEBHOOK_CONFIRMED,\n      RESEND_API_KEY: env.RESEND_API_KEY,', "runtime webhook confirmation binding"],
+          ]);
+
+          await patchFile("app/api/checkout/route.ts", [
+            ['  detectStripeKeyMode,\n  getStripeSecretKey,\n  StripeConfigurationError,', '  detectStripeKeyMode,\n  getStripeSecretKey,\n  isStripeLiveWebhookReady,\n  StripeConfigurationError,', "live webhook helper import"],
+            ['    if (isProductionHost && stripeMode !== "live") {\n      console.error("Checkout blocked because production host is not using Stripe live mode", {\n        stripeMode,\n      });\n      return json(\n        {\n          error: "Płatności produkcyjne nie są jeszcze aktywne. [stripe_live_required]",\n          code: "stripe_live_required",\n        },\n        503,\n      );\n    }\n\n    const form = new URLSearchParams();', '    if (isProductionHost && stripeMode !== "live") {\n      console.error("Checkout blocked because production host is not using Stripe live mode", {\n        stripeMode,\n      });\n      return json(\n        {\n          error: "Płatności produkcyjne nie są jeszcze aktywne. [stripe_live_required]",\n          code: "stripe_live_required",\n        },\n        503,\n      );\n    }\n    if (isProductionHost && !isStripeLiveWebhookReady()) {\n      console.error("Checkout blocked because the Stripe live webhook is not confirmed");\n      return json(\n        {\n          error: "Webhook płatności produkcyjnych nie został jeszcze potwierdzony. [stripe_live_webhook_required]",\n          code: "stripe_live_webhook_required",\n        },\n        503,\n      );\n    }\n\n    const form = new URLSearchParams();', "live webhook checkout gate"],
+          ]);
+
+          await patchFile("app/panel/store-status.tsx", [
+            ['  stripeMode: "live" | "test" | "unknown" | "missing";\n  technical: TechnicalStatus;', '  stripeMode: "live" | "test" | "unknown" | "missing";\n  liveWebhookConfirmed: boolean;\n  technical: TechnicalStatus;', "live webhook payload type"],
+            ['{key === "stripeReady" ? ` · tryb ${readableStripeMode(status.stripeMode)}` : ""}', '{key === "stripeReady" ? ` · tryb ${readableStripeMode(status.stripeMode)}` : ""}\n                        {key === "webhookReady"\n                          ? ` · live ${status.liveWebhookConfirmed ? "potwierdzony" : "niepotwierdzony"}`\n                          : ""}', "dashboard webhook confirmation detail"],
+          ]);
+          NODE
+
+      - name: Commit materialized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add worker/index.ts app/api/checkout/route.ts app/panel/store-status.tsx
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Require confirmed Stripe live webhook on production"
+          git push origin HEAD:build/stripe-live-webhook-gate
