@@ -12,6 +12,11 @@ type ProductRow = {
   is_visible: number;
   image_key: string | null;
   image_content_type: string | null;
+  product_identifier: string;
+  batch_code: string;
+  materials: string;
+  care_instructions: string;
+  safety_info: string;
   created_at: string;
   updated_at: string;
 };
@@ -25,6 +30,11 @@ export type AdminProduct = {
   sortOrder: number;
   isVisible: boolean;
   imageUrl: string | null;
+  productIdentifier: string;
+  batchCode: string;
+  materials: string;
+  careInstructions: string;
+  safetyInfo: string;
   updatedAt: string;
 };
 
@@ -34,6 +44,14 @@ export type ProductInput = {
   priceCents: number;
   sortOrder: number;
   isVisible: boolean;
+};
+
+export type ProductComplianceInput = {
+  productIdentifier: string;
+  batchCode: string;
+  materials: string;
+  careInstructions: string;
+  safetyInfo: string;
 };
 
 const createProductsSql = `
@@ -47,6 +65,11 @@ const createProductsSql = `
     is_visible INTEGER NOT NULL DEFAULT 1,
     image_key TEXT,
     image_content_type TEXT,
+    product_identifier TEXT NOT NULL DEFAULT '',
+    batch_code TEXT NOT NULL DEFAULT '',
+    materials TEXT NOT NULL DEFAULT '',
+    care_instructions TEXT NOT NULL DEFAULT '',
+    safety_info TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )
@@ -63,6 +86,14 @@ const createProductsSortIndexSql = `
   CREATE INDEX IF NOT EXISTS products_sort_order_idx
   ON products (sort_order, created_at)
 `;
+
+const complianceColumns = [
+  ["product_identifier", "TEXT NOT NULL DEFAULT ''"],
+  ["batch_code", "TEXT NOT NULL DEFAULT ''"],
+  ["materials", "TEXT NOT NULL DEFAULT ''"],
+  ["care_instructions", "TEXT NOT NULL DEFAULT ''"],
+  ["safety_info", "TEXT NOT NULL DEFAULT ''"],
+] as const;
 
 const seedProducts = [
   {
@@ -105,6 +136,26 @@ export function getProductBucket() {
   return bucket;
 }
 
+async function ensureProductComplianceColumns() {
+  const db = getProductDb();
+  const info = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
+  const existing = new Set(info.results.map((column) => column.name));
+
+  for (const [name, definition] of complianceColumns) {
+    if (existing.has(name)) continue;
+    try {
+      await db.prepare(`ALTER TABLE products ADD COLUMN ${name} ${definition}`).run();
+      existing.add(name);
+    } catch (error) {
+      // Multiple Worker isolates can race during the first migration. Recheck the
+      // schema and only fail if the column is genuinely still absent.
+      const refreshed = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
+      if (!refreshed.results.some((column) => column.name === name)) throw error;
+      existing.add(name);
+    }
+  }
+}
+
 async function initializeCatalog() {
   const db = getProductDb();
   await db.batch([
@@ -112,6 +163,7 @@ async function initializeCatalog() {
     db.prepare(createSettingsSql),
     db.prepare(createProductsSortIndexSql),
   ]);
+  await ensureProductComplianceColumns();
 
   const seeded = await db
     .prepare("SELECT value FROM app_settings WHERE key = ? LIMIT 1")
@@ -171,6 +223,11 @@ function toAdminProduct(row: ProductRow): AdminProduct {
     sortOrder: row.sort_order,
     isVisible: Boolean(row.is_visible),
     imageUrl: productImageUrl(row),
+    productIdentifier: row.product_identifier,
+    batchCode: row.batch_code,
+    materials: row.materials,
+    careInstructions: row.care_instructions,
+    safetyInfo: row.safety_info,
     updatedAt: row.updated_at,
   };
 }
@@ -195,18 +252,25 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
     imageUrl: productImageUrl(row),
     isVisible: Boolean(row.is_visible),
     sortOrder: row.sort_order,
+    productIdentifier: row.product_identifier,
+    batchCode: row.batch_code,
+    materials: row.materials,
+    careInstructions: row.care_instructions,
+    safetyInfo: row.safety_info,
   };
 }
+
+const productSelect = `
+  SELECT id, name, detail, price_cents, tone, sort_order, is_visible,
+         image_key, image_content_type, product_identifier, batch_code,
+         materials, care_instructions, safety_info, created_at, updated_at
+  FROM products
+`;
 
 export async function listAdminProducts() {
   await ensureCatalogReady();
   const result = await getProductDb()
-    .prepare(
-      `SELECT id, name, detail, price_cents, tone, sort_order, is_visible,
-              image_key, image_content_type, created_at, updated_at
-       FROM products
-       ORDER BY sort_order ASC, created_at ASC`,
-    )
+    .prepare(`${productSelect} ORDER BY sort_order ASC, created_at ASC`)
     .all<ProductRow>();
   return result.results.map(toAdminProduct);
 }
@@ -214,13 +278,7 @@ export async function listAdminProducts() {
 export async function listStorefrontProducts() {
   await ensureCatalogReady();
   const result = await getProductDb()
-    .prepare(
-      `SELECT id, name, detail, price_cents, tone, sort_order, is_visible,
-              image_key, image_content_type, created_at, updated_at
-       FROM products
-       WHERE is_visible = 1
-       ORDER BY sort_order ASC, created_at ASC`,
-    )
+    .prepare(`${productSelect} WHERE is_visible = 1 ORDER BY sort_order ASC, created_at ASC`)
     .all<ProductRow>();
   return result.results.map(toCatalogProduct);
 }
@@ -232,12 +290,7 @@ export async function findVisibleProductsByIds(
   await ensureCatalogReady();
   const placeholders = ids.map(() => "?").join(", ");
   const result = await getProductDb()
-    .prepare(
-      `SELECT id, name, detail, price_cents, tone, sort_order, is_visible,
-              image_key, image_content_type, created_at, updated_at
-       FROM products
-       WHERE is_visible = 1 AND id IN (${placeholders})`,
-    )
+    .prepare(`${productSelect} WHERE is_visible = 1 AND id IN (${placeholders})`)
     .bind(...ids)
     .all<ProductRow>();
   return new Map<string, CatalogProduct>(
@@ -351,6 +404,31 @@ export async function updateProduct(
   }
 
   return { updated: true, oldImageKey: existing.image_key };
+}
+
+export async function updateProductCompliance(
+  id: string,
+  input: ProductComplianceInput,
+) {
+  await ensureCatalogReady();
+  const result = await getProductDb()
+    .prepare(
+      `UPDATE products
+       SET product_identifier = ?, batch_code = ?, materials = ?,
+           care_instructions = ?, safety_info = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .bind(
+      input.productIdentifier,
+      input.batchCode,
+      input.materials,
+      input.careInstructions,
+      input.safetyInfo,
+      new Date().toISOString(),
+      id,
+    )
+    .run() as { meta?: { changes?: number } };
+  return Boolean(result.meta?.changes);
 }
 
 export async function deleteProduct(id: string) {
