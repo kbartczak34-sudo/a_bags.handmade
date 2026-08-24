@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,12 +18,15 @@ jobs:
       ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
       - name: Use Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
       - name: Build and regression tests
         run: npm test
