@@ -1,15 +1,33 @@
 import {
+  consumeReviewSubmission,
   createPendingReview,
   listApprovedReviews,
 } from "../../../lib/reviews";
 
 export const dynamic = "force-dynamic";
 
-function json(data: unknown, status = 200) {
+function json(data: unknown, status = 200, extraHeaders?: HeadersInit) {
   return Response.json(data, {
     status,
-    headers: { "Cache-Control": "no-store" },
+    headers: {
+      "Cache-Control": "no-store",
+      ...extraHeaders,
+    },
   });
+}
+
+async function reviewFingerprint(request: Request) {
+  const source =
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`a-bags-review:${source}`),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
 }
 
 export async function GET() {
@@ -49,8 +67,24 @@ export async function POST(request: Request) {
   }
 
   try {
+    const limit = await consumeReviewSubmission(await reviewFingerprint(request));
+    if (!limit.allowed) {
+      return json(
+        { error: "Wysłano zbyt wiele opinii. Spróbuj ponownie później." },
+        429,
+        {
+          "Retry-After": String(limit.retryAfter),
+          "X-RateLimit-Remaining": String(limit.remaining),
+        },
+      );
+    }
+
     await createPendingReview(authorName, content);
-    return json({ ok: true, message: "Dziękujemy! Opinia pojawi się po akceptacji." }, 201);
+    return json(
+      { ok: true, message: "Dziękujemy! Opinia pojawi się po akceptacji." },
+      201,
+      { "X-RateLimit-Remaining": String(limit.remaining) },
+    );
   } catch (error) {
     console.error("Review submission failed", {
       message: error instanceof Error ? error.message : "Unknown error",
