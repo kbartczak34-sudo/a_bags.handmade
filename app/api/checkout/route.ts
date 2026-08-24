@@ -4,6 +4,7 @@ import { findVisibleProductsByIds } from "../../../lib/products";
 import {
   detectStripeKeyMode,
   getStripeSecretKey,
+  isStripeLiveWebhookReady,
   StripeConfigurationError,
 } from "../../../lib/stripe";
 
@@ -195,6 +196,16 @@ export async function POST(request: Request) {
         {
           error: "Płatności produkcyjne nie są jeszcze aktywne. [stripe_live_required]",
           code: "stripe_live_required",
+        },
+        503,
+      );
+    }
+    if (isProductionHost && !isStripeLiveWebhookReady()) {
+      console.error("Checkout blocked because the Stripe live webhook is not confirmed");
+      return json(
+        {
+          error: "Webhook płatności produkcyjnych nie został jeszcze potwierdzony. [stripe_live_webhook_required]",
+          code: "stripe_live_webhook_required",
         },
         503,
       );

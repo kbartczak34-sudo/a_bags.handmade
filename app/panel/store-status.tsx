@@ -15,6 +15,7 @@ type StoreStatusPayload = {
   launchReady: boolean;
   checkoutGate: "ready" | "blocked";
   stripeMode: "live" | "test" | "unknown" | "missing";
+  liveWebhookConfirmed: boolean;
   technical: TechnicalStatus;
   productCompliance: {
     ready: boolean;
@@ -144,6 +145,9 @@ export default function StoreStatus() {
                       <small>
                         {description}
                         {key === "stripeReady" ? ` · tryb ${readableStripeMode(status.stripeMode)}` : ""}
+                        {key === "webhookReady"
+                          ? ` · live ${status.liveWebhookConfirmed ? "potwierdzony" : "niepotwierdzony"}`
+                          : ""}
                       </small>
                     </div>
                     <span className={ready ? "is-approved" : "is-rejected"}>

@@ -33,6 +33,7 @@ export type RuntimeBindings = {
   BUCKET?: R2BucketBinding;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_LIVE_WEBHOOK_CONFIRMED?: string;
   RESEND_API_KEY?: string;
   ORDER_EMAIL_FROM?: string;
 

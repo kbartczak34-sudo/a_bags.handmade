@@ -2,7 +2,11 @@ import { isAdminRequest } from "../../../../lib/admin-auth";
 import { getPublicLegalConfig } from "../../../../lib/legal-config";
 import { listAdminProducts } from "../../../../lib/products";
 import { getRuntimeBindings } from "../../../../lib/runtime-env";
-import { getStripeKeyMode } from "../../../../lib/stripe";
+import {
+  getStripeKeyMode,
+  isStripeLiveWebhookConfirmed,
+  isStripeLiveWebhookReady,
+} from "../../../../lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +38,7 @@ export async function GET(request: Request) {
   const env = getRuntimeBindings();
   const legal = getPublicLegalConfig();
   const stripeMode = getStripeKeyMode();
+  const liveWebhookConfirmed = isStripeLiveWebhookConfirmed();
 
   let databaseReady = false;
   if (env.DB) {
@@ -49,7 +54,7 @@ export async function GET(request: Request) {
     databaseReady,
     mediaReady: Boolean(env.BUCKET),
     stripeReady: stripeMode === "live",
-    webhookReady: hasValue(env.STRIPE_WEBHOOK_SECRET),
+    webhookReady: isStripeLiveWebhookReady(),
     emailReady: hasValue(env.RESEND_API_KEY) && hasValue(env.ORDER_EMAIL_FROM),
   };
 
@@ -90,6 +95,7 @@ export async function GET(request: Request) {
     launchReady,
     checkoutGate: launchReady ? "ready" : "blocked",
     stripeMode,
+    liveWebhookConfirmed,
     technical,
     productCompliance,
     legal: {
