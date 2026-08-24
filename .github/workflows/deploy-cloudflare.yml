@@ -28,6 +28,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Verify Cloudflare credentials are configured
         shell: bash
@@ -37,13 +39,13 @@ jobs:
           [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo "Missing GitHub Actions secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
           echo "Cloudflare CI credentials are configured."
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
 
-      - name: Build and run regression tests
+      - name: Run full production quality gate
         env:
           ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
-        run: npm test
+        run: npm run check
 
       - name: Resolve production D1/R2 bindings
         run: node scripts/patch-deploy-config.mjs
