@@ -89,7 +89,7 @@ function buildComplianceDetails(product: ProductCompliance, status: LegalStatus)
   return section;
 }
 
-function enhanceCards(products: ProductCompliance[], status: LegalStatus) {
+function enhanceCards(products: ProductCompliance[]) {
   document.querySelectorAll<HTMLElement>(".product-card").forEach((card) => {
     const name = card.querySelector<HTMLElement>(".product-info h3")?.textContent?.trim() ?? "";
     const number = card.querySelector<HTMLElement>(".product-number")?.textContent?.trim() ?? "";
@@ -184,7 +184,7 @@ export default function ProductComplianceEnhancer() {
     if (!status || products.length === 0) return;
 
     const enhance = () => {
-      enhanceCards(products, status);
+      enhanceCards(products);
       enhancePreview(products, status);
     };
 
