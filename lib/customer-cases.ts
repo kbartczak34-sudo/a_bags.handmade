@@ -16,6 +16,7 @@ type CustomerCaseRow = {
   response_due_at: string | null;
   response_note: string;
   responded_at: string | null;
+  confirmation_email_sent_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +49,7 @@ export type AdminCustomerCase = {
   responseDueAt: string | null;
   responseNote: string;
   respondedAt: string | null;
+  confirmationEmailSentAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -66,6 +68,7 @@ const createCasesSql = `
     response_due_at TEXT,
     response_note TEXT NOT NULL DEFAULT '',
     responded_at TEXT,
+    confirmation_email_sent_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )
@@ -101,6 +104,14 @@ function getCaseDb() {
   return db;
 }
 
+async function addColumn(sql: string) {
+  try {
+    await getCaseDb().prepare(sql).run();
+  } catch {
+    // Kolumna już istnieje.
+  }
+}
+
 async function initializeCustomerCases() {
   const db = getCaseDb();
   await db.batch([
@@ -109,6 +120,7 @@ async function initializeCustomerCases() {
     db.prepare(createCasesDueIndexSql),
     db.prepare(createCaseRateLimitsSql),
   ]);
+  await addColumn("ALTER TABLE customer_cases ADD COLUMN confirmation_email_sent_at TEXT");
 }
 
 export async function ensureCustomerCasesReady() {
@@ -135,6 +147,7 @@ function toAdminCase(row: CustomerCaseRow): AdminCustomerCase {
     responseDueAt: row.response_due_at,
     responseNote: row.response_note,
     respondedAt: row.responded_at,
+    confirmationEmailSentAt: row.confirmation_email_sent_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -203,8 +216,9 @@ export async function createCustomerCase(input: NewCustomerCase) {
       `INSERT INTO customer_cases
         (id, type, order_reference, customer_name, email, product_name,
          description, requested_resolution, status, response_due_at,
-         response_note, responded_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, '', NULL, ?, ?)`,
+         response_note, responded_at, confirmation_email_sent_at,
+         created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, '', NULL, NULL, ?, ?)`,
     )
     .bind(
       id,
@@ -221,7 +235,22 @@ export async function createCustomerCase(input: NewCustomerCase) {
     )
     .run();
 
-  return { id, responseDueAt };
+  return { id, createdAt, responseDueAt };
+}
+
+export async function markCustomerCaseConfirmationSent(id: string) {
+  await ensureCustomerCasesReady();
+  const now = new Date().toISOString();
+  await getCaseDb()
+    .prepare(
+      `UPDATE customer_cases
+       SET confirmation_email_sent_at = COALESCE(confirmation_email_sent_at, ?),
+           updated_at = ?
+       WHERE id = ?`,
+    )
+    .bind(now, now, id)
+    .run();
+  return now;
 }
 
 export async function listCustomerCases(limit = 200) {
@@ -231,7 +260,8 @@ export async function listCustomerCases(limit = 200) {
     .prepare(
       `SELECT id, type, order_reference, customer_name, email, product_name,
               description, requested_resolution, status, response_due_at,
-              response_note, responded_at, created_at, updated_at
+              response_note, responded_at, confirmation_email_sent_at,
+              created_at, updated_at
        FROM customer_cases
        ORDER BY
          CASE status
