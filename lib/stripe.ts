@@ -35,6 +35,13 @@ function readSecret(name: "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET") {
   return typeof raw === "string" ? normalizeSecret(name, raw) : undefined;
 }
 
+function readRuntimeFlag(name: "STRIPE_LIVE_WEBHOOK_CONFIRMED") {
+  const runtime = getRuntimeBindings();
+  const raw = runtime[name] ?? process.env[name];
+  if (typeof raw !== "string") return false;
+  return ["1", "true", "yes", "on"].includes(raw.trim().toLowerCase());
+}
+
 export function detectStripeKeyMode(secretKey: string | undefined): StripeKeyMode {
   const value = secretKey?.trim();
   if (!value) return "missing";
@@ -45,6 +52,14 @@ export function detectStripeKeyMode(secretKey: string | undefined): StripeKeyMod
 
 export function getStripeKeyMode() {
   return detectStripeKeyMode(readSecret("STRIPE_SECRET_KEY"));
+}
+
+export function isStripeLiveWebhookConfirmed() {
+  return readRuntimeFlag("STRIPE_LIVE_WEBHOOK_CONFIRMED");
+}
+
+export function isStripeLiveWebhookReady() {
+  return Boolean(readSecret("STRIPE_WEBHOOK_SECRET")) && isStripeLiveWebhookConfirmed();
 }
 
 export function getStripeSecretKey() {
