@@ -2,12 +2,16 @@ import type Stripe from "stripe";
 import { getRuntimeBindings } from "./runtime-env";
 
 export type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";
+export type RefundStatus = "none" | "partial" | "full";
 
 export type AdminOrder = {
   sessionId: string;
   paymentIntentId: string | null;
   customerEmail: string | null;
   paymentStatus: string;
+  refundStatus: RefundStatus;
+  amountRefunded: number;
+  refundedAt: string | null;
   checkoutStatus: string | null;
   fulfillmentStatus: FulfillmentStatus;
   carrier: string | null;
@@ -32,6 +36,9 @@ type OrderRow = {
   payment_intent_id: string | null;
   customer_email: string | null;
   payment_status: string;
+  refund_status: string | null;
+  amount_refunded: number | null;
+  refunded_at: string | null;
   checkout_status: string | null;
   fulfillment_status: string | null;
   carrier: string | null;
@@ -52,6 +59,9 @@ const createOrdersSql = `
     payment_intent_id TEXT,
     customer_email TEXT,
     payment_status TEXT NOT NULL,
+    refund_status TEXT NOT NULL DEFAULT 'none',
+    amount_refunded INTEGER NOT NULL DEFAULT 0,
+    refunded_at TEXT,
     checkout_status TEXT,
     fulfillment_status TEXT NOT NULL DEFAULT 'new',
     carrier TEXT,
@@ -118,6 +128,9 @@ async function initializeOrders() {
   await addColumn("ALTER TABLE orders ADD COLUMN carrier TEXT");
   await addColumn("ALTER TABLE orders ADD COLUMN tracking_number TEXT");
   await addColumn("ALTER TABLE orders ADD COLUMN shipped_at TEXT");
+  await addColumn("ALTER TABLE orders ADD COLUMN refund_status TEXT NOT NULL DEFAULT 'none'");
+  await addColumn("ALTER TABLE orders ADD COLUMN amount_refunded INTEGER NOT NULL DEFAULT 0");
+  await addColumn("ALTER TABLE orders ADD COLUMN refunded_at TEXT");
 
   await db
     .prepare("INSERT OR IGNORE INTO order_settings (id, pickup_enabled, pickup_address) VALUES (1, 0, '')")
@@ -145,6 +158,9 @@ function toAdminOrder(row: OrderRow): AdminOrder {
     paymentIntentId: row.payment_intent_id,
     customerEmail: row.customer_email,
     paymentStatus: row.payment_status,
+    refundStatus: (row.refund_status ?? "none") as RefundStatus,
+    amountRefunded: row.amount_refunded ?? 0,
+    refundedAt: row.refunded_at,
     checkoutStatus: row.checkout_status,
     fulfillmentStatus: (row.fulfillment_status ?? "new") as FulfillmentStatus,
     carrier: row.carrier,
@@ -207,12 +223,82 @@ export async function recordStripeOrderEvent(
   ]);
 }
 
+function chargePaymentIntentId(charge: Stripe.Charge) {
+  if (typeof charge.payment_intent === "string") return charge.payment_intent;
+  return charge.payment_intent?.id ?? null;
+}
+
+export async function recordStripeRefundEvent(
+  event: Stripe.Event,
+  charge: Stripe.Charge,
+) {
+  await ensureOrdersReady();
+  const db = getOrderDb();
+  const intentId = chargePaymentIntentId(charge);
+  const now = new Date().toISOString();
+
+  if (!intentId) {
+    return { matched: false, refundStatus: "none" as RefundStatus };
+  }
+
+  const order = await db
+    .prepare("SELECT session_id FROM orders WHERE payment_intent_id = ? LIMIT 1")
+    .bind(intentId)
+    .first<{ session_id: string }>();
+
+  if (!order) {
+    await db
+      .prepare(
+        "INSERT OR IGNORE INTO stripe_events (event_id, event_type, session_id, received_at) VALUES (?, ?, NULL, ?)",
+      )
+      .bind(event.id, event.type, now)
+      .run();
+    return { matched: false, refundStatus: "none" as RefundStatus };
+  }
+
+  const refundStatus: RefundStatus = charge.refunded
+    ? "full"
+    : charge.amount_refunded > 0
+      ? "partial"
+      : "none";
+  const refundedAt =
+    refundStatus === "none" ? null : new Date(event.created * 1000).toISOString();
+
+  await db.batch([
+    db.prepare(
+      "INSERT OR IGNORE INTO stripe_events (event_id, event_type, session_id, received_at) VALUES (?, ?, ?, ?)",
+    ).bind(event.id, event.type, order.session_id, now),
+    db.prepare(
+      `UPDATE orders
+       SET refund_status = ?, amount_refunded = ?, refunded_at = ?,
+           last_event_id = ?, last_event_type = ?, updated_at = ?
+       WHERE session_id = ?`,
+    ).bind(
+      refundStatus,
+      charge.amount_refunded,
+      refundedAt,
+      event.id,
+      event.type,
+      now,
+      order.session_id,
+    ),
+  ]);
+
+  return {
+    matched: true,
+    sessionId: order.session_id,
+    refundStatus,
+    amountRefunded: charge.amount_refunded,
+  };
+}
+
 export async function listAdminOrders(limit = 100) {
   await ensureOrdersReady();
   const safeLimit = Math.max(1, Math.min(250, Math.trunc(limit)));
   const result = await getOrderDb()
     .prepare(
       `SELECT session_id, payment_intent_id, customer_email, payment_status,
+              refund_status, amount_refunded, refunded_at,
               checkout_status, fulfillment_status, carrier, tracking_number,
               shipped_at, amount_total, currency, cart_reference, last_event_id,
               last_event_type, created_at, updated_at

@@ -12,6 +12,7 @@ Production checkout is intentionally fail-closed until both the Stripe account a
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.async_payment_failed`
    - `checkout.session.expired`
+   - `charge.refunded`
 4. Only after the live endpoint has been created and verified, set:
    - `STRIPE_LIVE_WEBHOOK_CONFIRMED=true`
 
@@ -29,4 +30,4 @@ Local/non-production hosts may continue to use Stripe test mode for QA.
 
 ## Before enabling the confirmation flag
 
-Complete one controlled live-mode verification of the Stripe configuration and confirm the webhook endpoint and signing secret belong to the live account. After the flag is enabled, perform a low-value production checkout and verify the complete chain: Checkout → payment event → signed webhook → D1 order state → transactional confirmation email. Refund/cancellation handling should also be verified before public launch.
+Complete one controlled live-mode verification of the Stripe configuration and confirm the webhook endpoint and signing secret belong to the live account. After the flag is enabled, perform a low-value production checkout and verify the complete chain: Checkout → payment event → signed webhook → D1 order state → transactional confirmation email. Refund handling must be verified before public launch: a Stripe refund should emit `charge.refunded`, update the matching D1 order through its PaymentIntent ID, and appear as a partial or full refund in the owner panel.

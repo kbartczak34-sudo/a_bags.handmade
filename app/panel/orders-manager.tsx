@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";
+type RefundStatus = "none" | "partial" | "full";
 type OrderSettings = { pickupEnabled: boolean; pickupAddress: string };
 type AdminOrder = {
   sessionId: string;
   paymentIntentId: string | null;
   customerEmail: string | null;
   paymentStatus: string;
+  refundStatus: RefundStatus;
+  amountRefunded: number;
+  refundedAt: string | null;
   checkoutStatus: string | null;
   fulfillmentStatus: FulfillmentStatus;
   carrier: string | null;
@@ -32,6 +36,11 @@ const paymentLabels: Record<string, string> = {
   paid: "Opłacone",
   unpaid: "Nieopłacone",
   no_payment_required: "Bez płatności",
+};
+const refundLabels: Record<RefundStatus, string> = {
+  none: "Brak zwrotu",
+  partial: "Zwrot częściowy",
+  full: "Zwrot pełny",
 };
 const fulfillmentLabels: Record<FulfillmentStatus, string> = {
   new: "Nowe",
@@ -76,7 +85,10 @@ export default function OrdersManager() {
   const [message, setMessage] = useState("");
 
   const paidCount = useMemo(
-    () => orders.filter((order) => order.paymentStatus === "paid").length,
+    () =>
+      orders.filter(
+        (order) => order.paymentStatus === "paid" && order.refundStatus !== "full",
+      ).length,
     [orders],
   );
 
@@ -259,6 +271,14 @@ export default function OrdersManager() {
                 <strong>{formatAmount(order.amountTotal, order.currency)}</strong>
                 {" · "}Zamówienie #{order.sessionId.slice(-8).toUpperCase()}
               </p>
+
+              {order.refundStatus !== "none" && (
+                <p>
+                  Zwrot: <strong>{refundLabels[order.refundStatus]}</strong>
+                  {" · "}{formatAmount(order.amountRefunded, order.currency)}
+                  {order.refundedAt ? ` · ${formatDate(order.refundedAt)}` : ""}
+                </p>
+              )}
 
               <div className="admin-review-meta">
                 <div>
