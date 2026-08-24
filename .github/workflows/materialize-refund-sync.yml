@@ -1,0 +1,151 @@
+name: Materialize Stripe refund synchronization
+
+on:
+  push:
+    branches: [build/stripe-refund-sync]
+    paths:
+      - ".github/workflows/materialize-refund-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: build/stripe-refund-sync
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Patch refund persistence, webhook and owner UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+
+          async function patchFile(path, replacements) {
+            let source = await readFile(path, "utf8");
+            for (const [from, to, label] of replacements) {
+              if (!source.includes(from)) throw new Error(`${path}: missing ${label}`);
+              source = source.replace(from, to);
+            }
+            await writeFile(path, source);
+          }
+
+          await patchFile("lib/orders.ts", [
+            [
+              'export type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";\n',
+              'export type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";\nexport type RefundStatus = "none" | "partial" | "full";\n',
+              "refund status type",
+            ],
+            [
+              '  paymentStatus: string;\n  checkoutStatus: string | null;',
+              '  paymentStatus: string;\n  refundStatus: RefundStatus;\n  amountRefunded: number;\n  refundedAt: string | null;\n  checkoutStatus: string | null;',
+              "admin refund fields",
+            ],
+            [
+              '  payment_status: string;\n  checkout_status: string | null;',
+              '  payment_status: string;\n  refund_status: string | null;\n  amount_refunded: number | null;\n  refunded_at: string | null;\n  checkout_status: string | null;',
+              "row refund fields",
+            ],
+            [
+              '    payment_status TEXT NOT NULL,\n    checkout_status TEXT,',
+              '    payment_status TEXT NOT NULL,\n    refund_status TEXT NOT NULL DEFAULT \'none\',\n    amount_refunded INTEGER NOT NULL DEFAULT 0,\n    refunded_at TEXT,\n    checkout_status TEXT,',
+              "orders refund schema",
+            ],
+            [
+              '  await addColumn("ALTER TABLE orders ADD COLUMN shipped_at TEXT");\n',
+              '  await addColumn("ALTER TABLE orders ADD COLUMN shipped_at TEXT");\n  await addColumn("ALTER TABLE orders ADD COLUMN refund_status TEXT NOT NULL DEFAULT \'none\'");\n  await addColumn("ALTER TABLE orders ADD COLUMN amount_refunded INTEGER NOT NULL DEFAULT 0");\n  await addColumn("ALTER TABLE orders ADD COLUMN refunded_at TEXT");\n',
+              "refund migrations",
+            ],
+            [
+              '    paymentStatus: row.payment_status,\n    checkoutStatus: row.checkout_status,',
+              '    paymentStatus: row.payment_status,\n    refundStatus: (row.refund_status ?? "none") as RefundStatus,\n    amountRefunded: row.amount_refunded ?? 0,\n    refundedAt: row.refunded_at,\n    checkoutStatus: row.checkout_status,',
+              "admin refund mapping",
+            ],
+            [
+              'export async function listAdminOrders(limit = 100) {',
+              `function chargePaymentIntentId(charge: Stripe.Charge) {\n  if (typeof charge.payment_intent === "string") return charge.payment_intent;\n  return charge.payment_intent?.id ?? null;\n}\n\nexport async function recordStripeRefundEvent(\n  event: Stripe.Event,\n  charge: Stripe.Charge,\n) {\n  await ensureOrdersReady();\n  const db = getOrderDb();\n  const intentId = chargePaymentIntentId(charge);\n  const now = new Date().toISOString();\n\n  if (!intentId) {\n    return { matched: false, refundStatus: "none" as RefundStatus };\n  }\n\n  const order = await db\n    .prepare("SELECT session_id FROM orders WHERE payment_intent_id = ? LIMIT 1")\n    .bind(intentId)\n    .first<{ session_id: string }>();\n\n  if (!order) {\n    await db\n      .prepare(\n        "INSERT OR IGNORE INTO stripe_events (event_id, event_type, session_id, received_at) VALUES (?, ?, NULL, ?)",\n      )\n      .bind(event.id, event.type, now)\n      .run();\n    return { matched: false, refundStatus: "none" as RefundStatus };\n  }\n\n  const refundStatus: RefundStatus = charge.refunded\n    ? "full"\n    : charge.amount_refunded > 0\n      ? "partial"\n      : "none";\n  const refundedAt =\n    refundStatus === "none" ? null : new Date(event.created * 1000).toISOString();\n\n  await db.batch([\n    db.prepare(\n      "INSERT OR IGNORE INTO stripe_events (event_id, event_type, session_id, received_at) VALUES (?, ?, ?, ?)",\n    ).bind(event.id, event.type, order.session_id, now),\n    db.prepare(\n      \`UPDATE orders\n       SET refund_status = ?, amount_refunded = ?, refunded_at = ?,\n           last_event_id = ?, last_event_type = ?, updated_at = ?\n       WHERE session_id = ?\`,\n    ).bind(\n      refundStatus,\n      charge.amount_refunded,\n      refundedAt,\n      event.id,\n      event.type,\n      now,\n      order.session_id,\n    ),\n  ]);\n\n  return {\n    matched: true,\n    sessionId: order.session_id,\n    refundStatus,\n    amountRefunded: charge.amount_refunded,\n  };\n}\n\nexport async function listAdminOrders(limit = 100) {`,
+              "refund event persistence",
+            ],
+            [
+              '`SELECT session_id, payment_intent_id, customer_email, payment_status,\n              checkout_status, fulfillment_status, carrier, tracking_number,',
+              '`SELECT session_id, payment_intent_id, customer_email, payment_status,\n              refund_status, amount_refunded, refunded_at,\n              checkout_status, fulfillment_status, carrier, tracking_number,',
+              "refund list query",
+            ],
+          ]);
+
+          await patchFile("app/api/stripe/webhook/route.ts", [
+            [
+              'import { recordStripeOrderEvent } from "../../../../lib/orders";',
+              'import {\n  recordStripeOrderEvent,\n  recordStripeRefundEvent,\n} from "../../../../lib/orders";',
+              "refund persistence import",
+            ],
+            [
+              '    return Response.json({ received: true });',
+              `    if (event.type === "charge.refunded") {\n      const charge = event.data.object as Stripe.Charge;\n      const refund = await recordStripeRefundEvent(event, charge);\n      console.info("Stripe refund event processed", {\n        eventId: event.id,\n        chargeId: charge.id,\n        paymentIntentId:\n          typeof charge.payment_intent === "string"\n            ? charge.payment_intent\n            : charge.payment_intent?.id,\n        matched: refund.matched,\n        refundStatus: refund.refundStatus,\n      });\n    }\n\n    return Response.json({ received: true });`,
+              "charge refunded handler",
+            ],
+          ]);
+
+          await patchFile("app/panel/orders-manager.tsx", [
+            [
+              'type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";\n',
+              'type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";\ntype RefundStatus = "none" | "partial" | "full";\n',
+              "UI refund type",
+            ],
+            [
+              '  paymentStatus: string;\n  checkoutStatus: string | null;',
+              '  paymentStatus: string;\n  refundStatus: RefundStatus;\n  amountRefunded: number;\n  refundedAt: string | null;\n  checkoutStatus: string | null;',
+              "UI refund fields",
+            ],
+            [
+              'const fulfillmentLabels: Record<FulfillmentStatus, string> = {',
+              'const refundLabels: Record<RefundStatus, string> = {\n  none: "Brak zwrotu",\n  partial: "Zwrot częściowy",\n  full: "Zwrot pełny",\n};\nconst fulfillmentLabels: Record<FulfillmentStatus, string> = {',
+              "refund labels",
+            ],
+            [
+              '    () => orders.filter((order) => order.paymentStatus === "paid").length,',
+              '    () =>\n      orders.filter(\n        (order) => order.paymentStatus === "paid" && order.refundStatus !== "full",\n      ).length,',
+              "paid count excludes full refunds",
+            ],
+            [
+              '              <p>\n                <strong>{formatAmount(order.amountTotal, order.currency)}</strong>\n                {" · "}Zamówienie #{order.sessionId.slice(-8).toUpperCase()}\n              </p>',
+              '              <p>\n                <strong>{formatAmount(order.amountTotal, order.currency)}</strong>\n                {" · "}Zamówienie #{order.sessionId.slice(-8).toUpperCase()}\n              </p>\n\n              {order.refundStatus !== "none" && (\n                <p>\n                  Zwrot: <strong>{refundLabels[order.refundStatus]}</strong>\n                  {" · "}{formatAmount(order.amountRefunded, order.currency)}\n                  {order.refundedAt ? ` · ${formatDate(order.refundedAt)}` : ""}\n                </p>\n              )}',
+              "refund owner display",
+            ],
+          ]);
+
+          await patchFile("STRIPE-LIVE-GO-LIVE.md", [
+            [
+              '   - `checkout.session.expired`\n',
+              '   - `checkout.session.expired`\n   - `charge.refunded`\n',
+              "refund webhook subscription",
+            ],
+            [
+              'Refund/cancellation handling should also be verified before public launch.',
+              'Refund handling must be verified before public launch: a Stripe refund should emit `charge.refunded`, update the matching D1 order through its PaymentIntent ID, and appear as a partial or full refund in the owner panel.',
+              "refund verification note",
+            ],
+          ]);
+          NODE
+
+      - name: Commit materialized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add lib/orders.ts app/api/stripe/webhook/route.ts app/panel/orders-manager.tsx STRIPE-LIVE-GO-LIVE.md
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Synchronize Stripe refunds with order records"
+          git push origin HEAD:build/stripe-refund-sync
