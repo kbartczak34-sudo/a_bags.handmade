@@ -8,9 +8,8 @@ declare global {
     fetch(request: Request): Promise<Response>;
   }
 
-  interface D1Database extends D1DatabaseBinding {}
-
-  interface R2Bucket extends R2BucketBinding {}
+  type D1Database = D1DatabaseBinding;
+  type R2Bucket = R2BucketBinding;
 }
 
 export {};
