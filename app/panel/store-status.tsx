@@ -15,6 +15,12 @@ type StoreStatusPayload = {
   launchReady: boolean;
   checkoutGate: "ready" | "blocked";
   technical: TechnicalStatus;
+  productCompliance: {
+    ready: boolean;
+    totalVisible: number;
+    completeVisible: number;
+    incomplete: Array<{ id: string; name: string }>;
+  };
   legal: {
     launchReady: boolean;
     businessMode: "jdg" | "unregistered" | "unknown";
@@ -83,8 +89,8 @@ export default function StoreStatus() {
           <p className="eyebrow">Produkcja · kontrola gotowości</p>
           <h2 id="store-status-title">Status sklepu</h2>
           <p>
-            Jedno miejsce do sprawdzania infrastruktury, płatności, e-maili i blokad
-            prawnych przed uruchomieniem sprzedaży.
+            Jedno miejsce do sprawdzania infrastruktury, danych produktów, płatności,
+            e-maili i blokad prawnych przed uruchomieniem sprzedaży.
           </p>
         </div>
         <button type="button" onClick={() => void load(true)} disabled={refreshing}>
@@ -103,7 +109,7 @@ export default function StoreStatus() {
                 <strong>{status.launchReady ? "Sklep gotowy do sprzedaży" : "Sprzedaż nadal zablokowana"}</strong>
                 <small>
                   Checkout: {status.checkoutGate === "ready" ? "gotowy" : "fail-closed"} ·
-                  infrastruktura: {technicalReadyCount}/5
+                  infrastruktura: {technicalReadyCount}/5 · GPSR modeli: {status.productCompliance.completeVisible}/{status.productCompliance.totalVisible}
                 </small>
               </div>
               <span className={status.launchReady ? "is-approved" : "is-pending"}>
@@ -130,6 +136,27 @@ export default function StoreStatus() {
               );
             })}
           </div>
+
+          <article className="admin-review-card" style={{ marginBottom: "1.25rem" }}>
+            <div className="admin-review-meta">
+              <div>
+                <strong>Dane GPSR widocznych produktów</strong>
+                <small>
+                  {status.productCompliance.completeVisible}/{status.productCompliance.totalVisible} modeli ma identyfikator, materiały, pielęgnację i informacje bezpieczeństwa.
+                </small>
+              </div>
+              <span className={status.productCompliance.ready ? "is-approved" : "is-pending"}>
+                {status.productCompliance.ready ? "OK" : "DO UZUPEŁNIENIA"}
+              </span>
+            </div>
+            {status.productCompliance.incomplete.length > 0 && (
+              <ul style={{ margin: "1rem 0 0", paddingLeft: "1.25rem", display: "grid", gap: ".45rem" }}>
+                {status.productCompliance.incomplete.map((product) => (
+                  <li key={product.id}>{product.name}</li>
+                ))}
+              </ul>
+            )}
+          </article>
 
           <article className="admin-review-card" style={{ marginBottom: "1.25rem" }}>
             <div className="admin-review-meta">
