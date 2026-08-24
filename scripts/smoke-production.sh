@@ -49,6 +49,18 @@ assert_200() {
   [[ "$code" == "200" ]] || fail "$path returned HTTP $code"
 }
 
+assert_protected() {
+  local path="$1"
+  local name="$2"
+  local code
+  code="$(request_no_follow "$path" "$name")"
+  case "$code" in
+    302|303|307|308|401|403) ;;
+    *) fail "$path returned unexpected anonymous HTTP $code" ;;
+  esac
+  echo "$code"
+}
+
 assert_200 "/" "home"
 grep -Fq "a_bags.handmade" "$TMP_DIR/home.body" || fail "home page does not contain the A-Bags brand"
 grep -Eqi '^cache-control:.*no-store' "$TMP_DIR/home.headers" || fail "HTML is missing Cache-Control: no-store"
@@ -63,6 +75,7 @@ grep -Fq "Sitemap: https://abagshandmade.pl/sitemap.xml" "$TMP_DIR/robots.body" 
 
 assert_200 "/sitemap.xml" "sitemap"
 grep -Fq "<loc>https://abagshandmade.pl/</loc>" "$TMP_DIR/sitemap.body" || fail "sitemap.xml does not contain the canonical storefront"
+grep -Fq "<loc>https://abagshandmade.pl/zwroty-i-reklamacje/zgloszenie</loc>" "$TMP_DIR/sitemap.body" || fail "sitemap.xml does not contain the customer-case form"
 
 assert_200 "/manifest.webmanifest" "manifest"
 grep -Eq '"display"[[:space:]]*:[[:space:]]*"standalone"' "$TMP_DIR/manifest.body" || fail "PWA manifest is not standalone"
@@ -74,15 +87,17 @@ grep -Eq '"products"[[:space:]]*:' "$TMP_DIR/products.body" || fail "product API
 assert_200 "/api/legal-status" "legal"
 grep -Eq '"launchReady"[[:space:]]*:' "$TMP_DIR/legal.body" || fail "legal-status API response is malformed"
 
-admin_code="$(request_no_follow "/api/admin/status" "admin")"
-case "$admin_code" in
-  302|303|307|308|401|403) ;;
-  *) fail "protected admin status returned unexpected HTTP $admin_code" ;;
-esac
+assert_200 "/zwroty-i-reklamacje/zgloszenie" "customer-case-form"
+grep -Fq "Zgłoś zwrot lub reklamację" "$TMP_DIR/customer-case-form.body" || fail "customer-case form page is malformed"
+
+admin_code="$(assert_protected "/api/admin/status" "admin")"
+cases_admin_code="$(assert_protected "/api/admin/customer-cases" "admin-cases")"
 
 echo "SMOKE PASS: $BASE_URL"
 echo "- storefront: 200"
 echo "- security/cache headers: present"
 echo "- robots/sitemap/manifest: valid"
 echo "- products/legal APIs: 200"
-echo "- admin API: protected (HTTP $admin_code)"
+echo "- returns/complaints form: 200"
+echo "- admin status API: protected (HTTP $admin_code)"
+echo "- admin customer-cases API: protected (HTTP $cases_admin_code)"
