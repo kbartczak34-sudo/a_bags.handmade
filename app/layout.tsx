@@ -4,6 +4,7 @@ import AccessibilityClient from "./accessibility-client";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
 import PrivacyConsentBanner from "./privacy-consent-banner";
+import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
 import VatDisplayEnhancer from "./vat-display-enhancer";
 import "./globals.css";
@@ -88,6 +89,7 @@ export default function RootLayout({
         <LegalComplianceEnhancer />
         <PaymentMethodEnhancer />
         <ProductPreviewEnhancer />
+        <ProductComplianceEnhancer />
         <VatDisplayEnhancer />
         {children}
         <AccessibilityClient />
