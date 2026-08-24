@@ -18,6 +18,7 @@ type AdminCustomerCase = {
   responseDueAt: string | null;
   responseNote: string;
   respondedAt: string | null;
+  confirmationEmailSentAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -149,7 +150,7 @@ export default function CustomerCasesManager() {
           <h2 id="customer-cases-title">Zwroty i reklamacje</h2>
           <p>
             Zgłoszenia klientek zapisane w D1. Reklamacje mają automatycznie liczony
-            14-dniowy termin odpowiedzi.
+            14-dniowy termin odpowiedzi, a panel pokazuje potwierdzenie e-mail.
           </p>
         </div>
         <span>{openCount} otwartych</span>
@@ -192,6 +193,12 @@ export default function CustomerCasesManager() {
 
               <div style={{ display: "grid", gap: ".55rem", margin: "1rem 0" }}>
                 <p style={{ margin: 0 }}><strong>Status:</strong> {statusLabels[item.status]}</p>
+                <p style={{ margin: 0 }}>
+                  <strong>Potwierdzenie e-mail:</strong>{" "}
+                  {item.confirmationEmailSentAt
+                    ? `wysłane ${formatDate(item.confirmationEmailSentAt)}`
+                    : "brak potwierdzonej wysyłki — sprawdź kontakt z klientką"}
+                </p>
                 <p style={{ margin: 0 }}><strong>Zamówienie:</strong> {item.orderReference || "nie podano"}</p>
                 <p style={{ margin: 0 }}><strong>Produkt:</strong> {item.productName || "nie podano"}</p>
                 <p style={{ margin: 0, whiteSpace: "pre-wrap" }}><strong>Opis:</strong> {item.description}</p>
