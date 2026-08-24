@@ -242,9 +242,15 @@ export async function recordStripeRefundEvent(
   }
 
   const order = await db
-    .prepare("SELECT session_id FROM orders WHERE payment_intent_id = ? LIMIT 1")
+    .prepare(
+      "SELECT session_id, amount_refunded, refund_status FROM orders WHERE payment_intent_id = ? LIMIT 1",
+    )
     .bind(intentId)
-    .first<{ session_id: string }>();
+    .first<{
+      session_id: string;
+      amount_refunded: number | null;
+      refund_status: string | null;
+    }>();
 
   if (!order) {
     await db
@@ -263,6 +269,23 @@ export async function recordStripeRefundEvent(
       : "none";
   const refundedAt =
     refundStatus === "none" ? null : new Date(event.created * 1000).toISOString();
+  const previousAmountRefunded = order.amount_refunded ?? 0;
+
+  if (charge.amount_refunded < previousAmountRefunded) {
+    await db
+      .prepare(
+        "INSERT OR IGNORE INTO stripe_events (event_id, event_type, session_id, received_at) VALUES (?, ?, ?, ?)",
+      )
+      .bind(event.id, event.type, order.session_id, now)
+      .run();
+    return {
+      matched: true,
+      sessionId: order.session_id,
+      refundStatus: (order.refund_status ?? "none") as RefundStatus,
+      amountRefunded: previousAmountRefunded,
+      ignoredAsStale: true,
+    };
+  }
 
   await db.batch([
     db.prepare(
