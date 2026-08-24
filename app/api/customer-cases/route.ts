@@ -1,6 +1,8 @@
+import { sendCustomerCaseConfirmationEmail } from "../../../lib/customer-case-email";
 import {
   consumeCustomerCaseSubmission,
   createCustomerCase,
+  markCustomerCaseConfirmationSent,
   type CustomerCaseType,
 } from "../../../lib/customer-cases";
 
@@ -105,6 +107,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedResolution =
+      type === "withdrawal"
+        ? requestedResolution || "Odstąpienie od umowy"
+        : requestedResolution;
+
     const created = await createCustomerCase({
       type,
       orderReference,
@@ -112,21 +119,44 @@ export async function POST(request: Request) {
       email,
       productName,
       description,
-      requestedResolution:
-        type === "withdrawal"
-          ? requestedResolution || "Odstąpienie od umowy"
-          : requestedResolution,
+      requestedResolution: normalizedResolution,
     });
+
+    let confirmationEmailSent = false;
+    try {
+      const confirmation = await sendCustomerCaseConfirmationEmail({
+        id: created.id,
+        type,
+        email,
+        customerName,
+        orderReference,
+        productName,
+        requestedResolution: normalizedResolution,
+        createdAt: created.createdAt,
+        responseDueAt: created.responseDueAt,
+      });
+      if (confirmation.sent) {
+        await markCustomerCaseConfirmationSent(created.id);
+        confirmationEmailSent = true;
+      }
+    } catch (emailError) {
+      console.warn("Customer case confirmation email failed", {
+        caseId: created.id,
+        message:
+          emailError instanceof Error ? emailError.message : "Unknown email error",
+      });
+    }
 
     return json(
       {
         ok: true,
         caseId: created.id,
         responseDueAt: created.responseDueAt,
+        confirmationEmailSent,
         message:
-          type === "complaint"
-            ? "Reklamacja została przyjęta. Zachowaj numer sprawy."
-            : "Oświadczenie o odstąpieniu zostało przyjęte. Zachowaj numer sprawy.",
+          confirmationEmailSent
+            ? "Zgłoszenie zostało przyjęte. Potwierdzenie wysłaliśmy na podany adres e-mail."
+            : "Zgłoszenie zostało zapisane. Zachowaj numer sprawy — potwierdzenie e-mail nie mogło zostać teraz wysłane.",
       },
       201,
       { "X-RateLimit-Remaining": String(rate.remaining) },
