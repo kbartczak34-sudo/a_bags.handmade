@@ -6,11 +6,12 @@ import ProductPanel from "./product-panel";
 import ReviewManager from "./review-manager";
 import SiteContentEditor from "./site-content-editor";
 import OrdersManager from "./orders-manager";
+import StoreStatus from "./store-status";
 
-type AdminTab = "page" | "products" | "reviews" | "orders";
+type AdminTab = "status" | "page" | "products" | "reviews" | "orders";
 
 export default function AdminPanel({ ownerName }: { ownerName: string }) {
-  const [activeTab, setActiveTab] = useState<AdminTab>("page");
+  const [activeTab, setActiveTab] = useState<AdminTab>("status");
 
   return (
     <main className="admin-page">
@@ -30,8 +31,8 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <p className="eyebrow">Panel właścicielki</p>
           <h1>Zarządzaj sklepem</h1>
           <p>
-            Zmieniaj całą stronę, produkty, opinie i sprawdzaj zamówienia w jednym
-            miejscu — bez edycji kodu.
+            Kontroluj gotowość produkcyjną, zmieniaj stronę i produkty, moderuj
+            opinie oraz obsługuj zamówienia w jednym miejscu.
           </p>
         </div>
       </section>
@@ -39,10 +40,18 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
       <nav className="admin-tabs" aria-label="Sekcje panelu">
         <button
           type="button"
+          className={activeTab === "status" ? "is-active" : ""}
+          onClick={() => setActiveTab("status")}
+        >
+          <span>01</span>
+          Status sklepu
+        </button>
+        <button
+          type="button"
           className={activeTab === "page" ? "is-active" : ""}
           onClick={() => setActiveTab("page")}
         >
-          <span>01</span>
+          <span>02</span>
           Treść strony
         </button>
         <button
@@ -50,7 +59,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           className={activeTab === "products" ? "is-active" : ""}
           onClick={() => setActiveTab("products")}
         >
-          <span>02</span>
+          <span>03</span>
           Produkty
         </button>
         <button
@@ -58,7 +67,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           className={activeTab === "reviews" ? "is-active" : ""}
           onClick={() => setActiveTab("reviews")}
         >
-          <span>03</span>
+          <span>04</span>
           Opinie
         </button>
         <button
@@ -66,12 +75,13 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           className={activeTab === "orders" ? "is-active" : ""}
           onClick={() => setActiveTab("orders")}
         >
-          <span>04</span>
+          <span>05</span>
           Zamówienia
         </button>
       </nav>
 
       <div className="admin-tab-content">
+        {activeTab === "status" && <StoreStatus />}
         {activeTab === "page" && <SiteContentEditor />}
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "reviews" && <ReviewManager />}
