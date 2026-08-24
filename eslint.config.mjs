@@ -5,6 +5,14 @@ import nextTypeScript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
+  {
+    files: ["app/legal-compliance-enhancer.tsx"],
+    rules: {
+      // This mount effect intentionally synchronizes React state from browser
+      // persistence (cookie/localStorage). Keep the exception local to this bridge.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "dist/**",
