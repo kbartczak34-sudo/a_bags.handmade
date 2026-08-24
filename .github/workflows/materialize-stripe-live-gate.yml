@@ -1,0 +1,93 @@
+name: Materialize Stripe live gate
+
+on:
+  push:
+    branches: [build/stripe-live-gate]
+    paths:
+      - ".github/workflows/materialize-stripe-live-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: build/stripe-live-gate
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Patch checkout and dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+
+          async function patchFile(path, replacements) {
+            let source = await readFile(path, "utf8");
+            for (const [from, to, label] of replacements) {
+              if (!source.includes(from)) throw new Error(`${path}: missing ${label}`);
+              source = source.replace(from, to);
+            }
+            await writeFile(path, source);
+          }
+
+          await patchFile("app/api/checkout/route.ts", [
+            [
+              'import {\n  getStripeSecretKey,\n  StripeConfigurationError,\n} from "../../../lib/stripe";',
+              'import {\n  detectStripeKeyMode,\n  getStripeSecretKey,\n  StripeConfigurationError,\n} from "../../../lib/stripe";',
+              "Stripe mode import",
+            ],
+            [
+              '  const origin = new URL(request.url).origin;',
+              '  const requestUrl = new URL(request.url);\n  const origin = requestUrl.origin;\n  const isProductionHost = ["abagshandmade.pl", "www.abagshandmade.pl"].includes(\n    requestUrl.hostname.toLowerCase(),\n  );',
+              "production host detection",
+            ],
+            [
+              '    const secretKey = getStripeSecretKey();\n    const form = new URLSearchParams();',
+              '    const secretKey = getStripeSecretKey();\n    const stripeMode = detectStripeKeyMode(secretKey);\n    if (isProductionHost && stripeMode !== "live") {\n      console.error("Checkout blocked because production host is not using Stripe live mode", {\n        stripeMode,\n      });\n      return json(\n        {\n          error: "Płatności produkcyjne nie są jeszcze aktywne. [stripe_live_required]",\n          code: "stripe_live_required",\n        },\n        503,\n      );\n    }\n\n    const form = new URLSearchParams();',
+              "production Stripe gate",
+            ],
+          ]);
+
+          await patchFile("app/panel/store-status.tsx", [
+            [
+              '  checkoutGate: "ready" | "blocked";\n  technical: TechnicalStatus;',
+              '  checkoutGate: "ready" | "blocked";\n  stripeMode: "live" | "test" | "unknown" | "missing";\n  technical: TechnicalStatus;',
+              "Stripe mode payload type",
+            ],
+            [
+              'function readableVatMode(value: StoreStatusPayload["legal"]["vatMode"]) {\n  if (value === "active_23") return "VAT czynny 23%";\n  if (value === "exempt") return "Zwolnienie z VAT";\n  return "Nieustalone";\n}\n',
+              'function readableVatMode(value: StoreStatusPayload["legal"]["vatMode"]) {\n  if (value === "active_23") return "VAT czynny 23%";\n  if (value === "exempt") return "Zwolnienie z VAT";\n  return "Nieustalone";\n}\n\nfunction readableStripeMode(value: StoreStatusPayload["stripeMode"]) {\n  if (value === "live") return "LIVE";\n  if (value === "test") return "TEST";\n  if (value === "missing") return "BRAK KLUCZA";\n  return "NIEZNANY TRYB";\n}\n',
+              "Stripe mode formatter",
+            ],
+            [
+              '                      <small>{description}</small>',
+              '                      <small>\n                        {description}\n                        {key === "stripeReady" ? ` · tryb ${readableStripeMode(status.stripeMode)}` : ""}\n                      </small>',
+              "Stripe mode dashboard description",
+            ],
+          ]);
+          NODE
+
+      - name: Commit materialized files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add app/api/checkout/route.ts app/panel/store-status.tsx
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Enforce Stripe live mode on production checkout"
+          git push origin HEAD:build/stripe-live-gate
