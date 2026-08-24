@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:
@@ -28,5 +28,5 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build and regression tests
-        run: npm test
+      - name: Lint, typecheck, build and regression tests
+        run: npm run check

@@ -58,7 +58,8 @@ export default function StoreStatus() {
   const [error, setError] = useState("");
 
   const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/admin/status", { cache: "no-store" });
@@ -74,7 +75,13 @@ export default function StoreStatus() {
   }, []);
 
   useEffect(() => {
-    void load(false);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void load(false);
+    });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const technicalReadyCount = useMemo(() => {

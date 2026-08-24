@@ -77,7 +77,8 @@ export default function CustomerCasesManager() {
   const [message, setMessage] = useState("");
 
   const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/admin/customer-cases", { cache: "no-store" });
@@ -95,7 +96,13 @@ export default function CustomerCasesManager() {
   }, []);
 
   useEffect(() => {
-    void load(false);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void load(false);
+    });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const visibleCases = useMemo(() => {
