@@ -50,6 +50,7 @@ export default function Home() {
   const [checkoutError, setCheckoutError] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const cartRestored = useRef(false);
+  const checkoutErrorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -179,6 +180,11 @@ export default function Home() {
   }, [cartOpen, checkoutOpen]);
 
   useEffect(() => {
+    if (!checkoutError) return;
+    checkoutErrorRef.current?.focus();
+  }, [checkoutError]);
+
+  useEffect(() => {
     const instagramWindow = window as typeof window & {
       instgrm?: { Embeds?: { process?: () => void } };
     };
@@ -198,7 +204,7 @@ export default function Home() {
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const delivery = cartCount === 0 || subtotal >= 300 ? 0 : 14.99;
+  const delivery = cartCount === 0 ? 0 : 14.99;
   const total = subtotal + delivery;
   const themeStyle = {
     "--ink": siteContent.theme.ink,
@@ -770,13 +776,8 @@ export default function Home() {
                 </div>
 
                 <div className="cart-summary">
-                  {subtotal < 300 && (
-                    <p className="shipping-progress">
-                      Jeszcze {priceFormatter.format(300 - subtotal)} do darmowej dostawy
-                    </p>
-                  )}
-                  <div><span>Produkty</span><span>{priceFormatter.format(subtotal)}</span></div>
-                  <div><span>Dostawa</span><span>{delivery === 0 ? "bezpłatnie" : priceFormatter.format(delivery)}</span></div>
+<div><span>Produkty</span><span>{priceFormatter.format(subtotal)}</span></div>
+                  <div><span>Dostawa</span><span>{priceFormatter.format(delivery)}</span></div>
                   <div className="summary-total"><span>Razem</span><strong>{priceFormatter.format(total)}</strong></div>
                   <button className="checkout-button" type="button" onClick={openCheckout}>
                     Przejdź do płatności <span aria-hidden="true">→</span>
@@ -813,7 +814,7 @@ export default function Home() {
             </div>
 
             <div className="checkout-content">
-              <form onSubmit={handleCheckout}>
+              <form onSubmit={handleCheckout} aria-busy={checkoutPending}>
                 <p className="eyebrow">Bezpieczne zamówienie · Stripe Checkout</p>
                 <h2 id="checkout-title">Przejdź do płatności</h2>
 
@@ -821,7 +822,16 @@ export default function Home() {
                   <legend>Dane kontaktowe</legend>
                   <label className="field field-wide">
                     <span>Adres e-mail</span>
-                    <input type="email" name="email" autoComplete="email" placeholder="twoj@email.pl" required />
+                    <input
+                      type="email"
+                      name="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      placeholder="twoj@email.pl"
+                      aria-describedby="checkout-email-hint"
+                      required
+                    />
+                    <small id="checkout-email-hint">Na ten adres wyślemy potwierdzenie zamówienia.</small>
                   </label>
                 </fieldset>
 
@@ -851,7 +861,16 @@ export default function Home() {
                 </fieldset>
 
                 {checkoutError && (
-                  <p className="checkout-error" role="alert">{checkoutError}</p>
+                  <p
+                    ref={checkoutErrorRef}
+                    className="checkout-error"
+                    role="alert"
+                    aria-live="assertive"
+                    aria-atomic="true"
+                    tabIndex={-1}
+                  >
+                    {checkoutError}
+                  </p>
                 )}
 
                 <button
@@ -878,7 +897,7 @@ export default function Home() {
                 ))}
                 <div className="checkout-totals">
                   <div><span>Produkty</span><span>{priceFormatter.format(subtotal)}</span></div>
-                  <div><span>Dostawa</span><span>{delivery === 0 ? "bezpłatnie" : priceFormatter.format(delivery)}</span></div>
+                  <div><span>Dostawa</span><span>{priceFormatter.format(delivery)}</span></div>
                   <div><strong>Do zapłaty</strong><strong>{priceFormatter.format(total)}</strong></div>
                 </div>
                 <p className="secure-note">Kwoty są ponownie sprawdzane przez sklep przed utworzeniem płatności. Dane płatnicze trafiają bezpośrednio do Stripe.</p>
