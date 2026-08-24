@@ -20,8 +20,8 @@ test("admin status endpoint is protected and never exposes secret values", () =>
 
 test("owner dashboard opens on store readiness status", () => {
   const panel = read("app/panel/admin-panel.tsx");
-  assert.match(panel, /type AdminTab = "status"/);
   assert.match(panel, /useState<AdminTab>\("status"\)/);
+  assert.match(panel, /activeTab === "status"/);
   assert.match(panel, /<StoreStatus \/>/);
   assert.match(panel, /Status sklepu/);
 });

@@ -23,6 +23,23 @@ export default function ReturnsPage() {
       lead="Procedura odstąpienia od umowy zawartej przez internet oraz zgłaszania niezgodności produktu z umową."
     >
       <section className={styles.section}>
+        <h2>Zgłoszenie online</h2>
+        <p>
+          Zwrot, odstąpienie od umowy lub reklamację możesz zgłosić przez formularz
+          online. Po wysłaniu otrzymasz numer sprawy do zachowania.
+        </p>
+        <p className={styles.notice}>
+          <a href="/zwroty-i-reklamacje/zgloszenie">
+            <strong>Otwórz formularz zwrotu lub reklamacji →</strong>
+          </a>
+        </p>
+        <p>
+          Skorzystanie z formularza nie jest obowiązkowe i nie ogranicza innych
+          prawnie dopuszczalnych sposobów złożenia oświadczenia lub reklamacji.
+        </p>
+      </section>
+
+      <section className={styles.section}>
         <h2>1. 14 dni na odstąpienie</h2>
         <p>
           Konsument może co do zasady odstąpić od umowy sprzedaży zawartej przez internet bez podawania przyczyny w terminie 14 dni od dnia otrzymania towaru przez konsumenta lub wskazaną przez niego osobę inną niż przewoźnik.

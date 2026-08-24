@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/polityka-prywatnosci",
     "/cookies",
     "/zwroty-i-reklamacje",
+    "/zwroty-i-reklamacje/zgloszenie",
     "/bezpieczenstwo-produktow",
   ];
 
@@ -16,6 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${base}${route}`,
     lastModified: new Date(),
     changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : index === 1 ? 0.6 : 0.5,
+    priority: route === "/" ? 1 : index === 1 ? 0.6 : route.includes("zgloszenie") ? 0.4 : 0.5,
   }));
 }
