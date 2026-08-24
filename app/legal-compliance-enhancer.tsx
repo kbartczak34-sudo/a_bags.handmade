@@ -83,15 +83,74 @@ function createLink(href: string, text: string) {
   return link;
 }
 
+function readStoredExternalContentPreference(): StoredPrivacyChoice | null {
+  try {
+    const stored = window.localStorage.getItem("abags-external-content");
+    return stored === "accepted" || stored === "rejected" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
 function setExternalContentPreference(value: StoredPrivacyChoice) {
-  window.localStorage.setItem("abags-external-content", value);
-  document.cookie = `abags-external-content=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  try {
+    window.localStorage.setItem("abags-external-content", value);
+  } catch {
+    // Some Android WebViews can deny localStorage. The server cookie remains authoritative.
+  }
+
+  try {
+    document.cookie = `abags-external-content=${value}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+  } catch {
+    // Server persistence below still provides a durable fallback.
+  }
 }
 
 function clearExternalContentPreference() {
-  window.localStorage.removeItem("abags-external-content");
-  document.cookie =
-    "abags-external-content=; Path=/; Max-Age=0; SameSite=Lax";
+  try {
+    window.localStorage.removeItem("abags-external-content");
+  } catch {
+    // Ignore storage restrictions in embedded browsers.
+  }
+
+  try {
+    document.cookie =
+      "abags-external-content=; Path=/; Max-Age=0; SameSite=Lax; Secure";
+  } catch {
+    // Server reset remains available from the legal UI.
+  }
+}
+
+async function persistPrivacyChoice(choice: "essential" | "external") {
+  const response = await fetch("/api/privacy-choice", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
+    body: new URLSearchParams({ choice }).toString(),
+    credentials: "same-origin",
+    redirect: "follow",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("privacy choice persistence failed");
+  }
+}
+
+function submitPrivacyChoiceNatively(choice: "essential" | "external") {
+  const form = document.createElement("form");
+  form.method = "post";
+  form.action = "/api/privacy-choice";
+  form.hidden = true;
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "choice";
+  input.value = choice;
+  form.append(input);
+  document.body.append(form);
+  form.submit();
 }
 
 function blockInstagramEmbed() {
@@ -272,7 +331,7 @@ export default function LegalComplianceEnhancer() {
   const [privacyChoice, setPrivacyChoice] = useState<PrivacyChoice>("undecided");
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("abags-external-content");
+    const stored = readStoredExternalContentPreference();
     const cookieAccepted =
       /(?:^|;\s*)abags-external-content=accepted(?:;|$)/.test(document.cookie);
     const cookieRejected =
@@ -280,13 +339,59 @@ export default function LegalComplianceEnhancer() {
 
     if (stored === "accepted" || (!stored && cookieAccepted)) {
       setPrivacyChoice("external");
+      document.querySelector<HTMLElement>(".privacy-banner-server")?.remove();
       return;
     }
     if (stored === "rejected" || (!stored && cookieRejected)) {
       setPrivacyChoice("essential");
+      document.querySelector<HTMLElement>(".privacy-banner-server")?.remove();
       return;
     }
     setPrivacyChoice("undecided");
+  }, []);
+
+  useEffect(() => {
+    const serverBanner = document.querySelector<HTMLElement>(".privacy-banner-server");
+    if (!serverBanner) return;
+
+    const buttons = Array.from(
+      serverBanner.querySelectorAll<HTMLButtonElement>('button[name="choice"]'),
+    );
+
+    const cleanups = buttons.map((button) => {
+      const handler = (event: MouseEvent) => {
+        const choice = button.value;
+        if (choice !== "essential" && choice !== "external") return;
+
+        event.preventDefault();
+        const storedValue: StoredPrivacyChoice =
+          choice === "external" ? "accepted" : "rejected";
+
+        // Dismiss immediately so a slow/limited WebView never leaves a blocking overlay behind.
+        serverBanner.hidden = true;
+        serverBanner.setAttribute("aria-hidden", "true");
+        setPrivacyChoice(choice);
+        setExternalContentPreference(storedValue);
+
+        void persistPrivacyChoice(choice)
+          .then(() => {
+            serverBanner.remove();
+            if (choice === "external") {
+              // A fresh HTML response is required so CSP allows the Instagram embed.
+              window.location.reload();
+            }
+          })
+          .catch(() => {
+            // Native POST remains the last-resort path if fetch is restricted in an embedded browser.
+            submitPrivacyChoiceNatively(choice);
+          });
+      };
+
+      button.addEventListener("click", handler);
+      return () => button.removeEventListener("click", handler);
+    });
+
+    return () => cleanups.forEach((cleanup) => cleanup());
   }, []);
 
   useEffect(() => {
@@ -337,16 +442,21 @@ export default function LegalComplianceEnhancer() {
     return () => observer.disconnect();
   }, [status, privacyChoice]);
 
-  const chooseEssential = () => {
-    setExternalContentPreference("rejected");
-    setPrivacyChoice("essential");
-    window.location.reload();
-  };
+  const choosePrivacy = (choice: "essential" | "external") => {
+    const storedValue: StoredPrivacyChoice =
+      choice === "external" ? "accepted" : "rejected";
 
-  const chooseExternal = () => {
-    setExternalContentPreference("accepted");
-    setPrivacyChoice("external");
-    window.location.reload();
+    // Update React first: even if storage is unavailable, the banner disappears immediately.
+    setPrivacyChoice(choice);
+    setExternalContentPreference(storedValue);
+
+    void persistPrivacyChoice(choice)
+      .then(() => {
+        if (choice === "external") window.location.reload();
+      })
+      .catch(() => {
+        submitPrivacyChoiceNatively(choice);
+      });
   };
 
   if (privacyChoice !== "undecided") return null;
@@ -358,8 +468,8 @@ export default function LegalComplianceEnhancer() {
         Koszyk i wybór płatności korzystają z mechanizmów niezbędnych do działania sklepu. Osadzone treści z Instagrama są opcjonalne i mogą łączyć się z serwisem Meta. Szczegóły: <a href="/cookies">polityka cookies</a>.
       </p>
       <div className="privacy-actions">
-        <button type="button" onClick={chooseEssential}>Tylko niezbędne</button>
-        <button type="button" onClick={chooseExternal}>Zezwól na Instagram</button>
+        <button type="button" onClick={() => choosePrivacy("essential")}>Tylko niezbędne</button>
+        <button type="button" onClick={() => choosePrivacy("external")}>Zezwól na Instagram</button>
       </div>
     </aside>
   );
