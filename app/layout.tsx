@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AccessibilityClient from "./accessibility-client";
+import ExactReferenceLibrary from "./exact-reference-library";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
 import PersonalizationEntry from "./personalization-entry";
@@ -18,6 +19,7 @@ import "./production-polish.css";
 import "./storefront-experience.css";
 import "./personalization-entry.css";
 import "./visual-customizer-polish.css";
+import "./exact-reference-library.css";
 import "./customizer-admin.css";
 
 const display = Cormorant_Garamond({
@@ -113,6 +115,7 @@ export default function RootLayout({
         <StitchGallery />
         <StorefrontExperience />
         <PersonalizationEntry />
+        <ExactReferenceLibrary />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
