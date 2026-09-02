@@ -11,6 +11,7 @@ import OrdersManager from "./orders-manager";
 import StoreStatus from "./store-status";
 import CustomerCasesManager from "./customer-cases-manager";
 import BusinessDashboard from "./business-dashboard";
+import ContactSocialManager from "./contact-social-manager";
 
 type AdminTab =
   | "status"
@@ -20,7 +21,8 @@ type AdminTab =
   | "compliance"
   | "reviews"
   | "orders"
-  | "cases";
+  | "cases"
+  | "contact";
 
 export default function AdminPanel({ ownerName }: { ownerName: string }) {
   const [activeTab, setActiveTab] = useState<AdminTab>("status");
@@ -44,7 +46,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <h1>Zarządzaj sklepem</h1>
           <p>
             Kontroluj wyniki, gotowość produkcyjną, treści, produkty, techniki wykonania,
-            dane bezpieczeństwa, opinie, zamówienia oraz sprawy posprzedażowe w jednym miejscu.
+            dane bezpieczeństwa, opinie, zamówienia, kontakt oraz sprawy posprzedażowe w jednym miejscu.
           </p>
         </div>
       </section>
@@ -74,6 +76,9 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         <button type="button" className={activeTab === "cases" ? "is-active" : ""} onClick={() => setActiveTab("cases")}>
           <span>08</span>Zwroty / reklamacje
         </button>
+        <button type="button" className={activeTab === "contact" ? "is-active" : ""} onClick={() => setActiveTab("contact")}>
+          <span>09</span>Kontakt i social media
+        </button>
       </nav>
 
       <div className="admin-tab-content">
@@ -85,6 +90,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
         {activeTab === "cases" && <CustomerCasesManager />}
+        {activeTab === "contact" && <ContactSocialManager />}
       </div>
     </main>
   );
