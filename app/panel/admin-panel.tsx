@@ -12,12 +12,14 @@ import StoreStatus from "./store-status";
 import CustomerCasesManager from "./customer-cases-manager";
 import BusinessDashboard from "./business-dashboard";
 import ContactSocialManager from "./contact-social-manager";
+import CustomizerAssetsManager from "./customizer-assets-manager";
 
 type AdminTab =
   | "status"
   | "page"
   | "products"
   | "stitches"
+  | "customizer"
   | "compliance"
   | "reviews"
   | "orders"
@@ -46,7 +48,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <h1>Zarządzaj sklepem</h1>
           <p>
             Kontroluj wyniki, gotowość produkcyjną, treści, produkty, techniki wykonania,
-            dane bezpieczeństwa, opinie, zamówienia, kontakt oraz sprawy posprzedażowe w jednym miejscu.
+            personalizację, dane bezpieczeństwa, opinie, zamówienia, kontakt oraz sprawy posprzedażowe w jednym miejscu.
           </p>
         </div>
       </section>
@@ -64,20 +66,23 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         <button type="button" className={activeTab === "stitches" ? "is-active" : ""} onClick={() => setActiveTab("stitches")}>
           <span>04</span>Sploty / ściegi
         </button>
+        <button type="button" className={activeTab === "customizer" ? "is-active" : ""} onClick={() => setActiveTab("customizer")}>
+          <span>05</span>Personalizacja
+        </button>
         <button type="button" className={activeTab === "compliance" ? "is-active" : ""} onClick={() => setActiveTab("compliance")}>
-          <span>05</span>GPSR produktów
+          <span>06</span>GPSR produktów
         </button>
         <button type="button" className={activeTab === "reviews" ? "is-active" : ""} onClick={() => setActiveTab("reviews")}>
-          <span>06</span>Opinie
+          <span>07</span>Opinie
         </button>
         <button type="button" className={activeTab === "orders" ? "is-active" : ""} onClick={() => setActiveTab("orders")}>
-          <span>07</span>Zamówienia
+          <span>08</span>Zamówienia
         </button>
         <button type="button" className={activeTab === "cases" ? "is-active" : ""} onClick={() => setActiveTab("cases")}>
-          <span>08</span>Zwroty / reklamacje
+          <span>09</span>Zwroty / reklamacje
         </button>
         <button type="button" className={activeTab === "contact" ? "is-active" : ""} onClick={() => setActiveTab("contact")}>
-          <span>09</span>Kontakt i social media
+          <span>10</span>Kontakt i social media
         </button>
       </nav>
 
@@ -86,6 +91,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "page" && <SiteContentEditor />}
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
+        {activeTab === "customizer" && <CustomizerAssetsManager />}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
