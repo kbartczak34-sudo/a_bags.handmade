@@ -1,31 +1,26 @@
-# A-Bags Visual Customizer assets
+# A-Bags Visual Customizer 2.0 — warstwy produktu
 
-Każdy wariant wizualny jest przezroczystą warstwą PNG nakładaną na rzeczywiste zdjęcie produktu bazowego. Nie generujemy produktu od nowa i nie zmieniamy jego geometrii.
+Konfigurator zawsze wykorzystuje prawdziwe zdjęcie produktu jako warstwę bazową. Zmiany wizualne są nakładane jako osobne, przezroczyste pliki PNG/WEBP, dzięki czemu sylwetka i proporcje torebki pozostają nienaruszone 1:1.
 
-Struktura:
+## Zalecany sposób dodawania warstw
 
-`public/images/configurator/<produkt>/<kategoria>/<wariant>.png`
+W panelu właścicielki otwórz zakładkę **Personalizacja**. Wybierz produkt, kategorię i nazwę wariantu, a następnie wgraj przezroczysty plik PNG lub WEBP. Plik zostanie zapisany w magazynie R2, a metadane wariantu w D1. Nie jest potrzebny ręczny commit ani ponowne wdrożenie aplikacji.
 
 Obsługiwane kategorie:
 
-- `color`
-- `stitch`
-- `handles`
-- `hardware`
-- `strap`
-- `accent`
+- `color` — kolor,
+- `stitch` — splot / ścieg,
+- `handles` — uchwyty,
+- `hardware` — okucia,
+- `strap` — pasek,
+- `accent` — detal / ozdoba.
 
-Przykład:
+Frontend odwołuje się do ścieżki:
 
-`public/images/configurator/model-luna/color/gleboki-granat.png`
+`/images/configurator/<product-id>/<category>/<variant>.png`
 
-Wymagania dla warstw:
+Ta ścieżka jest dynamicznie rozwiązywana do warstwy zapisanej w D1/R2. Jeśli dany wariant nie istnieje, konfigurator pozostawia niezmienione zdjęcie bazowe zamiast generować lub deformować produkt.
 
-- identyczny rozmiar płótna i kadr jak zdjęcie bazowe,
-- przezroczyste tło,
-- zmieniony wyłącznie element reprezentowany przez daną kategorię,
-- bez zmiany proporcji, splotu, kształtu ani pozostałych detali produktu,
-- eksport PNG w przestrzeni sRGB,
-- rekomendowany rozmiar 1600 × 1600 px.
+## Przygotowanie pliku
 
-Jeżeli warstwa dla wybranego wariantu nie istnieje, konfigurator zachowuje niezmienione zdjęcie bazowe zamiast tworzyć sztuczny zamiennik.
+Warstwa powinna mieć taki sam kadr i proporcje jak zdjęcie bazowe, przezroczyste tło oraz zawierać tylko element, który ma zostać zmieniony. Zalecane jest zachowanie dokładnego położenia i skali produktu. Maksymalny rozmiar pliku przesyłanego przez panel to 4 MB.
