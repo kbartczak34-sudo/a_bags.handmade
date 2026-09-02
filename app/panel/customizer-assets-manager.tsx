@@ -59,10 +59,7 @@ export default function CustomizerAssetsManager() {
   }, []);
 
   useEffect(() => {
-    if (!productId) {
-      setAssets([]);
-      return;
-    }
+    if (!productId) return;
     const controller = new AbortController();
     fetch(`/api/admin/customizer-assets?productId=${encodeURIComponent(productId)}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
@@ -141,7 +138,7 @@ export default function CustomizerAssetsManager() {
     </div>
 
     <div className="customizer-admin-product">
-      <label><span>Produkt</span><select value={productId} onChange={(event) => setProductId(event.target.value)}>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>
+      <label><span>Produkt</span><select value={productId} onChange={(event) => { setProductId(event.target.value); setAssets([]); setMessage(""); setError(""); }}>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>
       {selectedProduct && <div className="customizer-admin-product-card">{selectedProduct.imageUrl ? <img src={selectedProduct.imageUrl} alt="" /> : <span>◇</span>}<div><strong>{selectedProduct.name}</strong><small>ID: {selectedProduct.id}</small></div></div>}
     </div>
 
