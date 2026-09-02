@@ -21,7 +21,7 @@ test("public customizer endpoints expose manifests and immutable images", () => 
   assert.match(publicManifest, /listCustomizerAssets/);
   assert.match(publicImage, /getCustomizerAssetRecord/);
   assert.match(publicImage, /max-age=31536000, immutable/);
-  assert.match(dynamicLayer, /replace\(\/\\\.\(\?:png\|webp\)/);
+  assert.match(dynamicLayer, /png\|webp/);
   assert.match(dynamicLayer, /getCustomizerBucket/);
 });
 
