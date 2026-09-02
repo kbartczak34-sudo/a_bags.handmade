@@ -18,6 +18,7 @@ import "./production-polish.css";
 import "./storefront-experience.css";
 import "./personalization-entry.css";
 import "./visual-customizer-polish.css";
+import "./customizer-admin.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
