@@ -7,11 +7,13 @@ import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
 import StitchGallery from "./stitch-gallery";
+import StorefrontExperience from "./storefront-experience";
 import VatDisplayEnhancer from "./vat-display-enhancer";
 import "./globals.css";
 import "./footer-overrides.css";
 import "./legal-compliance.css";
 import "./production-polish.css";
+import "./storefront-experience.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -134,6 +136,7 @@ export default function RootLayout({
         <ProductComplianceEnhancer />
         <VatDisplayEnhancer />
         <StitchGallery />
+        <StorefrontExperience />
         {children}
         <nav className="social-quick-links" aria-label="a_bags.handmade w social media">
           {socialLinks.map((link) => (
