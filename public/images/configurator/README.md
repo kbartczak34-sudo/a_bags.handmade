@@ -21,6 +21,18 @@ Frontend odwołuje się do ścieżki:
 
 Ta ścieżka jest dynamicznie rozwiązywana do warstwy zapisanej w D1/R2. Jeśli dany wariant nie istnieje, konfigurator pozostawia niezmienione zdjęcie bazowe zamiast generować lub deformować produkt.
 
+## Klucze wariantów
+
+Nazwa wpisana w panelu jest automatycznie zamieniana na bezpieczny klucz, np. `Pudrowy róż` → `pudrowy-roz`. Dla wbudowanych opcji sklepu używaj zgodnych nazw:
+
+- kolory: `natural-bez`, `pudrowy-roz`, `gleboki-granat`, `czekoladowy-braz`, `musztardowy`, `czarny`,
+- uchwyty: `klasyczne`, `drewniane`, `lancuszek`,
+- okucia: `zlote`, `srebrne`, `czarne`,
+- paski: `bez-paska`, `regulowany`, `lancuszek-premium`,
+- detale: `bez-ozdoby`, `chwost`, `apaszka`, `zawieszka`.
+
+Dla splotów klucz powstaje automatycznie z nazwy techniki zapisanej przy produkcie.
+
 ## Przygotowanie pliku
 
 Warstwa powinna mieć taki sam kadr i proporcje jak zdjęcie bazowe, przezroczyste tło oraz zawierać tylko element, który ma zostać zmieniony. Zalecane jest zachowanie dokładnego położenia i skali produktu. Maksymalny rozmiar pliku przesyłanego przez panel to 4 MB.
