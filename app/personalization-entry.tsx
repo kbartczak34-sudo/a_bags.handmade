@@ -61,7 +61,7 @@ export default function PersonalizationEntry() {
     const mount = document.createElement("div");
     mount.className = "abags-personalization-entry-mount";
     collection.insertAdjacentElement("afterend", mount);
-    setHost(mount);
+    const frame = window.requestAnimationFrame(() => setHost(mount));
 
     const enhanceNavigation = () => {
       const desktop = document.querySelector(".desktop-navigation");
@@ -76,6 +76,7 @@ export default function PersonalizationEntry() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      window.cancelAnimationFrame(frame);
       observer.disconnect();
       document
         .querySelectorAll("[data-abags-personalize-link]")
