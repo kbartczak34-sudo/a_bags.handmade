@@ -13,6 +13,14 @@ export default defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  {
+    files: ["app/personalization-entry.tsx"],
+    rules: {
+      // Asset readiness is reset when the selected product changes, then completed
+      // asynchronously by the product-specific customizer manifest request.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "dist/**",
