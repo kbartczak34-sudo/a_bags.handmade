@@ -9,6 +9,8 @@ const dynamicLayer = fs.readFileSync("app/images/configurator/[productId]/[categ
 const adminApi = fs.readFileSync("app/api/admin/customizer-assets/route.ts", "utf8");
 const manager = fs.readFileSync("app/panel/customizer-assets-manager.tsx", "utf8");
 const panel = fs.readFileSync("app/panel/admin-panel.tsx", "utf8");
+const layout = fs.readFileSync("app/layout.tsx", "utf8");
+const adminStyles = fs.readFileSync("app/customizer-admin.css", "utf8");
 
 test("customizer assets are stored per product, category and variant", () => {
   assert.match(store, /CREATE TABLE IF NOT EXISTS customizer_assets/);
@@ -33,10 +35,12 @@ test("owner API validates transparent layer formats and requires admin access", 
   assert.match(adminApi, /MAX_IMAGE_BYTES/);
 });
 
-test("owner panel contains a personalization asset manager", () => {
+test("owner panel contains a styled personalization asset manager", () => {
   assert.match(panel, /CustomizerAssetsManager/);
   assert.match(panel, /Personalizacja/);
   assert.match(manager, /Warstwy personalizacji/);
   assert.match(manager, /Dodaj \/ zastąp warstwę/);
   assert.match(manager, /api\/admin\/customizer-assets/);
+  assert.match(layout, /customizer-admin\.css/);
+  assert.match(adminStyles, /admin-customizer-manager/);
 });
