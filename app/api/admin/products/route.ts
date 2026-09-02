@@ -38,14 +38,16 @@ function parsePriceToCents(value: string) {
 function parseProductInput(formData: FormData): ProductInput | null {
   const name = String(formData.get("name") ?? "").trim();
   const detail = String(formData.get("detail") ?? "").trim();
-  const stitchType = String(formData.get("stitchType") ?? "").trim();
+  const stitchType = formData.has("stitchType")
+    ? String(formData.get("stitchType") ?? "").trim()
+    : undefined;
   const priceCents = parsePriceToCents(String(formData.get("price") ?? ""));
   const sortOrder = Number.parseInt(String(formData.get("sortOrder") ?? "0"), 10);
   const isVisible = String(formData.get("isVisible") ?? "") === "true";
 
   if (!name || name.length > 80) return null;
   if (detail.length > 180) return null;
-  if (stitchType.length > 80) return null;
+  if (stitchType !== undefined && stitchType.length > 80) return null;
   if (priceCents === null) return null;
   if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 9999) return null;
   return { name, detail, stitchType, priceCents, sortOrder, isVisible };
@@ -102,8 +104,6 @@ async function storeImage(file: File, productId: string) {
     throw new Error("Format wybranego zdjęcia jest nieprawidłowy. Użyj JPG, PNG lub WEBP.");
   }
 
-  // Nie ufamy wyłącznie file.type: mobilne przeglądarki i multipart potrafią
-  // przesłać poprawny obraz z pustym lub błędnym MIME. Format ustalamy z bajtów.
   const key = `products/${productId}/${crypto.randomUUID()}.${detected.extension}`;
   await getProductBucket().put(key, bytes, {
     httpMetadata: {
