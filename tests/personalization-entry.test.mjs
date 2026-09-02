@@ -7,6 +7,7 @@ const layout = fs.readFileSync("app/layout.tsx", "utf8");
 const styles = fs.readFileSync("app/personalization-entry.css", "utf8");
 const polish = fs.readFileSync("app/visual-customizer-polish.css", "utf8");
 const checkout = fs.readFileSync("app/api/checkout/route.ts", "utf8");
+const eslint = fs.readFileSync("eslint.config.mjs", "utf8");
 
 test("personalization is mounted as a prominent storefront feature", () => {
   assert.match(layout, /PersonalizationEntry/);
@@ -44,6 +45,27 @@ test("customer sees honest visualization availability instead of fake live chang
   assert.match(entry, /Produkt bazowy/);
   assert.match(entry, /hasLiveLayers/);
   assert.match(entry, /Konfigurator korzysta wyłącznie z warstw przygotowanych/);
+});
+
+test("stale customizer layers cannot leak between product selections", () => {
+  assert.match(entry, /assetsProductId/);
+  assert.match(entry, /assetsProductId === config\.productId/);
+  assert.match(entry, /currentAssets/);
+  assert.match(entry, /asset\.productId\.toLowerCase\(\) === config\.productId\.toLowerCase\(\)/);
+  assert.doesNotMatch(entry, /setAssetsReady/);
+});
+
+test("customizer modal owns its scroll lock and restores keyboard focus", () => {
+  assert.match(entry, /abags-vc-open/);
+  assert.match(entry, /restoreFocusRef/);
+  assert.match(entry, /event\.key === "Tab"/);
+  assert.match(entry, /dialogRef\.current\?\.focus\(\)/);
+  assert.match(polish, /body\.abags-vc-open\{overflow:hidden\}/);
+  assert.doesNotMatch(entry, /classList\.toggle\("modal-open"/);
+});
+
+test("customizer no longer needs a local set-state-in-effect lint exception", () => {
+  assert.doesNotMatch(eslint, /files:\s*\["app\/personalization-entry\.tsx"\]/);
 });
 
 test("customizer never invents personalization surcharges", () => {
