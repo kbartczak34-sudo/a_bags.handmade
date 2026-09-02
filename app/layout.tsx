@@ -21,6 +21,7 @@ import "./personalization-entry.css";
 import "./visual-customizer-polish.css";
 import "./exact-live-customizer.css";
 import "./bag-builder-engine.css";
+import "./photoreal-bag-builder.css";
 import "./customizer-admin.css";
 
 const display = Cormorant_Garamond({
