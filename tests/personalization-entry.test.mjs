@@ -61,12 +61,12 @@ test("realtime renderer is mounted and derives every current personalization con
   assert.match(layout, /RealtimeCustomizerPreview/);
   assert.match(layout, /realtime-customizer-preview\.css/);
   assert.match(realtime, /data-abags-realtime-preview="true"/);
-  assert.match(realtime, /fieldset:nth-child\(2\)/);
-  assert.match(realtime, /fieldset:nth-child\(3\)/);
-  assert.match(realtime, /fieldset:nth-child\(4\)/);
-  assert.match(realtime, /fieldset:nth-child\(5\)/);
-  assert.match(realtime, /fieldset:nth-child\(6\)/);
-  assert.match(realtime, /fieldset:nth-child\(7\)/);
+  assert.match(realtime, /valueFromButton\(dialog, 2\)/);
+  assert.match(realtime, /valueFromButton\(dialog, 3\)/);
+  assert.match(realtime, /valueFromButton\(dialog, 4\)/);
+  assert.match(realtime, /valueFromButton\(dialog, 5\)/);
+  assert.match(realtime, /valueFromButton\(dialog, 6\)/);
+  assert.match(realtime, /valueFromButton\(dialog, 7\)/);
   assert.match(realtime, /MutationObserver/);
 });
 
