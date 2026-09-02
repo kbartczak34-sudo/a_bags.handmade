@@ -10,6 +10,7 @@ import SiteContentEditor from "./site-content-editor";
 import OrdersManager from "./orders-manager";
 import StoreStatus from "./store-status";
 import CustomerCasesManager from "./customer-cases-manager";
+import BusinessDashboard from "./business-dashboard";
 
 type AdminTab =
   | "status"
@@ -42,7 +43,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <p className="eyebrow">Panel właścicielki</p>
           <h1>Zarządzaj sklepem</h1>
           <p>
-            Kontroluj gotowość produkcyjną, treści, produkty, techniki wykonania,
+            Kontroluj wyniki, gotowość produkcyjną, treści, produkty, techniki wykonania,
             dane bezpieczeństwa, opinie, zamówienia oraz sprawy posprzedażowe w jednym miejscu.
           </p>
         </div>
@@ -50,7 +51,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
 
       <nav className="admin-tabs" aria-label="Sekcje panelu">
         <button type="button" className={activeTab === "status" ? "is-active" : ""} onClick={() => setActiveTab("status")}>
-          <span>01</span>Status sklepu
+          <span>01</span>Pulpit · Status sklepu
         </button>
         <button type="button" className={activeTab === "page" ? "is-active" : ""} onClick={() => setActiveTab("page")}>
           <span>02</span>Treść strony
@@ -76,7 +77,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
       </nav>
 
       <div className="admin-tab-content">
-        {activeTab === "status" && <StoreStatus />}
+        {activeTab === "status" && <><BusinessDashboard /><StoreStatus /></>}
         {activeTab === "page" && <SiteContentEditor />}
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
