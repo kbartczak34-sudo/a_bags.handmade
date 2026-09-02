@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade.pl";
 const port = Number(process.env.ABAGS_CHROME_DEBUG_PORT || 9222);
 const timeoutMs = 30_000;
-
+const renderTimeoutMs = 5_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function chromeBinary() {
@@ -22,9 +22,7 @@ async function waitJson(url, options = {}) {
       const response = await fetch(url, options);
       if (response.ok) return response.json();
       lastError = new Error(`${response.status} ${response.statusText}`);
-    } catch (error) {
-      lastError = error;
-    }
+    } catch (error) { lastError = error; }
     await sleep(250);
   }
   throw lastError instanceof Error ? lastError : new Error(`Timed out waiting for ${url}`);
@@ -37,7 +35,6 @@ async function connectCdp(webSocketDebuggerUrl) {
     socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
     socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("CDP WebSocket connection failed.")); }, { once: true });
   });
-
   let id = 0;
   const pending = new Map();
   socket.addEventListener("message", (event) => {
@@ -49,34 +46,19 @@ async function connectCdp(webSocketDebuggerUrl) {
     if (message.error) waiter.reject(new Error(`${message.error.message ?? "CDP error"}`));
     else waiter.resolve(message.result);
   });
-
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const messageId = ++id;
     pending.set(messageId, { resolve, reject });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
-
   return { socket, send };
 }
 
-function resultValue(result) {
-  return result?.result?.value;
-}
+function resultValue(result) { return result?.result?.value; }
 
 async function main() {
   const binary = chromeBinary();
-  const chrome = spawn(binary, [
-    "--headless=new",
-    "--no-sandbox",
-    "--disable-gpu",
-    "--disable-dev-shm-usage",
-    "--disable-background-networking",
-    "--disable-default-apps",
-    "--no-first-run",
-    `--remote-debugging-port=${port}`,
-    "about:blank",
-  ], { stdio: ["ignore", "pipe", "pipe"] });
-
+  const chrome = spawn(binary, ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--disable-background-networking", "--disable-default-apps", "--no-first-run", `--remote-debugging-port=${port}`, "about:blank"], { stdio: ["ignore", "pipe", "pipe"] });
   let chromeLog = "";
   chrome.stderr.on("data", (chunk) => { chromeLog += String(chunk); });
 
@@ -85,131 +67,76 @@ async function main() {
     const target = await waitJson(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(productionUrl)}`, { method: "PUT" });
     if (!target.webSocketDebuggerUrl) throw new Error("Chrome did not expose a page debugger URL.");
     const { socket, send } = await connectCdp(target.webSocketDebuggerUrl);
-
-    const evaluate = async (expression) => resultValue(await send("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-      userGesture: true,
-    }));
-
+    const evaluate = async (expression) => resultValue(await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true, userGesture: true }));
     const waitFor = async (expression, label, expected = true) => {
       const deadline = Date.now() + timeoutMs;
       let value;
       while (Date.now() < deadline) {
         value = await evaluate(expression);
         if (expected === true ? Boolean(value) : value === expected) return value;
-        await sleep(250);
+        await sleep(200);
       }
       throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}`);
     };
 
-    await send("Runtime.enable");
-    await send("Page.enable");
+    await send("Runtime.enable"); await send("Page.enable");
     await waitFor("document.readyState === 'complete'", "production document load");
     await waitFor("Boolean(document.querySelector('#personalizacja'))", "personalization entry");
-
-    const opened = await evaluate(`(() => {
-      const button = [...document.querySelectorAll('button')].find((node) => node.textContent?.includes('Uruchom konfigurator'));
-      if (!button) return false;
-      button.click();
-      return true;
-    })()`);
+    const opened = await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Uruchom konfigurator')); if(!button)return false; button.click(); return true; })()`);
     if (!opened) throw new Error("Could not find the 'Uruchom konfigurator' button.");
-
     await waitFor("Boolean(document.querySelector('.abags-vc-dialog'))", "visual customizer dialog");
     await waitFor("Boolean(document.querySelector('.abags-vc-base')?.getAttribute('src'))", "base product image");
     await waitFor("Boolean(document.querySelector('[data-abags-realtime-preview]'))", "realtime canvas");
     await waitFor("(document.querySelector('[data-abags-realtime-preview]')?.width || 0) > 20", "rendered realtime canvas pixels");
     await waitFor("Boolean(document.querySelector('.abags-exact-reference-library'))", "exact reference library");
 
-    const fingerprint = async () => evaluate(`(() => {
-      const canvas = document.querySelector('[data-abags-realtime-preview]');
-      if (!canvas || !canvas.width || !canvas.height) return '';
-      try {
-        const ctx = canvas.getContext('2d');
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let hash = 2166136261 >>> 0;
-        const step = Math.max(4, Math.floor(data.length / 12000));
-        for (let i = 0; i < data.length; i += step) {
-          hash ^= data[i];
-          hash = Math.imul(hash, 16777619) >>> 0;
-        }
-        return canvas.width + 'x' + canvas.height + ':' + hash.toString(16);
-      } catch (error) {
-        return 'canvas-error:' + String(error?.message || error);
+    const fingerprint = async () => evaluate(`(() => { const canvas=document.querySelector('[data-abags-realtime-preview]'); if(!canvas||!canvas.width||!canvas.height)return ''; try{const data=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let hash=2166136261>>>0;const step=Math.max(4,Math.floor(data.length/12000));for(let i=0;i<data.length;i+=step){hash^=data[i];hash=Math.imul(hash,16777619)>>>0;}return canvas.width+'x'+canvas.height+':'+hash.toString(16);}catch(error){return 'canvas-error:'+String(error?.message||error);} })()`);
+    const waitFingerprintChange = async (before, label) => {
+      const deadline = Date.now() + renderTimeoutMs;
+      let value = before;
+      while (Date.now() < deadline) {
+        value = await fingerprint();
+        if (value && value !== before && !String(value).startsWith("canvas-error:")) return value;
+        await sleep(100);
       }
-    })()`);
-
+      throw new Error(`${label} did not change the realtime render within ${renderTimeoutMs} ms. Fingerprint: ${value}`);
+    };
     const clickOption = async (fieldset, text) => {
-      const clicked = await evaluate(`(() => {
-        const fieldset = document.querySelector('.abags-vc-controls fieldset:nth-child(${fieldset})');
-        const button = [...(fieldset?.querySelectorAll('button') || [])].find((node) => node.textContent?.includes(${JSON.stringify(text)}));
-        if (!button) return false;
-        button.click();
-        return true;
-      })()`);
+      const clicked = await evaluate(`(() => { const fieldset=document.querySelector('.abags-vc-controls fieldset:nth-child(${fieldset})'); const button=[...(fieldset?.querySelectorAll('button')||[])].find((node)=>node.textContent?.includes(${JSON.stringify(text)})); if(!button)return false; button.click(); return true; })()`);
       if (!clicked) throw new Error(`Missing customizer option ${fieldset}: ${text}`);
-      await sleep(450);
     };
 
-    const initial = await fingerprint();
-    if (!initial || String(initial).startsWith("canvas-error:")) throw new Error(`Realtime canvas cannot be sampled: ${initial}`);
-
-    await clickOption(2, "Pudrowy róż");
-    const afterColor = await fingerprint();
-    if (afterColor === initial) throw new Error("Changing colour did not change the realtime render.");
-
-    await clickOption(4, "Drewniane");
-    const afterHandles = await fingerprint();
-    if (afterHandles === afterColor) throw new Error("Changing handles did not change the realtime render.");
-
-    await clickOption(5, "Srebrne");
-    const afterHardware = await fingerprint();
-    if (afterHardware === afterHandles) throw new Error("Changing hardware did not change the realtime render.");
-
-    await clickOption(6, "Regulowany");
-    const afterStrap = await fingerprint();
-    if (afterStrap === afterHardware) throw new Error("Changing strap did not change the realtime render.");
-
-    await clickOption(7, "Chwost");
-    const afterAccent = await fingerprint();
-    if (afterAccent === afterStrap) throw new Error("Changing accent did not change the realtime render.");
+    let current = await fingerprint();
+    if (!current || String(current).startsWith("canvas-error:")) throw new Error(`Realtime canvas cannot be sampled: ${current}`);
+    await clickOption(2, "Pudrowy róż"); current = await waitFingerprintChange(current, "Changing colour");
+    await waitFor("document.querySelector('.abags-vc-controls fieldset:nth-child(2) button.is-active')?.textContent?.includes('Pudrowy róż')", "selected colour state");
+    await clickOption(4, "Drewniane"); current = await waitFingerprintChange(current, "Changing handles");
+    await clickOption(5, "Srebrne"); current = await waitFingerprintChange(current, "Changing hardware");
+    await clickOption(6, "Regulowany"); current = await waitFingerprintChange(current, "Changing strap");
+    await clickOption(7, "Chwost"); current = await waitFingerprintChange(current, "Changing accent");
 
     const stitchButtons = await evaluate("document.querySelectorAll('.abags-vc-controls fieldset:nth-child(3) button').length");
     if (!stitchButtons) throw new Error("Stitch selector is empty in production.");
+    if (stitchButtons > 1) {
+      const beforeStitch = current;
+      const clicked = await evaluate(`(() => { const buttons=[...document.querySelectorAll('.abags-vc-controls fieldset:nth-child(3) button')]; const button=buttons.find((item)=>!item.classList.contains('is-active')); if(!button)return false; button.click(); return true; })()`);
+      if (clicked) current = await waitFingerprintChange(beforeStitch, "Changing stitch");
+    }
 
-    await waitFor("Boolean([...document.querySelectorAll('button')].find((node) => node.textContent?.includes('Porównaj z bazą')))", "compare-with-base control");
-    await evaluate(`(() => { const button = [...document.querySelectorAll('button')].find((node) => node.textContent?.includes('Porównaj z bazą')); button?.click(); return Boolean(button); })()`);
+    await waitFor("Boolean([...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Porównaj z bazą')))", "compare-with-base control");
+    await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Porównaj z bazą')); button?.click(); return Boolean(button); })()`);
     await waitFor("document.querySelector('.abags-vc-preview')?.classList.contains('is-showing-base')", "untouched base comparison");
-    await evaluate(`(() => { const button = [...document.querySelectorAll('button')].find((node) => node.textContent?.includes('Pokaż projekt')); button?.click(); return Boolean(button); })()`);
+    await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Pokaż projekt')); button?.click(); return Boolean(button); })()`);
     await waitFor("!document.querySelector('.abags-vc-preview')?.classList.contains('is-showing-base')", "return to project render");
-
     const exactReferenceCount = await evaluate("document.querySelectorAll('.abags-exact-reference-library button').length");
     if (!exactReferenceCount) throw new Error("Exact 1:1 reference library contains no selectable products.");
 
-    const result = await evaluate(`(() => ({
-      realtimeCanvas: Boolean(document.querySelector('[data-abags-realtime-preview]')),
-      liveBadge: document.querySelector('.abags-realtime-preview-badge')?.textContent || '',
-      exactReferences: document.querySelectorAll('.abags-exact-reference-library button').length,
-      selectedColor: document.querySelector('.abags-vc-controls fieldset:nth-child(2) button.is-active')?.textContent || '',
-      selectedHandles: document.querySelector('.abags-vc-controls fieldset:nth-child(4) button.is-active')?.textContent || '',
-      selectedHardware: document.querySelector('.abags-vc-controls fieldset:nth-child(5) button.is-active')?.textContent || '',
-      selectedStrap: document.querySelector('.abags-vc-controls fieldset:nth-child(6) button.is-active')?.textContent || '',
-      selectedAccent: document.querySelector('.abags-vc-controls fieldset:nth-child(7) button.is-active')?.textContent || ''
-    }))()`);
-
+    const result = await evaluate(`(() => ({realtimeCanvas:Boolean(document.querySelector('[data-abags-realtime-preview]')),liveBadge:document.querySelector('.abags-realtime-preview-badge')?.textContent||'',exactReferences:document.querySelectorAll('.abags-exact-reference-library button').length,selectedColor:document.querySelector('.abags-vc-controls fieldset:nth-child(2) button.is-active')?.textContent||'',selectedHandles:document.querySelector('.abags-vc-controls fieldset:nth-child(4) button.is-active')?.textContent||'',selectedHardware:document.querySelector('.abags-vc-controls fieldset:nth-child(5) button.is-active')?.textContent||'',selectedStrap:document.querySelector('.abags-vc-controls fieldset:nth-child(6) button.is-active')?.textContent||'',selectedAccent:document.querySelector('.abags-vc-controls fieldset:nth-child(7) button.is-active')?.textContent||''}))()`);
     console.log("Realtime Visual Customizer browser smoke passed:", JSON.stringify(result));
     socket.close();
   } finally {
-    chrome.kill("SIGTERM");
-    await sleep(200);
-    if (!chrome.killed) chrome.kill("SIGKILL");
-    if (process.env.ABAGS_DEBUG_CHROME === "1" && chromeLog) console.error(chromeLog);
+    chrome.kill("SIGTERM"); await sleep(200); if (!chrome.killed) chrome.kill("SIGKILL"); if (process.env.ABAGS_DEBUG_CHROME === "1" && chromeLog) console.error(chromeLog);
   }
 }
 
-main().catch((error) => {
-  console.error(`Realtime Visual Customizer browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
-  process.exitCode = 1;
-});
+main().catch((error) => { console.error(`Realtime Visual Customizer browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`); process.exitCode = 1; });
