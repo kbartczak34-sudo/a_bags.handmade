@@ -8,6 +8,7 @@ import PersonalizationEntry from "./personalization-entry";
 import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
+import RealtimeCustomizerPreview from "./realtime-customizer-preview";
 import StitchGallery from "./stitch-gallery";
 import StorefrontExperience from "./storefront-experience";
 import SocialQuickLinks from "./social-quick-links";
@@ -20,6 +21,7 @@ import "./storefront-experience.css";
 import "./personalization-entry.css";
 import "./visual-customizer-polish.css";
 import "./exact-reference-library.css";
+import "./realtime-customizer-preview.css";
 import "./customizer-admin.css";
 
 const display = Cormorant_Garamond({
@@ -116,6 +118,7 @@ export default function RootLayout({
         <StorefrontExperience />
         <PersonalizationEntry />
         <ExactReferenceLibrary />
+        <RealtimeCustomizerPreview />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
