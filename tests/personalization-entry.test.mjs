@@ -27,14 +27,23 @@ test("visual customizer exposes all configuration dimensions", () => {
   assert.match(entry, /Detal \/ ozdoba/);
 });
 
-test("visual customizer preserves the real product as the base layer", () => {
+test("visual customizer preserves the real product as the base layer and uses live asset manifest", () => {
   assert.match(entry, /abags-vc-base/);
   assert.match(entry, /product\.imageUrl/);
-  assert.match(entry, /\/images\/configurator\//);
+  assert.match(entry, /\/api\/customizer-assets\?productId=/);
+  assert.match(entry, /asset\.imageUrl/);
   assert.match(entry, /abags-vc-layer/);
   assert.match(styles, /\.abags-vc-base/);
   assert.match(styles, /\.abags-vc-layer/);
   assert.match(entry, /onError=\{\(\) => setVisible\(false\)\}/);
+});
+
+test("customer sees honest visualization availability instead of fake live changes", () => {
+  assert.match(entry, /podgląd ✓/);
+  assert.match(entry, /bez warstwy/);
+  assert.match(entry, /Produkt bazowy/);
+  assert.match(entry, /hasLiveLayers/);
+  assert.match(entry, /Konfigurator korzysta wyłącznie z warstw przygotowanych/);
 });
 
 test("customer can compare personalization with the untouched base product", () => {
