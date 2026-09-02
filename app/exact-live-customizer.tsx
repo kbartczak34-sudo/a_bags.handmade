@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePublicContact, whatsappHref } from "./public-contact";
 import { EXACT_ATELIER_LIBRARY, EXACT_ATELIER_SPRITE_PARTS, EXACT_FAMILY_LABELS, type ExactAtelierReference } from "../lib/exact-customizer-library";
@@ -20,6 +20,10 @@ function loadDraft(): Filters {
 
 function matches(ref: ExactAtelierReference, filters: Filters, ignored?: FilterKey) {
   return (Object.keys(filters) as FilterKey[]).every((key) => key === ignored || !filters[key] || ref[key] === filters[key]);
+}
+
+function filtersFromReference(ref: ExactAtelierReference): Filters {
+  return { family:ref.family, color:ref.color, stitch:ref.stitch, flap:ref.flap, handles:ref.handles, hardware:ref.hardware, strap:ref.strap, accent:ref.accent };
 }
 
 function uniqueOptions(candidates: ExactAtelierReference[], key: FilterKey) {
@@ -51,7 +55,6 @@ export default function ExactLiveCustomizer() {
   const [filters, setFilters] = useState<Filters>(loadDraft);
   const [selectedId, setSelectedId] = useState("");
   const [showBase, setShowBase] = useState(false);
-  const previousSelection = useRef("");
   const [spriteUrl, setSpriteUrl] = useState("");
   const [spriteError, setSpriteError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -106,22 +109,7 @@ export default function ExactLiveCustomizer() {
   }, []);
 
   const candidates = useMemo(() => EXACT_ATELIER_LIBRARY.filter((ref) => matches(ref, filters)), [filters]);
-  const selected = useMemo(() => {
-    if (selectedId) {
-      const explicit = candidates.find((ref) => ref.id === selectedId);
-      if (explicit) return explicit;
-    }
-    return candidates[0] ?? EXACT_ATELIER_LIBRARY[0];
-  }, [candidates, selectedId]);
-
-  useEffect(() => {
-    if (!selected) return;
-    if (previousSelection.current !== selected.id) {
-      previousSelection.current = selected.id;
-      setSelectedId(selected.id);
-      setShowBase(false);
-    }
-  }, [selected]);
+  const selected = useMemo(() => candidates.find((ref) => ref.id === selectedId) ?? candidates[0] ?? EXACT_ATELIER_LIBRARY[0], [candidates, selectedId]);
 
   useEffect(() => {
     if (!preview) return;
@@ -145,9 +133,15 @@ export default function ExactLiveCustomizer() {
     setShowBase(false);
   };
 
+  const selectReference = (ref: ExactAtelierReference) => {
+    setFilters(filtersFromReference(ref));
+    setSelectedId(ref.id);
+    setShowBase(false);
+  };
+
   const optionsFor = (key: FilterKey) => uniqueOptions(EXACT_ATELIER_LIBRARY.filter((ref) => matches(ref, filters, key)), key);
   const reset = () => { setFilters(EMPTY); setSelectedId(""); setShowBase(false); window.localStorage.removeItem(DRAFT_KEY); setSaved(false); };
-  const save = () => { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(filters)); setSaved(true); window.setTimeout(() => setSaved(false), 1800); };
+  const save = () => { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(filtersFromReference(selected))); setSaved(true); window.setTimeout(() => setSaved(false), 1800); };
 
   if (!mount || !preview || !selected) return null;
 
@@ -163,19 +157,19 @@ export default function ExactLiveCustomizer() {
         <span>{EXACT_ATELIER_LIBRARY.length} wzorców 1:1</span>
       </div>
       <div className="abags-exact-live-fields">
-        {fields.map(([key,label]) => <label key={key}><span>{label}</span><select value={filters[key]} onChange={(event) => setFilter(key, event.target.value)}><option value="">Dowolny zgodny wariant</option>{optionsFor(key).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+        {fields.map(([key,label]) => <label key={key}><span>{label}</span><select aria-label={label} value={filters[key]} onChange={(event) => setFilter(key, event.target.value)}><option value="">Dowolny zgodny wariant</option>{optionsFor(key).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
       </div>
       <div className="abags-exact-live-result">
         {!spriteUrl && !spriteError && <p className="abags-exact-live-load">Wczytywanie biblioteki zdjęć 1:1…</p>}
         {spriteError && <p className="abags-exact-live-error">{spriteError}</p>}
         <div><strong>Podgląd w czasie rzeczywistym</strong><span>{candidates.length === 1 ? "1 dokładny wariant" : `${candidates.length} zgodnych wariantów`}</span></div>
         <p>{selected.label} · {selected.stitchLabel} · {selected.hardwareLabel}</p>
-        <div className="abags-exact-live-variants" aria-label="Zgodne warianty">{candidates.slice(0,8).map((ref) => <button type="button" key={ref.id} className={selected.id === ref.id ? "is-active" : ""} onClick={() => { setSelectedId(ref.id); setShowBase(false); }}><span className="abags-exact-live-sprite" style={spriteStyle(ref, spriteUrl)} aria-hidden="true" /><span>{ref.label}</span></button>)}</div>
+        <div className="abags-exact-live-variants" aria-label="Zgodne warianty">{candidates.slice(0,8).map((ref) => <button type="button" key={ref.id} className={selected.id === ref.id ? "is-active" : ""} aria-pressed={selected.id === ref.id} onClick={() => selectReference(ref)}><span className="abags-exact-live-sprite" style={spriteStyle(ref, spriteUrl)} aria-hidden="true" /><span>{ref.label}</span></button>)}</div>
       </div>
       <div className="abags-exact-live-actions"><button type="button" onClick={reset}>Wyczyść wybory</button><button type="button" onClick={save}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button><a href={whatsappHref(contact.whatsappNumber, workshopMessage)} target="_blank" rel="noopener noreferrer">Wyślij projekt do pracowni →</a></div>
     </section>, mount)}
     {createPortal(<>
-      {!showBase && spriteUrl && <div className="abags-vc-exact-reference abags-vc-exact-sprite" style={spriteStyle(selected, spriteUrl)} role="img" aria-label={`Podgląd 1:1: ${selected.label}`} />}
+      {!showBase && spriteUrl && <div className="abags-vc-exact-reference abags-vc-exact-sprite" style={spriteStyle(selected, spriteUrl)} role="img" aria-label={`Podgląd 1:1: ${selected.label}`} data-exact-reference-id={selected.id} />}
       {!showBase && spriteUrl && <div className="abags-vc-exact-reference-badge">Podgląd 1:1 · aktualizowany na żywo</div>}
       <button type="button" className="abags-vc-exact-reference-toggle" onClick={() => setShowBase((current) => !current)}>{showBase ? "Pokaż projekt 1:1" : "Porównaj z modelem bazowym"}</button>
     </>, preview)}
