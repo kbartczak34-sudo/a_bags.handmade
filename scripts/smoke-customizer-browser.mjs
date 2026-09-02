@@ -4,6 +4,7 @@ const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade
 const port = Number(process.env.ABAGS_CHROME_DEBUG_PORT || 9222);
 const timeoutMs = 30_000;
 const renderTimeoutMs = 10_000;
+const cdpTimeoutMs = 7_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function chromeBinary() {
@@ -31,42 +32,62 @@ async function waitJson(url, options = {}) {
 async function connectCdp(webSocketDebuggerUrl) {
   const socket = new WebSocket(webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("CDP WebSocket connection timed out.")), 10_000);
+    const timer = setTimeout(() => reject(new Error("CDP WebSocket connection timed out.")), cdpTimeoutMs);
     socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
     socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("CDP WebSocket connection failed.")); }, { once: true });
   });
   let id = 0;
   const pending = new Map();
+  const rejectPending = (reason) => {
+    for (const waiter of pending.values()) {
+      clearTimeout(waiter.timer);
+      waiter.reject(reason);
+    }
+    pending.clear();
+  };
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data));
     if (!message.id) return;
     const waiter = pending.get(message.id);
     if (!waiter) return;
     pending.delete(message.id);
+    clearTimeout(waiter.timer);
     if (message.error) waiter.reject(new Error(`${message.error.message ?? "CDP error"}`));
     else waiter.resolve(message.result);
   });
+  socket.addEventListener("close", () => rejectPending(new Error("CDP WebSocket closed before the command completed.")));
+  socket.addEventListener("error", () => rejectPending(new Error("CDP WebSocket failed while a command was pending.")));
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const messageId = ++id;
-    pending.set(messageId, { resolve, reject });
+    const timer = setTimeout(() => {
+      pending.delete(messageId);
+      reject(new Error(`CDP command timed out: ${method}`));
+    }, cdpTimeoutMs);
+    pending.set(messageId, { resolve, reject, timer });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
   return { socket, send };
 }
 
-function resultValue(result) { return result?.result?.value; }
+function resultValue(result) {
+  if (result?.exceptionDetails) throw new Error(result.exceptionDetails.text || "Runtime evaluation failed.");
+  return result?.result?.value;
+}
 
 async function main() {
   const binary = chromeBinary();
   const chrome = spawn(binary, ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--disable-background-networking", "--disable-default-apps", "--no-first-run", `--remote-debugging-port=${port}`, "about:blank"], { stdio: ["ignore", "pipe", "pipe"] });
   let chromeLog = "";
+  let socket;
   chrome.stderr.on("data", (chunk) => { chromeLog += String(chunk); });
 
   try {
     await waitJson(`http://127.0.0.1:${port}/json/version`);
     const target = await waitJson(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(productionUrl)}`, { method: "PUT" });
     if (!target.webSocketDebuggerUrl) throw new Error("Chrome did not expose a page debugger URL.");
-    const { socket, send } = await connectCdp(target.webSocketDebuggerUrl);
+    const cdp = await connectCdp(target.webSocketDebuggerUrl);
+    socket = cdp.socket;
+    const send = cdp.send;
     const evaluate = async (expression) => resultValue(await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true, userGesture: true }));
     const waitFor = async (expression, label, expected = true, deadlineMs = timeoutMs) => {
       const deadline = Date.now() + deadlineMs;
@@ -79,7 +100,8 @@ async function main() {
       throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}`);
     };
 
-    await send("Runtime.enable"); await send("Page.enable");
+    await send("Runtime.enable");
+    await send("Page.enable");
     await waitFor("document.readyState === 'complete'", "production document load");
     await waitFor("Boolean(document.querySelector('#personalizacja'))", "personalization entry");
     const opened = await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Uruchom konfigurator')); if(!button)return false; button.click(); return true; })()`);
@@ -157,10 +179,16 @@ async function main() {
       workshopLink:Boolean(document.querySelector('.abags-builder-actions a[href]'))
     }))()`);
     console.log("Realtime layered Bag Builder browser smoke passed:", JSON.stringify(result));
-    socket.close();
   } finally {
-    chrome.kill("SIGTERM"); await sleep(200); if (!chrome.killed) chrome.kill("SIGKILL"); if (process.env.ABAGS_DEBUG_CHROME === "1" && chromeLog) console.error(chromeLog);
+    try { socket?.close(); } catch {}
+    chrome.kill("SIGTERM");
+    await sleep(250);
+    if (chrome.exitCode === null) chrome.kill("SIGKILL");
+    if (process.env.ABAGS_DEBUG_CHROME === "1" && chromeLog) console.error(chromeLog);
   }
 }
 
-main().catch((error) => { console.error(`Realtime layered Bag Builder browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`); process.exitCode = 1; });
+main().then(() => process.exit(0)).catch((error) => {
+  console.error(`Realtime layered Bag Builder browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
+  process.exit(1);
+});
