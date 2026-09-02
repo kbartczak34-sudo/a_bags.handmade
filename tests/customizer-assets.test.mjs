@@ -48,3 +48,13 @@ test("owner panel contains a styled personalization asset manager", () => {
   assert.match(layout, /customizer-admin\.css/);
   assert.match(adminStyles, /admin-customizer-manager/);
 });
+
+test("owner panel suggests frontend-compatible variant keys", () => {
+  assert.match(manager, /PRESET_VARIANTS/);
+  assert.match(manager, /natural-bez/);
+  assert.match(manager, /pudrowy-roz/);
+  assert.match(manager, /gleboki-granat/);
+  assert.match(manager, /drewniane/);
+  assert.match(manager, /lancuszek-premium/);
+  assert.match(manager, /customizer-variant-presets/);
+});
