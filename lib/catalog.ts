@@ -8,6 +8,20 @@ export function vatFromNetCents(netCents: number) {
   return grossFromNetCents(netCents) - netCents;
 }
 
+export type ProductAvailability = "ready" | "made_to_order" | "unavailable";
+
+export const productAvailabilityLabels: Record<ProductAvailability, string> = {
+  ready: "Dostępna od ręki",
+  made_to_order: "Na zamówienie",
+  unavailable: "Chwilowo niedostępna",
+};
+
+export function productAvailabilityDefaultNote(status: ProductAvailability) {
+  if (status === "ready") return "Gotowa do przygotowania i wysyłki.";
+  if (status === "unavailable") return "Zapytaj o możliwość ponownego wykonania tego modelu.";
+  return "Termin realizacji potwierdzamy po złożeniu zamówienia.";
+}
+
 export type CatalogProduct = {
   id: string;
   number: string;
@@ -23,6 +37,8 @@ export type CatalogProduct = {
   imageUrl: string | null;
   isVisible: boolean;
   sortOrder: number;
+  availabilityStatus: ProductAvailability;
+  availabilityNote: string;
   productIdentifier: string;
   batchCode: string;
   materials: string;
@@ -53,6 +69,8 @@ export const products: CatalogProduct[] = [
     imageUrl: null,
     isVisible: true,
     sortOrder: 10,
+    availabilityStatus: "made_to_order",
+    availabilityNote: productAvailabilityDefaultNote("made_to_order"),
     productIdentifier: "",
     batchCode: "",
     materials: "",
@@ -70,6 +88,8 @@ export const products: CatalogProduct[] = [
     imageUrl: null,
     isVisible: true,
     sortOrder: 20,
+    availabilityStatus: "made_to_order",
+    availabilityNote: productAvailabilityDefaultNote("made_to_order"),
     productIdentifier: "",
     batchCode: "",
     materials: "",
@@ -87,6 +107,8 @@ export const products: CatalogProduct[] = [
     imageUrl: null,
     isVisible: true,
     sortOrder: 30,
+    availabilityStatus: "made_to_order",
+    availabilityNote: productAvailabilityDefaultNote("made_to_order"),
     productIdentifier: "",
     batchCode: "",
     materials: "",
