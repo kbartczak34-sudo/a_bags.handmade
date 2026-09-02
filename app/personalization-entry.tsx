@@ -86,6 +86,17 @@ function sanitizeConfig(value: unknown): Config {
   ) as Config;
 }
 
+function restoreDraft(): Config {
+  if (typeof window === "undefined") return EMPTY_CONFIG;
+  try {
+    const stored = window.localStorage.getItem(DRAFT_KEY);
+    return stored ? sanitizeConfig(JSON.parse(stored)) : EMPTY_CONFIG;
+  } catch {
+    window.localStorage.removeItem(DRAFT_KEY);
+    return EMPTY_CONFIG;
+  }
+}
+
 function labelFor(options: Option[], value: string, fallback = "—") {
   return options.find((option) => option.value === value)?.label ?? (value || fallback);
 }
@@ -124,7 +135,6 @@ function OptionButtons({ options, value, onChange, label }: { options: Option[];
 
 function LayerImage({ src }: { src: string }) {
   const [visible, setVisible] = useState(true);
-  useEffect(() => setVisible(true), [src]);
   if (!visible) return null;
   return <img className="abags-vc-layer" src={src} alt="" aria-hidden="true" onError={() => setVisible(false)} />;
 }
@@ -134,7 +144,7 @@ export default function PersonalizationEntry() {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const [config, setConfig] = useState<Config>(EMPTY_CONFIG);
+  const [config, setConfig] = useState<Config>(restoreDraft);
   const [saved, setSaved] = useState(false);
   const [showBase, setShowBase] = useState(false);
 
@@ -142,28 +152,19 @@ export default function PersonalizationEntry() {
     const controller = new AbortController();
     fetch("/api/products", { cache: "no-store", signal: controller.signal })
       .then(async (response) => response.ok ? response.json() : Promise.reject(new Error("products unavailable")))
-      .then((data: { products?: Product[] }) => setProducts(Array.isArray(data.products) ? data.products : []))
+      .then((data: { products?: Product[] }) => {
+        const items = Array.isArray(data.products) ? data.products : [];
+        setProducts(items);
+        if (items.length === 0) return;
+        setConfig((current) => {
+          if (current.productId && items.some((item) => item.id === current.productId)) return current;
+          const first = items[0];
+          return { ...current, productId: first.id, stitch: first.stitchType ? slug(first.stitchType) : current.stitch };
+        });
+      })
       .catch(() => { if (!controller.signal.aborted) setProducts([]); });
     return () => controller.abort();
   }, []);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(DRAFT_KEY);
-      if (stored) setConfig(sanitizeConfig(JSON.parse(stored)));
-    } catch {
-      window.localStorage.removeItem(DRAFT_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (products.length === 0) return;
-    setConfig((current) => {
-      if (current.productId && products.some((item) => item.id === current.productId)) return current;
-      const first = products[0];
-      return { ...current, productId: first.id, stitch: first.stitchType ? slug(first.stitchType) : current.stitch };
-    });
-  }, [products]);
 
   useEffect(() => {
     const collection = document.getElementById("kolekcja");
