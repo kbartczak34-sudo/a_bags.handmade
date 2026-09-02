@@ -6,9 +6,8 @@ const entry = fs.readFileSync("app/personalization-entry.tsx", "utf8");
 const layout = fs.readFileSync("app/layout.tsx", "utf8");
 const styles = fs.readFileSync("app/personalization-entry.css", "utf8");
 const polish = fs.readFileSync("app/visual-customizer-polish.css", "utf8");
-const realtime = fs.readFileSync("app/realtime-customizer-preview.tsx", "utf8");
-const realtimeStyles = fs.readFileSync("app/realtime-customizer-preview.css", "utf8");
-const exactReferences = fs.readFileSync("app/exact-reference-library.tsx", "utf8");
+const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
+const exactStyles = fs.readFileSync("app/exact-live-customizer.css", "utf8");
 const checkout = fs.readFileSync("app/api/checkout/route.ts", "utf8");
 const eslint = fs.readFileSync("eslint.config.mjs", "utf8");
 
@@ -16,6 +15,8 @@ test("personalization is mounted as a prominent storefront feature", () => {
   assert.match(layout, /PersonalizationEntry/);
   assert.match(layout, /personalization-entry\.css/);
   assert.match(layout, /visual-customizer-polish\.css/);
+  assert.match(layout, /ExactLiveCustomizer/);
+  assert.match(layout, /exact-live-customizer\.css/);
   assert.match(entry, /id="personalizacja"/);
   assert.match(entry, /Uruchom konfigurator/);
   assert.match(entry, /A-Bags Visual Customizer 2\.1/);
@@ -57,37 +58,22 @@ test("zero-asset mode visualizes choices immediately and exact atelier layers st
   assert.match(entry, /Podgląd automatyczny/);
 });
 
-test("realtime renderer is mounted and derives every current personalization control", () => {
-  assert.match(layout, /RealtimeCustomizerPreview/);
-  assert.match(layout, /realtime-customizer-preview\.css/);
-  assert.match(realtime, /data-abags-realtime-preview="true"/);
-  assert.match(realtime, /valueFromButton\(dialog, 2\)/);
-  assert.match(realtime, /valueFromButton\(dialog, 3\)/);
-  assert.match(realtime, /valueFromButton\(dialog, 4\)/);
-  assert.match(realtime, /valueFromButton\(dialog, 5\)/);
-  assert.match(realtime, /valueFromButton\(dialog, 6\)/);
-  assert.match(realtime, /valueFromButton\(dialog, 7\)/);
-  assert.match(realtime, /MutationObserver/);
+test("exact photographic renderer is mounted as the active personalization preview", () => {
+  assert.match(layout, /ExactLiveCustomizer/);
+  assert.match(layout, /exact-live-customizer\.css/);
+  assert.match(exact, /exact-live/);
+  assert.match(exact, /MutationObserver/);
 });
 
-test("realtime renderer uses product pixels for colour while retaining exact-layer priority", () => {
-  assert.match(realtime, /getImageData/);
-  assert.match(realtime, /representativeBodyColor/);
-  assert.match(realtime, /recolorBody/);
-  assert.match(realtime, /drawStitchCue/);
-  assert.match(realtime, /drawAccessories/);
-  assert.match(realtime, /drawChain/);
-  assert.match(realtimeStyles, /\.abags-realtime-preview/);
-  assert.match(realtimeStyles, /\.abags-vc-layer\{z-index:5\}/);
-  assert.match(realtimeStyles, /has-exact-reference/);
-});
-
-test("real finished-product references remain available above generated realtime preview", () => {
-  assert.match(layout, /ExactReferenceLibrary/);
-  assert.match(exactReferences, /Biblioteka atelier · 1:1/);
-  assert.match(exactReferences, /\/api\/products/);
-  assert.match(exactReferences, /has-exact-reference/);
-  assert.match(exactReferences, /Wzorzec 1:1/);
+test("exact photographic renderer maps personalization controls to finished-product references", () => {
+  assert.match(exact, /model/);
+  assert.match(exact, /color/);
+  assert.match(exact, /stitch/);
+  assert.match(exact, /handles/);
+  assert.match(exact, /hardware/);
+  assert.match(exact, /strap/);
+  assert.match(exact, /accent/);
+  assert.match(exactStyles, /abags-exact-live/);
 });
 
 test("customer sees automatic preview and exact-layer availability honestly", () => {
@@ -163,5 +149,5 @@ test("visual customizer has responsive dialog styles", () => {
   assert.match(styles, /abags-vc-dialog/);
   assert.match(styles, /@media\(max-width:980px\)/);
   assert.match(styles, /@media\(max-width:620px\)/);
-  assert.match(realtimeStyles, /@media\(max-width:620px\)/);
+  assert.match(exactStyles, /@media\(max-width:620px\)/);
 });
