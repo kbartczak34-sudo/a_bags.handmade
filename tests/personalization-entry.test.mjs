@@ -39,6 +39,19 @@ test("visual customizer preserves the real product as the base layer and uses li
   assert.match(entry, /onError=\{\(\) => setVisible\(false\)\}/);
 });
 
+test("zero-asset mode visualizes choices immediately and exact atelier layers stay preferred", () => {
+  assert.match(polish, /Zero-asset live preview/);
+  assert.match(polish, /--vc-auto-color/);
+  assert.match(polish, /mix-blend-mode:color/);
+  assert.match(polish, /--vc-hardware/);
+  assert.match(polish, /--vc-strap/);
+  assert.match(polish, /--vc-accent/);
+  assert.match(polish, /podgląd auto/);
+  assert.match(polish, /podgląd dokładny ✓/);
+  assert.match(polish, /dokładna warstwa atelier/);
+  assert.match(polish, /\.abags-vc-layer\{z-index:4\}/);
+});
+
 test("customer sees honest visualization availability instead of fake live changes", () => {
   assert.match(entry, /podgląd ✓/);
   assert.match(entry, /bez warstwy/);
