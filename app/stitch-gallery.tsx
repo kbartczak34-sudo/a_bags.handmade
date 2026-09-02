@@ -18,7 +18,7 @@ type ProductsPayload = {
 export default function StitchGallery() {
   const [products, setProducts] = useState<StitchProduct[]>([]);
   const [mount, setMount] = useState<HTMLElement | null>(null);
-  const [activeStitch, setActiveStitch] = useState("");
+  const [selectedStitch, setSelectedStitch] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -48,21 +48,12 @@ export default function StitchGallery() {
   }, [products]);
 
   const stitchNames = useMemo(() => Array.from(groups.keys()), [groups]);
+  const activeStitch =
+    selectedStitch && groups.has(selectedStitch)
+      ? selectedStitch
+      : stitchNames[0] ?? "";
 
   useEffect(() => {
-    if (stitchNames.length === 0) {
-      setActiveStitch("");
-      return;
-    }
-    if (!activeStitch || !groups.has(activeStitch)) setActiveStitch(stitchNames[0]);
-  }, [activeStitch, groups, stitchNames]);
-
-  useEffect(() => {
-    if (stitchNames.length === 0) {
-      setMount(null);
-      return;
-    }
-
     const host = document.createElement("div");
     host.className = "stitch-gallery-mount";
     const anchor =
@@ -72,13 +63,13 @@ export default function StitchGallery() {
 
     if (!anchor?.parentElement) return;
     anchor.parentElement.insertBefore(host, anchor);
-    setMount(host);
+    const frame = window.requestAnimationFrame(() => setMount(host));
 
     return () => {
-      setMount(null);
+      window.cancelAnimationFrame(frame);
       host.remove();
     };
-  }, [stitchNames.length]);
+  }, []);
 
   if (!mount || stitchNames.length === 0 || !activeStitch) return null;
 
@@ -125,7 +116,7 @@ export default function StitchGallery() {
             key={stitch}
             className={activeStitch === stitch ? "is-active" : ""}
             aria-pressed={activeStitch === stitch}
-            onClick={() => setActiveStitch(stitch)}
+            onClick={() => setSelectedStitch(stitch)}
           >
             {stitch}
             <span aria-hidden="true">{groups.get(stitch)?.length ?? 0}</span>
