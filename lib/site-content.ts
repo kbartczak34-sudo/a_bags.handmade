@@ -75,15 +75,22 @@ function readEmail(value: unknown, fallback: string) {
     : fallback;
 }
 
-function readInstagramUrl(value: unknown, fallback: string) {
+function readWhatsAppNumber(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15 ? digits : fallback;
+}
+
+function readSocialUrl(
+  value: unknown,
+  fallback: string,
+  allowedHosts: readonly string[],
+) {
   if (typeof value !== "string" || value.length > 300) return fallback;
   try {
     const url = new URL(value.trim());
     const hostname = url.hostname.toLowerCase();
-    if (
-      url.protocol !== "https:" ||
-      (hostname !== "instagram.com" && hostname !== "www.instagram.com")
-    ) {
+    if (url.protocol !== "https:" || !allowedHosts.includes(hostname)) {
       return fallback;
     }
     return url.toString();
@@ -188,11 +195,24 @@ export function normalizeSiteContent(value: unknown): SiteContent {
       eyebrow: readText(instagram.eyebrow, defaultSiteContent.instagram.eyebrow, 70),
       title: readText(instagram.title, defaultSiteContent.instagram.title, 140),
       handle: readText(instagram.handle, defaultSiteContent.instagram.handle, 80),
-      profileUrl: readInstagramUrl(instagram.profileUrl, defaultSiteContent.instagram.profileUrl),
+      profileUrl: readSocialUrl(
+        instagram.profileUrl,
+        defaultSiteContent.instagram.profileUrl,
+        ["instagram.com", "www.instagram.com"],
+      ),
       feedNote: readText(instagram.feedNote, defaultSiteContent.instagram.feedNote, 240),
     },
     contact: {
       email: readEmail(contact.email, defaultSiteContent.contact.email),
+      whatsappNumber: readWhatsAppNumber(
+        contact.whatsappNumber,
+        defaultSiteContent.contact.whatsappNumber,
+      ),
+      facebookUrl: readSocialUrl(
+        contact.facebookUrl,
+        defaultSiteContent.contact.facebookUrl,
+        ["facebook.com", "www.facebook.com", "m.facebook.com"],
+      ),
     },
     footer: {
       tagline: readText(footer.tagline, defaultSiteContent.footer.tagline, 260),

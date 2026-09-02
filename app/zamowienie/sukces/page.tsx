@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePublicContact, whatsappHref } from "../../public-contact";
 
 type Confirmation = {
   id: string;
@@ -23,11 +24,10 @@ const formatter = new Intl.NumberFormat("pl-PL", {
   currency: "PLN",
 });
 
-const whatsappHref =
-  "https://wa.me/48504510200?text=" +
-  encodeURIComponent("Dzień dobry! Mam pytanie dotyczące mojego zamówienia w a_bags.handmade.");
+const orderQuestion =
+  "Dzień dobry! Mam pytanie dotyczące mojego zamówienia w a_bags.handmade.";
 
-function ReturnActions() {
+function ReturnActions({ whatsappUrl }: { whatsappUrl: string }) {
   return (
     <div className="confirmation-return-actions">
       <Link className="primary-button" href="/#kolekcja">
@@ -35,7 +35,7 @@ function ReturnActions() {
       </Link>
       <a
         className="confirmation-secondary-link"
-        href={whatsappHref}
+        href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -46,7 +46,9 @@ function ReturnActions() {
 }
 
 export default function OrderSuccessPage() {
+  const contact = usePublicContact();
   const [state, setState] = useState<PageState>({ kind: "loading" });
+  const orderWhatsappUrl = whatsappHref(contact.whatsappNumber, orderQuestion);
 
   useEffect(() => {
     const checkPayment = async () => {
@@ -150,10 +152,10 @@ export default function OrderSuccessPage() {
               <article><span>03</span><strong>Wysyłka</strong><p>Po nadaniu przesyłki otrzymasz dalsze informacje.</p></article>
             </div>
 
-            <ReturnActions />
+            <ReturnActions whatsappUrl={orderWhatsappUrl} />
             <div className="confirmation-social" aria-label="A-Bags w social media">
-              <a href="https://www.instagram.com/a_bags.handmade/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
-              <a href="https://www.facebook.com/share/1EjHy8cmKG/" target="_blank" rel="noopener noreferrer">Facebook ↗</a>
+              <a href={contact.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram ↗</a>
+              <a href={contact.facebookUrl} target="_blank" rel="noopener noreferrer">Facebook ↗</a>
             </div>
             <p className="confirmation-home-hint">Zachowaj numer zamówienia na wypadek kontaktu z pracownią.</p>
           </>
@@ -167,7 +169,7 @@ export default function OrderSuccessPage() {
             <p className="confirmation-intro">
               Bank lub Stripe nadal przetwarza płatność. Nie składaj ponownie zamówienia — o wyniku otrzymasz wiadomość e-mail.
             </p>
-            <ReturnActions />
+            <ReturnActions whatsappUrl={orderWhatsappUrl} />
           </>
         )}
 
@@ -179,7 +181,7 @@ export default function OrderSuccessPage() {
             <p className="confirmation-intro">
               {state.message} Jeśli środki zostały pobrane, skontaktuj się ze sklepem.
             </p>
-            <ReturnActions />
+            <ReturnActions whatsappUrl={orderWhatsappUrl} />
           </>
         )}
       </section>

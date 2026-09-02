@@ -13,7 +13,7 @@ export type SiteContent = {
   benefits: { visible: boolean; eyebrow: string; title: string; items: BenefitItem[] };
   reviews: { visible: boolean; eyebrow: string; title: string; emptyText: string; emptyBrand: string; emptyLabel: string; formEyebrow: string; formTitle: string; formDescription: string };
   instagram: { visible: boolean; eyebrow: string; title: string; handle: string; profileUrl: string; feedNote: string };
-  contact: { email: string };
+  contact: { email: string; whatsappNumber: string; facebookUrl: string };
   footer: { tagline: string; shopLabel: string; socialLabel: string; collectionLink: string; storyLink: string; reviewsLink: string; instagramLink: string; emailLink: string; copyright: string; statusText: string };
   theme: { ink: string; paper: string; cream: string; accent: string; accentDark: string; accentLight: string };
 };
@@ -87,7 +87,11 @@ export const defaultSiteContent: SiteContent = {
     profileUrl: "https://www.instagram.com/a_bags.handmade/",
     feedNote: "Najnowsze publikacje znajdziesz bezpośrednio na naszym profilu Instagram.",
   },
-  contact: { email: "a_bags.handmade@outlook.com" },
+  contact: {
+    email: "a_bags.handmade@outlook.com",
+    whatsappNumber: "48504510200",
+    facebookUrl: "https://www.facebook.com/share/1EjHy8cmKG/",
+  },
   footer: {
     tagline: "Ręcznie plecione torebki, tworzone powoli i z uważnością.",
     shopLabel: "Sklep",
