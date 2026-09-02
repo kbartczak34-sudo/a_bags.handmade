@@ -43,7 +43,7 @@ export type AdminProduct = {
 export type ProductInput = {
   name: string;
   detail: string;
-  stitchType: string;
+  stitchType?: string;
   priceCents: number;
   sortOrder: number;
   isVisible: boolean;
@@ -152,8 +152,6 @@ async function ensureProductColumns() {
       await db.prepare(`ALTER TABLE products ADD COLUMN ${name} ${definition}`).run();
       existing.add(name);
     } catch (error) {
-      // Multiple Worker isolates can race during the first migration. Recheck the
-      // schema and only fail if the column is genuinely still absent.
       const refreshed = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
       if (!refreshed.results.some((column) => column.name === name)) throw error;
       existing.add(name);
@@ -341,7 +339,7 @@ export async function createProduct(
       id,
       input.name,
       input.detail,
-      input.stitchType,
+      input.stitchType ?? "",
       input.priceCents,
       tone,
       input.sortOrder,
@@ -370,19 +368,20 @@ export async function updateProduct(
   const nextImageKey = image === undefined ? existing.image_key : image?.key ?? null;
   const nextImageType = image === undefined ? undefined : image?.contentType ?? null;
   const updatedAt = new Date().toISOString();
+  const stitchType = input.stitchType ?? null;
 
   if (nextImageType === undefined) {
     await db
       .prepare(
         `UPDATE products
-         SET name = ?, detail = ?, stitch_type = ?, price_cents = ?, sort_order = ?,
+         SET name = ?, detail = ?, stitch_type = COALESCE(?, stitch_type), price_cents = ?, sort_order = ?,
              is_visible = ?, updated_at = ?
          WHERE id = ?`,
       )
       .bind(
         input.name,
         input.detail,
-        input.stitchType,
+        stitchType,
         input.priceCents,
         input.sortOrder,
         input.isVisible ? 1 : 0,
@@ -394,14 +393,14 @@ export async function updateProduct(
     await db
       .prepare(
         `UPDATE products
-         SET name = ?, detail = ?, stitch_type = ?, price_cents = ?, sort_order = ?,
+         SET name = ?, detail = ?, stitch_type = COALESCE(?, stitch_type), price_cents = ?, sort_order = ?,
              is_visible = ?, image_key = ?, image_content_type = ?, updated_at = ?
          WHERE id = ?`,
       )
       .bind(
         input.name,
         input.detail,
-        input.stitchType,
+        stitchType,
         input.priceCents,
         input.sortOrder,
         input.isVisible ? 1 : 0,
