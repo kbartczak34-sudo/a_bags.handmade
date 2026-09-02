@@ -76,6 +76,15 @@ test("exact photographic renderer maps personalization controls to finished-prod
   assert.match(exactStyles, /abags-exact-live/);
 });
 
+test("exact preview stays beside controls on desktop and sticky above them on mobile", () => {
+  assert.match(exact, /layout\.insertBefore\(target, previewColumn\)/);
+  assert.match(exact, /data-abags-exact-workspace="controls"/);
+  assert.match(exactStyles, /grid-template-columns:minmax\(0,1\.12fr\) minmax\(360px,\.88fr\)/);
+  assert.match(exactStyles, /\.abags-vc-preview-column\{order:2;position:sticky;top:0/);
+  assert.match(exactStyles, /@media\(max-width:980px\).*\.abags-vc-preview-column\{order:1;position:sticky;top:0/s);
+  assert.match(exactStyles, /width:min\(74vw,300px\)/);
+});
+
 test("customer sees automatic preview and exact-layer availability honestly", () => {
   assert.match(entry, /podgląd dokładny ✓/);
   assert.match(entry, /podgląd auto/);
