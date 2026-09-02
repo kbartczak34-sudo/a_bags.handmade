@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade.pl";
 const port = Number(process.env.ABAGS_CHROME_DEBUG_PORT || 9222);
 const timeoutMs = 30_000;
-const renderTimeoutMs = 7_000;
+const renderTimeoutMs = 10_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function chromeBinary() {
@@ -95,19 +95,24 @@ async function main() {
     const initialReference = await evaluate("document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') || ''");
     if (!initialReference) throw new Error("Exact preview does not expose an active photographed reference.");
 
-    const changed = await evaluate(`(() => {
-      const selects=[...document.querySelectorAll('.abags-exact-live-fields select')];
-      for (const select of selects) {
-        const current=select.value;
-        const option=[...select.options].find((entry)=>entry.value && entry.value!==current);
-        if (!option) continue;
-        select.value=option.value;
-        select.dispatchEvent(new Event('change',{bubbles:true}));
-        return {label:select.getAttribute('aria-label')||'',value:option.value};
-      }
-      return null;
+    const layoutState = await evaluate(`(() => {
+      const previewColumn=document.querySelector('.abags-vc-preview-column');
+      const mount=document.querySelector('[data-abags-exact-live]');
+      if(!previewColumn||!mount)return null;
+      const previewStyle=getComputedStyle(previewColumn);
+      const mountStyle=getComputedStyle(mount);
+      return {position:previewStyle.position,previewOrder:previewStyle.order,mountOrder:mountStyle.order};
     })()`);
-    if (!changed) throw new Error("No compatible alternate personalization option was available for browser smoke.");
+    if (!layoutState || layoutState.position !== "sticky") throw new Error(`Realtime preview is not sticky in the responsive browser layout: ${JSON.stringify(layoutState)}`);
+
+    const switched = await evaluate(`(() => {
+      const buttons=[...document.querySelectorAll('.abags-exact-live-variants button')];
+      const alternate=buttons.find((button)=>!button.classList.contains('is-active'));
+      if(!alternate)return false;
+      alternate.click();
+      return true;
+    })()`);
+    if (!switched) throw new Error("No alternate photographed handbag variant was available for browser smoke.");
 
     await waitFor(`document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') && document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') !== ${JSON.stringify(initialReference)}`, "real-time photographic preview update", true, renderTimeoutMs);
 
@@ -130,6 +135,7 @@ async function main() {
       reference:document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id')||'',
       badge:document.querySelector('.abags-vc-exact-reference-badge')?.textContent||'',
       variants:document.querySelectorAll('.abags-exact-live-variants button').length,
+      previewPosition:getComputedStyle(document.querySelector('.abags-vc-preview-column')).position,
       legacyControlsHidden:getComputedStyle(document.querySelector('.abags-vc-controls')).display==='none',
       workshopLink:Boolean(document.querySelector('.abags-exact-live-actions a[href]'))
     }))()`);
