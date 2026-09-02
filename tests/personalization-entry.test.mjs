@@ -58,7 +58,7 @@ test("stale customizer layers cannot leak between product selections", () => {
 test("customizer modal owns its scroll lock and restores keyboard focus", () => {
   assert.match(entry, /abags-vc-open/);
   assert.match(entry, /restoreFocusRef/);
-  assert.match(entry, /event\.key === "Tab"/);
+  assert.match(entry, /event\.key !== "Tab"/);
   assert.match(entry, /dialogRef\.current\?\.focus\(\)/);
   assert.match(polish, /body\.abags-vc-open\{overflow:hidden\}/);
   assert.doesNotMatch(entry, /classList\.toggle\("modal-open"/);
