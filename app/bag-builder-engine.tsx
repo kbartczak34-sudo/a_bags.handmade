@@ -283,11 +283,11 @@ export default function BagBuilderEngine() {
       } else if (layout && target.parentElement !== layout) {
         layout.insertBefore(target, previewColumn);
       }
-      dialog.classList.add("abags-vc-exact-live-active", "abags-vc-builder-active");
+      if (!dialog.classList.contains("abags-vc-builder-active")) dialog.classList.add("abags-vc-exact-live-active", "abags-vc-builder-active");
       const eyebrow = dialog.querySelector<HTMLElement>(".abags-vc-header .eyebrow");
       const title = dialog.querySelector<HTMLElement>(".abags-vc-header h2");
-      if (eyebrow) eyebrow.textContent = "A-Bags Bag Builder 3.0";
-      if (title) title.textContent = "Zbuduj swoją torebkę od podstaw.";
+      if (eyebrow && eyebrow.textContent !== "A-Bags Bag Builder 3.0") eyebrow.textContent = "A-Bags Bag Builder 3.0";
+      if (title && title.textContent !== "Zbuduj swoją torebkę od podstaw.") title.textContent = "Zbuduj swoją torebkę od podstaw.";
       setMount((current) => current === target ? current : target);
       const nextPreview = dialog.querySelector<HTMLElement>(".abags-vc-preview");
       setPreview((current) => current === nextPreview ? current : nextPreview);
