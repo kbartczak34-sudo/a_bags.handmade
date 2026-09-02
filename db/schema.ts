@@ -10,6 +10,8 @@ export const products = sqliteTable("products", {
   tone: text("tone").notNull().default("product-rose"),
   sortOrder: integer("sort_order").notNull().default(0),
   isVisible: integer("is_visible", { mode: "boolean" }).notNull().default(true),
+  availabilityStatus: text("availability_status").notNull().default("made_to_order"),
+  availabilityNote: text("availability_note").notNull().default(""),
   imageKey: text("image_key"),
   imageContentType: text("image_content_type"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
