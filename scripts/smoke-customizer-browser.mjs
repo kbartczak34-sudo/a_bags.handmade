@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade.pl";
 const port = Number(process.env.ABAGS_CHROME_DEBUG_PORT || 9222);
 const timeoutMs = 30_000;
-const renderTimeoutMs = 5_000;
+const renderTimeoutMs = 7_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function chromeBinary() {
@@ -68,13 +68,13 @@ async function main() {
     if (!target.webSocketDebuggerUrl) throw new Error("Chrome did not expose a page debugger URL.");
     const { socket, send } = await connectCdp(target.webSocketDebuggerUrl);
     const evaluate = async (expression) => resultValue(await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true, userGesture: true }));
-    const waitFor = async (expression, label, expected = true) => {
-      const deadline = Date.now() + timeoutMs;
+    const waitFor = async (expression, label, expected = true, deadlineMs = timeoutMs) => {
+      const deadline = Date.now() + deadlineMs;
       let value;
       while (Date.now() < deadline) {
         value = await evaluate(expression);
         if (expected === true ? Boolean(value) : value === expected) return value;
-        await sleep(200);
+        await sleep(150);
       }
       throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}`);
     };
@@ -84,59 +84,60 @@ async function main() {
     await waitFor("Boolean(document.querySelector('#personalizacja'))", "personalization entry");
     const opened = await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Uruchom konfigurator')); if(!button)return false; button.click(); return true; })()`);
     if (!opened) throw new Error("Could not find the 'Uruchom konfigurator' button.");
+
     await waitFor("Boolean(document.querySelector('.abags-vc-dialog'))", "visual customizer dialog");
-    await waitFor("Boolean(document.querySelector('.abags-vc-base')?.getAttribute('src'))", "base product image");
-    await waitFor("Boolean(document.querySelector('[data-abags-realtime-preview]'))", "realtime canvas");
-    await waitFor("(document.querySelector('[data-abags-realtime-preview]')?.width || 0) > 20", "rendered realtime canvas pixels");
-    await waitFor("Boolean(document.querySelector('.abags-exact-reference-library'))", "exact reference library");
+    await waitFor("Boolean(document.querySelector('[data-abags-exact-live]'))", "exact live customizer mount");
+    await waitFor("Boolean(document.querySelector('.abags-exact-live'))", "exact live customizer UI");
+    await waitFor("document.querySelectorAll('.abags-exact-live-fields select').length === 8", "eight personalization selectors");
+    await waitFor("Boolean(document.querySelector('.abags-vc-exact-sprite'))", "photographic exact preview", true, renderTimeoutMs);
+    await waitFor("Boolean(document.querySelector('.abags-vc-exact-reference-badge')?.textContent?.includes('Podgląd 1:1'))", "exact preview badge");
 
-    const fingerprint = async () => evaluate(`(() => { const canvas=document.querySelector('[data-abags-realtime-preview]'); if(!canvas||!canvas.width||!canvas.height)return ''; try{const data=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let hash=2166136261>>>0;const step=Math.max(4,Math.floor(data.length/12000));for(let i=0;i<data.length;i+=step){hash^=data[i];hash=Math.imul(hash,16777619)>>>0;}return canvas.width+'x'+canvas.height+':'+hash.toString(16);}catch(error){return 'canvas-error:'+String(error?.message||error);} })()`);
-    const waitFingerprintChange = async (before, label) => {
-      const deadline = Date.now() + renderTimeoutMs;
-      let value = before;
-      while (Date.now() < deadline) {
-        value = await fingerprint();
-        if (value && value !== before && !String(value).startsWith("canvas-error:")) return value;
-        await sleep(100);
+    const initialReference = await evaluate("document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') || ''");
+    if (!initialReference) throw new Error("Exact preview does not expose an active photographed reference.");
+
+    const changed = await evaluate(`(() => {
+      const selects=[...document.querySelectorAll('.abags-exact-live-fields select')];
+      for (const select of selects) {
+        const current=select.value;
+        const option=[...select.options].find((entry)=>entry.value && entry.value!==current);
+        if (!option) continue;
+        select.value=option.value;
+        select.dispatchEvent(new Event('change',{bubbles:true}));
+        return {label:select.getAttribute('aria-label')||'',value:option.value};
       }
-      throw new Error(`${label} did not change the realtime render within ${renderTimeoutMs} ms. Fingerprint: ${value}`);
-    };
-    const clickOption = async (fieldset, text) => {
-      const clicked = await evaluate(`(() => { const fieldset=document.querySelector('.abags-vc-controls fieldset:nth-child(${fieldset})'); const button=[...(fieldset?.querySelectorAll('button')||[])].find((node)=>node.textContent?.includes(${JSON.stringify(text)})); if(!button)return false; button.click(); return true; })()`);
-      if (!clicked) throw new Error(`Missing customizer option ${fieldset}: ${text}`);
-    };
+      return null;
+    })()`);
+    if (!changed) throw new Error("No compatible alternate personalization option was available for browser smoke.");
 
-    let current = await fingerprint();
-    if (!current || String(current).startsWith("canvas-error:")) throw new Error(`Realtime canvas cannot be sampled: ${current}`);
-    await clickOption(2, "Pudrowy róż"); current = await waitFingerprintChange(current, "Changing colour");
-    await waitFor("document.querySelector('.abags-vc-controls fieldset:nth-child(2) button.is-active')?.textContent?.includes('Pudrowy róż')", "selected colour state");
-    await clickOption(4, "Drewniane"); current = await waitFingerprintChange(current, "Changing handles");
-    await clickOption(5, "Srebrne"); current = await waitFingerprintChange(current, "Changing hardware");
-    await clickOption(6, "Regulowany"); current = await waitFingerprintChange(current, "Changing strap");
-    await clickOption(7, "Chwost"); current = await waitFingerprintChange(current, "Changing accent");
+    await waitFor(`document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') && document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') !== ${JSON.stringify(initialReference)}`, "real-time photographic preview update", true, renderTimeoutMs);
 
-    const stitchButtons = await evaluate("document.querySelectorAll('.abags-vc-controls fieldset:nth-child(3) button').length");
-    if (!stitchButtons) throw new Error("Stitch selector is empty in production.");
-    if (stitchButtons > 1) {
-      const beforeStitch = current;
-      const clicked = await evaluate(`(() => { const buttons=[...document.querySelectorAll('.abags-vc-controls fieldset:nth-child(3) button')]; const button=buttons.find((item)=>!item.classList.contains('is-active')); if(!button)return false; button.click(); return true; })()`);
-      if (clicked) current = await waitFingerprintChange(beforeStitch, "Changing stitch");
-    }
+    const afterReference = await evaluate("document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') || ''");
+    if (!afterReference || afterReference === initialReference) throw new Error("Changing personalization did not change the photographed preview.");
 
-    await waitFor("Boolean([...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Porównaj z bazą')))", "compare-with-base control");
-    await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Porównaj z bazą')); button?.click(); return Boolean(button); })()`);
-    await waitFor("document.querySelector('.abags-vc-preview')?.classList.contains('is-showing-base')", "untouched base comparison");
-    await evaluate(`(() => { const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Pokaż projekt')); button?.click(); return Boolean(button); })()`);
-    await waitFor("!document.querySelector('.abags-vc-preview')?.classList.contains('is-showing-base')", "return to project render");
-    const exactReferenceCount = await evaluate("document.querySelectorAll('.abags-exact-reference-library button').length");
-    if (!exactReferenceCount) throw new Error("Exact 1:1 reference library contains no selectable products.");
+    await waitFor("getComputedStyle(document.querySelector('.abags-vc-controls')).display === 'none'", "synthetic legacy controls hidden");
+    await waitFor("Boolean([...document.querySelectorAll('.abags-exact-live-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt')))", "save project control");
+    await waitFor("Boolean([...document.querySelectorAll('.abags-vc-exact-reference-toggle')].find((node)=>node.textContent?.includes('Porównaj z modelem bazowym')))", "compare with base control");
+    await waitFor("Boolean([...document.querySelectorAll('.abags-exact-live-actions a')].find((node)=>node.textContent?.includes('Wyślij projekt do pracowni')))", "workshop handoff control");
 
-    const result = await evaluate(`(() => ({realtimeCanvas:Boolean(document.querySelector('[data-abags-realtime-preview]')),liveBadge:document.querySelector('.abags-realtime-preview-badge')?.textContent||'',exactReferences:document.querySelectorAll('.abags-exact-reference-library button').length,selectedColor:document.querySelector('.abags-vc-controls fieldset:nth-child(2) button.is-active')?.textContent||'',selectedHandles:document.querySelector('.abags-vc-controls fieldset:nth-child(4) button.is-active')?.textContent||'',selectedHardware:document.querySelector('.abags-vc-controls fieldset:nth-child(5) button.is-active')?.textContent||'',selectedStrap:document.querySelector('.abags-vc-controls fieldset:nth-child(6) button.is-active')?.textContent||'',selectedAccent:document.querySelector('.abags-vc-controls fieldset:nth-child(7) button.is-active')?.textContent||''}))()`);
-    console.log("Realtime Visual Customizer browser smoke passed:", JSON.stringify(result));
+    const compared = await evaluate(`(() => { const button=document.querySelector('.abags-vc-exact-reference-toggle'); if(!button)return false; button.click(); return true; })()`);
+    if (!compared) throw new Error("Could not compare project with base model.");
+    await waitFor("!document.querySelector('.abags-vc-preview')?.classList.contains('has-exact-reference')", "base comparison state");
+    await evaluate(`document.querySelector('.abags-vc-exact-reference-toggle')?.click()`);
+    await waitFor("document.querySelector('.abags-vc-preview')?.classList.contains('has-exact-reference')", "return to exact project preview");
+
+    const result = await evaluate(`(() => ({
+      selectors:document.querySelectorAll('.abags-exact-live-fields select').length,
+      reference:document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id')||'',
+      badge:document.querySelector('.abags-vc-exact-reference-badge')?.textContent||'',
+      variants:document.querySelectorAll('.abags-exact-live-variants button').length,
+      legacyControlsHidden:getComputedStyle(document.querySelector('.abags-vc-controls')).display==='none',
+      workshopLink:Boolean(document.querySelector('.abags-exact-live-actions a[href]'))
+    }))()`);
+    console.log("Exact realtime photographic customizer browser smoke passed:", JSON.stringify(result));
     socket.close();
   } finally {
     chrome.kill("SIGTERM"); await sleep(200); if (!chrome.killed) chrome.kill("SIGKILL"); if (process.env.ABAGS_DEBUG_CHROME === "1" && chromeLog) console.error(chromeLog);
   }
 }
 
-main().catch((error) => { console.error(`Realtime Visual Customizer browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`); process.exitCode = 1; });
+main().catch((error) => { console.error(`Exact realtime photographic customizer browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`); process.exitCode = 1; });

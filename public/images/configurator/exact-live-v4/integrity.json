@@ -1,0 +1,14 @@
+{
+  "format": "webp-sprite-base64-parts",
+  "variantCount": 19,
+  "columns": 5,
+  "rows": 4,
+  "spriteWidth": 400,
+  "spriteHeight": 320,
+  "cellWidth": 80,
+  "cellHeight": 80,
+  "partLengths": [5000, 5000, 5000, 5000, 5000, 4720],
+  "encodedLength": 29720,
+  "decodedBytes": 22290,
+  "sha256Encoded": "aa3997c69e7d6cac53bdc8cf99bd8b1329a1a84a972ec748f16cce4d02a406df"
+}

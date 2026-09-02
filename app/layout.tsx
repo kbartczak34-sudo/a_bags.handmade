@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AccessibilityClient from "./accessibility-client";
-import ExactReferenceLibrary from "./exact-reference-library";
+import ExactLiveCustomizer from "./exact-live-customizer";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
 import PersonalizationEntry from "./personalization-entry";
 import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
-import RealtimeCustomizerPreview from "./realtime-customizer-preview-v2";
 import StitchGallery from "./stitch-gallery";
 import StorefrontExperience from "./storefront-experience";
 import SocialQuickLinks from "./social-quick-links";
@@ -20,8 +19,7 @@ import "./production-polish.css";
 import "./storefront-experience.css";
 import "./personalization-entry.css";
 import "./visual-customizer-polish.css";
-import "./exact-reference-library.css";
-import "./realtime-customizer-preview.css";
+import "./exact-live-customizer.css";
 import "./customizer-admin.css";
 
 const display = Cormorant_Garamond({
@@ -117,8 +115,7 @@ export default function RootLayout({
         <StitchGallery />
         <StorefrontExperience />
         <PersonalizationEntry />
-        <ExactReferenceLibrary />
-        <RealtimeCustomizerPreview />
+        <ExactLiveCustomizer />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
