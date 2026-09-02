@@ -51,7 +51,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
 
       <nav className="admin-tabs" aria-label="Sekcje panelu">
         <button type="button" className={activeTab === "status" ? "is-active" : ""} onClick={() => setActiveTab("status")}>
-          <span>01</span>Pulpit
+          <span>01</span>Pulpit · Status sklepu
         </button>
         <button type="button" className={activeTab === "page" ? "is-active" : ""} onClick={() => setActiveTab("page")}>
           <span>02</span>Treść strony
