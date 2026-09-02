@@ -46,6 +46,15 @@ test("customer sees honest visualization availability instead of fake live chang
   assert.match(entry, /Konfigurator korzysta wyłącznie z warstw przygotowanych/);
 });
 
+test("customizer never invents personalization surcharges", () => {
+  assert.match(entry, /Cena modelu bazowego/);
+  assert.match(entry, /Personalizacja jest wyceniana indywidualnie po potwierdzeniu konfiguracji/);
+  assert.doesNotMatch(entry, /Orientacyjna cena/);
+  assert.doesNotMatch(entry, /optionPrice|previewPrice/);
+  assert.doesNotMatch(entry, /price:\s*(15|20|25|35|40)/);
+  assert.match(entry, /finalnej ceny i terminu/);
+});
+
 test("customer can compare personalization with the untouched base product", () => {
   assert.match(entry, /Porównaj z bazą/);
   assert.match(entry, /Pokaż projekt/);
