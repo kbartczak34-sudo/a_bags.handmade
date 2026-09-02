@@ -9,6 +9,9 @@ type PreviewProduct = {
   imageUrl: string | null;
   imageAlt: string;
   number: string;
+  availabilityStatus: "ready" | "made_to_order" | "unavailable";
+  availabilityLabel: string;
+  availabilityNote: string;
   sourceCard: HTMLElement;
 };
 
@@ -21,6 +24,15 @@ function readProduct(card: HTMLElement): PreviewProduct | null {
   const image = card.querySelector<HTMLImageElement>(".product-photo");
   const number = card.querySelector<HTMLElement>(".product-number")?.textContent?.trim() ?? "";
   if (!name || !price) return null;
+  const rawStatus = card.dataset.abagsAvailabilityStatus;
+  const availabilityStatus = rawStatus === "ready" || rawStatus === "unavailable"
+    ? rawStatus
+    : "made_to_order";
+  const fallbackLabel = availabilityStatus === "ready"
+    ? "Dostępna od ręki"
+    : availabilityStatus === "unavailable"
+      ? "Chwilowo niedostępna"
+      : "Na zamówienie";
   return {
     name,
     detail,
@@ -28,6 +40,13 @@ function readProduct(card: HTMLElement): PreviewProduct | null {
     imageUrl: image?.src ?? null,
     imageAlt: image?.alt || name,
     number,
+    availabilityStatus,
+    availabilityLabel: card.dataset.abagsAvailabilityLabel || fallbackLabel,
+    availabilityNote:
+      card.dataset.abagsAvailabilityNote ||
+      (availabilityStatus === "unavailable"
+        ? "Zapytaj o możliwość ponownego wykonania tego modelu."
+        : "Termin realizacji jest podawany przy produkcie."),
     sourceCard: card,
   };
 }
@@ -122,7 +141,7 @@ export default function ProductPreviewEnhancer() {
   }, [product, closePreview]);
 
   const addToCart = () => {
-    if (!product) return;
+    if (!product || product.availabilityStatus === "unavailable") return;
     product.sourceCard.querySelector<HTMLButtonElement>(".add-button")?.click();
     setProduct(null);
   };
@@ -151,13 +170,15 @@ export default function ProductPreviewEnhancer() {
         .abags-preview-close-floating:focus-visible{outline:3px solid rgba(82,48,60,.25);outline-offset:3px}
         .abags-preview-copy h2{font-family:var(--font-display);font-size:clamp(2.3rem,5vw,4.2rem);font-weight:500;line-height:.95;margin:0 0 1rem;color:var(--ink)}
         .abags-preview-detail{font:400 1rem/1.75 var(--font-sans);color:color-mix(in srgb,var(--ink) 78%,transparent);margin:0 0 1.25rem;white-space:pre-wrap}
-        .abags-preview-availability{margin:0 0 1.25rem;padding:.85rem 1rem;border-radius:16px;background:color-mix(in srgb,var(--cream) 78%,transparent)}
+        .abags-preview-availability{margin:0 0 1.25rem;padding:.85rem 1rem;border-radius:16px;background:color-mix(in srgb,var(--cream) 78%,white);border:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+        .abags-preview-availability.is-unavailable{background:color-mix(in srgb,var(--rose-pale,#f4dddf) 72%,white)}
         .abags-preview-availability strong{display:block;font-size:.86rem;margin-bottom:.3rem}.abags-preview-availability span{font-size:.8rem;opacity:.72;line-height:1.5}
         .abags-preview-price{font-family:var(--font-display);font-size:2rem;color:var(--ink);margin:0 0 1.45rem}
         .abags-preview-price small{display:block;font:500 .68rem/1.4 var(--font-sans);opacity:.6;margin-top:.25rem}
         .abags-preview-actions{display:grid;gap:.75rem}
         .abags-preview-add,.abags-preview-cart{min-height:52px;border-radius:999px;padding:.9rem 1.25rem;font:700 .86rem/1 var(--font-sans);cursor:pointer}
         .abags-preview-add{border:1px solid var(--rose-deep);background:var(--rose-deep);color:white}
+        .abags-preview-add:disabled{cursor:not-allowed;opacity:.55;background:color-mix(in srgb,var(--ink) 45%,white);border-color:transparent}
         .abags-preview-cart{border:1px solid rgba(90,66,69,.22);background:transparent;color:var(--ink)}
         .abags-preview-return{display:inline-flex;align-items:center;gap:.4rem;margin-top:.7rem;border:0;background:transparent;padding:.55rem 0;color:var(--ink);font:600 .78rem/1.2 var(--font-sans);text-decoration:underline;text-underline-offset:4px;cursor:pointer}
         .abags-preview-note{font:400 .72rem/1.55 var(--font-sans);opacity:.62;margin:1rem 0 0}
@@ -175,10 +196,15 @@ export default function ProductPreviewEnhancer() {
               <span className="abags-preview-number">Model {product.number || "a_bags"}</span>
               <h2 id="abags-preview-title">{product.name}</h2>
               <p className="abags-preview-detail">{product.detail || "Ręcznie wykonana torebka a_bags.handmade."}</p>
-              <div className="abags-preview-availability"><strong>Ręcznie wykonany model</strong><span>Dostępność może być ograniczona ze względu na ręczny proces wykonania.</span></div>
+              <div className={`abags-preview-availability${product.availabilityStatus === "unavailable" ? " is-unavailable" : ""}`}>
+                <strong>{product.availabilityLabel}</strong>
+                <span>{product.availabilityNote}</span>
+              </div>
               <strong className="abags-preview-price">{product.price}<small>Cena końcowa widoczna w sklepie.</small></strong>
               <div className="abags-preview-actions">
-                <button className="abags-preview-add" type="button" onClick={addToCart}>Zamów / dodaj do koszyka →</button>
+                <button className="abags-preview-add" type="button" onClick={addToCart} disabled={product.availabilityStatus === "unavailable"}>
+                  {product.availabilityStatus === "unavailable" ? "Chwilowo niedostępna" : "Zamów / dodaj do koszyka →"}
+                </button>
                 <button className="abags-preview-cart" type="button" onClick={openCart}>Przejdź do koszyka</button>
               </div>
               <button className="abags-preview-return" type="button" onClick={closePreview}>← Wróć do katalogu produktów</button>
