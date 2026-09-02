@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AccessibilityClient from "./accessibility-client";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
@@ -6,10 +6,12 @@ import PaymentMethodEnhancer from "./payment-method-enhancer";
 import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
+import StitchGallery from "./stitch-gallery";
 import VatDisplayEnhancer from "./vat-display-enhancer";
 import "./globals.css";
 import "./footer-overrides.css";
 import "./legal-compliance.css";
+import "./production-polish.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -25,6 +27,16 @@ const sans = Manrope({
 const siteUrl = "https://abagshandmade.pl";
 const description =
   "Ręcznie plecione torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbf6f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#2b2023" },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -91,6 +103,7 @@ export default function RootLayout({
         <ProductPreviewEnhancer />
         <ProductComplianceEnhancer />
         <VatDisplayEnhancer />
+        <StitchGallery />
         {children}
         <AccessibilityClient />
       </body>
