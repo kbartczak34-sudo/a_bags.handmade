@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AccessibilityClient from "./accessibility-client";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
+import PersonalizationEntry from "./personalization-entry";
 import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
@@ -15,6 +16,7 @@ import "./footer-overrides.css";
 import "./legal-compliance.css";
 import "./production-polish.css";
 import "./storefront-experience.css";
+import "./personalization-entry.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -108,6 +110,7 @@ export default function RootLayout({
         <VatDisplayEnhancer />
         <StitchGallery />
         <StorefrontExperience />
+        <PersonalizationEntry />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
