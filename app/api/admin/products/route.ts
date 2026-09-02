@@ -1,5 +1,4 @@
 import { isAdminRequest } from "../../../../lib/admin-auth";
-import type { ProductAvailability } from "../../../../lib/catalog";
 import {
   createProduct,
   deleteProduct,
@@ -12,11 +11,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-const availabilityStatuses = new Set<ProductAvailability>([
-  "ready",
-  "made_to_order",
-  "unavailable",
-]);
 
 type DetectedImage = {
   contentType: "image/jpeg" | "image/png" | "image/webp";
@@ -50,36 +44,13 @@ function parseProductInput(formData: FormData): ProductInput | null {
   const priceCents = parsePriceToCents(String(formData.get("price") ?? ""));
   const sortOrder = Number.parseInt(String(formData.get("sortOrder") ?? "0"), 10);
   const isVisible = String(formData.get("isVisible") ?? "") === "true";
-  const availabilityStatusRaw = formData.has("availabilityStatus")
-    ? String(formData.get("availabilityStatus") ?? "").trim()
-    : undefined;
-  const availabilityNote = formData.has("availabilityNote")
-    ? String(formData.get("availabilityNote") ?? "").trim()
-    : undefined;
 
   if (!name || name.length > 80) return null;
   if (detail.length > 180) return null;
   if (stitchType !== undefined && stitchType.length > 80) return null;
   if (priceCents === null) return null;
   if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 9999) return null;
-  if (
-    availabilityStatusRaw !== undefined &&
-    !availabilityStatuses.has(availabilityStatusRaw as ProductAvailability)
-  ) {
-    return null;
-  }
-  if (availabilityNote !== undefined && availabilityNote.length > 180) return null;
-
-  return {
-    name,
-    detail,
-    stitchType,
-    priceCents,
-    sortOrder,
-    isVisible,
-    availabilityStatus: availabilityStatusRaw as ProductAvailability | undefined,
-    availabilityNote,
-  };
+  return { name, detail, stitchType, priceCents, sortOrder, isVisible };
 }
 
 function detectImage(bytes: Uint8Array): DetectedImage | null {
@@ -167,10 +138,7 @@ export async function POST(request: Request) {
 
   const input = parseProductInput(formData);
   if (!input) {
-    return json(
-      { error: "Sprawdź nazwę, cenę, opis, splot, dostępność, termin i kolejność produktu." },
-      400,
-    );
+    return json({ error: "Sprawdź nazwę, cenę, opis, splot i kolejność produktu." }, 400);
   }
 
   const id = String(formData.get("id") ?? "").trim();

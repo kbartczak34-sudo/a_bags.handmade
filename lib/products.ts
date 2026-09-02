@@ -1,9 +1,5 @@
-import type { CatalogProduct, ProductAvailability } from "./catalog";
-import {
-  grossFromNetCents,
-  productAvailabilityDefaultNote,
-  VAT_RATE_PERCENT,
-} from "./catalog";
+import type { CatalogProduct } from "./catalog";
+import { grossFromNetCents, VAT_RATE_PERCENT } from "./catalog";
 import { getRuntimeBindings } from "./runtime-env";
 
 type ProductRow = {
@@ -15,8 +11,6 @@ type ProductRow = {
   tone: string;
   sort_order: number;
   is_visible: number;
-  availability_status: string;
-  availability_note: string;
   image_key: string | null;
   image_content_type: string | null;
   product_identifier: string;
@@ -37,8 +31,6 @@ export type AdminProduct = {
   tone: string;
   sortOrder: number;
   isVisible: boolean;
-  availabilityStatus: ProductAvailability;
-  availabilityNote: string;
   imageUrl: string | null;
   productIdentifier: string;
   batchCode: string;
@@ -55,8 +47,6 @@ export type ProductInput = {
   priceCents: number;
   sortOrder: number;
   isVisible: boolean;
-  availabilityStatus?: ProductAvailability;
-  availabilityNote?: string;
 };
 
 export type ProductComplianceInput = {
@@ -77,8 +67,6 @@ const createProductsSql = `
     tone TEXT NOT NULL DEFAULT 'product-rose',
     sort_order INTEGER NOT NULL DEFAULT 0,
     is_visible INTEGER NOT NULL DEFAULT 1,
-    availability_status TEXT NOT NULL DEFAULT 'made_to_order',
-    availability_note TEXT NOT NULL DEFAULT '',
     image_key TEXT,
     image_content_type TEXT,
     product_identifier TEXT NOT NULL DEFAULT '',
@@ -105,8 +93,6 @@ const createProductsSortIndexSql = `
 
 const productColumns = [
   ["stitch_type", "TEXT NOT NULL DEFAULT ''"],
-  ["availability_status", "TEXT NOT NULL DEFAULT 'made_to_order'"],
-  ["availability_note", "TEXT NOT NULL DEFAULT ''"],
   ["product_identifier", "TEXT NOT NULL DEFAULT ''"],
   ["batch_code", "TEXT NOT NULL DEFAULT ''"],
   ["materials", "TEXT NOT NULL DEFAULT ''"],
@@ -153,16 +139,6 @@ export function getProductBucket() {
   const bucket = getRuntimeBindings().BUCKET;
   if (!bucket) throw new Error("Brak magazynu zdjęć produktów.");
   return bucket;
-}
-
-function normalizeAvailabilityStatus(value: string | null | undefined): ProductAvailability {
-  if (value === "ready" || value === "unavailable") return value;
-  return "made_to_order";
-}
-
-function normalizeAvailabilityNote(status: ProductAvailability, value: string | null | undefined) {
-  const note = typeof value === "string" ? value.trim().slice(0, 180) : "";
-  return note || productAvailabilityDefaultNote(status);
 }
 
 async function ensureProductColumns() {
@@ -241,7 +217,6 @@ function productImageUrl(row: ProductRow) {
 }
 
 function toAdminProduct(row: ProductRow): AdminProduct {
-  const availabilityStatus = normalizeAvailabilityStatus(row.availability_status);
   return {
     id: row.id,
     name: row.name,
@@ -251,8 +226,6 @@ function toAdminProduct(row: ProductRow): AdminProduct {
     tone: row.tone,
     sortOrder: row.sort_order,
     isVisible: Boolean(row.is_visible),
-    availabilityStatus,
-    availabilityNote: normalizeAvailabilityNote(availabilityStatus, row.availability_note),
     imageUrl: productImageUrl(row),
     productIdentifier: row.product_identifier,
     batchCode: row.batch_code,
@@ -268,7 +241,6 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
   const vatMode = getRuntimeBindings().LEGAL_VAT_MODE;
   const vatActive = vatMode === "active_23";
   const unitAmount = vatActive ? grossFromNetCents(baseAmount) : baseAmount;
-  const availabilityStatus = normalizeAvailabilityStatus(row.availability_status);
 
   return {
     id: row.id,
@@ -285,8 +257,6 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
     imageUrl: productImageUrl(row),
     isVisible: Boolean(row.is_visible),
     sortOrder: row.sort_order,
-    availabilityStatus,
-    availabilityNote: normalizeAvailabilityNote(availabilityStatus, row.availability_note),
     productIdentifier: row.product_identifier,
     batchCode: row.batch_code,
     materials: row.materials,
@@ -297,9 +267,8 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
 
 const productSelect = `
   SELECT id, name, detail, stitch_type, price_cents, tone, sort_order, is_visible,
-         availability_status, availability_note, image_key, image_content_type,
-         product_identifier, batch_code, materials, care_instructions, safety_info,
-         created_at, updated_at
+         image_key, image_content_type, product_identifier, batch_code,
+         materials, care_instructions, safety_info, created_at, updated_at
   FROM products
 `;
 
@@ -359,14 +328,12 @@ export async function createProduct(
   const id = requestedId ?? crypto.randomUUID();
   const toneOptions = ["product-rose", "product-lilac", "product-sand"];
   const tone = toneOptions[Math.abs(input.sortOrder) % toneOptions.length];
-  const availabilityStatus = input.availabilityStatus ?? "made_to_order";
-  const availabilityNote = normalizeAvailabilityNote(availabilityStatus, input.availabilityNote);
   await getProductDb()
     .prepare(
       `INSERT INTO products
         (id, name, detail, stitch_type, price_cents, tone, sort_order, is_visible,
-         availability_status, availability_note, image_key, image_content_type, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         image_key, image_content_type, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -377,8 +344,6 @@ export async function createProduct(
       tone,
       input.sortOrder,
       input.isVisible ? 1 : 0,
-      availabilityStatus,
-      availabilityNote,
       image?.key ?? null,
       image?.contentType ?? null,
       new Date().toISOString(),
@@ -395,26 +360,22 @@ export async function updateProduct(
   await ensureCatalogReady();
   const db = getProductDb();
   const existing = await db
-    .prepare("SELECT image_key, availability_status, availability_note FROM products WHERE id = ? LIMIT 1")
+    .prepare("SELECT image_key FROM products WHERE id = ? LIMIT 1")
     .bind(id)
-    .first<{ image_key: string | null; availability_status: string; availability_note: string }>();
+    .first<{ image_key: string | null }>();
   if (!existing) return { updated: false, oldImageKey: null };
 
   const nextImageKey = image === undefined ? existing.image_key : image?.key ?? null;
   const nextImageType = image === undefined ? undefined : image?.contentType ?? null;
   const updatedAt = new Date().toISOString();
   const stitchType = input.stitchType ?? null;
-  const availabilityStatus = input.availabilityStatus ?? normalizeAvailabilityStatus(existing.availability_status);
-  const availabilityNote = input.availabilityNote === undefined
-    ? normalizeAvailabilityNote(availabilityStatus, existing.availability_note)
-    : normalizeAvailabilityNote(availabilityStatus, input.availabilityNote);
 
   if (nextImageType === undefined) {
     await db
       .prepare(
         `UPDATE products
          SET name = ?, detail = ?, stitch_type = COALESCE(?, stitch_type), price_cents = ?, sort_order = ?,
-             is_visible = ?, availability_status = ?, availability_note = ?, updated_at = ?
+             is_visible = ?, updated_at = ?
          WHERE id = ?`,
       )
       .bind(
@@ -424,8 +385,6 @@ export async function updateProduct(
         input.priceCents,
         input.sortOrder,
         input.isVisible ? 1 : 0,
-        availabilityStatus,
-        availabilityNote,
         updatedAt,
         id,
       )
@@ -435,7 +394,7 @@ export async function updateProduct(
       .prepare(
         `UPDATE products
          SET name = ?, detail = ?, stitch_type = COALESCE(?, stitch_type), price_cents = ?, sort_order = ?,
-             is_visible = ?, availability_status = ?, availability_note = ?, image_key = ?, image_content_type = ?, updated_at = ?
+             is_visible = ?, image_key = ?, image_content_type = ?, updated_at = ?
          WHERE id = ?`,
       )
       .bind(
@@ -445,8 +404,6 @@ export async function updateProduct(
         input.priceCents,
         input.sortOrder,
         input.isVisible ? 1 : 0,
-        availabilityStatus,
-        availabilityNote,
         nextImageKey,
         nextImageType,
         updatedAt,

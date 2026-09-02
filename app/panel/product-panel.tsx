@@ -3,8 +3,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-type ProductAvailability = "ready" | "made_to_order" | "unavailable";
-
 type AdminProduct = {
   id: string;
   name: string;
@@ -12,8 +10,6 @@ type AdminProduct = {
   priceCents: number;
   sortOrder: number;
   isVisible: boolean;
-  availabilityStatus: ProductAvailability;
-  availabilityNote: string;
   imageUrl: string | null;
   updatedAt: string;
 };
@@ -25,8 +21,6 @@ type Editor = {
   price: string;
   sortOrder: string;
   isVisible: boolean;
-  availabilityStatus: ProductAvailability;
-  availabilityNote: string;
   imageUrl: string | null;
 };
 
@@ -44,18 +38,6 @@ const ACCEPTED_IMAGE_TYPES = new Set([
   "image/webp",
 ]);
 
-const availabilityLabels: Record<ProductAvailability, string> = {
-  ready: "Dostępna od ręki",
-  made_to_order: "Na zamówienie",
-  unavailable: "Chwilowo niedostępna",
-};
-
-const availabilityDefaultNotes: Record<ProductAvailability, string> = {
-  ready: "Gotowa do przygotowania i wysyłki.",
-  made_to_order: "Termin realizacji potwierdzamy po złożeniu zamówienia.",
-  unavailable: "Zapytaj o możliwość ponownego wykonania tego modelu.",
-};
-
 const emptyEditor: Editor = {
   id: "",
   name: "",
@@ -63,8 +45,6 @@ const emptyEditor: Editor = {
   price: "",
   sortOrder: "10",
   isVisible: true,
-  availabilityStatus: "made_to_order",
-  availabilityNote: availabilityDefaultNotes.made_to_order,
   imageUrl: null,
 };
 
@@ -76,10 +56,6 @@ function editorFromProduct(product: AdminProduct): Editor {
     price: (product.priceCents / 100).toFixed(2).replace(".", ","),
     sortOrder: String(product.sortOrder),
     isVisible: product.isVisible,
-    availabilityStatus: product.availabilityStatus ?? "made_to_order",
-    availabilityNote:
-      product.availabilityNote ||
-      availabilityDefaultNotes[product.availabilityStatus ?? "made_to_order"],
     imageUrl: product.imageUrl,
   };
 }
@@ -266,8 +242,6 @@ export default function ProductPanel() {
       formData.set("price", editor.price);
       formData.set("sortOrder", editor.sortOrder);
       formData.set("isVisible", String(editor.isVisible));
-      formData.set("availabilityStatus", editor.availabilityStatus);
-      formData.set("availabilityNote", editor.availabilityNote);
       formData.set("removeImage", String(removeImage));
       if (uploadImage) formData.set("image", uploadImage);
 
@@ -333,10 +307,7 @@ export default function ProductPanel() {
         <div>
           <p className="eyebrow">Katalog produktów</p>
           <h2 id="admin-products-title">Twoje produkty</h2>
-          <p>
-            Dodawaj torebki i zmieniaj ich zdjęcia, ceny, widoczność, dostępność oraz
-            rzeczywisty termin realizacji bez edycji kodu.
-          </p>
+          <p>Dodawaj torebki i zmieniaj ich zdjęcia, ceny oraz widoczność bez edycji kodu.</p>
         </div>
         <button className="admin-new-button" type="button" onClick={startNewProduct}>
           <span aria-hidden="true">＋</span> Dodaj produkt
@@ -371,7 +342,6 @@ export default function ProductPanel() {
                 <span>
                   <strong>{product.name}</strong>
                   <small>{(product.priceCents / 100).toFixed(2).replace(".", ",")} zł</small>
-                  <small>{availabilityLabels[product.availabilityStatus ?? "made_to_order"]}</small>
                 </span>
                 <span className={`admin-visibility ${product.isVisible ? "is-visible" : ""}`}>
                   {product.isVisible ? "Widoczny" : "Ukryty"}
@@ -499,43 +469,6 @@ export default function ProductPanel() {
                 />
                 <small>Niższa liczba wyświetla produkt wcześniej.</small>
               </label>
-
-              <label className="admin-field admin-field-wide">
-                <span>Dostępność produktu</span>
-                <select
-                  value={editor.availabilityStatus}
-                  onChange={(event) => {
-                    const status = event.target.value as ProductAvailability;
-                    setEditor({
-                      ...editor,
-                      availabilityStatus: status,
-                      availabilityNote: availabilityDefaultNotes[status],
-                    });
-                  }}
-                >
-                  <option value="ready">Dostępna od ręki</option>
-                  <option value="made_to_order">Na zamówienie</option>
-                  <option value="unavailable">Chwilowo niedostępna</option>
-                </select>
-                <small>
-                  Niedostępnego modelu nie będzie można dodać do koszyka ani opłacić w Stripe.
-                </small>
-              </label>
-
-              <label className="admin-field admin-field-wide">
-                <span>Termin / komunikat dla klientki</span>
-                <textarea
-                  value={editor.availabilityNote}
-                  onChange={(event) =>
-                    setEditor({ ...editor, availabilityNote: event.target.value })
-                  }
-                  placeholder="np. Wysyłka w 1–2 dni robocze"
-                  maxLength={180}
-                  rows={3}
-                />
-                <small>{editor.availabilityNote.length}/180 znaków · wpisz wyłącznie rzeczywisty termin.</small>
-              </label>
-
               <label className="admin-switch admin-field-wide">
                 <input
                   type="checkbox"

@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePublicContact, whatsappHref } from "./public-contact";
 
-type ProductAvailability = "ready" | "made_to_order" | "unavailable";
-
 type ExperienceProduct = {
   id: string;
   name: string;
@@ -13,8 +11,6 @@ type ExperienceProduct = {
   stitchType: string;
   price: number;
   imageUrl: string | null;
-  availabilityStatus: ProductAvailability;
-  availabilityNote: string;
 };
 
 type ModalKind = "quiz" | "configurator" | "wishlist" | null;
@@ -29,36 +25,18 @@ type ConfiguratorState = {
 
 const STORAGE_KEY = "abags-wishlist";
 
-const availabilityLabels: Record<ProductAvailability, string> = {
-  ready: "Dostępna od ręki",
-  made_to_order: "Na zamówienie",
-  unavailable: "Chwilowo niedostępna",
-};
-
 const money = new Intl.NumberFormat("pl-PL", {
   style: "currency",
   currency: "PLN",
 });
 
-function availabilityStatus(product: ExperienceProduct): ProductAvailability {
-  return product.availabilityStatus === "ready" || product.availabilityStatus === "unavailable"
-    ? product.availabilityStatus
-    : "made_to_order";
-}
-
 function productWhatsAppMessage(product: ExperienceProduct) {
-  const status = availabilityStatus(product);
-  const availability = availabilityLabels[status];
-  const note = product.availabilityNote?.trim();
-  if (status === "unavailable") {
-    return `Dzień dobry! Interesuje mnie ${product.name} (${money.format(product.price)}). Widzę status „${availability}”. Czy ten model można wykonać ponownie?${note ? ` Informacja w sklepie: ${note}` : ""}`;
-  }
-  return `Dzień dobry! Interesuje mnie ${product.name} (${money.format(product.price)}). Status w sklepie: ${availability}.${note ? ` ${note}` : ""} Czy mogę prosić o potwierdzenie terminu?`;
+  return `Dzień dobry! Interesuje mnie ${product.name} (${money.format(product.price)}). Czy mogę prosić o potwierdzenie dostępności i terminu realizacji?`;
 }
 
 function scoreProduct(product: ExperienceProduct, answers: string[]) {
   const haystack = `${product.name} ${product.detail} ${product.stitchType}`.toLowerCase();
-  let score = availabilityStatus(product) === "unavailable" ? -50 : 0;
+  let score = 0;
   for (const answer of answers) {
     if (answer === "romantic" && /(róż|rose|lila|fiolet|pastel)/.test(haystack)) score += 4;
     if (answer === "natural" && /(beż|natural|piask|krem|sand)/.test(haystack)) score += 4;
@@ -165,14 +143,6 @@ export default function StorefrontExperience() {
         if (!product) return;
         card.dataset.abagsProductId = product.id;
 
-        const status = availabilityStatus(product);
-        const label = availabilityLabels[status];
-        const note = product.availabilityNote?.trim() ?? "";
-        const availabilityKey = `${status}|${note}`;
-        card.dataset.abagsAvailabilityStatus = status;
-        card.dataset.abagsAvailabilityLabel = label;
-        card.dataset.abagsAvailabilityNote = note;
-
         const visual = card.querySelector<HTMLElement>(".product-visual");
         if (visual && !visual.querySelector(".abags-wishlist-toggle")) {
           const wishlistButton = document.createElement("button");
@@ -185,38 +155,12 @@ export default function StorefrontExperience() {
           visual.appendChild(wishlistButton);
         }
 
-        const addButton = card.querySelector<HTMLButtonElement>(".add-button");
-        if (addButton && card.dataset.abagsAvailabilityKey !== availabilityKey) {
-          card.dataset.abagsAvailabilityKey = availabilityKey;
-          card.classList.toggle("is-unavailable", status === "unavailable");
-
-          let meta = card.querySelector<HTMLElement>(".abags-premium-meta");
-          if (!meta) {
-            meta = document.createElement("div");
-            meta.className = "abags-premium-meta";
-            addButton.parentElement?.insertBefore(meta, addButton);
-          }
-          meta.innerHTML = `<span>Ręcznie wykonana</span><span class="abags-availability-pill is-${status}">${label}</span>${product.stitchType ? `<span>${product.stitchType}</span>` : ""}`;
-
-          let availabilityCopy = card.querySelector<HTMLElement>(".abags-availability-copy");
-          if (!availabilityCopy) {
-            availabilityCopy = document.createElement("p");
-            availabilityCopy.className = "abags-availability-copy";
-            addButton.parentElement?.insertBefore(availabilityCopy, addButton);
-          }
-          availabilityCopy.textContent = note;
-          availabilityCopy.hidden = !note;
-
-          addButton.disabled = status === "unavailable";
-          addButton.setAttribute(
-            "aria-label",
-            status === "unavailable"
-              ? `${product.name} — chwilowo niedostępna`
-              : `Dodaj ${product.name} do koszyka`,
-          );
-          addButton.innerHTML = status === "unavailable"
-            ? "Chwilowo niedostępna"
-            : "Dodaj do koszyka <span aria-hidden=\"true\">＋</span>";
+        const addButton = card.querySelector<HTMLElement>(".add-button");
+        if (addButton && !card.querySelector(".abags-premium-meta")) {
+          const meta = document.createElement("div");
+          meta.className = "abags-premium-meta";
+          meta.innerHTML = `<span>Ręcznie wykonana</span><span>Mała seria</span>${product.stitchType ? `<span>${product.stitchType}</span>` : ""}`;
+          addButton.parentElement?.insertBefore(meta, addButton);
         }
 
         if (addButton) {
@@ -226,12 +170,10 @@ export default function StorefrontExperience() {
             link.className = "abags-product-whatsapp";
             link.target = "_blank";
             link.rel = "noopener noreferrer";
+            link.textContent = "Zapytaj o dostępność na WhatsApp";
+            link.setAttribute("aria-label", `Zapytaj na WhatsApp o ${product.name}`);
             addButton.parentElement?.insertBefore(link, addButton);
           }
-          link.textContent = status === "unavailable"
-            ? "Zapytaj o ponowne wykonanie na WhatsApp"
-            : "Zapytaj o termin na WhatsApp";
-          link.setAttribute("aria-label", `Zapytaj na WhatsApp o ${product.name}`);
           link.href = whatsappHref(contact.whatsappNumber, productWhatsAppMessage(product));
         }
       });
@@ -300,9 +242,7 @@ export default function StorefrontExperience() {
 
   const quizResult = useMemo(() => {
     if (quizAnswers.length < 3 || products.length === 0) return null;
-    const purchasable = products.filter((product) => availabilityStatus(product) !== "unavailable");
-    const pool = purchasable.length > 0 ? purchasable : products;
-    return [...pool].sort((a, b) => scoreProduct(b, quizAnswers) - scoreProduct(a, quizAnswers))[0] ?? null;
+    return [...products].sort((a, b) => scoreProduct(b, quizAnswers) - scoreProduct(a, quizAnswers))[0] ?? null;
   }, [products, quizAnswers]);
 
   const openProduct = (product: ExperienceProduct) => {
@@ -364,11 +304,7 @@ export default function StorefrontExperience() {
           {products.slice(0, 6).map((product, index) => (
             <button type="button" className={index === 0 ? "is-featured" : ""} onClick={() => openProduct(product)} key={product.id}>
               <div className="abags-lookbook-media"><ProductThumb product={product} /></div>
-              <div>
-                <span>{product.stitchType || "Handmade"}</span>
-                <strong>{product.name}</strong>
-                <small>{money.format(product.price)} · {availabilityLabels[availabilityStatus(product)]} →</small>
-              </div>
+              <div><span>{product.stitchType || "Handmade"}</span><strong>{product.name}</strong><small>{money.format(product.price)} · zobacz model →</small></div>
             </button>
           ))}
         </div>
@@ -401,7 +337,7 @@ export default function StorefrontExperience() {
 
           {modal === "wishlist" && <>
             <p className="eyebrow">Twoja kolekcja</p><h2>Ulubione modele ♡</h2>
-            {wishlistProducts.length === 0 ? <div className="abags-experience-empty"><span>♡</span><strong>Jeszcze nic tu nie ma</strong><p>Dotknij serduszka przy dowolnej torebce. Zapis pozostanie na tym urządzeniu.</p><button type="button" onClick={() => { setModal(null); document.getElementById("kolekcja")?.scrollIntoView({ behavior: "smooth" }); }}>Odkryj kolekcję →</button></div> : <div className="abags-wishlist-grid">{wishlistProducts.map((product) => <article key={product.id}><div><ProductThumb product={product} /></div><section><h3>{product.name}</h3><p>{product.detail}</p><small>{availabilityLabels[availabilityStatus(product)]} · {product.availabilityNote}</small><strong>{money.format(product.price)}</strong><button type="button" onClick={() => openProduct(product)}>Zobacz produkt →</button><button type="button" className="is-secondary" onClick={() => setWishlist((current) => current.filter((id) => id !== product.id))}>Usuń z ulubionych</button></section></article>)}</div>}
+            {wishlistProducts.length === 0 ? <div className="abags-experience-empty"><span>♡</span><strong>Jeszcze nic tu nie ma</strong><p>Dotknij serduszka przy dowolnej torebce. Zapis pozostanie na tym urządzeniu.</p><button type="button" onClick={() => { setModal(null); document.getElementById("kolekcja")?.scrollIntoView({ behavior: "smooth" }); }}>Odkryj kolekcję →</button></div> : <div className="abags-wishlist-grid">{wishlistProducts.map((product) => <article key={product.id}><div><ProductThumb product={product} /></div><section><h3>{product.name}</h3><p>{product.detail}</p><strong>{money.format(product.price)}</strong><button type="button" onClick={() => openProduct(product)}>Zobacz produkt →</button><button type="button" className="is-secondary" onClick={() => setWishlist((current) => current.filter((id) => id !== product.id))}>Usuń z ulubionych</button></section></article>)}</div>}
           </>}
 
           {modal === "quiz" && <>
@@ -409,13 +345,13 @@ export default function StorefrontExperience() {
             {quizStep === 0 && <div className="abags-choice-grid"><button type="button" onClick={() => answerQuiz("romantic")}><strong>Pastele i romantyczny klimat</strong><small>Róż, lila, delikatne akcenty</small></button><button type="button" onClick={() => answerQuiz("natural")}><strong>Naturalnie i ponadczasowo</strong><small>Beże, kremy, spokojna paleta</small></button><button type="button" onClick={() => answerQuiz("statement")}><strong>Lubię mocniejszy akcent</strong><small>Torebka ma przyciągać uwagę</small></button></div>}
             {quizStep === 1 && <div className="abags-choice-grid"><button type="button" onClick={() => answerQuiz("everyday")}><strong>Na co dzień</strong><small>Uniwersalny model do wielu stylizacji</small></button><button type="button" onClick={() => answerQuiz("occasion")}><strong>Na wyjątkowe wyjścia</strong><small>Bardziej dekoracyjny charakter</small></button><button type="button" onClick={() => answerQuiz("gift")}><strong>Na prezent</strong><small>Chcę model z efektem „wow”</small></button></div>}
             {quizStep === 2 && <div className="abags-choice-grid"><button type="button" onClick={() => answerQuiz("soft")}><strong>Subtelna</strong><small>Miękka, kobieca estetyka</small></button><button type="button" onClick={() => answerQuiz("classic")}><strong>Klasyczna</strong><small>Prostota i ponadczasowość</small></button><button type="button" onClick={() => answerQuiz("statement")}><strong>Wyrazista</strong><small>Detal ma grać pierwszą rolę</small></button></div>}
-            {quizStep >= 3 && quizResult && <div className="abags-quiz-result"><div><ProductThumb product={quizResult} /></div><section><span>Najlepsze dopasowanie · {availabilityLabels[availabilityStatus(quizResult)]}</span><h3>{quizResult.name}</h3><p>{quizResult.detail}</p><small>{quizResult.availabilityNote}</small><strong>{money.format(quizResult.price)}</strong><button type="button" onClick={() => openProduct(quizResult)}>Zobacz rekomendowany model →</button><button type="button" className="is-secondary" onClick={startQuiz}>Powtórz quiz</button></section></div>}
+            {quizStep >= 3 && quizResult && <div className="abags-quiz-result"><div><ProductThumb product={quizResult} /></div><section><span>Najlepsze dopasowanie</span><h3>{quizResult.name}</h3><p>{quizResult.detail}</p><strong>{money.format(quizResult.price)}</strong><button type="button" onClick={() => openProduct(quizResult)}>Zobacz rekomendowany model →</button><button type="button" className="is-secondary" onClick={startQuiz}>Powtórz quiz</button></section></div>}
           </>}
 
           {modal === "configurator" && <>
             <p className="eyebrow">A-Bags Atelier</p><h2>Stwórz swoją torebkę</h2><p className="abags-modal-lead">To zapytanie o wykonanie indywidualne — przed realizacją potwierdzimy możliwość wykonania, cenę i termin.</p>
             <div className="abags-config-grid">
-              <label><span>1. Model bazowy</span><select value={config.productId} onChange={(event) => setConfig({ ...config, productId: event.target.value })}><option value="">Wybierz model</option>{products.map((product) => <option value={product.id} key={product.id}>{product.name} · {availabilityLabels[availabilityStatus(product)]}</option>)}</select></label>
+              <label><span>1. Model bazowy</span><select value={config.productId} onChange={(event) => setConfig({ ...config, productId: event.target.value })}><option value="">Wybierz model</option>{products.map((product) => <option value={product.id} key={product.id}>{product.name}</option>)}</select></label>
               <label><span>2. Kolor</span><select value={config.color} onChange={(event) => setConfig({ ...config, color: event.target.value })}><option value="">Wybierz kolor</option><option>Pudrowy róż</option><option>Fiolet / lila</option><option>Naturalny / beż</option><option>Inny kolor — do ustalenia</option></select></label>
               <label><span>3. Splot / ścieg</span><select value={config.stitch} onChange={(event) => setConfig({ ...config, stitch: event.target.value })}><option value="">Wybierz technikę</option>{stitchNames.map((stitch) => <option key={stitch}>{stitch}</option>)}<option>Do ustalenia z pracownią</option></select></label>
               <label><span>4. Uchwyty</span><select value={config.handles} onChange={(event) => setConfig({ ...config, handles: event.target.value })}><option value="">Wybierz</option><option>Klasyczne</option><option>Drewniane</option><option>Do ustalenia z pracownią</option></select></label>

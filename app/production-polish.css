@@ -24,24 +24,6 @@ button,
   touch-action: manipulation;
 }
 
-.admin-field select {
-  width: 100%;
-  min-height: 50px;
-  padding: 0 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: 13px;
-  background: #fffdfc;
-  color: var(--ink);
-  font: inherit;
-  outline: none;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
-}
-
-.admin-field select:focus {
-  border-color: var(--rose-deep);
-  box-shadow: 0 0 0 3px rgba(197, 123, 137, 0.12);
-}
-
 .stitch-gallery-mount {
   display: contents;
 }
