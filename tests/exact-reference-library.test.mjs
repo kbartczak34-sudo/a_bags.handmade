@@ -2,36 +2,46 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const source = fs.readFileSync("app/exact-reference-library.tsx", "utf8");
-const css = fs.readFileSync("app/exact-reference-library.css", "utf8");
+const source = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
+const css = fs.readFileSync("app/exact-live-customizer.css", "utf8");
+const library = fs.readFileSync("lib/exact-customizer-library.ts", "utf8");
 const layout = fs.readFileSync("app/layout.tsx", "utf8");
+const parts = Array.from({ length: 6 }, (_, i) => fs.readFileSync(`public/images/configurator/exact-live-v4/sprite-part-${String(i).padStart(2, "0")}.txt`, "utf8"));
+const sprite = Buffer.from(parts.join(""), "base64");
 
-test("exact reference library reads unchanged storefront product images", () => {
-  assert.match(source, /fetch\("\/api\/products"/);
-  assert.match(source, /Biblioteka atelier · 1:1/);
-  assert.match(source, /Rzeczywiste wzorce produktów/);
-  assert.match(source, /oryginał 1:1/);
-  assert.match(source, /selected\.imageUrl/);
-  assert.match(source, /abags-vc-exact-reference/);
+test("photographic customizer library is complete", () => {
+  assert.equal((library.match(/index:\d+/g) || []).length, 19);
+  assert.equal(parts.reduce((n, part) => n + part.length, 0), 29720);
+  assert.equal(sprite.length, 22290);
+  assert.equal(sprite.subarray(0, 4).toString("ascii"), "RIFF");
+  assert.equal(sprite.subarray(8, 12).toString("ascii"), "WEBP");
 });
 
-test("exact reference mode disables synthetic preview layers", () => {
+test("all personalization dimensions are active", () => {
+  for (const key of ["family", "color", "stitch", "flap", "handles", "hardware", "strap", "accent"]) assert.match(source, new RegExp(`\\[\\"${key}\\"`));
+  assert.match(source, /matches\(ref, filters/);
+  assert.match(source, /Podgląd w czasie rzeczywistym/);
+});
+
+test("exact preview replaces synthetic rendering", () => {
   assert.match(source, /has-exact-reference/);
-  assert.match(css, /\.abags-vc-preview\.has-exact-reference::before/);
-  assert.match(css, /\.abags-vc-preview\.has-exact-reference::after/);
   assert.match(css, /\.abags-vc-preview\.has-exact-reference \.abags-vc-base/);
   assert.match(css, /\.abags-vc-preview\.has-exact-reference \.abags-vc-layer/);
-  assert.match(css, /opacity:0!important/);
+  assert.match(css, /abags-vc-exact-live-active \.abags-vc-controls/);
 });
 
-test("exact reference library is mounted globally with its styles", () => {
-  assert.match(layout, /import ExactReferenceLibrary from "\.\/exact-reference-library"/);
-  assert.match(layout, /import "\.\/exact-reference-library\.css"/);
-  assert.match(layout, /<ExactReferenceLibrary \/>/);
+test("project supports save compare and workshop handoff", () => {
+  assert.match(source, /abags-exact-customizer-v1/);
+  assert.match(source, /Zapisz projekt/);
+  assert.match(source, /Porównaj z modelem bazowym/);
+  assert.match(source, /Wyślij projekt do pracowni/);
+  assert.match(source, /whatsappHref/);
 });
 
-test("choosing a normal configurator option exits exact reference mode", () => {
-  assert.match(source, /target\.closest\("\.abags-vc-controls button"\)/);
-  assert.match(source, /setSelectedId\(""\)/);
-  assert.match(source, /Wróć do konfiguracji warstwowej/);
+test("layout mounts the exact renderer", () => {
+  assert.match(layout, /ExactLiveCustomizer/);
+  assert.match(layout, /exact-live-customizer\.css/);
+  assert.match(layout, /<ExactLiveCustomizer \/>/);
+  assert.doesNotMatch(layout, /<RealtimeCustomizerPreview \/>/);
+  assert.doesNotMatch(layout, /<ExactReferenceLibrary \/>/);
 });
