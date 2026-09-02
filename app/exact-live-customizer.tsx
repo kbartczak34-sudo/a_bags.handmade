@@ -84,13 +84,17 @@ export default function ExactLiveCustomizer() {
     const attach = () => {
       const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog");
       if (!dialog) { setMount(null); setPreview(null); return; }
+      const layout = dialog.querySelector<HTMLElement>(".abags-vc-layout");
+      const previewColumn = layout?.querySelector<HTMLElement>(".abags-vc-preview-column") ?? null;
       let target = dialog.querySelector<HTMLElement>("[data-abags-exact-live]");
       if (!target) {
         target = document.createElement("div");
         target.dataset.abagsExactLive = "true";
         target.className = "abags-exact-live-mount";
-        const layout = dialog.querySelector(".abags-vc-layout");
-        dialog.insertBefore(target, layout ?? null);
+        if (layout) layout.insertBefore(target, previewColumn);
+        else dialog.appendChild(target);
+      } else if (layout && target.parentElement !== layout) {
+        layout.insertBefore(target, previewColumn);
       }
       dialog.classList.add("abags-vc-exact-live-active");
       setMount((current) => current === target ? current : target);
@@ -151,7 +155,7 @@ export default function ExactLiveCustomizer() {
   const workshopMessage = `Dzień dobry! Chciałabym zamówić torebkę według projektu z konfiguratora A-Bags. Wzorzec: ${selected.label}. Fason: ${EXACT_FAMILY_LABELS[selected.family]}. Kolor: ${selected.colorLabel}. Splot: ${selected.stitchLabel}. Klapa: ${selected.flapLabel}. Uchwyty: ${selected.handlesLabel}. Okucia: ${selected.hardwareLabel}. Pasek: ${selected.strapLabel}. Detal: ${selected.accentLabel}. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.`;
 
   return <>
-    {createPortal(<section className="abags-exact-live" aria-labelledby="abags-exact-live-title">
+    {createPortal(<section className="abags-exact-live" aria-labelledby="abags-exact-live-title" data-abags-exact-workspace="controls">
       <div className="abags-exact-live-heading">
         <div><p className="eyebrow">A-Bags Atelier · konfigurator 1:1</p><h3 id="abags-exact-live-title">Twórz swoją torebkę i oglądaj rezultat natychmiast.</h3><p>Wybieraj fason, kolor, splot, klapę, uchwyty, okucia, pasek i detal. Każda zmiana natychmiast przełącza podgląd na zgodny, rzeczywisty wariant z biblioteki A-Bags; niedostępne połączenia są automatycznie wykluczane.</p></div>
         <span>{EXACT_ATELIER_LIBRARY.length} wzorców 1:1</span>
