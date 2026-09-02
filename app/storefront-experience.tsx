@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePublicContact, whatsappHref } from "./public-contact";
 
 type ExperienceProduct = {
   id: string;
@@ -22,17 +23,12 @@ type ConfiguratorState = {
   accent: string;
 };
 
-const WHATSAPP_NUMBER = "48504510200";
 const STORAGE_KEY = "abags-wishlist";
 
 const money = new Intl.NumberFormat("pl-PL", {
   style: "currency",
   currency: "PLN",
 });
-
-function whatsappHref(message: string) {
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
 
 function productWhatsAppMessage(product: ExperienceProduct) {
   return `Dzień dobry! Interesuje mnie ${product.name} (${money.format(product.price)}). Czy mogę prosić o potwierdzenie dostępności i terminu realizacji?`;
@@ -63,6 +59,7 @@ function ProductThumb({ product }: { product: ExperienceProduct }) {
 }
 
 export default function StorefrontExperience() {
+  const contact = usePublicContact();
   const [products, setProducts] = useState<ExperienceProduct[]>([]);
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
@@ -166,15 +163,18 @@ export default function StorefrontExperience() {
           addButton.parentElement?.insertBefore(meta, addButton);
         }
 
-        if (addButton && !card.querySelector(".abags-product-whatsapp")) {
-          const link = document.createElement("a");
-          link.className = "abags-product-whatsapp";
-          link.href = whatsappHref(productWhatsAppMessage(product));
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.textContent = "Zapytaj o dostępność na WhatsApp";
-          link.setAttribute("aria-label", `Zapytaj na WhatsApp o ${product.name}`);
-          addButton.parentElement?.insertBefore(link, addButton);
+        if (addButton) {
+          let link = card.querySelector<HTMLAnchorElement>(".abags-product-whatsapp");
+          if (!link) {
+            link = document.createElement("a");
+            link.className = "abags-product-whatsapp";
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = "Zapytaj o dostępność na WhatsApp";
+            link.setAttribute("aria-label", `Zapytaj na WhatsApp o ${product.name}`);
+            addButton.parentElement?.insertBefore(link, addButton);
+          }
+          link.href = whatsappHref(contact.whatsappNumber, productWhatsAppMessage(product));
         }
       });
 
@@ -215,7 +215,7 @@ export default function StorefrontExperience() {
       observer.disconnect();
       document.removeEventListener("click", onClick);
     };
-  }, [products, wishlist.length]);
+  }, [products, wishlist.length, contact.whatsappNumber]);
 
   useEffect(() => {
     if (!modal) return;
@@ -358,7 +358,7 @@ export default function StorefrontExperience() {
               <label><span>5. Detal / dodatek</span><select value={config.accent} onChange={(event) => setConfig({ ...config, accent: event.target.value })}><option value="">Wybierz</option><option>Bez dodatkowego akcentu</option><option>Chusta / kokarda</option><option>Inny detal — do ustalenia</option></select></label>
             </div>
             <div className="abags-config-summary"><strong>Twoja konfiguracja</strong><p>{configuredProduct?.name || "Model — jeszcze nie wybrany"} · {config.color || "kolor"} · {config.stitch || "splot"} · {config.handles || "uchwyty"} · {config.accent || "detal"}</p></div>
-            <a className={`abags-config-whatsapp${configurationReady ? "" : " is-disabled"}`} href={configurationReady ? whatsappHref(configurationMessage) : undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!configurationReady}>Wyślij konfigurację na WhatsApp →</a>
+            <a className={`abags-config-whatsapp${configurationReady ? "" : " is-disabled"}`} href={configurationReady ? whatsappHref(contact.whatsappNumber, configurationMessage) : undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!configurationReady}>Wyślij konfigurację na WhatsApp →</a>
           </>}
         </section>
       </div>
