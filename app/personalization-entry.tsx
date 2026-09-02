@@ -27,6 +27,13 @@ type Config = {
 };
 
 type Option = { label: string; value: string; price: number; swatch?: string };
+type CustomizerAsset = {
+  productId: string;
+  category: keyof Omit<Config, "productId">;
+  variant: string;
+  imageUrl: string;
+  updatedAt: string;
+};
 
 const COLORS: Option[] = [
   { label: "Naturalny beż", value: "natural-bez", price: 0, swatch: "#d8c3a8" },
@@ -123,13 +130,24 @@ function createNavigationLink(container: Element, onOpen: () => void, mobile = f
   else container.appendChild(link);
 }
 
-function OptionButtons({ options, value, onChange, label }: { options: Option[]; value: string; onChange: (value: string) => void; label: string }) {
+function OptionButtons({ options, value, onChange, label, availableVariants, availabilityReady }: {
+  options: Option[];
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  availableVariants?: Set<string>;
+  availabilityReady?: boolean;
+}) {
   return <div className="abags-vc-options" role="group" aria-label={label}>
-    {options.map((option) => <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>
-      {option.swatch && <span className="abags-vc-swatch" style={{ background: option.swatch }} aria-hidden="true" />}
-      <span>{option.label}</span>
-      {option.price > 0 && <small>+{money.format(option.price)}</small>}
-    </button>)}
+    {options.map((option) => {
+      const visualized = availableVariants?.has(option.value) ?? false;
+      return <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>
+        {option.swatch && <span className="abags-vc-swatch" style={{ background: option.swatch }} aria-hidden="true" />}
+        <span>{option.label}</span>
+        {option.price > 0 && <small>+{money.format(option.price)}</small>}
+        {availabilityReady && <small className={visualized ? "abags-vc-availability is-ready" : "abags-vc-availability"}>{visualized ? "podgląd ✓" : "bez warstwy"}</small>}
+      </button>;
+    })}
   </div>;
 }
 
@@ -145,6 +163,8 @@ export default function PersonalizationEntry() {
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [config, setConfig] = useState<Config>(restoreDraft);
+  const [assets, setAssets] = useState<CustomizerAsset[]>([]);
+  const [assetsReady, setAssetsReady] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showBase, setShowBase] = useState(false);
 
@@ -165,6 +185,29 @@ export default function PersonalizationEntry() {
       .catch(() => { if (!controller.signal.aborted) setProducts([]); });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (!config.productId) return;
+    const controller = new AbortController();
+    setAssetsReady(false);
+    fetch(`/api/customizer-assets?productId=${encodeURIComponent(config.productId)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.assets)) throw new Error("customizer assets unavailable");
+        return data.assets as CustomizerAsset[];
+      })
+      .then((items) => {
+        setAssets(items);
+        setAssetsReady(true);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setAssets([]);
+          setAssetsReady(true);
+        }
+      });
+    return () => controller.abort();
+  }, [config.productId]);
 
   useEffect(() => {
     const collection = document.getElementById("kolekcja");
@@ -227,18 +270,30 @@ export default function PersonalizationEntry() {
   }, [config]);
   const previewPrice = (product?.price ?? 0) + optionPrice;
 
+  const assetsByCategory = useMemo(() => {
+    const result = new Map<string, Set<string>>();
+    for (const asset of assets) {
+      const set = result.get(asset.category) ?? new Set<string>();
+      set.add(asset.variant);
+      result.set(asset.category, set);
+    }
+    return result;
+  }, [assets]);
+
   const layers = useMemo(() => {
-    if (!product) return [] as string[];
-    const productSlug = slug(product.id || product.name);
-    return [
-      config.color && `/images/configurator/${productSlug}/color/${config.color}.png`,
-      config.stitch && `/images/configurator/${productSlug}/stitch/${config.stitch}.png`,
-      config.handles && `/images/configurator/${productSlug}/handles/${config.handles}.png`,
-      config.hardware && `/images/configurator/${productSlug}/hardware/${config.hardware}.png`,
-      config.strap && `/images/configurator/${productSlug}/strap/${config.strap}.png`,
-      config.accent && `/images/configurator/${productSlug}/accent/${config.accent}.png`,
-    ].filter(Boolean) as string[];
-  }, [product, config]);
+    const selected: Array<[CustomizerAsset["category"], string]> = [
+      ["color", config.color],
+      ["stitch", config.stitch],
+      ["handles", config.handles],
+      ["hardware", config.hardware],
+      ["strap", config.strap],
+      ["accent", config.accent],
+    ];
+    return selected
+      .filter(([, variant]) => Boolean(variant))
+      .map(([category, variant]) => assets.find((asset) => asset.category === category && asset.variant === variant))
+      .filter((asset): asset is CustomizerAsset => Boolean(asset));
+  }, [assets, config]);
 
   const labels = useMemo(() => ({
     color: labelFor(COLORS, config.color, "kolor"),
@@ -250,6 +305,7 @@ export default function PersonalizationEntry() {
   }), [config, stitchOptions]);
 
   const ready = Boolean(product && config.color && config.stitch && config.handles && config.hardware && config.strap && config.accent);
+  const hasLiveLayers = layers.length > 0;
   const summary = product ? `${product.name} · ${labels.color} · ${labels.stitch} · ${labels.handles} · ${labels.hardware} · ${labels.strap} · ${labels.accent}` : "Wybierz model bazowy, aby rozpocząć.";
   const message = product ? `Dzień dobry! Chciałabym zamówić spersonalizowaną A-Bags. Model: ${product.name}. Kolor: ${labels.color}. Splot: ${labels.stitch}. Uchwyty: ${labels.handles}. Okucia: ${labels.hardware}. Pasek: ${labels.strap}. Detal: ${labels.accent}. Orientacyjna cena konfiguracji: ${money.format(previewPrice)}. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym stworzyć własną torebkę A-Bags.";
 
@@ -289,23 +345,23 @@ export default function PersonalizationEntry() {
           <div className="abags-vc-preview-column">
             <div className="abags-vc-preview" aria-live="polite">
               {product?.imageUrl ? <img className="abags-vc-base" src={product.imageUrl} alt={`Bazowy model ${product.name}`} /> : <div className="abags-vc-empty"><span>◇</span><strong>Wybierz model</strong><p>Tu pojawi się rzeczywisty produkt bazowy.</p></div>}
-              {!showBase && layers.map((src) => <LayerImage key={src} src={src} />)}
-              {product && <div className="abags-vc-live-badge"><span /> {showBase ? "Widok bazowy" : "Podgląd na żywo"}</div>}
-              {product && <button type="button" className="abags-vc-compare" onClick={() => setShowBase((current) => !current)}>{showBase ? "Pokaż projekt" : "Porównaj z bazą"}</button>}
+              {!showBase && layers.map((asset) => <LayerImage key={`${asset.category}:${asset.variant}:${asset.updatedAt}`} src={asset.imageUrl} />)}
+              {product && <div className="abags-vc-live-badge"><span /> {showBase ? "Widok bazowy" : hasLiveLayers ? `Podgląd na żywo · ${layers.length}` : assetsReady ? "Produkt bazowy" : "Ładowanie warstw…"}</div>}
+              {product && hasLiveLayers && <button type="button" className="abags-vc-compare" onClick={() => setShowBase((current) => !current)}>{showBase ? "Pokaż projekt" : "Porównaj z bazą"}</button>}
             </div>
-            <p className="abags-vc-preview-note">Zmiana wizualna pojawia się tylko wtedy, gdy dla wybranego wariantu istnieje przygotowana warstwa produktu. W przeciwnym razie zdjęcie bazowe pozostaje nienaruszone 1:1.</p>
+            <p className="abags-vc-preview-note">Konfigurator korzysta wyłącznie z warstw przygotowanych dla tego konkretnego produktu. Brak warstwy nie zmienia zdjęcia bazowego i nie deformuje torebki.</p>
             <div className="abags-vc-price"><span>Orientacyjna cena</span><strong>{product ? money.format(previewPrice) : "—"}</strong><small>Finalną cenę i dostępność potwierdza pracownia.</small></div>
             <div className="abags-vc-summary"><strong>Aktualna konfiguracja</strong><p>{summary}</p></div>
           </div>
 
           <div className="abags-vc-controls">
             <fieldset><legend>1. Model bazowy</legend><div className="abags-vc-models">{products.map((item) => <button key={item.id} type="button" className={config.productId === item.id ? "is-active" : ""} onClick={() => { setConfig({ ...config, productId: item.id, stitch: item.stitchType ? slug(item.stitchType) : "" }); setShowBase(false); }}><span>{item.imageUrl ? <img src={item.imageUrl} alt="" /> : "◇"}</span><strong>{item.name}</strong><small>{money.format(item.price)}</small></button>)}</div></fieldset>
-            <fieldset><legend>2. Kolor</legend><OptionButtons label="Kolor torebki" options={COLORS} value={config.color} onChange={(color) => { setConfig({ ...config, color }); setShowBase(false); }} /></fieldset>
-            <fieldset><legend>3. Splot / ścieg</legend><OptionButtons label="Splot lub ścieg" options={stitchOptions.length ? stitchOptions : [{ label: "Do ustalenia z pracownią", value: "do-ustalenia", price: 0 }]} value={config.stitch} onChange={(stitch) => { setConfig({ ...config, stitch }); setShowBase(false); }} /></fieldset>
-            <fieldset><legend>4. Uchwyty</legend><OptionButtons label="Uchwyty" options={HANDLES} value={config.handles} onChange={(handles) => { setConfig({ ...config, handles }); setShowBase(false); }} /></fieldset>
-            <fieldset><legend>5. Okucia</legend><OptionButtons label="Kolor okuć" options={HARDWARE} value={config.hardware} onChange={(hardware) => { setConfig({ ...config, hardware }); setShowBase(false); }} /></fieldset>
-            <fieldset><legend>6. Pasek</legend><OptionButtons label="Rodzaj paska" options={STRAPS} value={config.strap} onChange={(strap) => { setConfig({ ...config, strap }); setShowBase(false); }} /></fieldset>
-            <fieldset><legend>7. Detal / ozdoba</legend><OptionButtons label="Detal lub ozdoba" options={ACCENTS} value={config.accent} onChange={(accent) => { setConfig({ ...config, accent }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>2. Kolor</legend><OptionButtons label="Kolor torebki" options={COLORS} value={config.color} availableVariants={assetsByCategory.get("color")} availabilityReady={assetsReady} onChange={(color) => { setConfig({ ...config, color }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>3. Splot / ścieg</legend><OptionButtons label="Splot lub ścieg" options={stitchOptions.length ? stitchOptions : [{ label: "Do ustalenia z pracownią", value: "do-ustalenia", price: 0 }]} value={config.stitch} availableVariants={assetsByCategory.get("stitch")} availabilityReady={assetsReady} onChange={(stitch) => { setConfig({ ...config, stitch }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>4. Uchwyty</legend><OptionButtons label="Uchwyty" options={HANDLES} value={config.handles} availableVariants={assetsByCategory.get("handles")} availabilityReady={assetsReady} onChange={(handles) => { setConfig({ ...config, handles }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>5. Okucia</legend><OptionButtons label="Kolor okuć" options={HARDWARE} value={config.hardware} availableVariants={assetsByCategory.get("hardware")} availabilityReady={assetsReady} onChange={(hardware) => { setConfig({ ...config, hardware }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>6. Pasek</legend><OptionButtons label="Rodzaj paska" options={STRAPS} value={config.strap} availableVariants={assetsByCategory.get("strap")} availabilityReady={assetsReady} onChange={(strap) => { setConfig({ ...config, strap }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>7. Detal / ozdoba</legend><OptionButtons label="Detal lub ozdoba" options={ACCENTS} value={config.accent} availableVariants={assetsByCategory.get("accent")} availabilityReady={assetsReady} onChange={(accent) => { setConfig({ ...config, accent }); setShowBase(false); }} /></fieldset>
           </div>
         </div>
         <footer className="abags-vc-footer"><button type="button" className="is-secondary" onClick={clearConfig}>Wyczyść</button><button type="button" className="is-secondary" onClick={saveDraft}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button><a className={ready ? "" : "is-disabled"} href={ready ? whatsappHref(contact.whatsappNumber, message) : undefined} aria-disabled={!ready} target="_blank" rel="noopener noreferrer">Wyślij projekt do pracowni →</a></footer>
