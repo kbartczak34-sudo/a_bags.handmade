@@ -89,7 +89,7 @@ export async function listCustomizerAssets(productId: string) {
   await ensureCustomizerAssetsReady();
   const result = await getProductDb()
     .prepare(`SELECT product_id, category, variant, image_key, image_content_type, updated_at
-      FROM customizer_assets WHERE product_id = ? ORDER BY category, variant`)
+      FROM customizer_assets WHERE product_id = ? COLLATE NOCASE ORDER BY category, variant`)
     .bind(productId)
     .all<CustomizerAssetRow>();
   return result.results.map(toAsset);
@@ -99,7 +99,7 @@ export async function getCustomizerAssetRecord(productId: string, category: Cust
   await ensureCustomizerAssetsReady();
   return getProductDb()
     .prepare(`SELECT product_id, category, variant, image_key, image_content_type, updated_at
-      FROM customizer_assets WHERE product_id = ? AND category = ? AND variant = ? LIMIT 1`)
+      FROM customizer_assets WHERE product_id = ? COLLATE NOCASE AND category = ? AND variant = ? LIMIT 1`)
     .bind(productId, category, variant)
     .first<CustomizerAssetRow>();
 }
@@ -133,7 +133,7 @@ export async function deleteCustomizerAsset(productId: string, category: Customi
   const previous = await getCustomizerAssetRecord(productId, category, variant);
   if (!previous) return { deleted: false, imageKey: null as string | null };
   await getProductDb()
-    .prepare("DELETE FROM customizer_assets WHERE product_id = ? AND category = ? AND variant = ?")
+    .prepare("DELETE FROM customizer_assets WHERE product_id = ? COLLATE NOCASE AND category = ? AND variant = ?")
     .bind(productId, category, variant)
     .run();
   return { deleted: true, imageKey: previous.image_key };
