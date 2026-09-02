@@ -19,6 +19,10 @@ test("customizer assets are stored per product, category and variant", () => {
   assert.match(store, /getProductBucket/);
 });
 
+test("customizer product lookup tolerates normalized route casing", () => {
+  assert.match(store, /product_id = \? COLLATE NOCASE/);
+});
+
 test("public customizer endpoints expose manifests and immutable images", () => {
   assert.match(publicManifest, /listCustomizerAssets/);
   assert.match(publicImage, /getCustomizerAssetRecord/);
