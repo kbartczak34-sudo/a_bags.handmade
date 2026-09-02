@@ -8,7 +8,7 @@ import PersonalizationEntry from "./personalization-entry";
 import PrivacyConsentBanner from "./privacy-consent-banner";
 import ProductComplianceEnhancer from "./product-compliance-enhancer";
 import ProductPreviewEnhancer from "./product-preview-enhancer";
-import RealtimeCustomizerPreview from "./realtime-customizer-preview";
+import RealtimeCustomizerPreview from "./realtime-customizer-preview-v2";
 import StitchGallery from "./stitch-gallery";
 import StorefrontExperience from "./storefront-experience";
 import SocialQuickLinks from "./social-quick-links";
