@@ -65,23 +65,34 @@ jobs:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
         run: bash scripts/smoke-production.sh
 
+      - name: Browser test realtime personalization
+        id: customizer
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
+        continue-on-error: true
+        env:
+          ABAGS_PRODUCTION_URL: https://abagshandmade.pl
+        run: node scripts/smoke-customizer-browser.mjs
+
       - name: Record deployment status
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+          CUSTOMIZER_OUTCOME: ${{ steps.customizer.outcome }}
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" ]]; then
+          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" && "${CUSTOMIZER_OUTCOME:-}" == "success" ]]; then
             RESULT="✅ PASS"
           elif [[ "${DEPLOY_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ DEPLOY FAIL"
-          else
+          elif [[ "${SMOKE_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ SMOKE FAIL"
+          else
+            RESULT="❌ CUSTOMIZER BROWSER FAIL"
           fi
 
           BODY="$(cat <<EOF
@@ -90,6 +101,7 @@ jobs:
           - Commit: \`${COMMIT_SHA}\`
           - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
           - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
+          - Realtime customizer browser smoke: \`${CUSTOMIZER_OUTCOME:-skipped}\`
           - Run: ${RUN_URL}
 
           Automated deployment record for \`main\`.
@@ -101,4 +113,10 @@ jobs:
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome != 'success'
         run: |
           echo "Production deployment completed, but the live smoke test failed." >&2
+          exit 1
+
+      - name: Fail when realtime customizer browser test fails
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.customizer.outcome != 'success'
+        run: |
+          echo "Production deployment completed, but the realtime personalization browser test failed." >&2
           exit 1
