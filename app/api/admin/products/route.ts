@@ -38,15 +38,17 @@ function parsePriceToCents(value: string) {
 function parseProductInput(formData: FormData): ProductInput | null {
   const name = String(formData.get("name") ?? "").trim();
   const detail = String(formData.get("detail") ?? "").trim();
+  const stitchType = String(formData.get("stitchType") ?? "").trim();
   const priceCents = parsePriceToCents(String(formData.get("price") ?? ""));
   const sortOrder = Number.parseInt(String(formData.get("sortOrder") ?? "0"), 10);
   const isVisible = String(formData.get("isVisible") ?? "") === "true";
 
   if (!name || name.length > 80) return null;
   if (detail.length > 180) return null;
+  if (stitchType.length > 80) return null;
   if (priceCents === null) return null;
   if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 9999) return null;
-  return { name, detail, priceCents, sortOrder, isVisible };
+  return { name, detail, stitchType, priceCents, sortOrder, isVisible };
 }
 
 function detectImage(bytes: Uint8Array): DetectedImage | null {
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
 
   const input = parseProductInput(formData);
   if (!input) {
-    return json({ error: "Sprawdź nazwę, cenę, opis i kolejność produktu." }, 400);
+    return json({ error: "Sprawdź nazwę, cenę, opis, splot i kolejność produktu." }, 400);
   }
 
   const id = String(formData.get("id") ?? "").trim();
