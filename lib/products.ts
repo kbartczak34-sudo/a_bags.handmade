@@ -6,6 +6,7 @@ type ProductRow = {
   id: string;
   name: string;
   detail: string;
+  stitch_type: string;
   price_cents: number;
   tone: string;
   sort_order: number;
@@ -25,6 +26,7 @@ export type AdminProduct = {
   id: string;
   name: string;
   detail: string;
+  stitchType: string;
   priceCents: number;
   tone: string;
   sortOrder: number;
@@ -41,6 +43,7 @@ export type AdminProduct = {
 export type ProductInput = {
   name: string;
   detail: string;
+  stitchType?: string;
   priceCents: number;
   sortOrder: number;
   isVisible: boolean;
@@ -59,6 +62,7 @@ const createProductsSql = `
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     detail TEXT NOT NULL DEFAULT '',
+    stitch_type TEXT NOT NULL DEFAULT '',
     price_cents INTEGER NOT NULL,
     tone TEXT NOT NULL DEFAULT 'product-rose',
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -87,7 +91,8 @@ const createProductsSortIndexSql = `
   ON products (sort_order, created_at)
 `;
 
-const complianceColumns = [
+const productColumns = [
+  ["stitch_type", "TEXT NOT NULL DEFAULT ''"],
   ["product_identifier", "TEXT NOT NULL DEFAULT ''"],
   ["batch_code", "TEXT NOT NULL DEFAULT ''"],
   ["materials", "TEXT NOT NULL DEFAULT ''"],
@@ -136,19 +141,17 @@ export function getProductBucket() {
   return bucket;
 }
 
-async function ensureProductComplianceColumns() {
+async function ensureProductColumns() {
   const db = getProductDb();
   const info = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
   const existing = new Set(info.results.map((column) => column.name));
 
-  for (const [name, definition] of complianceColumns) {
+  for (const [name, definition] of productColumns) {
     if (existing.has(name)) continue;
     try {
       await db.prepare(`ALTER TABLE products ADD COLUMN ${name} ${definition}`).run();
       existing.add(name);
     } catch (error) {
-      // Multiple Worker isolates can race during the first migration. Recheck the
-      // schema and only fail if the column is genuinely still absent.
       const refreshed = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
       if (!refreshed.results.some((column) => column.name === name)) throw error;
       existing.add(name);
@@ -163,7 +166,7 @@ async function initializeCatalog() {
     db.prepare(createSettingsSql),
     db.prepare(createProductsSortIndexSql),
   ]);
-  await ensureProductComplianceColumns();
+  await ensureProductColumns();
 
   const seeded = await db
     .prepare("SELECT value FROM app_settings WHERE key = ? LIMIT 1")
@@ -218,6 +221,7 @@ function toAdminProduct(row: ProductRow): AdminProduct {
     id: row.id,
     name: row.name,
     detail: row.detail,
+    stitchType: row.stitch_type,
     priceCents: row.price_cents,
     tone: row.tone,
     sortOrder: row.sort_order,
@@ -243,6 +247,7 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
     number: String(index + 1).padStart(2, "0"),
     name: row.name,
     detail: row.detail,
+    stitchType: row.stitch_type,
     tone: row.tone,
     price: unitAmount / 100,
     unitAmount,
@@ -261,7 +266,7 @@ function toCatalogProduct(row: ProductRow, index: number): CatalogProduct {
 }
 
 const productSelect = `
-  SELECT id, name, detail, price_cents, tone, sort_order, is_visible,
+  SELECT id, name, detail, stitch_type, price_cents, tone, sort_order, is_visible,
          image_key, image_content_type, product_identifier, batch_code,
          materials, care_instructions, safety_info, created_at, updated_at
   FROM products
@@ -326,14 +331,15 @@ export async function createProduct(
   await getProductDb()
     .prepare(
       `INSERT INTO products
-        (id, name, detail, price_cents, tone, sort_order, is_visible,
+        (id, name, detail, stitch_type, price_cents, tone, sort_order, is_visible,
          image_key, image_content_type, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
       input.name,
       input.detail,
+      input.stitchType ?? "",
       input.priceCents,
       tone,
       input.sortOrder,
@@ -362,18 +368,20 @@ export async function updateProduct(
   const nextImageKey = image === undefined ? existing.image_key : image?.key ?? null;
   const nextImageType = image === undefined ? undefined : image?.contentType ?? null;
   const updatedAt = new Date().toISOString();
+  const stitchType = input.stitchType ?? null;
 
   if (nextImageType === undefined) {
     await db
       .prepare(
         `UPDATE products
-         SET name = ?, detail = ?, price_cents = ?, sort_order = ?,
+         SET name = ?, detail = ?, stitch_type = COALESCE(?, stitch_type), price_cents = ?, sort_order = ?,
              is_visible = ?, updated_at = ?
          WHERE id = ?`,
       )
       .bind(
         input.name,
         input.detail,
+        stitchType,
         input.priceCents,
         input.sortOrder,
         input.isVisible ? 1 : 0,
@@ -385,13 +393,14 @@ export async function updateProduct(
     await db
       .prepare(
         `UPDATE products
-         SET name = ?, detail = ?, price_cents = ?, sort_order = ?,
+         SET name = ?, detail = ?, stitch_type = COALESCE(?, stitch_type), price_cents = ?, sort_order = ?,
              is_visible = ?, image_key = ?, image_content_type = ?, updated_at = ?
          WHERE id = ?`,
       )
       .bind(
         input.name,
         input.detail,
+        stitchType,
         input.priceCents,
         input.sortOrder,
         input.isVisible ? 1 : 0,

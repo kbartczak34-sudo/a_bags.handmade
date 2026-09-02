@@ -13,6 +13,7 @@ export type CatalogProduct = {
   number: string;
   name: string;
   detail: string;
+  stitchType: string;
   tone: string;
   price: number;
   unitAmount: number;
@@ -46,6 +47,7 @@ export const products: CatalogProduct[] = [
     number: "01",
     name: "Torebka Lila",
     detail: "Fiolet · ręcznie pleciona",
+    stitchType: "",
     tone: "product-lilac",
     netAmount: 18_900,
     imageUrl: null,
@@ -62,6 +64,7 @@ export const products: CatalogProduct[] = [
     number: "02",
     name: "Torebka Rose",
     detail: "Pudrowy róż · z frędzlami",
+    stitchType: "",
     tone: "product-rose",
     netAmount: 21_900,
     imageUrl: null,
@@ -78,6 +81,7 @@ export const products: CatalogProduct[] = [
     number: "03",
     name: "Torebka Natural",
     detail: "Piaskowy beż · klasyczna",
+    stitchType: "",
     tone: "product-sand",
     netAmount: 19_900,
     imageUrl: null,
