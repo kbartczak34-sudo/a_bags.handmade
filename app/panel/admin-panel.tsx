@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import ProductPanel from "./product-panel";
+import StitchManager from "./stitch-manager";
 import ProductComplianceManager from "./product-compliance-manager";
 import ReviewManager from "./review-manager";
 import SiteContentEditor from "./site-content-editor";
@@ -14,6 +15,7 @@ type AdminTab =
   | "status"
   | "page"
   | "products"
+  | "stitches"
   | "compliance"
   | "reviews"
   | "orders"
@@ -40,8 +42,8 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <p className="eyebrow">Panel właścicielki</p>
           <h1>Zarządzaj sklepem</h1>
           <p>
-            Kontroluj gotowość produkcyjną, treści, produkty, dane bezpieczeństwa,
-            opinie, zamówienia oraz sprawy posprzedażowe w jednym miejscu.
+            Kontroluj gotowość produkcyjną, treści, produkty, techniki wykonania,
+            dane bezpieczeństwa, opinie, zamówienia oraz sprawy posprzedażowe w jednym miejscu.
           </p>
         </div>
       </section>
@@ -56,17 +58,20 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         <button type="button" className={activeTab === "products" ? "is-active" : ""} onClick={() => setActiveTab("products")}>
           <span>03</span>Produkty
         </button>
+        <button type="button" className={activeTab === "stitches" ? "is-active" : ""} onClick={() => setActiveTab("stitches")}>
+          <span>04</span>Sploty / ściegi
+        </button>
         <button type="button" className={activeTab === "compliance" ? "is-active" : ""} onClick={() => setActiveTab("compliance")}>
-          <span>04</span>GPSR produktów
+          <span>05</span>GPSR produktów
         </button>
         <button type="button" className={activeTab === "reviews" ? "is-active" : ""} onClick={() => setActiveTab("reviews")}>
-          <span>05</span>Opinie
+          <span>06</span>Opinie
         </button>
         <button type="button" className={activeTab === "orders" ? "is-active" : ""} onClick={() => setActiveTab("orders")}>
-          <span>06</span>Zamówienia
+          <span>07</span>Zamówienia
         </button>
         <button type="button" className={activeTab === "cases" ? "is-active" : ""} onClick={() => setActiveTab("cases")}>
-          <span>07</span>Zwroty / reklamacje
+          <span>08</span>Zwroty / reklamacje
         </button>
       </nav>
 
@@ -74,6 +79,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "status" && <StoreStatus />}
         {activeTab === "page" && <SiteContentEditor />}
         {activeTab === "products" && <ProductPanel />}
+        {activeTab === "stitches" && <StitchManager />}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
