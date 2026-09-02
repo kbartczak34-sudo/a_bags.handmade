@@ -6,6 +6,9 @@ const entry = fs.readFileSync("app/personalization-entry.tsx", "utf8");
 const layout = fs.readFileSync("app/layout.tsx", "utf8");
 const styles = fs.readFileSync("app/personalization-entry.css", "utf8");
 const polish = fs.readFileSync("app/visual-customizer-polish.css", "utf8");
+const realtime = fs.readFileSync("app/realtime-customizer-preview.tsx", "utf8");
+const realtimeStyles = fs.readFileSync("app/realtime-customizer-preview.css", "utf8");
+const exactReferences = fs.readFileSync("app/exact-reference-library.tsx", "utf8");
 const checkout = fs.readFileSync("app/api/checkout/route.ts", "utf8");
 const eslint = fs.readFileSync("eslint.config.mjs", "utf8");
 
@@ -52,6 +55,39 @@ test("zero-asset mode visualizes choices immediately and exact atelier layers st
   assert.match(polish, /\.abags-vc-layer\{z-index:5\}/);
   assert.match(entry, /hasAutoPreview/);
   assert.match(entry, /Podgląd automatyczny/);
+});
+
+test("realtime renderer is mounted and derives every current personalization control", () => {
+  assert.match(layout, /RealtimeCustomizerPreview/);
+  assert.match(layout, /realtime-customizer-preview\.css/);
+  assert.match(realtime, /data-abags-realtime-preview="true"/);
+  assert.match(realtime, /fieldset:nth-child\(2\)/);
+  assert.match(realtime, /fieldset:nth-child\(3\)/);
+  assert.match(realtime, /fieldset:nth-child\(4\)/);
+  assert.match(realtime, /fieldset:nth-child\(5\)/);
+  assert.match(realtime, /fieldset:nth-child\(6\)/);
+  assert.match(realtime, /fieldset:nth-child\(7\)/);
+  assert.match(realtime, /MutationObserver/);
+});
+
+test("realtime renderer uses product pixels for colour while retaining exact-layer priority", () => {
+  assert.match(realtime, /getImageData/);
+  assert.match(realtime, /representativeBodyColor/);
+  assert.match(realtime, /recolorBody/);
+  assert.match(realtime, /drawStitchCue/);
+  assert.match(realtime, /drawAccessories/);
+  assert.match(realtime, /drawChain/);
+  assert.match(realtimeStyles, /\.abags-realtime-preview/);
+  assert.match(realtimeStyles, /\.abags-vc-layer\{z-index:5\}/);
+  assert.match(realtimeStyles, /has-exact-reference/);
+});
+
+test("real finished-product references remain available above generated realtime preview", () => {
+  assert.match(layout, /ExactReferenceLibrary/);
+  assert.match(exactReferences, /Biblioteka atelier · 1:1/);
+  assert.match(exactReferences, /\/api\/products/);
+  assert.match(exactReferences, /has-exact-reference/);
+  assert.match(exactReferences, /Wzorzec 1:1/);
 });
 
 test("customer sees automatic preview and exact-layer availability honestly", () => {
@@ -127,4 +163,5 @@ test("visual customizer has responsive dialog styles", () => {
   assert.match(styles, /abags-vc-dialog/);
   assert.match(styles, /@media\(max-width:980px\)/);
   assert.match(styles, /@media\(max-width:620px\)/);
+  assert.match(realtimeStyles, /@media\(max-width:620px\)/);
 });
