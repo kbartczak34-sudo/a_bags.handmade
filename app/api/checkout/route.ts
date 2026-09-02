@@ -146,27 +146,6 @@ export async function POST(request: Request) {
     quantity: item.quantity,
   }));
 
-  const unavailableProducts = selectedProducts
-    .filter(({ product }) => product.availabilityStatus === "unavailable")
-    .map(({ product }) => product.name);
-  if (unavailableProducts.length > 0) {
-    console.info("Checkout blocked by product availability", {
-      productIds: selectedProducts
-        .filter(({ product }) => product.availabilityStatus === "unavailable")
-        .map(({ product }) => product.id),
-    });
-    return json(
-      {
-        error:
-          unavailableProducts.length === 1
-            ? `${unavailableProducts[0]} jest chwilowo niedostępna. Usuń ją z koszyka lub zapytaj o ponowne wykonanie.`
-            : "Część produktów w koszyku jest chwilowo niedostępna. Usuń je z koszyka przed płatnością.",
-        code: "product_unavailable",
-      },
-      409,
-    );
-  }
-
   const incompleteProducts = selectedProducts
     .filter(({ product }) => !productComplianceComplete(product))
     .map(({ product }) => product.name);
