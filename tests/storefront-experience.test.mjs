@@ -23,14 +23,19 @@ test("experience includes wishlist, quiz, configurator and managed WhatsApp flow
   assert.match(experience, /Stwórz swoją torebkę/);
   assert.match(experience, /usePublicContact/);
   assert.match(experience, /whatsappHref\(contact\.whatsappNumber/);
-  assert.match(experience, /Zapytaj o dostępność na WhatsApp/);
+  assert.match(experience, /Zapytaj o termin na WhatsApp/);
+  assert.match(experience, /Zapytaj o ponowne wykonanie na WhatsApp/);
 });
 
-test("experience includes lookbook and stitch lexicon without inventing stock counts", () => {
+test("experience includes lookbook and truthful availability without invented stock counts", () => {
   assert.match(experience, /A-Bags w Twoim stylu/);
   assert.match(experience, /Poznaj sploty A-Bags/);
-  assert.match(experience, /Mała seria/);
+  assert.match(experience, /Dostępna od ręki/);
+  assert.match(experience, /Na zamówienie/);
+  assert.match(experience, /Chwilowo niedostępna/);
+  assert.match(experience, /availabilityNote/);
   assert.doesNotMatch(experience, /została 1 sztuka/i);
+  assert.doesNotMatch(experience, /<span>Mała seria<\/span>/);
 });
 
 test("post-purchase page gives next steps and managed contact routes", () => {
