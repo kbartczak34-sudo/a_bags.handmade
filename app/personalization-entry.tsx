@@ -78,6 +78,18 @@ function slug(value: string) {
   return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+function sanitizeConfig(value: unknown): Config {
+  if (!value || typeof value !== "object") return EMPTY_CONFIG;
+  const candidate = value as Partial<Record<keyof Config, unknown>>;
+  return Object.fromEntries(
+    (Object.keys(EMPTY_CONFIG) as (keyof Config)[]).map((key) => [key, typeof candidate[key] === "string" ? candidate[key] : ""]),
+  ) as Config;
+}
+
+function labelFor(options: Option[], value: string, fallback = "—") {
+  return options.find((option) => option.value === value)?.label ?? (value || fallback);
+}
+
 function findLegacyConfiguratorButton() {
   return Array.from(document.querySelectorAll<HTMLButtonElement>(".abags-experience-actions > button"))
     .find((button) => button.textContent?.includes("Stwórz własną torebkę"));
@@ -110,11 +122,11 @@ function OptionButtons({ options, value, onChange, label }: { options: Option[];
   </div>;
 }
 
-function LayerImage({ src, alt }: { src: string; alt: string }) {
+function LayerImage({ src }: { src: string }) {
   const [visible, setVisible] = useState(true);
   useEffect(() => setVisible(true), [src]);
   if (!visible) return null;
-  return <img className="abags-vc-layer" src={src} alt={alt} onError={() => setVisible(false)} />;
+  return <img className="abags-vc-layer" src={src} alt="" aria-hidden="true" onError={() => setVisible(false)} />;
 }
 
 export default function PersonalizationEntry() {
@@ -124,6 +136,7 @@ export default function PersonalizationEntry() {
   const [products, setProducts] = useState<Product[]>([]);
   const [config, setConfig] = useState<Config>(EMPTY_CONFIG);
   const [saved, setSaved] = useState(false);
+  const [showBase, setShowBase] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,9 +150,20 @@ export default function PersonalizationEntry() {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(DRAFT_KEY);
-      if (stored) setConfig({ ...EMPTY_CONFIG, ...JSON.parse(stored) });
-    } catch { /* ignore invalid local draft */ }
+      if (stored) setConfig(sanitizeConfig(JSON.parse(stored)));
+    } catch {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
   }, []);
+
+  useEffect(() => {
+    if (products.length === 0) return;
+    setConfig((current) => {
+      if (current.productId && products.some((item) => item.id === current.productId)) return current;
+      const first = products[0];
+      return { ...current, productId: first.id, stitch: first.stitchType ? slug(first.stitchType) : current.stitch };
+    });
+  }, [products]);
 
   useEffect(() => {
     const collection = document.getElementById("kolekcja");
@@ -153,6 +177,12 @@ export default function PersonalizationEntry() {
 
   useEffect(() => {
     const openCustomizer = () => setOpen(true);
+    const legacyButtons = new Set<HTMLButtonElement>();
+    const legacyHandler = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(true);
+    };
     const enhance = () => {
       const desktop = document.querySelector(".desktop-navigation");
       if (desktop) createNavigationLink(desktop, openCustomizer);
@@ -161,7 +191,8 @@ export default function PersonalizationEntry() {
       const legacy = findLegacyConfiguratorButton();
       if (legacy && !legacy.dataset.abagsVisualCustomizer) {
         legacy.dataset.abagsVisualCustomizer = "true";
-        legacy.addEventListener("click", openCustomizer, { capture: true });
+        legacy.addEventListener("click", legacyHandler, { capture: true });
+        legacyButtons.add(legacy);
       }
     };
     enhance();
@@ -169,6 +200,10 @@ export default function PersonalizationEntry() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
+      legacyButtons.forEach((button) => {
+        button.removeEventListener("click", legacyHandler, { capture: true });
+        delete button.dataset.abagsVisualCustomizer;
+      });
       document.querySelectorAll("[data-abags-personalize-link]").forEach((link) => link.remove());
     };
   }, []);
@@ -192,26 +227,42 @@ export default function PersonalizationEntry() {
   const previewPrice = (product?.price ?? 0) + optionPrice;
 
   const layers = useMemo(() => {
-    if (!product) return [] as { src: string; alt: string }[];
+    if (!product) return [] as string[];
     const productSlug = slug(product.id || product.name);
     return [
-      config.color && { src: `/images/configurator/${productSlug}/color/${config.color}.png`, alt: `Wariant koloru ${config.color}` },
-      config.stitch && { src: `/images/configurator/${productSlug}/stitch/${config.stitch}.png`, alt: `Wariant splotu ${config.stitch}` },
-      config.handles && { src: `/images/configurator/${productSlug}/handles/${config.handles}.png`, alt: `Wariant uchwytów ${config.handles}` },
-      config.hardware && { src: `/images/configurator/${productSlug}/hardware/${config.hardware}.png`, alt: `Wariant okuć ${config.hardware}` },
-      config.strap && { src: `/images/configurator/${productSlug}/strap/${config.strap}.png`, alt: `Wariant paska ${config.strap}` },
-      config.accent && { src: `/images/configurator/${productSlug}/accent/${config.accent}.png`, alt: `Wariant dodatku ${config.accent}` },
-    ].filter(Boolean) as { src: string; alt: string }[];
+      config.color && `/images/configurator/${productSlug}/color/${config.color}.png`,
+      config.stitch && `/images/configurator/${productSlug}/stitch/${config.stitch}.png`,
+      config.handles && `/images/configurator/${productSlug}/handles/${config.handles}.png`,
+      config.hardware && `/images/configurator/${productSlug}/hardware/${config.hardware}.png`,
+      config.strap && `/images/configurator/${productSlug}/strap/${config.strap}.png`,
+      config.accent && `/images/configurator/${productSlug}/accent/${config.accent}.png`,
+    ].filter(Boolean) as string[];
   }, [product, config]);
 
+  const labels = useMemo(() => ({
+    color: labelFor(COLORS, config.color, "kolor"),
+    stitch: labelFor(stitchOptions, config.stitch, "splot"),
+    handles: labelFor(HANDLES, config.handles, "uchwyty"),
+    hardware: labelFor(HARDWARE, config.hardware, "okucia"),
+    strap: labelFor(STRAPS, config.strap, "pasek"),
+    accent: labelFor(ACCENTS, config.accent, "detal"),
+  }), [config, stitchOptions]);
+
   const ready = Boolean(product && config.color && config.stitch && config.handles && config.hardware && config.strap && config.accent);
-  const summary = product ? `${product.name} · ${config.color || "kolor"} · ${config.stitch || "splot"} · ${config.handles || "uchwyty"} · ${config.hardware || "okucia"} · ${config.strap || "pasek"} · ${config.accent || "detal"}` : "Wybierz model bazowy, aby rozpocząć.";
-  const message = product ? `Dzień dobry! Chciałabym zamówić spersonalizowaną A-Bags. Model: ${product.name}. Kolor: ${config.color}. Splot: ${config.stitch}. Uchwyty: ${config.handles}. Okucia: ${config.hardware}. Pasek: ${config.strap}. Detal: ${config.accent}. Orientacyjna cena konfiguracji: ${money.format(previewPrice)}. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym stworzyć własną torebkę A-Bags.";
+  const summary = product ? `${product.name} · ${labels.color} · ${labels.stitch} · ${labels.handles} · ${labels.hardware} · ${labels.strap} · ${labels.accent}` : "Wybierz model bazowy, aby rozpocząć.";
+  const message = product ? `Dzień dobry! Chciałabym zamówić spersonalizowaną A-Bags. Model: ${product.name}. Kolor: ${labels.color}. Splot: ${labels.stitch}. Uchwyty: ${labels.handles}. Okucia: ${labels.hardware}. Pasek: ${labels.strap}. Detal: ${labels.accent}. Orientacyjna cena konfiguracji: ${money.format(previewPrice)}. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym stworzyć własną torebkę A-Bags.";
 
   const saveDraft = () => {
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1800);
+  };
+
+  const clearConfig = () => {
+    const first = products[0];
+    setConfig(first ? { ...EMPTY_CONFIG, productId: first.id, stitch: first.stitchType ? slug(first.stitchType) : "" } : EMPTY_CONFIG);
+    window.localStorage.removeItem(DRAFT_KEY);
+    setShowBase(false);
   };
 
   if (!host) return null;
@@ -237,24 +288,26 @@ export default function PersonalizationEntry() {
           <div className="abags-vc-preview-column">
             <div className="abags-vc-preview" aria-live="polite">
               {product?.imageUrl ? <img className="abags-vc-base" src={product.imageUrl} alt={`Bazowy model ${product.name}`} /> : <div className="abags-vc-empty"><span>◇</span><strong>Wybierz model</strong><p>Tu pojawi się rzeczywisty produkt bazowy.</p></div>}
-              {layers.map((layer) => <LayerImage key={layer.src} src={layer.src} alt={layer.alt} />)}
-              {product && <div className="abags-vc-live-badge"><span /> Podgląd na żywo</div>}
+              {!showBase && layers.map((src) => <LayerImage key={src} src={src} />)}
+              {product && <div className="abags-vc-live-badge"><span /> {showBase ? "Widok bazowy" : "Podgląd na żywo"}</div>}
+              {product && <button type="button" className="abags-vc-compare" onClick={() => setShowBase((current) => !current)}>{showBase ? "Pokaż projekt" : "Porównaj z bazą"}</button>}
             </div>
+            <p className="abags-vc-preview-note">Zmiana wizualna pojawia się tylko wtedy, gdy dla wybranego wariantu istnieje przygotowana warstwa produktu. W przeciwnym razie zdjęcie bazowe pozostaje nienaruszone 1:1.</p>
             <div className="abags-vc-price"><span>Orientacyjna cena</span><strong>{product ? money.format(previewPrice) : "—"}</strong><small>Finalną cenę i dostępność potwierdza pracownia.</small></div>
             <div className="abags-vc-summary"><strong>Aktualna konfiguracja</strong><p>{summary}</p></div>
           </div>
 
           <div className="abags-vc-controls">
-            <fieldset><legend>1. Model bazowy</legend><div className="abags-vc-models">{products.map((item) => <button key={item.id} type="button" className={config.productId === item.id ? "is-active" : ""} onClick={() => setConfig({ ...config, productId: item.id, stitch: item.stitchType ? slug(item.stitchType) : config.stitch })}><span>{item.imageUrl ? <img src={item.imageUrl} alt="" /> : "◇"}</span><strong>{item.name}</strong><small>{money.format(item.price)}</small></button>)}</div></fieldset>
-            <fieldset><legend>2. Kolor</legend><OptionButtons label="Kolor torebki" options={COLORS} value={config.color} onChange={(color) => setConfig({ ...config, color })} /></fieldset>
-            <fieldset><legend>3. Splot / ścieg</legend><OptionButtons label="Splot lub ścieg" options={stitchOptions.length ? stitchOptions : [{ label: "Do ustalenia z pracownią", value: "do-ustalenia", price: 0 }]} value={config.stitch} onChange={(stitch) => setConfig({ ...config, stitch })} /></fieldset>
-            <fieldset><legend>4. Uchwyty</legend><OptionButtons label="Uchwyty" options={HANDLES} value={config.handles} onChange={(handles) => setConfig({ ...config, handles })} /></fieldset>
-            <fieldset><legend>5. Okucia</legend><OptionButtons label="Kolor okuć" options={HARDWARE} value={config.hardware} onChange={(hardware) => setConfig({ ...config, hardware })} /></fieldset>
-            <fieldset><legend>6. Pasek</legend><OptionButtons label="Rodzaj paska" options={STRAPS} value={config.strap} onChange={(strap) => setConfig({ ...config, strap })} /></fieldset>
-            <fieldset><legend>7. Detal / ozdoba</legend><OptionButtons label="Detal lub ozdoba" options={ACCENTS} value={config.accent} onChange={(accent) => setConfig({ ...config, accent })} /></fieldset>
+            <fieldset><legend>1. Model bazowy</legend><div className="abags-vc-models">{products.map((item) => <button key={item.id} type="button" className={config.productId === item.id ? "is-active" : ""} onClick={() => { setConfig({ ...config, productId: item.id, stitch: item.stitchType ? slug(item.stitchType) : "" }); setShowBase(false); }}><span>{item.imageUrl ? <img src={item.imageUrl} alt="" /> : "◇"}</span><strong>{item.name}</strong><small>{money.format(item.price)}</small></button>)}</div></fieldset>
+            <fieldset><legend>2. Kolor</legend><OptionButtons label="Kolor torebki" options={COLORS} value={config.color} onChange={(color) => { setConfig({ ...config, color }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>3. Splot / ścieg</legend><OptionButtons label="Splot lub ścieg" options={stitchOptions.length ? stitchOptions : [{ label: "Do ustalenia z pracownią", value: "do-ustalenia", price: 0 }]} value={config.stitch} onChange={(stitch) => { setConfig({ ...config, stitch }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>4. Uchwyty</legend><OptionButtons label="Uchwyty" options={HANDLES} value={config.handles} onChange={(handles) => { setConfig({ ...config, handles }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>5. Okucia</legend><OptionButtons label="Kolor okuć" options={HARDWARE} value={config.hardware} onChange={(hardware) => { setConfig({ ...config, hardware }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>6. Pasek</legend><OptionButtons label="Rodzaj paska" options={STRAPS} value={config.strap} onChange={(strap) => { setConfig({ ...config, strap }); setShowBase(false); }} /></fieldset>
+            <fieldset><legend>7. Detal / ozdoba</legend><OptionButtons label="Detal lub ozdoba" options={ACCENTS} value={config.accent} onChange={(accent) => { setConfig({ ...config, accent }); setShowBase(false); }} /></fieldset>
           </div>
         </div>
-        <footer className="abags-vc-footer"><button type="button" className="is-secondary" onClick={() => setConfig(EMPTY_CONFIG)}>Wyczyść</button><button type="button" className="is-secondary" onClick={saveDraft}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button><a className={ready ? "" : "is-disabled"} href={ready ? whatsappHref(contact.whatsappNumber, message) : undefined} aria-disabled={!ready} target="_blank" rel="noopener noreferrer">Wyślij projekt do pracowni →</a></footer>
+        <footer className="abags-vc-footer"><button type="button" className="is-secondary" onClick={clearConfig}>Wyczyść</button><button type="button" className="is-secondary" onClick={saveDraft}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button><a className={ready ? "" : "is-disabled"} href={ready ? whatsappHref(contact.whatsappNumber, message) : undefined} aria-disabled={!ready} target="_blank" rel="noopener noreferrer">Wyślij projekt do pracowni →</a></footer>
       </section>
     </div>, document.body)}
   </>;
