@@ -15,7 +15,7 @@ test("personalization is mounted as a prominent storefront feature", () => {
   assert.match(layout, /visual-customizer-polish\.css/);
   assert.match(entry, /id="personalizacja"/);
   assert.match(entry, /Uruchom konfigurator/);
-  assert.match(entry, /A-Bags Visual Customizer 2\.0/);
+  assert.match(entry, /A-Bags Visual Customizer 2\.1/);
 });
 
 test("visual customizer exposes all configuration dimensions", () => {
@@ -40,7 +40,7 @@ test("visual customizer preserves the real product as the base layer and uses li
 });
 
 test("zero-asset mode visualizes choices immediately and exact atelier layers stay preferred", () => {
-  assert.match(polish, /Zero-asset live preview/);
+  assert.match(polish, /Automatic zero-asset preview/);
   assert.match(polish, /--vc-auto-color/);
   assert.match(polish, /mix-blend-mode:color/);
   assert.match(polish, /--vc-hardware/);
@@ -48,16 +48,19 @@ test("zero-asset mode visualizes choices immediately and exact atelier layers st
   assert.match(polish, /--vc-accent/);
   assert.match(polish, /podgląd auto/);
   assert.match(polish, /podgląd dokładny ✓/);
-  assert.match(polish, /dokładna warstwa atelier/);
-  assert.match(polish, /\.abags-vc-layer\{z-index:4\}/);
+  assert.match(entry, /Dokładne warstwy atelier mają pierwszeństwo/);
+  assert.match(polish, /\.abags-vc-layer\{z-index:5\}/);
+  assert.match(entry, /hasAutoPreview/);
+  assert.match(entry, /Podgląd automatyczny/);
 });
 
-test("customer sees honest visualization availability instead of fake live changes", () => {
-  assert.match(entry, /podgląd ✓/);
-  assert.match(entry, /bez warstwy/);
-  assert.match(entry, /Produkt bazowy/);
+test("customer sees automatic preview and exact-layer availability honestly", () => {
+  assert.match(entry, /podgląd dokładny ✓/);
+  assert.match(entry, /podgląd auto/);
+  assert.match(entry, /Wybierz wariant/);
   assert.match(entry, /hasLiveLayers/);
-  assert.match(entry, /Konfigurator korzysta wyłącznie z warstw przygotowanych/);
+  assert.match(entry, /hasAutoPreview/);
+  assert.match(entry, /Zmiany są widoczne natychmiast/);
 });
 
 test("stale customizer layers cannot leak between product selections", () => {
@@ -95,6 +98,7 @@ test("customer can compare personalization with the untouched base product", () 
   assert.match(entry, /Pokaż projekt/);
   assert.match(entry, /Widok bazowy/);
   assert.match(polish, /abags-vc-compare/);
+  assert.match(polish, /is-showing-base/);
 });
 
 test("configuration updates locally and can be restored safely", () => {
