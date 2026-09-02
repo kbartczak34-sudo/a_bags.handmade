@@ -86,14 +86,10 @@ async function main() {
     if (!opened) throw new Error("Could not find the 'Uruchom konfigurator' button.");
 
     await waitFor("Boolean(document.querySelector('.abags-vc-dialog'))", "visual customizer dialog");
-    await waitFor("Boolean(document.querySelector('[data-abags-exact-live]'))", "exact live customizer mount");
-    await waitFor("Boolean(document.querySelector('.abags-exact-live'))", "exact live customizer UI");
-    await waitFor("document.querySelectorAll('.abags-exact-live-fields select').length === 8", "eight personalization selectors");
-    await waitFor("Boolean(document.querySelector('.abags-vc-exact-sprite'))", "photographic exact preview", true, renderTimeoutMs);
-    await waitFor("Boolean(document.querySelector('.abags-vc-exact-reference-badge')?.textContent?.includes('Podgląd 1:1'))", "exact preview badge");
-
-    const initialReference = await evaluate("document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') || ''");
-    if (!initialReference) throw new Error("Exact preview does not expose an active photographed reference.");
+    await waitFor("Boolean(document.querySelector('[data-abags-exact-live]'))", "bag builder mount");
+    await waitFor("Boolean(document.querySelector('.abags-builder-controls'))", "bag builder controls");
+    await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage'))", "persistent realtime preview", true, renderTimeoutMs);
+    await waitFor("document.querySelector('.abags-vc-header .eyebrow')?.textContent?.includes('Bag Builder 3.0')", "Bag Builder 3.0 header");
 
     const layoutState = await evaluate(`(() => {
       const previewColumn=document.querySelector('.abags-vc-preview-column');
@@ -103,47 +99,68 @@ async function main() {
       const mountStyle=getComputedStyle(mount);
       return {position:previewStyle.position,previewOrder:previewStyle.order,mountOrder:mountStyle.order};
     })()`);
-    if (!layoutState || layoutState.position !== "sticky") throw new Error(`Realtime preview is not sticky in the responsive browser layout: ${JSON.stringify(layoutState)}`);
+    if (!layoutState || layoutState.position !== "sticky") throw new Error(`Realtime preview is not sticky: ${JSON.stringify(layoutState)}`);
 
-    const switched = await evaluate(`(() => {
-      const buttons=[...document.querySelectorAll('.abags-exact-live-variants button')];
-      const alternate=buttons.find((button)=>!button.classList.contains('is-active'));
-      if(!alternate)return false;
-      alternate.click();
-      return true;
-    })()`);
-    if (!switched) throw new Error("No alternate photographed handbag variant was available for browser smoke.");
+    const initialSignature = await evaluate("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-builder-signature') || ''");
 
-    await waitFor(`document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') && document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') !== ${JSON.stringify(initialReference)}`, "real-time photographic preview update", true, renderTimeoutMs);
+    const choose = async (key, value) => {
+      const clicked = await evaluate(`(() => { const button=document.querySelector('[data-builder-key=${JSON.stringify(key)}][data-builder-value=${JSON.stringify(value)}]'); if(!button)return false; button.click(); return true; })()`);
+      if (!clicked) throw new Error(`Could not choose ${key}=${value}.`);
+    };
 
-    const afterReference = await evaluate("document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id') || ''");
-    if (!afterReference || afterReference === initialReference) throw new Error("Changing personalization did not change the photographed preview.");
+    await choose("family", "tote");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-family') === 'tote'", "bag silhouette appears");
+    await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage [data-layer=\"body\"]'))", "body layer appears");
 
-    await waitFor("getComputedStyle(document.querySelector('.abags-vc-controls')).display === 'none'", "synthetic legacy controls hidden");
-    await waitFor("Boolean([...document.querySelectorAll('.abags-exact-live-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt')))", "save project control");
-    await waitFor("Boolean([...document.querySelectorAll('.abags-vc-exact-reference-toggle')].find((node)=>node.textContent?.includes('Porównaj z modelem bazowym')))", "compare with base control");
-    await waitFor("Boolean([...document.querySelectorAll('.abags-exact-live-actions a')].find((node)=>node.textContent?.includes('Wyślij projekt do pracowni')))", "workshop handoff control");
+    await choose("color", "#24324D");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-color') === '#24324D'", "yarn color fills silhouette");
 
-    const compared = await evaluate(`(() => { const button=document.querySelector('.abags-vc-exact-reference-toggle'); if(!button)return false; button.click(); return true; })()`);
-    if (!compared) throw new Error("Could not compare project with base model.");
-    await waitFor("!document.querySelector('.abags-vc-preview')?.classList.contains('has-exact-reference')", "base comparison state");
-    await evaluate(`document.querySelector('.abags-vc-exact-reference-toggle')?.click()`);
-    await waitFor("document.querySelector('.abags-vc-preview')?.classList.contains('has-exact-reference')", "return to exact project preview");
+    await choose("stitch", "herringbone");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-stitch') === 'herringbone'", "stitch changes in realtime");
+
+    const afterCore = await evaluate("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-builder-signature') || ''");
+    if (!afterCore || afterCore === initialSignature) throw new Error("Core bag construction did not change the realtime preview signature.");
+
+    await choose("handles", "wood-light");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-handles') === 'wood-light'", "wooden handles added");
+    await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage [data-layer=\"handles\"]'))", "handle layer appears");
+
+    await choose("strap", "chain");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-strap') === 'chain'", "chain strap added");
+    await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage [data-layer=\"strap\"]'))", "strap layer appears");
+
+    await choose("flap", "leather-black");
+    await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage [data-layer=\"flap\"]'))", "flap layer appears");
+
+    await choose("accent", "tassel");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-accent') === 'tassel'", "accent added");
+    await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage [data-layer=\"accent\"]'))", "accent layer appears");
+
+    await waitFor("getComputedStyle(document.querySelector('.abags-vc-controls')).display === 'none'", "legacy controls hidden");
+    await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt') && !node.disabled))", "save project enabled");
+    await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions a')].find((node)=>node.textContent?.includes('Wyślij projekt do pracowni')))", "workshop handoff control");
+
+    const saved = await evaluate(`(() => { const button=[...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt')); if(!button)return false; button.click(); return true; })()`);
+    if (!saved) throw new Error("Could not save the Bag Builder project.");
+    await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisano')))", "saved project confirmation");
 
     const result = await evaluate(`(() => ({
-      selectors:document.querySelectorAll('.abags-exact-live-fields select').length,
-      reference:document.querySelector('.abags-vc-exact-sprite')?.getAttribute('data-exact-reference-id')||'',
-      badge:document.querySelector('.abags-vc-exact-reference-badge')?.textContent||'',
-      variants:document.querySelectorAll('.abags-exact-live-variants button').length,
+      family:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-family')||'',
+      color:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-color')||'',
+      stitch:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-stitch')||'',
+      handles:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-handles')||'',
+      strap:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-strap')||'',
+      flap:Boolean(document.querySelector('.abags-bag-builder-stage [data-layer="flap"]')),
+      accent:Boolean(document.querySelector('.abags-bag-builder-stage [data-layer="accent"]')),
       previewPosition:getComputedStyle(document.querySelector('.abags-vc-preview-column')).position,
       legacyControlsHidden:getComputedStyle(document.querySelector('.abags-vc-controls')).display==='none',
-      workshopLink:Boolean(document.querySelector('.abags-exact-live-actions a[href]'))
+      workshopLink:Boolean(document.querySelector('.abags-builder-actions a[href]'))
     }))()`);
-    console.log("Exact realtime photographic customizer browser smoke passed:", JSON.stringify(result));
+    console.log("Realtime layered Bag Builder browser smoke passed:", JSON.stringify(result));
     socket.close();
   } finally {
     chrome.kill("SIGTERM"); await sleep(200); if (!chrome.killed) chrome.kill("SIGKILL"); if (process.env.ABAGS_DEBUG_CHROME === "1" && chromeLog) console.error(chromeLog);
   }
 }
 
-main().catch((error) => { console.error(`Exact realtime photographic customizer browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`); process.exitCode = 1; });
+main().catch((error) => { console.error(`Realtime layered Bag Builder browser smoke failed: ${error instanceof Error ? error.stack || error.message : String(error)}`); process.exitCode = 1; });
