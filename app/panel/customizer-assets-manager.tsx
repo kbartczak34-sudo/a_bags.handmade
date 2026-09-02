@@ -25,6 +25,39 @@ const CATEGORIES = [
   ["accent", "Detal / ozdoba"],
 ] as const;
 
+const PRESET_VARIANTS: Record<string, Array<{ label: string; value: string }>> = {
+  color: [
+    { label: "Naturalny beż", value: "natural-bez" },
+    { label: "Pudrowy róż", value: "pudrowy-roz" },
+    { label: "Głęboki granat", value: "gleboki-granat" },
+    { label: "Czekoladowy brąz", value: "czekoladowy-braz" },
+    { label: "Musztardowy", value: "musztardowy" },
+    { label: "Czarny", value: "czarny" },
+  ],
+  handles: [
+    { label: "Klasyczne", value: "klasyczne" },
+    { label: "Drewniane", value: "drewniane" },
+    { label: "Łańcuszek", value: "lancuszek" },
+  ],
+  hardware: [
+    { label: "Złote", value: "zlote" },
+    { label: "Srebrne", value: "srebrne" },
+    { label: "Czarne", value: "czarne" },
+  ],
+  strap: [
+    { label: "Bez dodatkowego paska", value: "bez-paska" },
+    { label: "Regulowany", value: "regulowany" },
+    { label: "Łańcuszek premium", value: "lancuszek-premium" },
+  ],
+  accent: [
+    { label: "Bez ozdoby", value: "bez-ozdoby" },
+    { label: "Chwost", value: "chwost" },
+    { label: "Apaszka / kokarda", value: "apaszka" },
+    { label: "Zawieszka", value: "zawieszka" },
+  ],
+  stitch: [],
+};
+
 function categoryLabel(value: string) {
   return CATEGORIES.find(([key]) => key === value)?.[1] ?? value;
 }
@@ -76,6 +109,7 @@ export default function CustomizerAssetsManager() {
 
   const selectedProduct = products.find((product) => product.id === productId) ?? null;
   const grouped = useMemo(() => CATEGORIES.map(([key, label]) => ({ key, label, assets: assets.filter((asset) => asset.category === key) })), [assets]);
+  const presets = PRESET_VARIANTS[category] ?? [];
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -143,8 +177,8 @@ export default function CustomizerAssetsManager() {
     </div>
 
     <form className="customizer-admin-upload" onSubmit={submit}>
-      <label><span>Kategoria</span><select value={category} onChange={(event) => setCategory(event.target.value)}>{CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <label><span>Nazwa wariantu</span><input value={variant} onChange={(event) => setVariant(event.target.value)} placeholder="np. Pudrowy róż" maxLength={80} /><small>Zapisze się jako: {slug(variant) || "—"}</small></label>
+      <label><span>Kategoria</span><select value={category} onChange={(event) => { setCategory(event.target.value); setVariant(""); }}>{CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label><span>Nazwa wariantu</span><input value={variant} list={presets.length ? "customizer-variant-presets" : undefined} onChange={(event) => setVariant(event.target.value)} placeholder={category === "stitch" ? "np. Ścieg muszelkowy" : "Wybierz lub wpisz wariant"} maxLength={80} />{presets.length > 0 && <datalist id="customizer-variant-presets">{presets.map((preset) => <option key={preset.value} value={preset.label}>{preset.value}</option>)}</datalist>}<small>Zapisze się jako: {slug(variant) || "—"}{presets.length > 0 ? " · najlepiej użyj jednej z podpowiedzi" : ""}</small></label>
       <label><span>Warstwa PNG / WEBP</span><input id="customizer-layer-file" type="file" accept="image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>Najlepiej taki sam kadr i rozmiar jak produkt bazowy, z przezroczystym tłem.</small></label>
       <button type="submit" disabled={pending}>{pending ? "Zapisywanie…" : "Dodaj / zastąp warstwę"}</button>
     </form>
