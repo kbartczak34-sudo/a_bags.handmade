@@ -33,6 +33,7 @@ import "./bag-builder-canvas3d.css";
 import "./bag-builder-commerce.css";
 import "./bag-builder-admin.css";
 import "./customizer-admin.css";
+import "./bag-builder-reference-ui.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
