@@ -30,6 +30,7 @@ import "./bag-builder-real3d.css";
 import "./bag-builder-3d-enhancer.css";
 import "./bag-builder-pro3d.css";
 import "./bag-builder-canvas3d.css";
+import "./bag-builder-material-pass.css";
 import "./bag-builder-commerce.css";
 import "./bag-builder-admin.css";
 import "./customizer-admin.css";
