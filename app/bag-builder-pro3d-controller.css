@@ -1,15 +1,17 @@
-/* A-Bags Pro 3D controller — visible depth + full-bag fitting */
-.abags-pro3d-layer.abags-pro3d-v2 .abags-pro3d-canvas{
+/* A-Bags Pro 3D controller — reliable mobile rotation + zoom */
+.abags-pro3d-layer.abags-pro3d-v3 .abags-pro3d-canvas{
   --abags-pro3d-fit-scale:1;
   transform:scale(var(--abags-pro3d-fit-scale));
   transform-origin:50% 46%;
   transition:transform .16s ease;
+  touch-action:none!important;
+  pointer-events:auto!important;
 }
 
-.abags-pro3d-layer.abags-pro3d-v2[data-abags-pro3d-view="three"] .abags-pro3d-canvas{
+.abags-pro3d-layer.abags-pro3d-v3[data-abags-pro3d-view="three"] .abags-pro3d-canvas{
   filter:drop-shadow(16px 18px 15px rgba(66,43,48,.18));
 }
-.abags-pro3d-layer.abags-pro3d-v2[data-abags-pro3d-view="side"] .abags-pro3d-canvas{
+.abags-pro3d-layer.abags-pro3d-v3[data-abags-pro3d-view="side"] .abags-pro3d-canvas{
   filter:drop-shadow(20px 14px 14px rgba(66,43,48,.2));
 }
 
@@ -21,15 +23,15 @@
 
 .abags-pro3d-v2-zoom{
   position:absolute;
-  z-index:90;
+  z-index:100;
   left:50%;
   bottom:8px;
   transform:translateX(-50%);
-  width:min(94%,650px);
+  width:min(96%,680px);
   display:grid;
-  grid-template-columns:auto 34px minmax(110px,1fr) 34px 52px;
+  grid-template-columns:auto 34px 34px minmax(110px,1fr) 34px 34px 52px;
   align-items:center;
-  gap:6px;
+  gap:5px;
   padding:7px 9px;
   border:1px solid rgba(90,66,69,.15);
   border-radius:999px;
@@ -44,8 +46,15 @@
   border-radius:999px;
   background:#f6e8eb;
   color:#62484e;
-  font:800 10px/1 var(--font-sans);
+  font:800 11px/1 var(--font-sans);
   cursor:pointer;
+  touch-action:manipulation;
+}
+.abags-pro3d-v2-zoom [data-pro3d-left],
+.abags-pro3d-v2-zoom [data-pro3d-right]{
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.13);
+  font-size:15px;
 }
 .abags-pro3d-v2-zoom [data-pro3d-fit]{
   padding:0 13px;
@@ -57,7 +66,9 @@
 }
 .abags-pro3d-v2-zoom input[type="range"]{
   width:100%;
+  min-width:72px;
   accent-color:#b87880;
+  touch-action:pan-x;
 }
 .abags-pro3d-v2-zoom output{
   display:grid;
@@ -73,67 +84,70 @@
 
 @media(max-width:620px){
   .abags-bag-builder-stage.abags-pro3d-active{
-    min-height:445px!important;
+    min-height:470px!important;
   }
   .abags-pro3d-layer{
     inset:0 0 38px!important;
   }
-  .abags-pro3d-layer.abags-pro3d-v2 .abags-pro3d-canvas{
-    height:calc(100% - 56px);
+  .abags-pro3d-layer.abags-pro3d-v3 .abags-pro3d-canvas{
+    height:calc(100% - 62px);
     transform-origin:50% 45%;
   }
   .abags-pro3d-view-controls{
     top:38px!important;
     right:8px!important;
-    z-index:92;
+    z-index:102;
   }
   .abags-pro3d-chip{
-    z-index:92;
+    z-index:102;
   }
   .abags-pro3d-hint{
     left:10px!important;
     right:10px!important;
-    bottom:66px!important;
+    bottom:72px!important;
     max-width:none!important;
     text-align:center;
     font-size:6px!important;
   }
   .abags-pro3d-v2-zoom{
-    left:8px;
-    right:8px;
+    left:6px;
+    right:6px;
     bottom:8px;
     width:auto;
     transform:none;
-    grid-template-columns:auto 29px minmax(92px,1fr) 29px 46px;
-    gap:4px;
+    grid-template-columns:auto 28px 28px minmax(68px,1fr) 28px 28px 42px;
+    gap:3px;
     padding:6px;
   }
   .abags-pro3d-v2-zoom button{
-    min-width:29px;
+    min-width:28px;
     height:29px;
+    padding:0 4px;
   }
   .abags-pro3d-v2-zoom [data-pro3d-fit]{
-    padding:0 9px;
-    font-size:6.3px;
+    padding:0 8px;
+    font-size:5.9px;
   }
+  .abags-pro3d-v2-zoom [data-pro3d-left],
+  .abags-pro3d-v2-zoom [data-pro3d-right]{font-size:13px}
   .abags-pro3d-v2-zoom output{
-    min-width:44px;
+    min-width:40px;
     height:29px;
-    font-size:6.3px;
+    font-size:6px;
   }
 }
 
 @media(max-width:420px){
-  .abags-bag-builder-stage.abags-pro3d-active{min-height:430px!important}
+  .abags-bag-builder-stage.abags-pro3d-active{min-height:455px!important}
   .abags-pro3d-v2-zoom{
-    grid-template-columns:auto 28px minmax(78px,1fr) 28px 42px;
+    grid-template-columns:auto 27px 27px minmax(58px,1fr) 27px 27px 40px;
   }
   .abags-pro3d-v2-zoom [data-pro3d-fit]{
-    padding:0 7px;
-    font-size:5.8px;
+    padding:0 6px;
+    font-size:5.4px;
   }
 }
 
 @media(prefers-reduced-motion:reduce){
-  .abags-pro3d-layer.abags-pro3d-v2 .abags-pro3d-canvas{transition:none}
+  .abags-pro3d-layer.abags-pro3d-v3 .abags-pro3d-canvas{transition:none}
 }
