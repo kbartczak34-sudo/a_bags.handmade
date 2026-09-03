@@ -1,0 +1,139 @@
+/* A-Bags Pro 3D controller — visible depth + full-bag fitting */
+.abags-pro3d-layer.abags-pro3d-v2 .abags-pro3d-canvas{
+  --abags-pro3d-fit-scale:1;
+  transform:scale(var(--abags-pro3d-fit-scale));
+  transform-origin:50% 46%;
+  transition:transform .16s ease;
+}
+
+.abags-pro3d-layer.abags-pro3d-v2[data-abags-pro3d-view="three"] .abags-pro3d-canvas{
+  filter:drop-shadow(16px 18px 15px rgba(66,43,48,.18));
+}
+.abags-pro3d-layer.abags-pro3d-v2[data-abags-pro3d-view="side"] .abags-pro3d-canvas{
+  filter:drop-shadow(20px 14px 14px rgba(66,43,48,.2));
+}
+
+.abags-pro3d-view-controls button.is-active{
+  background:#ecd4d9!important;
+  color:#5e4148!important;
+  box-shadow:inset 0 0 0 1px rgba(184,120,128,.24);
+}
+
+.abags-pro3d-v2-zoom{
+  position:absolute;
+  z-index:90;
+  left:50%;
+  bottom:8px;
+  transform:translateX(-50%);
+  width:min(94%,650px);
+  display:grid;
+  grid-template-columns:auto 34px minmax(110px,1fr) 34px 52px;
+  align-items:center;
+  gap:6px;
+  padding:7px 9px;
+  border:1px solid rgba(90,66,69,.15);
+  border-radius:999px;
+  background:rgba(255,252,249,.98);
+  box-shadow:0 12px 28px rgba(90,66,69,.12);
+  backdrop-filter:blur(14px);
+}
+.abags-pro3d-v2-zoom button{
+  min-width:31px;
+  height:31px;
+  border:0;
+  border-radius:999px;
+  background:#f6e8eb;
+  color:#62484e;
+  font:800 10px/1 var(--font-sans);
+  cursor:pointer;
+}
+.abags-pro3d-v2-zoom [data-pro3d-fit]{
+  padding:0 13px;
+  font-size:7px;
+  letter-spacing:.02em;
+  white-space:nowrap;
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.14);
+}
+.abags-pro3d-v2-zoom input[type="range"]{
+  width:100%;
+  accent-color:#b87880;
+}
+.abags-pro3d-v2-zoom output{
+  display:grid;
+  place-items:center;
+  min-width:48px;
+  height:31px;
+  border-radius:999px;
+  background:#fff;
+  color:#62484e;
+  font:800 7px/1 var(--font-sans);
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.13);
+}
+
+@media(max-width:620px){
+  .abags-bag-builder-stage.abags-pro3d-active{
+    min-height:445px!important;
+  }
+  .abags-pro3d-layer{
+    inset:0 0 38px!important;
+  }
+  .abags-pro3d-layer.abags-pro3d-v2 .abags-pro3d-canvas{
+    height:calc(100% - 56px);
+    transform-origin:50% 45%;
+  }
+  .abags-pro3d-view-controls{
+    top:38px!important;
+    right:8px!important;
+    z-index:92;
+  }
+  .abags-pro3d-chip{
+    z-index:92;
+  }
+  .abags-pro3d-hint{
+    left:10px!important;
+    right:10px!important;
+    bottom:66px!important;
+    max-width:none!important;
+    text-align:center;
+    font-size:6px!important;
+  }
+  .abags-pro3d-v2-zoom{
+    left:8px;
+    right:8px;
+    bottom:8px;
+    width:auto;
+    transform:none;
+    grid-template-columns:auto 29px minmax(92px,1fr) 29px 46px;
+    gap:4px;
+    padding:6px;
+  }
+  .abags-pro3d-v2-zoom button{
+    min-width:29px;
+    height:29px;
+  }
+  .abags-pro3d-v2-zoom [data-pro3d-fit]{
+    padding:0 9px;
+    font-size:6.3px;
+  }
+  .abags-pro3d-v2-zoom output{
+    min-width:44px;
+    height:29px;
+    font-size:6.3px;
+  }
+}
+
+@media(max-width:420px){
+  .abags-bag-builder-stage.abags-pro3d-active{min-height:430px!important}
+  .abags-pro3d-v2-zoom{
+    grid-template-columns:auto 28px minmax(78px,1fr) 28px 42px;
+  }
+  .abags-pro3d-v2-zoom [data-pro3d-fit]{
+    padding:0 7px;
+    font-size:5.8px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .abags-pro3d-layer.abags-pro3d-v2 .abags-pro3d-canvas{transition:none}
+}
