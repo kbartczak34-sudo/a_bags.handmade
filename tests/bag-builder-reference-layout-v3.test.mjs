@@ -11,7 +11,7 @@ test("reference layout v3 is mounted in the real active customizer", () => {
   assert.match(stack, /<BagBuilderReferenceLayoutV3 \/>/);
   assert.doesNotMatch(stack, /BagBuilderReferenceLayoutV2/);
   assert.match(layout, /abags-reference-layout-v3/);
-  assert.match(layout, /data\.abagsReferenceLayout = "v3"/);
+  assert.match(layout, /dialog\.dataset\.abagsReferenceLayout = "v3"/);
 });
 
 test("desktop builder follows the target three-zone workspace", () => {
