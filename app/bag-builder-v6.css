@@ -1,0 +1,218 @@
+/* A-Bags Bag Builder v6 — mobile-first live configurator polish */
+
+/* Keep material effects inside the product geometry. The previous SVG yarn-depth filter
+   could paint turbulence across its filter box, which looked like a loose grey textile
+   rectangle behind the bag on mobile. The stitch itself is already encoded in the SVG pattern. */
+.abags-bag-builder-stage .abags-photoreal-svg path[data-photoreal-layer="body"]{
+  filter:none!important;
+}
+.abags-bag-builder-stage[data-flap="crochet"] .abags-photoreal-svg g[data-photoreal-layer="flap"]>path:first-child{
+  filter:none!important;
+}
+.abags-bag-builder-stage[data-handles="crochet"] .abags-photoreal-svg g[data-photoreal-layer="handles"] path{
+  filter:none!important;
+}
+
+/* Step 1 really is only the silhouette. Do not pre-fill the bag before a colour is chosen. */
+.abags-bag-builder-stage[data-color=""] .abags-photoreal-svg path[data-photoreal-layer="body"]{
+  fill:rgba(255,250,248,.82)!important;
+  stroke:#cdbabd!important;
+  stroke-width:5!important;
+  stroke-dasharray:12 10!important;
+}
+.abags-bag-builder-stage[data-color=""] .abags-photoreal-svg path[data-photoreal-layer="body"]+path,
+.abags-bag-builder-stage[data-color=""] .abags-photoreal-svg path[data-photoreal-layer="body"]+path+path{
+  opacity:0!important;
+}
+.abags-bag-builder-stage[data-color=""] .abags-photoreal-svg g[data-photoreal-layer="label"]{
+  display:none!important;
+}
+.abags-bag-builder-stage[data-color=""] .abags-photoreal-reference{
+  display:none!important;
+}
+
+/* Once colour exists, make the cord structure clearly readable without turning it grey. */
+.abags-bag-builder-stage:not([data-color=""]) .abags-photoreal-svg path[data-photoreal-layer="body"]{
+  stroke-width:7!important;
+}
+.abags-bag-builder-stage:not([data-color=""]) .abags-photoreal-svg [id^="pr-stitch-"] path:first-of-type{
+  opacity:.72!important;
+  stroke-width:9!important;
+}
+.abags-bag-builder-stage:not([data-color=""]) .abags-photoreal-svg [id^="pr-stitch-"] path:nth-of-type(2){
+  opacity:.88!important;
+  stroke-width:5.6!important;
+}
+
+/* Fason cards should read visually like product choices, not plain form buttons. */
+.abags-builder-options button[data-builder-key="family"]{
+  min-height:86px;
+  align-items:center;
+}
+.abags-builder-options button[data-builder-key="family"]::before{
+  content:"";
+  flex:0 0 54px;
+  width:54px;
+  height:48px;
+  border:1px solid rgba(90,66,69,.12);
+  border-radius:14px;
+  background-color:#fbf4ef;
+  background-repeat:no-repeat;
+  background-position:center;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.7);
+}
+.abags-builder-options button[data-builder-key="family"][data-builder-value="tote"]::before{
+  background-image:radial-gradient(ellipse 19px 15px at 50% 25%,transparent 58%,#bca8a9 61% 68%,transparent 71%),linear-gradient(#d9c9c3,#d9c9c3);
+  background-size:100% 100%,32px 27px;
+  background-position:center,center 64%;
+}
+.abags-builder-options button[data-builder-key="family"][data-builder-value="round"]::before{
+  background-image:radial-gradient(ellipse 20px 14px at 50% 25%,transparent 58%,#bca8a9 61% 68%,transparent 71%),radial-gradient(ellipse 22px 19px at 50% 67%,#d9c9c3 0 88%,transparent 90%);
+}
+.abags-builder-options button[data-builder-key="family"][data-builder-value="bucket"]::before{
+  background-image:radial-gradient(ellipse 18px 13px at 50% 24%,transparent 58%,#bca8a9 61% 68%,transparent 71%),linear-gradient(78deg,transparent 17%,#d9c9c3 18% 82%,transparent 83%);
+  background-size:100% 100%,36px 30px;
+  background-position:center,center 66%;
+}
+.abags-builder-options button[data-builder-key="family"][data-builder-value="mini"]::before{
+  background-image:radial-gradient(ellipse 16px 12px at 50% 27%,transparent 57%,#bca8a9 60% 68%,transparent 71%),linear-gradient(#d9c9c3,#d9c9c3);
+  background-size:100% 100%,26px 23px;
+  background-position:center,center 64%;
+}
+.abags-builder-options button[data-builder-key="family"].is-active::before{
+  box-shadow:0 0 0 2px rgba(184,120,128,.32),inset 0 0 0 1px rgba(255,255,255,.82);
+  background-color:#fff8f7;
+}
+
+/* The reference library remains useful on desktop, but on mobile it competes with the actual live build. */
+@media(max-width:980px){
+  .abags-photoreal-reference{display:none!important}
+}
+
+@media(max-width:620px){
+  /* Compact modal header: the product should be visible immediately after opening the builder. */
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header{
+    min-height:58px!important;
+    padding:8px 12px!important;
+    align-items:center!important;
+    border-bottom:1px solid rgba(90,66,69,.1);
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header .eyebrow{
+    margin:0!important;
+    font-size:9px!important;
+    line-height:1.2!important;
+    letter-spacing:.1em!important;
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header h2{
+    display:none!important;
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header>button{
+    width:38px!important;
+    height:38px!important;
+    flex:0 0 38px!important;
+  }
+
+  /* Large, always-on preview similar to the accepted reference layout. */
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview-column{
+    position:sticky!important;
+    top:0!important;
+    z-index:40!important;
+    padding:4px 6px 6px!important;
+    background:rgba(255,250,248,.97)!important;
+    backdrop-filter:blur(14px)!important;
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{
+    width:calc(100vw - 18px)!important;
+    max-width:430px!important;
+    aspect-ratio:4/3!important;
+    border-radius:22px!important;
+    box-shadow:inset 0 0 0 1px rgba(90,66,69,.08),0 12px 28px rgba(90,66,69,.09)!important;
+  }
+  .abags-bag-builder-stage{
+    padding:5px!important;
+  }
+  .abags-photoreal-layer{
+    inset:0 0 42px!important;
+  }
+  .abags-photoreal-svg{
+    overflow:hidden!important;
+  }
+  .abags-photoreal-badge{
+    display:none!important;
+  }
+  .abags-bag-builder-stage::before{
+    left:9px!important;
+    top:8px!important;
+    max-width:none!important;
+    padding:5px 8px!important;
+    font-size:5.2px!important;
+  }
+  .abags-bag-builder-stage[data-stitch]:not([data-stitch=""])::after{
+    left:auto!important;
+    right:10px!important;
+    bottom:51px!important;
+    width:62px!important;
+    height:62px!important;
+  }
+
+  /* Do not repeat a second large intro below the sticky preview. */
+  .abags-builder-heading{
+    display:flex!important;
+    justify-content:flex-start!important;
+    margin:0 0 2px!important;
+  }
+  .abags-builder-heading>div{
+    display:none!important;
+  }
+  .abags-builder-heading>span{
+    margin:0!important;
+    padding:7px 10px!important;
+    font-size:8px!important;
+  }
+  .abags-exact-live-mount{
+    padding:7px 7px 24px!important;
+  }
+  .abags-builder-controls{
+    gap:9px!important;
+    padding:9px!important;
+    border-radius:18px!important;
+    box-shadow:none!important;
+  }
+  .abags-builder-group{
+    padding:10px!important;
+  }
+  .abags-builder-group legend{
+    font-size:10px!important;
+  }
+  .abags-builder-options button[data-builder-key="family"]{
+    min-height:82px!important;
+  }
+  .abags-builder-options button[data-builder-key="family"]::before{
+    flex-basis:48px!important;
+    width:48px!important;
+    height:43px!important;
+  }
+  .abags-builder-preview-status{
+    margin:0 5px 3px!important;
+    padding:6px 9px!important;
+    border-radius:12px!important;
+  }
+  .abags-builder-preview-status strong{font-size:8px!important}
+  .abags-builder-preview-status span{font-size:6px!important}
+}
+
+@media(max-width:420px){
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{
+    width:calc(100vw - 14px)!important;
+    max-width:none!important;
+  }
+  .abags-builder-options button[data-builder-key="family"]{
+    min-height:76px!important;
+    padding:7px!important;
+  }
+  .abags-builder-options button[data-builder-key="family"]::before{
+    flex-basis:42px!important;
+    width:42px!important;
+    height:38px!important;
+  }
+}
