@@ -92,6 +92,31 @@
   touch-action:none!important;
 }
 
+/* Reference Layout V3 owns the visible modal heading. These selectors keep
+ * the same typography after the legacy engine selectors are neutralized. */
+.abags-vc-header .abags-v3-eyebrow{
+  margin:0 0 8px;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+}
+.abags-vc-header .abags-v3-title{
+  margin:0;
+  font-family:var(--font-display),serif;
+  font-size:clamp(2.4rem,4vw,4.6rem);
+  font-weight:500;
+  letter-spacing:-.04em;
+  line-height:.95;
+}
+
+/* The consent banner remains available normally, but an open aria-modal
+ * customizer must be the top interaction layer. Closing the creator exposes
+ * the consent controls again without changing the user's privacy choice. */
+body.abags-vc-open .abags-vc-layer-root{
+  z-index:2147483200!important;
+}
+
 @media(max-width:980px){
   .abags-bag-builder-stage.abags-pro3d-active,
   .abags-bag-builder-stage.abags-canvas3d-active{
@@ -109,6 +134,7 @@
   .abags-bag-builder-stage.abags-canvas3d-active::before{left:-1%!important;width:25%!important;opacity:.72!important}
   .abags-bag-builder-stage.abags-pro3d-active::after,
   .abags-bag-builder-stage.abags-canvas3d-active::after{right:2%!important;top:14%!important;width:27%!important;height:25%!important;border-width:6px!important;font-size:8px!important}
+  .abags-vc-header .abags-v3-title{font-size:clamp(2.2rem,12vw,3.4rem)}
 }
 @media(max-width:420px){
   .abags-bag-builder-stage.abags-pro3d-active,
