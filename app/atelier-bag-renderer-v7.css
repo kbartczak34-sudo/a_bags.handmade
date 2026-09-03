@@ -1,0 +1,54 @@
+/* A-Bags Atelier Renderer v7 — realistic material preview inside the live builder. */
+.abags-bag-builder-stage.abags-v7-active>.abags-photoreal-layer{display:none!important}
+.abags-bag-builder-stage.abags-v7-active>svg{opacity:0!important}
+.abags-atelier-v7-layer{position:absolute;inset:0 0 42px;z-index:6;display:grid;place-items:center;pointer-events:none;overflow:hidden}
+.abags-atelier-v7-svg{display:block;width:100%;height:100%;overflow:visible;filter:saturate(1.04) contrast(1.025)}
+.abags-v7-empty text{fill:#805a61;font:600 25px/1 var(--font-heading)}
+.abags-v7-empty text.is-small{fill:#9b8589;font:600 10px/1 var(--font-sans)}
+
+/* Give the configured object more visual weight than the surrounding UI. */
+.abags-bag-builder-stage.abags-v7-active{background:linear-gradient(180deg,#fffdfb,#f8f0ea)!important}
+.abags-bag-builder-stage.abags-v7-active::before{background:rgba(255,252,249,.88)!important;box-shadow:0 8px 20px rgba(90,66,69,.08)!important}
+.abags-bag-builder-stage.abags-v7-active[data-stitch]:not([data-stitch=""])::after{opacity:.82;transform:scale(.9);transform-origin:left bottom}
+
+/* Material polish: body remains crisp while highlights and shadows stay inside the actual silhouette. */
+.abags-atelier-v7-svg [data-v7-layer="body"]{shape-rendering:geometricPrecision}
+.abags-atelier-v7-svg [data-v7-layer="flap"],
+.abags-atelier-v7-svg [data-v7-layer="handles"],
+.abags-atelier-v7-svg [data-v7-layer="strap"],
+.abags-atelier-v7-svg [data-v7-layer="accent"]{transition:opacity .18s ease,transform .22s ease}
+.abags-atelier-v7-svg [data-v7-layer="handles"]{transform-origin:310px 180px;animation:abags-v7-rise .22s ease both}
+.abags-atelier-v7-svg [data-v7-layer="strap"]{animation:abags-v7-fade .2s ease both}
+.abags-atelier-v7-svg [data-v7-layer="flap"]{transform-origin:310px 180px;animation:abags-v7-drop .22s ease both}
+.abags-atelier-v7-svg [data-v7-layer="accent"]{animation:abags-v7-fade .2s ease both}
+
+/* No cloth may escape the bag when the scarf option is selected. */
+.abags-bag-builder-stage.abags-v7-active[data-accent="scarf"] .abags-atelier-v7-svg [data-v7-layer="accent"]{transform-origin:205px 187px;transform:translate(24px,18px) scale(.82)}
+
+/* Keep the old stitch magnifier useful but secondary; the actual bag now carries readable rope relief. */
+.abags-bag-builder-stage.abags-v7-active[data-stitch]:not([data-stitch=""])::after{width:72px;height:72px;border-radius:16px;bottom:52px;left:14px;box-shadow:0 0 0 1px rgba(90,66,69,.1),0 9px 22px rgba(90,66,69,.13),inset 0 3px 7px rgba(255,255,255,.42),inset 0 -7px 14px rgba(61,38,43,.16)}
+
+/* Desktop: make the product read as a premium product render. */
+@media(min-width:981px){
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{max-width:610px!important;aspect-ratio:1/1!important}
+  .abags-atelier-v7-layer{inset:0 0 46px}
+  .abags-atelier-v7-svg{transform:scale(1.025)}
+}
+
+/* Mobile: nearly full-width live product, without shrinking it into a thumbnail. */
+@media(max-width:620px){
+  .abags-atelier-v7-layer{inset:0 0 38px!important}
+  .abags-atelier-v7-svg{transform:scale(1.045);transform-origin:center center}
+  .abags-bag-builder-stage.abags-v7-active[data-stitch]:not([data-stitch=""])::after{width:54px!important;height:54px!important;right:9px!important;left:auto!important;bottom:44px!important;border-radius:13px!important;transform:none!important}
+  .abags-bag-builder-stage.abags-v7-active::before{font-size:5px!important;letter-spacing:.06em!important}
+}
+
+@media(max-width:420px){
+  .abags-atelier-v7-svg{transform:scale(1.06)}
+  .abags-bag-builder-stage.abags-v7-active[data-stitch]:not([data-stitch=""])::after{width:48px!important;height:48px!important}
+}
+
+@keyframes abags-v7-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes abags-v7-drop{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes abags-v7-fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.abags-atelier-v7-svg [data-v7-layer]{animation:none!important;transition:none!important}}
