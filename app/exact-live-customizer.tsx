@@ -8,6 +8,7 @@ import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
 import BagBuilderProjectReview from "./bag-builder-project-review";
 import BagBuilderReferenceExperience from "./bag-builder-reference-experience";
 import BagBuilderReferenceLayoutV2 from "./bag-builder-reference-layout-v2";
+import BagBuilderRendererFallback from "./bag-builder-renderer-fallback";
 import BagBuilderShareLink from "./bag-builder-share-link";
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
@@ -17,6 +18,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderEngine />
     <BagBuilderFidelity3D />
     <BagBuilderPro3DTouchRescue />
+    <BagBuilderRendererFallback />
     <BagBuilderViewSync />
     <BagBuilderCommerce />
     <BagBuilderReferenceExperience />
