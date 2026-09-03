@@ -1,0 +1,136 @@
+/* A-Bags Bag Builder — interactive WebGL 3D preview */
+.abags-bag-builder-stage.abags-webgl3d-active{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 22%,rgba(255,255,255,.95),rgba(255,255,255,0) 48%),
+    linear-gradient(180deg,#fffdfa 0%,#faf4ef 68%,#f1e6de 100%)!important;
+}
+.abags-bag-builder-stage.abags-webgl3d-active>.abags-atelier-v7-layer,
+.abags-bag-builder-stage.abags-webgl3d-active>.abags-photoreal-layer,
+.abags-bag-builder-stage.abags-webgl3d-active>svg{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.abags-webgl3d-layer{
+  position:absolute;
+  inset:0 0 42px;
+  z-index:12;
+  overflow:hidden;
+  border-radius:inherit;
+  touch-action:none;
+  user-select:none;
+}
+.abags-webgl3d-canvas{
+  display:block;
+  width:100%;
+  height:100%;
+  cursor:grab;
+  touch-action:none;
+  outline:none;
+}
+.abags-webgl3d-canvas:active{cursor:grabbing}
+.abags-webgl3d-chip{
+  position:absolute;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:7px 11px;
+  border:1px solid rgba(90,66,69,.12);
+  border-radius:999px;
+  background:rgba(255,252,249,.9);
+  backdrop-filter:blur(10px);
+  box-shadow:0 8px 22px rgba(90,66,69,.08);
+  color:#6d555a;
+  font:800 8px/1 var(--font-sans);
+  letter-spacing:.09em;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.abags-webgl3d-controls{
+  position:absolute;
+  right:12px;
+  bottom:14px;
+  display:flex;
+  gap:5px;
+  padding:5px;
+  border:1px solid rgba(90,66,69,.12);
+  border-radius:999px;
+  background:rgba(255,252,249,.92);
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 22px rgba(90,66,69,.1);
+}
+.abags-webgl3d-controls button{
+  min-width:36px;
+  height:32px;
+  padding:0 9px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#684e54;
+  font:800 8px/1 var(--font-sans);
+  cursor:pointer;
+}
+.abags-webgl3d-controls button:hover,
+.abags-webgl3d-controls button:focus-visible{
+  background:#f5e5e7;
+  outline:none;
+}
+.abags-webgl3d-hint{
+  position:absolute;
+  left:50%;
+  bottom:15px;
+  transform:translateX(-50%);
+  width:max-content;
+  max-width:55%;
+  margin:0;
+  color:rgba(90,66,69,.66);
+  font:700 7px/1.25 var(--font-sans);
+  text-align:center;
+  pointer-events:none;
+}
+
+/* The old 2D stitch loupe becomes redundant when the body itself can be rotated. */
+.abags-bag-builder-stage.abags-webgl3d-active::after{display:none!important}
+.abags-bag-builder-stage.abags-webgl3d-active::before{
+  content:"PODGLĄD 3D • BUDUJ WARSTWA PO WARSTWIE"!important;
+  z-index:16!important;
+}
+
+@media(max-width:620px){
+  .abags-webgl3d-layer{inset:0 0 38px}
+  .abags-webgl3d-chip{
+    top:9px;
+    padding:5px 8px;
+    font-size:5.5px;
+  }
+  .abags-webgl3d-controls{
+    right:7px;
+    bottom:7px;
+    gap:3px;
+    padding:4px;
+  }
+  .abags-webgl3d-controls button{
+    min-width:30px;
+    height:28px;
+    padding:0 7px;
+    font-size:6px;
+  }
+  .abags-webgl3d-hint{
+    left:8px;
+    bottom:11px;
+    transform:none;
+    max-width:54%;
+    font-size:5.7px;
+    text-align:left;
+  }
+}
+
+@media(max-width:420px){
+  .abags-webgl3d-controls button:first-child{display:none}
+  .abags-webgl3d-hint{max-width:48%}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .abags-webgl3d-canvas{scroll-behavior:auto}
+}
