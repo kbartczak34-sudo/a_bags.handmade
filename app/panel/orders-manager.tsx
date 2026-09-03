@@ -272,6 +272,12 @@ export default function OrdersManager() {
                 {" · "}Zamówienie #{order.sessionId.slice(-8).toUpperCase()}
               </p>
 
+              {order.cartReference && (
+                <p>
+                  <strong>Pozycje / projekt:</strong> {order.cartReference}
+                </p>
+              )}
+
               {order.refundStatus !== "none" && (
                 <p>
                   Zwrot: <strong>{refundLabels[order.refundStatus]}</strong>
