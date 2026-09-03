@@ -2,6 +2,7 @@ import AtelierBagRendererV7 from "./atelier-bag-renderer-v7";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCanvas3D from "./bag-builder-canvas3d";
 import BagBuilderCanvas3DTouchRescue from "./bag-builder-canvas3d-touch-rescue";
+import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
 import BagBuilderConstructionPass from "./bag-builder-construction-pass";
 import BagBuilderEngine from "./bag-builder-engine";
@@ -33,5 +34,6 @@ export default function ExactLiveCustomizer() {
     <BagBuilderAutosave />
     <BagBuilderProjectReview />
     <BagBuilderShareLink />
+    <BagBuilderCheckoutHandoff />
   </>;
 }
