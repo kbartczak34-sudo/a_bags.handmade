@@ -176,9 +176,9 @@ async function main() {
     await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt') && !node.disabled))", "save project enabled");
     await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions a')].find((node)=>node.textContent?.includes('Wyślij projekt do pracowni')))", "workshop handoff control");
 
-    const saved = await evaluate(`(() => { const button=[...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt')); if(!button)return false; button.click(); return true; })()`);
+    const saved = await evaluate(`(() => { const button=document.querySelector('[data-builder-save-state="ready"]'); if(!button)return false; button.click(); return true; })()`);
     if (!saved) throw new Error("Could not save the Bag Builder project.");
-    await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisano')))", "saved project confirmation");
+    await waitFor("document.querySelector('.abags-builder-actions')?.getAttribute('data-builder-saved') === 'true' && document.querySelector('[data-builder-save-state=\"saved\"]') && Boolean(window.localStorage.getItem('abags-bag-builder-v3'))", "durable saved project confirmation");
 
     const result = await evaluate(`(() => ({
       family:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-family')||'',
@@ -188,6 +188,7 @@ async function main() {
       strap:document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-strap')||'',
       flap:Boolean(document.querySelector('.abags-bag-builder-stage [data-layer="flap"]')),
       accent:Boolean(document.querySelector('.abags-bag-builder-stage [data-layer="accent"]')),
+      saved:document.querySelector('.abags-builder-actions')?.getAttribute('data-builder-saved')==='true',
       previewPosition:getComputedStyle(document.querySelector('.abags-vc-preview-column')).position,
       legacyControlsHidden:getComputedStyle(document.querySelector('.abags-vc-controls')).display==='none',
       referenceRail:Boolean(document.querySelector('.abags-ref-step-rail')),
