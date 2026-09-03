@@ -4,12 +4,14 @@ import BagBuilderCanvas3DTouchRescue from "./bag-builder-canvas3d-touch-rescue";
 import BagBuilderCommerce from "./bag-builder-commerce";
 import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderPro3D from "./bag-builder-pro3d";
+import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
 
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
     <AtelierBagRendererV7 />
     <BagBuilderPro3D />
+    <BagBuilderPro3DTouchRescue />
     <BagBuilderCanvas3D />
     <BagBuilderCanvas3DTouchRescue />
     <BagBuilderCommerce />
