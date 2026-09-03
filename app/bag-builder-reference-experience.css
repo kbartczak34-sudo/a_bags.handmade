@@ -91,6 +91,46 @@
 .abags-ref-layer-row small{overflow:hidden;text-overflow:ellipsis;color:#8f7a7f;font:600 5.3px/1.1 var(--font-sans);white-space:nowrap}
 .abags-ref-layer-edit{color:#b37580;font:800 5px/1 var(--font-sans);text-transform:uppercase}
 
+/* Accordion behavior now belongs to the real builder groups, not a mock UI. */
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group[data-ref-collapsible="true"] legend{
+  width:100%!important;
+  cursor:pointer!important;
+  user-select:none;
+  outline:none;
+}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group[data-ref-collapsible="true"] legend::after{
+  content:"⌄";
+  margin-left:auto;
+  color:#9b737b;
+  font:800 12px/1 var(--font-sans);
+  transition:transform .16s ease;
+}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group[data-ref-collapsible="true"].is-ref-expanded legend::after{transform:rotate(180deg)}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group[data-ref-collapsible="true"]:not(.is-ref-expanded) .abags-builder-options{display:none!important}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group[data-ref-collapsible="true"]:not(.is-ref-expanded){padding-bottom:10px!important}
+
+/* Real A-Bags photographs are used inside the fason cards when the 1:1 sprite is available. */
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group:has(button[data-builder-key="family"]) button::before,
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group:has(button[data-builder-key="family"]) button::after{display:none!important}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group:has(button[data-builder-key="family"]) button{
+  min-height:116px!important;
+  padding:7px!important;
+  justify-content:flex-start!important;
+}
+.abags-ref-family-photo{
+  display:block;
+  width:100%;
+  height:73px;
+  flex:none;
+  overflow:hidden;
+  border-radius:9px;
+  background-color:#f5e9df;
+  background-repeat:no-repeat;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.08),0 5px 12px rgba(90,66,69,.055);
+}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-option-copy{width:100%;text-align:center!important}
+.abags-vc-dialog.abags-reference-experience-active .abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-option-copy strong{font-size:7px!important}
+
 .abags-ref-inspirations{
   display:grid;
   gap:9px;
@@ -105,68 +145,40 @@
 .abags-ref-inspiration-head{display:flex;align-items:end;justify-content:space-between;gap:12px}
 .abags-ref-inspiration-head strong{color:#4d373c;font:850 7px/1 var(--font-sans);letter-spacing:.05em;text-transform:uppercase}
 .abags-ref-inspiration-head small{color:#9b878b;font:600 5.5px/1.25 var(--font-sans);text-align:right}
-.abags-ref-inspiration-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.abags-ref-inspiration-track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .abags-ref-inspiration-track button{
   position:relative;
   display:grid;
-  grid-template-rows:76px auto;
+  grid-template-rows:92px auto;
   gap:5px;
   min-width:0;
-  padding:6px;
+  padding:5px;
   overflow:hidden;
   border:1px solid rgba(90,66,69,.1);
   border-radius:12px;
-  background:linear-gradient(180deg,#f6e8dc,#ead3bf);
+  background:#f7ebe2;
   color:#664d53;
   cursor:pointer;
   transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
 }
 .abags-ref-inspiration-track button:hover{transform:translateY(-2px);border-color:#c68490;box-shadow:0 8px 18px rgba(90,66,69,.09)}
-.abags-ref-inspiration-track button>span:last-child{font:800 6px/1 var(--font-sans)}
-.abags-ref-mini-bag{
-  position:relative;
+.abags-ref-photo{
   display:block;
-  width:62px;
-  height:50px;
-  margin:auto auto 0;
-  border-radius:12px 12px 17px 17px;
+  width:100%;
+  height:92px;
+  border-radius:9px;
+  background-color:#f5e7dc;
+  background-repeat:no-repeat;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.07);
+}
+.abags-ref-photo.is-loading{
   background:
-    repeating-linear-gradient(55deg,rgba(255,255,255,.18) 0 3px,rgba(35,22,26,.12) 3px 5px,transparent 5px 10px),
-    var(--ref-bag,#d89aaa);
-  box-shadow:inset 0 0 0 2px rgba(255,255,255,.1),0 8px 14px rgba(72,47,52,.18);
+    radial-gradient(circle at 50% 25%,rgba(255,255,255,.6),transparent 37%),
+    linear-gradient(145deg,var(--ref-bag,#d99aa7),#caa89c);
 }
-.abags-ref-mini-bag::before{
-  content:"";
-  position:absolute;
-  left:17px;
-  top:-25px;
-  width:28px;
-  height:31px;
-  border:7px solid #bb8a55;
-  border-bottom:0;
-  border-radius:50% 50% 0 0;
-}
-.abags-ref-mini-bag i{
-  position:absolute;
-  left:14px;
-  right:14px;
-  top:3px;
-  height:21px;
-  border-radius:4px 4px 50% 50%;
-  background:rgba(255,218,221,.82);
-  box-shadow:0 2px 4px rgba(64,39,44,.14);
-}
-.abags-ref-mini-bag b{
-  position:absolute;
-  left:50%;
-  top:15px;
-  width:8px;
-  height:8px;
-  transform:translateX(-50%);
-  border-radius:50%;
-  background:#d1a24d;
-  box-shadow:inset 0 0 0 2px #f0d793;
-}
+.abags-ref-inspiration-copy{display:grid;gap:2px;padding:2px 1px 3px;text-align:left}
+.abags-ref-inspiration-copy strong{overflow:hidden;text-overflow:ellipsis;color:#563e44;font:800 6.3px/1.15 var(--font-sans);white-space:nowrap}
+.abags-ref-inspiration-copy small{color:#9b7f84;font:650 5px/1.15 var(--font-sans)}
 
 .abags-ref-trust{
   display:grid;
@@ -195,6 +207,8 @@
   .abags-ref-step-rail button{grid-template-columns:20px 1fr;gap:5px;padding:5px}
   .abags-ref-step-rail button>span{width:20px;height:20px}
   .abags-ref-layers{width:160px}
+  .abags-ref-inspiration-track{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .abags-ref-inspiration-track button:last-child{display:none}
 }
 
 @media(max-width:980px){
@@ -209,8 +223,8 @@
   .abags-ref-inspiration-head small{display:none}
   .abags-ref-inspiration-track{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:2px;scrollbar-width:none}
   .abags-ref-inspiration-track::-webkit-scrollbar{display:none}
-  .abags-ref-inspiration-track button{flex:0 0 92px;grid-template-rows:68px auto;scroll-snap-align:start}
-  .abags-ref-mini-bag{transform:scale(.9)}
+  .abags-ref-inspiration-track button,.abags-ref-inspiration-track button:last-child{display:grid;flex:0 0 102px;grid-template-rows:78px auto;scroll-snap-align:start}
+  .abags-ref-photo{height:78px}
 }
 
 @media(max-width:620px){
@@ -223,9 +237,11 @@
   .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-canvas3d-active,
   .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-pro3d-active{min-height:390px!important}
   .abags-ref-inspiration-head{padding:0 2px}
-  .abags-ref-inspiration-track button{flex-basis:84px;grid-template-rows:61px auto;padding:5px}
-  .abags-ref-mini-bag{transform:scale(.78);transform-origin:center bottom}
+  .abags-ref-inspiration-track button,.abags-ref-inspiration-track button:last-child{flex-basis:88px;grid-template-rows:66px auto;padding:4px}
+  .abags-ref-photo{height:66px;border-radius:8px}
   .abags-ref-trust{display:none}
+  .abags-ref-family-photo{height:66px}
+  .abags-vc-dialog.abags-reference-experience-active .abags-builder-group:has(button[data-builder-key="family"]) button{min-height:106px!important}
 }
 
 @media(max-width:420px){
