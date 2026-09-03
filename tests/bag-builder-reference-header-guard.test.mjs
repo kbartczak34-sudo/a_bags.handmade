@@ -52,6 +52,11 @@ test("V3 legend badges follow seven customer steps instead of raw fieldset numbe
   assert.doesNotMatch(fixes, /data-v3-key=\"accent\"[^\n]*content:\"07\"/);
 });
 
+test("V3 logical badge hides the legacy fieldset number with stronger specificity", () => {
+  assert.match(fixes, /\.abags-reference-layout-v3 \.abags-builder-group\[data-v3-key\] legend > span\{[\s\S]*?font-size:0!important[\s\S]*?color:transparent!important/);
+  assert.match(fixes, /\.abags-reference-layout-v3 \.abags-builder-group\[data-v3-key\] legend > span::after\{[\s\S]*?color:#9a636d!important[\s\S]*?font-size:9px!important/);
+});
+
 test("desktop step rail keeps full labels without a horizontal scrollbar", () => {
   assert.match(fixes, /@media\(min-width:901px\)/);
   assert.match(fixes, /grid-template-columns:160px minmax\(0,1fr\)!important/);
