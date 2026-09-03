@@ -3,6 +3,7 @@ import BagBuilderAtelier3D from "./bag-builder-atelier3d";
 import BagBuilderCanvas3D from "./bag-builder-canvas3d";
 import BagBuilderCanvas3DTouchRescue from "./bag-builder-canvas3d-touch-rescue";
 import BagBuilderCommerce from "./bag-builder-commerce";
+import BagBuilderConstructionPass from "./bag-builder-construction-pass";
 import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderMaterialPass from "./bag-builder-material-pass";
 import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
@@ -17,6 +18,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderCanvas3D />
     <BagBuilderCanvas3DTouchRescue />
     <BagBuilderMaterialPass />
+    <BagBuilderConstructionPass />
     <BagBuilderCommerce />
     <BagBuilderReferenceExperience />
   </>;
