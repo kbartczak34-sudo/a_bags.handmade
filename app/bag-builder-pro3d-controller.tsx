@@ -21,7 +21,7 @@ export default function BagBuilderPro3DController() {
       const nativeZoom = layer.querySelector<HTMLElement>(".abags-pro3d-zoom");
       const nativeRange = nativeZoom?.querySelector<HTMLInputElement>('input[type="range"]');
       const viewButtons = Array.from(layer.querySelectorAll<HTMLButtonElement>(".abags-pro3d-view-controls button"));
-      if (!canvas || !nativeRange || viewButtons.length < 3) return;
+      if (!canvas || !nativeZoom || !nativeRange || viewButtons.length < 3) return;
 
       layer.dataset.abagsPro3dController = "true";
       layer.classList.add("abags-pro3d-v2");
@@ -58,9 +58,6 @@ export default function BagBuilderPro3DController() {
         output.value = `${Math.round(zoom)}%`;
         output.textContent = `${Math.round(zoom)}%`;
 
-        // The WebGL renderer itself supports 45–128%. Below 45% we keep its
-        // camera/model at the safe minimum and extend the field of view by
-        // shrinking only the canvas presentation. Rotation remains real WebGL 3D.
         if (zoom < 45) {
           fireNativeZoom(45);
           canvas.style.setProperty("--abags-pro3d-fit-scale", String(zoom / 45));
@@ -94,7 +91,6 @@ export default function BagBuilderPro3DController() {
       plus.addEventListener("click", onPlus);
 
       requestAnimationFrame(() => {
-        // Start in a deliberately oblique view so depth is visible immediately.
         viewButtons[1]?.click();
         setActiveView(1);
         apply(DEFAULT_ZOOM);
