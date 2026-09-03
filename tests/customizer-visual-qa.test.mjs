@@ -7,7 +7,7 @@ const smoke = fs.readFileSync("scripts/smoke-customizer-reference-v3.mjs", "utf8
 
 test("production browser smoke targets Reference Layout V3 instead of legacy Bag Builder header", () => {
   assert.match(workflow, /smoke-customizer-reference-v3\.mjs/);
-  assert.match(smoke, /abagsReferenceLayout === 'v3'/);
+  assert.match(smoke, /dataset\.abagsReferenceLayout==='v3'/);
   assert.match(smoke, /A-BAGS VISUAL CUSTOMIZER/);
   assert.doesNotMatch(smoke, /Bag Builder 3\.0 header/);
 });
@@ -17,8 +17,10 @@ test("visual QA captures real desktop and mobile production renders", () => {
   assert.match(smoke, /height: 900/);
   assert.match(smoke, /width: 390/);
   assert.match(smoke, /height: 844/);
+  assert.match(smoke, /customizer-diagnostic-v3\.png/);
   assert.match(smoke, /customizer-desktop-v3\.png/);
   assert.match(smoke, /customizer-mobile-v3\.png/);
+  assert.match(smoke, /customizer-failure-v3\.png/);
   assert.match(smoke, /Page\.captureScreenshot/);
 });
 
