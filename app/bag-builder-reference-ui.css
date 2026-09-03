@@ -1,0 +1,422 @@
+/* Reference UI pass: match the approved A-Bags Visual Customizer composition without replacing the live builder. */
+
+.abags-vc-dialog.abags-vc-builder-active{
+  width:min(96vw,1480px)!important;
+  max-width:1480px!important;
+  max-height:94vh!important;
+  border-radius:28px!important;
+  overflow:hidden!important;
+  background:#fbf7f3!important;
+  box-shadow:0 34px 90px rgba(61,42,47,.18)!important;
+}
+
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-header{
+  position:relative;
+  z-index:80;
+  display:grid!important;
+  grid-template-columns:1fr auto 1fr;
+  align-items:start;
+  gap:18px;
+  padding:18px 26px 14px!important;
+  border-bottom:1px solid rgba(90,66,69,.1)!important;
+  background:rgba(255,252,249,.96)!important;
+}
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-header>div{
+  grid-column:1/-1;
+  text-align:center;
+}
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-header .eyebrow{
+  margin:0 0 4px!important;
+  color:#4f393e!important;
+  font:800 10px/1.2 var(--font-sans)!important;
+  letter-spacing:.18em!important;
+  text-transform:uppercase!important;
+}
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-header h2{
+  max-width:none!important;
+  margin:0!important;
+  color:#402d32!important;
+  font:500 clamp(38px,4.4vw,68px)/.95 var(--font-heading)!important;
+  letter-spacing:-.035em!important;
+}
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-header>button{
+  position:absolute!important;
+  top:14px!important;
+  right:18px!important;
+  width:44px!important;
+  height:44px!important;
+  border:1px solid rgba(90,66,69,.14)!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  color:#60464c!important;
+}
+
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-layout{
+  display:grid!important;
+  grid-template-columns:minmax(390px,.82fr) minmax(560px,1.3fr)!important;
+  gap:16px!important;
+  align-items:start!important;
+  padding:14px 16px 18px!important;
+  overflow:auto!important;
+  background:linear-gradient(180deg,#fbf7f3 0%,#f8f1ed 100%)!important;
+}
+.abags-exact-live-mount{
+  order:1!important;
+  min-width:0!important;
+  padding:0!important;
+}
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview-column{
+  order:2!important;
+  position:sticky!important;
+  top:0!important;
+  z-index:30!important;
+  width:100%!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+}
+.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{
+  width:100%!important;
+  max-width:none!important;
+  min-height:620px!important;
+  aspect-ratio:1.18/1!important;
+  margin:0!important;
+  overflow:hidden!important;
+  border:1px solid rgba(90,66,69,.11)!important;
+  border-radius:22px!important;
+  background:
+    radial-gradient(circle at 12% 22%,rgba(219,184,145,.34) 0 4%,transparent 16%),
+    radial-gradient(circle at 88% 22%,rgba(207,175,143,.22) 0 6%,transparent 20%),
+    linear-gradient(180deg,#f7ecdf 0 64%,#e9d3bc 64% 100%)!important;
+  box-shadow:0 20px 54px rgba(82,55,60,.1),inset 0 0 0 1px rgba(255,255,255,.55)!important;
+}
+
+/* Warm atelier scenery is CSS-only: the live model remains interactive. */
+.abags-bag-builder-stage.abags-canvas3d-active{
+  min-height:620px!important;
+  background:
+    radial-gradient(circle at 17% 17%,rgba(245,214,181,.86) 0 6%,transparent 7%),
+    radial-gradient(circle at 22% 13%,rgba(201,163,123,.36) 0 2%,transparent 3%),
+    radial-gradient(circle at 27% 20%,rgba(238,206,174,.7) 0 5%,transparent 6%),
+    linear-gradient(180deg,#f6e8da 0 66%,#ead1b8 66% 100%)!important;
+}
+.abags-bag-builder-stage.abags-canvas3d-active::before{
+  content:""!important;
+  display:block!important;
+  position:absolute!important;
+  z-index:0!important;
+  left:4%!important;
+  bottom:17%!important;
+  width:22%!important;
+  height:45%!important;
+  border-radius:52% 48% 18% 18%!important;
+  background:
+    radial-gradient(circle at 50% 5%,#d8b889 0 2%,transparent 3%),
+    radial-gradient(circle at 31% 12%,#d6b789 0 2.4%,transparent 3.4%),
+    radial-gradient(circle at 69% 17%,#cda978 0 2.4%,transparent 3.4%),
+    linear-gradient(74deg,transparent 46%,rgba(143,111,75,.42) 47% 49%,transparent 50%),
+    linear-gradient(106deg,transparent 46%,rgba(143,111,75,.36) 47% 49%,transparent 50%),
+    linear-gradient(180deg,transparent 0 50%,rgba(223,203,183,.92) 51% 100%)!important;
+  filter:blur(.15px)!important;
+  opacity:.92!important;
+  pointer-events:none!important;
+}
+.abags-bag-builder-stage.abags-canvas3d-active::after{
+  content:"a_bags  HANDMADE"!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  position:absolute!important;
+  z-index:0!important;
+  right:5%!important;
+  top:13%!important;
+  width:26%!important;
+  height:32%!important;
+  border:10px solid rgba(171,130,94,.62)!important;
+  border-radius:3px!important;
+  background:rgba(250,239,225,.72)!important;
+  color:rgba(117,84,67,.52)!important;
+  font:600 clamp(10px,1.1vw,16px)/1.4 var(--font-heading)!important;
+  text-align:center!important;
+  letter-spacing:.05em!important;
+  transform:rotate(-1.4deg)!important;
+  box-shadow:0 8px 18px rgba(90,66,69,.08)!important;
+  pointer-events:none!important;
+}
+.abags-canvas3d-layer{z-index:220!important;inset:0 0 46px!important}
+.abags-canvas3d-canvas{filter:drop-shadow(0 18px 16px rgba(65,43,48,.18)) saturate(1.04)!important}
+.abags-canvas3d-chip{
+  top:12px!important;
+  left:14px!important;
+  transform:none!important;
+  padding:7px 10px!important;
+  background:rgba(255,252,249,.9)!important;
+  backdrop-filter:blur(8px)!important;
+}
+.abags-canvas3d-views{
+  top:12px!important;
+  right:12px!important;
+  background:rgba(255,252,249,.92)!important;
+  backdrop-filter:blur(8px)!important;
+}
+.abags-canvas3d-zoom{
+  bottom:12px!important;
+  background:rgba(255,252,249,.93)!important;
+  backdrop-filter:blur(10px)!important;
+}
+.abags-canvas3d-hint{bottom:61px!important;color:rgba(75,52,57,.64)!important}
+
+.abags-builder-controls{
+  display:grid!important;
+  gap:9px!important;
+  margin:0!important;
+  padding:12px!important;
+  border:1px solid rgba(90,66,69,.11)!important;
+  border-radius:22px!important;
+  background:rgba(255,252,249,.94)!important;
+  box-shadow:0 14px 38px rgba(90,66,69,.065)!important;
+}
+.abags-builder-heading{
+  display:grid!important;
+  grid-template-columns:1fr auto!important;
+  gap:10px!important;
+  align-items:center!important;
+  padding:2px 2px 8px!important;
+}
+.abags-builder-heading .eyebrow{margin:0 0 3px!important;color:#7f6469!important;font:800 7px/1 var(--font-sans)!important;letter-spacing:.14em!important;text-transform:uppercase!important}
+.abags-builder-heading h3{margin:0!important;font:600 24px/1 var(--font-heading)!important;color:#4d363b!important}
+.abags-builder-heading p:not(.eyebrow){display:none!important}
+.abags-builder-heading>span{background:#f4e2e5!important;color:#9c616d!important}
+
+.abags-builder-group{
+  gap:8px!important;
+  padding:11px!important;
+  border:1px solid rgba(90,66,69,.095)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 3px 10px rgba(90,66,69,.025)!important;
+}
+.abags-builder-group legend{
+  width:100%!important;
+  padding:0 2px!important;
+  color:#4f393e!important;
+  font-size:9px!important;
+}
+.abags-builder-group legend span{
+  width:22px!important;
+  height:22px!important;
+  background:#f2dce0!important;
+  color:#aa6b77!important;
+}
+.abags-builder-options{gap:7px!important}
+.abags-builder-options button{
+  position:relative!important;
+  min-height:52px!important;
+  padding:9px!important;
+  border-radius:12px!important;
+  border-color:rgba(90,66,69,.11)!important;
+  background:#fff!important;
+}
+.abags-builder-options button.is-active{
+  border-color:#c47f8b!important;
+  box-shadow:0 0 0 2px rgba(196,127,139,.12)!important;
+}
+
+/* Fason cards visually echo the approved mockup. */
+.abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-options{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.abags-builder-group:has(button[data-builder-key="family"]) button{
+  min-height:98px!important;
+  flex-direction:column!important;
+  justify-content:flex-end!important;
+  text-align:center!important;
+  padding-top:54px!important;
+}
+.abags-builder-group:has(button[data-builder-key="family"]) button::before{
+  content:"";
+  position:absolute;
+  top:12px;
+  left:50%;
+  width:42px;
+  height:34px;
+  transform:translateX(-50%);
+  border:2px solid #a9896a;
+  border-radius:9px 9px 13px 13px;
+  background:linear-gradient(145deg,#ead8bf,#b99b79);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),0 4px 8px rgba(90,66,69,.08);
+}
+.abags-builder-group:has(button[data-builder-key="family"]) button::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:50%;
+  width:24px;
+  height:24px;
+  transform:translateX(-50%);
+  border:3px solid #a57d55;
+  border-bottom:0;
+  border-radius:50% 50% 0 0;
+}
+.abags-builder-group:has(button[data-builder-key="family"]) button[data-builder-value="round"]::before{border-radius:42% 42% 14px 14px}
+.abags-builder-group:has(button[data-builder-key="family"]) button[data-builder-value="bucket"]::before{width:36px;height:42px;border-radius:8px 8px 17px 17px}
+.abags-builder-group:has(button[data-builder-key="family"]) button[data-builder-value="mini"]::before{width:34px;height:30px}
+.abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-option-copy strong{font-size:7.5px!important}
+.abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-option-copy small{display:none!important}
+
+/* Colour is a clean atelier swatch rail. */
+.abags-builder-group:has(button[data-builder-key="color"]) .abags-builder-options{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+}
+.abags-builder-group:has(button[data-builder-key="color"]) button{
+  width:30px!important;
+  min-width:30px!important;
+  height:30px!important;
+  min-height:30px!important;
+  padding:0!important;
+  border-radius:50%!important;
+}
+.abags-builder-group:has(button[data-builder-key="color"]) .abags-builder-swatch{
+  width:22px!important;
+  height:22px!important;
+  flex:0 0 22px!important;
+  margin:auto!important;
+}
+.abags-builder-group:has(button[data-builder-key="color"]) .abags-builder-option-copy{display:none!important}
+
+/* Stitch cards show tactile previews instead of text-only controls. */
+.abags-builder-group:has(button[data-builder-key="stitch"]) .abags-builder-options{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.abags-builder-group:has(button[data-builder-key="stitch"]) button{
+  min-height:82px!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-end!important;
+  padding-top:48px!important;
+  text-align:center!important;
+}
+.abags-builder-group:has(button[data-builder-key="stitch"]) button::before{
+  content:"";
+  position:absolute;
+  top:8px;
+  left:8px;
+  right:8px;
+  height:38px;
+  border-radius:8px;
+  background-color:#d89aaa;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.12);
+}
+.abags-builder-group:has(button[data-builder-key="stitch"]) button[data-builder-value="classic"]::before{background-image:repeating-linear-gradient(60deg,rgba(255,255,255,.34) 0 3px,rgba(90,66,69,.15) 3px 5px,transparent 5px 11px)}
+.abags-builder-group:has(button[data-builder-key="stitch"]) button[data-builder-value="herringbone"]::before{background-image:linear-gradient(45deg,transparent 42%,rgba(255,255,255,.5) 43% 49%,transparent 50%),linear-gradient(-45deg,transparent 42%,rgba(97,53,62,.25) 43% 49%,transparent 50%);background-size:18px 18px}
+.abags-builder-group:has(button[data-builder-key="stitch"]) button[data-builder-value="basket"]::before{background-image:linear-gradient(90deg,rgba(255,255,255,.42) 2px,transparent 2px),linear-gradient(rgba(91,50,58,.18) 2px,transparent 2px);background-size:12px 12px}
+.abags-builder-group:has(button[data-builder-key="stitch"]) button[data-builder-value="shell"]::before{background-image:radial-gradient(ellipse at 50% 100%,transparent 45%,rgba(255,255,255,.48) 47% 56%,transparent 58%);background-size:18px 13px}
+.abags-builder-group:has(button[data-builder-key="stitch"]) .abags-builder-option-copy strong{font-size:7px!important}
+.abags-builder-group:has(button[data-builder-key="stitch"]) .abags-builder-option-copy small{display:none!important}
+
+.abags-builder-summary{
+  border-radius:14px!important;
+  background:linear-gradient(135deg,#fbf2f0,#f4e2e5)!important;
+}
+.abags-builder-actions{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:7px!important;
+}
+.abags-builder-actions a{
+  grid-column:1/-1!important;
+  order:-1!important;
+  min-height:46px!important;
+  border-radius:12px!important;
+  background:#c47f8b!important;
+  border-color:#c47f8b!important;
+  font-size:8px!important;
+}
+.abags-builder-actions button{border-radius:12px!important}
+
+.abags-builder-preview-status{
+  position:absolute!important;
+  left:18px!important;
+  right:18px!important;
+  bottom:54px!important;
+  z-index:245!important;
+  margin:0!important;
+  border:1px solid rgba(90,66,69,.08)!important;
+  background:rgba(255,252,249,.9)!important;
+  backdrop-filter:blur(10px)!important;
+}
+
+@media(max-width:980px){
+  .abags-vc-dialog.abags-vc-builder-active{width:100vw!important;max-width:none!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important}
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header{
+    min-height:58px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:10px 58px 10px 16px!important;
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header>div{width:100%;text-align:center!important}
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header .eyebrow{font-size:8px!important;margin:0!important}
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header h2{display:none!important}
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-header>button{top:8px!important;right:10px!important;width:40px!important;height:40px!important}
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-layout{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:0!important;
+    padding:0!important;
+    overflow:auto!important;
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview-column{
+    order:1!important;
+    position:sticky!important;
+    top:0!important;
+    z-index:60!important;
+    padding:0!important;
+    border-bottom:1px solid rgba(90,66,69,.1)!important;
+    background:#f7ede4!important;
+  }
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{
+    width:100%!important;
+    max-width:none!important;
+    min-height:min(56vh,520px)!important;
+    height:min(56vh,520px)!important;
+    aspect-ratio:auto!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  .abags-bag-builder-stage.abags-canvas3d-active{min-height:min(56vh,520px)!important;height:min(56vh,520px)!important}
+  .abags-exact-live-mount{order:2!important;width:100%!important;padding:10px!important;background:#fbf7f3!important}
+  .abags-builder-controls{padding:10px!important;border-radius:18px!important}
+  .abags-builder-heading{padding:0 2px 4px!important}
+  .abags-builder-heading h3{font-size:21px!important}
+  .abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-options{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .abags-builder-group:has(button[data-builder-key="stitch"]) .abags-builder-options{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .abags-builder-preview-status{left:12px!important;right:12px!important;bottom:58px!important}
+}
+
+@media(max-width:620px){
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{min-height:48vh!important;height:48vh!important}
+  .abags-bag-builder-stage.abags-canvas3d-active{min-height:48vh!important;height:48vh!important}
+  .abags-bag-builder-stage.abags-canvas3d-active::before{left:-1%!important;width:25%!important;opacity:.72!important}
+  .abags-bag-builder-stage.abags-canvas3d-active::after{right:2%!important;top:14%!important;width:27%!important;height:25%!important;border-width:6px!important;font-size:8px!important}
+  .abags-canvas3d-chip{top:8px!important;left:9px!important;font-size:6px!important}
+  .abags-canvas3d-views{top:8px!important;right:8px!important}
+  .abags-canvas3d-views button{min-width:42px!important;height:32px!important}
+  .abags-builder-heading h3{font-size:19px!important}
+  .abags-builder-heading .eyebrow{font-size:6.5px!important}
+  .abags-builder-group{padding:10px!important}
+  .abags-builder-group:has(button[data-builder-key="family"]) button{min-height:88px!important;padding-top:48px!important}
+  .abags-builder-group:has(button[data-builder-key="family"]) button::before{top:11px;width:36px;height:30px}
+  .abags-builder-group:has(button[data-builder-key="family"]) button::after{top:2px;width:21px;height:21px}
+  .abags-builder-group:has(button[data-builder-key="stitch"]) button{min-height:76px!important;padding-top:43px!important}
+  .abags-builder-group:has(button[data-builder-key="stitch"]) button::before{height:34px!important}
+}
+
+@media(max-width:420px){
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{min-height:46vh!important;height:46vh!important}
+  .abags-bag-builder-stage.abags-canvas3d-active{min-height:46vh!important;height:46vh!important}
+  .abags-builder-group:has(button[data-builder-key="family"]) .abags-builder-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .abags-builder-group:has(button[data-builder-key="stitch"]) .abags-builder-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .abags-builder-actions{grid-template-columns:1fr 1fr!important}
+}
