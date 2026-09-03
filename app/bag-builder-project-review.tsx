@@ -212,6 +212,27 @@ function ensureCopyButton(controls: HTMLElement, stage: HTMLElement) {
   button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
 }
 
+function synchronizeWorkshopLink(controls: HTMLElement, config: BuilderConfig) {
+  if (!(config.family && config.color && config.stitch)) return;
+  const link = controls.querySelector<HTMLAnchorElement>(".abags-builder-actions a");
+  const href = link?.getAttribute("href");
+  if (!link || !href) return;
+
+  try {
+    const url = new URL(href, window.location.origin);
+    const text = url.searchParams.get("text");
+    if (!text) return;
+    const codeSentence = `Kod projektu: ${projectCode(config)}.`;
+    const withoutOldCode = text.replace(/\s*Kod projektu:\s*AB-[A-Z0-9]+\./g, "").trim();
+    const nextText = `${withoutOldCode} ${codeSentence}`.trim();
+    if (nextText === text) return;
+    url.searchParams.set("text", nextText);
+    link.setAttribute("href", url.toString());
+  } catch {
+    // Keep the original workshop link if its URL cannot be parsed.
+  }
+}
+
 function synchronize() {
   const stage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
   const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
@@ -219,6 +240,7 @@ function synchronize() {
   const config = readConfig(stage);
   ensureReviewCard(controls, config);
   ensureCopyButton(controls, stage);
+  synchronizeWorkshopLink(controls, config);
 }
 
 export default function BagBuilderProjectReview() {
