@@ -1,0 +1,103 @@
+/* A-Bags Bag Builder — physically modeled 3D preview */
+.abags-bag-builder-stage.abags-real3d-active{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 17%,rgba(255,255,255,.98),rgba(255,255,255,0) 46%),
+    linear-gradient(180deg,#fffdfa 0%,#fbf5f0 66%,#f1e6de 100%)!important;
+}
+.abags-bag-builder-stage.abags-real3d-active>.abags-atelier-v7-layer,
+.abags-bag-builder-stage.abags-real3d-active>.abags-photoreal-layer,
+.abags-bag-builder-stage.abags-real3d-active>.abags-webgl3d-layer,
+.abags-bag-builder-stage.abags-real3d-active>svg{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.abags-real3d-layer{
+  position:absolute;
+  inset:0 0 42px;
+  z-index:24;
+  overflow:hidden;
+  border-radius:inherit;
+  touch-action:none;
+  user-select:none;
+}
+.abags-real3d-canvas{
+  display:block;
+  width:100%;
+  height:100%;
+  touch-action:none;
+  cursor:grab;
+  outline:none;
+}
+.abags-real3d-canvas:active{cursor:grabbing}
+.abags-real3d-chip{
+  position:absolute;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:7px 11px;
+  border:1px solid rgba(90,66,69,.12);
+  border-radius:999px;
+  background:rgba(255,252,249,.92);
+  backdrop-filter:blur(10px);
+  box-shadow:0 8px 24px rgba(90,66,69,.08);
+  color:#6b5056;
+  font:800 8px/1 var(--font-sans);
+  letter-spacing:.09em;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.abags-real3d-controls{
+  position:absolute;
+  right:12px;
+  bottom:14px;
+  display:flex;
+  gap:4px;
+  padding:5px;
+  border:1px solid rgba(90,66,69,.12);
+  border-radius:999px;
+  background:rgba(255,252,249,.94);
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 24px rgba(90,66,69,.1);
+}
+.abags-real3d-controls button{
+  min-width:34px;
+  height:32px;
+  padding:0 8px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#684e54;
+  font:800 8px/1 var(--font-sans);
+  cursor:pointer;
+}
+.abags-real3d-controls button:hover,
+.abags-real3d-controls button:focus-visible{background:#f4e2e5;outline:none}
+.abags-real3d-hint{
+  position:absolute;
+  left:14px;
+  bottom:17px;
+  max-width:52%;
+  margin:0;
+  color:rgba(90,66,69,.66);
+  font:700 7px/1.35 var(--font-sans);
+  pointer-events:none;
+}
+.abags-bag-builder-stage.abags-real3d-active::after{display:none!important}
+.abags-bag-builder-stage.abags-real3d-active::before{
+  content:"PODGLĄD 3D · MODEL MATERIAŁOWY"!important;
+  z-index:30!important;
+}
+@media(max-width:620px){
+  .abags-real3d-layer{inset:0 0 38px}
+  .abags-real3d-chip{top:8px;padding:5px 8px;font-size:5.6px}
+  .abags-real3d-controls{right:7px;bottom:7px;gap:2px;padding:4px}
+  .abags-real3d-controls button{min-width:29px;height:27px;padding:0 6px;font-size:5.8px}
+  .abags-real3d-hint{left:8px;bottom:10px;max-width:48%;font-size:5.5px}
+}
+@media(max-width:420px){
+  .abags-real3d-controls button:nth-child(1){display:none}
+  .abags-real3d-controls button{min-width:27px}
+  .abags-real3d-hint{max-width:42%}
+}
