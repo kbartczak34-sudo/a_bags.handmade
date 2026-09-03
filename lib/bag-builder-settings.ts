@@ -1,6 +1,7 @@
 import { getProductDb } from "./products";
 
 export const BUILDER_FAMILIES = ["tote", "round", "bucket", "mini"] as const;
+export const BUILDER_COLORS = ["#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0"] as const;
 export const BUILDER_STITCHES = ["classic", "herringbone", "basket", "shell"] as const;
 export const BUILDER_FLAPS = ["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"] as const;
 export const BUILDER_HANDLES = ["none", "wood-light", "wood-dark", "crochet"] as const;
@@ -9,12 +10,24 @@ export const BUILDER_HARDWARE = ["gold", "silver", "black"] as const;
 export const BUILDER_ACCENTS = ["none", "tassel", "scarf", "charm"] as const;
 
 export type BuilderFamily = (typeof BUILDER_FAMILIES)[number];
+export type BuilderColor = (typeof BUILDER_COLORS)[number];
 export type BuilderStitch = (typeof BUILDER_STITCHES)[number];
 export type BuilderFlap = (typeof BUILDER_FLAPS)[number];
 export type BuilderHandles = (typeof BUILDER_HANDLES)[number];
 export type BuilderStrap = (typeof BUILDER_STRAPS)[number];
 export type BuilderHardware = (typeof BUILDER_HARDWARE)[number];
 export type BuilderAccent = (typeof BUILDER_ACCENTS)[number];
+
+export type BagBuilderProjectConfig = {
+  family: BuilderFamily;
+  color: BuilderColor;
+  stitch: BuilderStitch;
+  flap: BuilderFlap;
+  handles: BuilderHandles;
+  strap: BuilderStrap;
+  hardware: BuilderHardware;
+  accent: BuilderAccent;
+};
 
 type PriceMap<T extends string> = Record<T, number>;
 type Compatibility<T extends string> = Record<BuilderFamily, T[]>;
@@ -23,6 +36,7 @@ export type BagBuilderSettings = {
   pricingEnabled: boolean;
   currency: "PLN";
   familyBaseCents: Record<BuilderFamily, number | null>;
+  familyProductIds: Record<BuilderFamily, string | null>;
   stitchCents: PriceMap<BuilderStitch>;
   flapCents: PriceMap<BuilderFlap>;
   handlesCents: PriceMap<BuilderHandles>;
@@ -44,6 +58,7 @@ export const DEFAULT_BAG_BUILDER_SETTINGS: BagBuilderSettings = {
   pricingEnabled: false,
   currency: "PLN",
   familyBaseCents: { tote: null, round: null, bucket: null, mini: null },
+  familyProductIds: { tote: null, round: null, bucket: null, mini: null },
   stitchCents: { classic: 0, herringbone: 0, basket: 0, shell: 0 },
   flapCents: { none: 0, crochet: 0, "leather-black": 0, "leather-cognac": 0, "suede-burgundy": 0 },
   handlesCents: { none: 0, "wood-light": 0, "wood-dark": 0, crochet: 0 },
@@ -94,11 +109,23 @@ function optionalCents(value: unknown) {
   return cents(value);
 }
 
+function optionalProductId(value: unknown) {
+  if (typeof value !== "string") return null;
+  const id = value.trim();
+  return /^[a-zA-Z0-9-]{1,80}$/.test(id) ? id : null;
+}
+
 function allowed<T extends string>(value: unknown, valid: readonly T[], fallback: T[]) {
   if (!Array.isArray(value)) return [...fallback];
   const validSet = new Set<string>(valid);
   const next = value.filter((item): item is T => typeof item === "string" && validSet.has(item));
   return next.length ? Array.from(new Set(next)) : [...fallback];
+}
+
+function oneOf<T extends string>(value: unknown, valid: readonly T[]) {
+  return typeof value === "string" && (valid as readonly string[]).includes(value)
+    ? value as T
+    : null;
 }
 
 function priceRecord<T extends string>(source: unknown, keys: readonly T[], fallback: Record<T, number>) {
@@ -109,6 +136,7 @@ function priceRecord<T extends string>(source: unknown, keys: readonly T[], fall
 export function normalizeBagBuilderSettings(source: unknown): BagBuilderSettings {
   const raw = typeof source === "object" && source ? source as Record<string, unknown> : {};
   const familyRaw = typeof raw.familyBaseCents === "object" && raw.familyBaseCents ? raw.familyBaseCents as Record<string, unknown> : {};
+  const familyProductsRaw = typeof raw.familyProductIds === "object" && raw.familyProductIds ? raw.familyProductIds as Record<string, unknown> : {};
   const compatibilityRaw = typeof raw.compatibility === "object" && raw.compatibility ? raw.compatibility as Record<string, unknown> : {};
   const handlesRaw = typeof compatibilityRaw.handles === "object" && compatibilityRaw.handles ? compatibilityRaw.handles as Record<string, unknown> : {};
   const strapsRaw = typeof compatibilityRaw.straps === "object" && compatibilityRaw.straps ? compatibilityRaw.straps as Record<string, unknown> : {};
@@ -123,6 +151,12 @@ export function normalizeBagBuilderSettings(source: unknown): BagBuilderSettings
       bucket: optionalCents(familyRaw.bucket),
       mini: optionalCents(familyRaw.mini),
     },
+    familyProductIds: {
+      tote: optionalProductId(familyProductsRaw.tote),
+      round: optionalProductId(familyProductsRaw.round),
+      bucket: optionalProductId(familyProductsRaw.bucket),
+      mini: optionalProductId(familyProductsRaw.mini),
+    },
     stitchCents: priceRecord(raw.stitchCents, BUILDER_STITCHES, DEFAULT_BAG_BUILDER_SETTINGS.stitchCents),
     flapCents: priceRecord(raw.flapCents, BUILDER_FLAPS, DEFAULT_BAG_BUILDER_SETTINGS.flapCents),
     handlesCents: priceRecord(raw.handlesCents, BUILDER_HANDLES, DEFAULT_BAG_BUILDER_SETTINGS.handlesCents),
@@ -136,6 +170,73 @@ export function normalizeBagBuilderSettings(source: unknown): BagBuilderSettings
     },
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : null,
   };
+}
+
+export function normalizeBagBuilderProjectConfig(source: unknown): BagBuilderProjectConfig | null {
+  if (typeof source !== "object" || !source) return null;
+  const raw = source as Record<string, unknown>;
+  const family = oneOf(raw.family, BUILDER_FAMILIES);
+  const color = oneOf(raw.color, BUILDER_COLORS);
+  const stitch = oneOf(raw.stitch, BUILDER_STITCHES);
+  const flap = oneOf(raw.flap, BUILDER_FLAPS);
+  const handles = oneOf(raw.handles, BUILDER_HANDLES);
+  const strap = oneOf(raw.strap, BUILDER_STRAPS);
+  const hardware = oneOf(raw.hardware, BUILDER_HARDWARE);
+  const accent = oneOf(raw.accent, BUILDER_ACCENTS);
+  if (!family || !color || !stitch || !flap || !handles || !strap || !hardware || !accent) return null;
+  return { family, color, stitch, flap, handles, strap, hardware, accent };
+}
+
+export function isBagBuilderProjectCompatible(config: BagBuilderProjectConfig, settings: BagBuilderSettings) {
+  return settings.compatibility.handles[config.family].includes(config.handles)
+    && settings.compatibility.straps[config.family].includes(config.strap)
+    && settings.compatibility.flaps[config.family].includes(config.flap);
+}
+
+export function calculateBagBuilderProjectCents(config: BagBuilderProjectConfig, settings: BagBuilderSettings) {
+  if (!settings.pricingEnabled) return null;
+  const base = settings.familyBaseCents[config.family];
+  if (base === null) return null;
+  return base
+    + settings.stitchCents[config.stitch]
+    + settings.flapCents[config.flap]
+    + settings.handlesCents[config.handles]
+    + settings.strapCents[config.strap]
+    + settings.hardwareCents[config.hardware]
+    + settings.accentCents[config.accent];
+}
+
+export function bagBuilderProjectCode(config: BagBuilderProjectConfig) {
+  const signature = Object.values(config).join("|");
+  let hash = 2166136261;
+  for (let index = 0; index < signature.length; index += 1) {
+    hash ^= signature.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `AB-${(hash >>> 0).toString(36).toUpperCase().padStart(7, "0").slice(-7)}`;
+}
+
+export function bagBuilderProjectSummary(config: BagBuilderProjectConfig) {
+  const labels = {
+    family: { tote: "Prostokątna", round: "Półokrągła", bucket: "Kubełkowa", mini: "Mini" },
+    color: { "#E8DDCC": "Naturalny beż", "#E4A9B5": "Pudrowy róż", "#24324D": "Głęboki granat", "#65493D": "Czekoladowy brąz", "#C7962F": "Musztardowy", "#222124": "Czarny", "#B93A42": "Czerwony", "#275C4A": "Butelkowa zieleń", "#087E81": "Turkus", "#A88AE0": "Lawendowy" },
+    stitch: { classic: "Klasyczny", herringbone: "Jodełka", basket: "Koszykowy", shell: "Muszla" },
+    flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skórzana czarna", "leather-cognac": "Skórzana koniak", "suede-burgundy": "Zamszowa bordo" },
+    handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
+    strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
+    hardware: { gold: "Okucia złote", silver: "Okucia srebrne", black: "Okucia czarne" },
+    accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka / kokarda", charm: "Zawieszka" },
+  } as const;
+  return [
+    labels.family[config.family],
+    labels.color[config.color],
+    labels.stitch[config.stitch],
+    labels.flap[config.flap],
+    labels.handles[config.handles],
+    labels.strap[config.strap],
+    labels.hardware[config.hardware],
+    labels.accent[config.accent],
+  ].join(" · ");
 }
 
 export async function ensureBagBuilderSettingsReady() {
