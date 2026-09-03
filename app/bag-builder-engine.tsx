@@ -147,16 +147,7 @@ function strapColor(config: BagBuilderConfig) {
   return "#8A666C";
 }
 
-function ChoiceGroup<T extends string>({
-  title,
-  step,
-  options,
-  value,
-  onChange,
-  disabled = false,
-  compact = false,
-  dataKey,
-}: {
+function ChoiceGroup<T extends string>({ title, step, options, value, onChange, disabled = false, compact = false, dataKey }: {
   title: string;
   step: number;
   options: Option<T>[];
@@ -169,15 +160,7 @@ function ChoiceGroup<T extends string>({
   return <fieldset className={`abags-builder-group${compact ? " is-compact" : ""}`} disabled={disabled}>
     <legend><span>{String(step).padStart(2, "0")}</span>{title}</legend>
     <div className="abags-builder-options">
-      {options.map((option) => <button
-        key={option.value}
-        type="button"
-        className={value === option.value ? "is-active" : ""}
-        aria-pressed={value === option.value}
-        onClick={() => onChange(option.value)}
-        data-builder-key={dataKey}
-        data-builder-value={option.value}
-      >
+      {options.map((option) => <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} data-builder-key={dataKey} data-builder-value={option.value}>
         {option.swatch && <span className="abags-builder-swatch" style={{ background: option.swatch }} aria-hidden="true" />}
         <span className="abags-builder-option-copy"><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>
       </button>)}
@@ -195,18 +178,7 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
   const handleTop = topY(config.family);
   const bagColor = config.color || "#EFE6DE";
 
-  return <div
-    className="abags-bag-builder-stage"
-    data-builder-signature={signature}
-    data-family={config.family}
-    data-color={config.color}
-    data-stitch={config.stitch}
-    data-flap={config.flap}
-    data-handles={config.handles}
-    data-strap={config.strap}
-    data-hardware={config.hardware}
-    data-accent={config.accent}
-  >
+  return <div className="abags-bag-builder-stage" data-builder-signature={signature} data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={config.flap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
         <filter id="abags-shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="18" stdDeviation="18" floodColor="#5A4245" floodOpacity="0.18" /></filter>
@@ -220,43 +192,22 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
         <pattern id="abags-yarn-basket" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill={bagColor} /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" opacity=".2" /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#2A1D20" strokeWidth="1.5" strokeLinecap="round" opacity=".18" /></pattern>
         <pattern id="abags-yarn-shell" width="42" height="34" patternUnits="userSpaceOnUse"><rect width="42" height="34" fill={bagColor} /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity=".22" /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#2A1D20" strokeWidth="1.5" opacity=".18" /></pattern>
       </defs>
-
       <rect x="22" y="22" width="556" height="556" rx="42" fill="#FBF6F2" />
       <ellipse cx="300" cy="530" rx="190" ry="28" fill="#5A4245" opacity=".08" />
-
       {!hasShape && <g className="abags-builder-empty-state"><path d="M190 190 Q300 135 410 190 L430 440 Q300 500 170 440 Z" fill="none" stroke="#CDBABD" strokeWidth="4" strokeDasharray="10 10" /><text x="300" y="315" textAnchor="middle" className="abags-builder-svg-title">Wybierz fason</text><text x="300" y="342" textAnchor="middle" className="abags-builder-svg-copy">Tutaj zbudujesz torebkę od podstaw</text></g>}
-
       {hasShape && <g filter="url(#abags-shadow)">
-        {config.strap !== "none" && <g data-layer="strap" className="abags-builder-layer abags-builder-layer-strap">
-          {config.strap === "chain" ? <path d="M138 250 C70 160 80 70 180 45 C300 14 450 44 470 174 C480 220 458 252 455 270" fill="none" stroke={metal} strokeWidth="12" strokeDasharray="4 11" strokeLinecap="round" /> : <path d="M145 255 C82 172 88 85 185 52 C300 13 445 48 462 180 C469 225 455 250 452 270" fill="none" stroke={config.strap === "woven" ? "url(#abags-woven)" : strapColor(config)} strokeWidth={config.strap === "woven" ? 25 : 22} strokeLinecap="round" />}
-        </g>}
-
-        {config.handles !== "none" && <g data-layer="handles" className="abags-builder-layer abags-builder-layer-handles">
-          {config.handles === "crochet" ? <path d={`M210 ${handleTop + 35} C205 ${handleTop - 75} 395 ${handleTop - 75} 390 ${handleTop + 35}`} fill="none" stroke={hasColor ? bagColor : "#D8C9C5"} strokeWidth="28" strokeLinecap="round" /> : <path d={`M215 ${handleTop + 28} C205 ${handleTop - 92} 395 ${handleTop - 92} 385 ${handleTop + 28}`} fill="none" stroke={config.handles === "wood-dark" ? "url(#abags-wood-dark)" : "url(#abags-wood-light)"} strokeWidth="30" strokeLinecap="round" />}
-        </g>}
-
+        {config.strap !== "none" && <g data-layer="strap" className="abags-builder-layer abags-builder-layer-strap">{config.strap === "chain" ? <path d="M138 250 C70 160 80 70 180 45 C300 14 450 44 470 174 C480 220 458 252 455 270" fill="none" stroke={metal} strokeWidth="12" strokeDasharray="4 11" strokeLinecap="round" /> : <path d="M145 255 C82 172 88 85 185 52 C300 13 445 48 462 180 C469 225 455 250 452 270" fill="none" stroke={config.strap === "woven" ? "url(#abags-woven)" : strapColor(config)} strokeWidth={config.strap === "woven" ? 25 : 22} strokeLinecap="round" />}</g>}
+        {config.handles !== "none" && <g data-layer="handles" className="abags-builder-layer abags-builder-layer-handles">{config.handles === "crochet" ? <path d={`M210 ${handleTop + 35} C205 ${handleTop - 75} 395 ${handleTop - 75} 390 ${handleTop + 35}`} fill="none" stroke={hasColor ? bagColor : "#D8C9C5"} strokeWidth="28" strokeLinecap="round" /> : <path d={`M215 ${handleTop + 28} C205 ${handleTop - 92} 395 ${handleTop - 92} 385 ${handleTop + 28}`} fill="none" stroke={config.handles === "wood-dark" ? "url(#abags-wood-dark)" : "url(#abags-wood-light)"} strokeWidth="30" strokeLinecap="round" />}</g>}
         <path data-layer="body" d={body} fill={hasColor ? `url(#abags-yarn-${stitch})` : "url(#abags-empty)"} stroke={hasColor ? bagColor : "#CDBABD"} strokeWidth="6" strokeLinejoin="round" />
-
-        {config.flap !== "none" && <g data-layer="flap" className="abags-builder-layer abags-builder-layer-flap">
-          {config.flap === "crochet" ? <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 175 Q300 125 440 175 L420 315 Q300 360 180 315 Z"} fill={hasColor ? `url(#abags-yarn-${stitch})` : "url(#abags-empty)"} stroke={bagColor} strokeWidth="5" /> : <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 170 Q300 135 440 170 L425 300 Q300 350 175 300 Z"} fill="url(#abags-leather)" stroke="#FFFFFF" strokeOpacity=".18" strokeWidth="3" />}
-          <circle cx="300" cy={config.family === "round" ? 286 : 274} r="18" fill={metal} /><circle cx="300" cy={config.family === "round" ? 286 : 274} r="8" fill="#FFF" opacity=".7" />
-        </g>}
-
+        {config.flap !== "none" && <g data-layer="flap" className="abags-builder-layer abags-builder-layer-flap">{config.flap === "crochet" ? <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 175 Q300 125 440 175 L420 315 Q300 360 180 315 Z"} fill={hasColor ? `url(#abags-yarn-${stitch})` : "url(#abags-empty)"} stroke={bagColor} strokeWidth="5" /> : <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 170 Q300 135 440 170 L425 300 Q300 350 175 300 Z"} fill="url(#abags-leather)" stroke="#FFFFFF" strokeOpacity=".18" strokeWidth="3" />}<circle cx="300" cy={config.family === "round" ? 286 : 274} r="18" fill={metal} /><circle cx="300" cy={config.family === "round" ? 286 : 274} r="8" fill="#FFF" opacity=".7" /></g>}
         {(config.strap !== "none" || config.handles !== "none") && <g data-layer="hardware" className="abags-builder-layer abags-builder-layer-hardware"><circle cx="150" cy="238" r="11" fill="none" stroke={metal} strokeWidth="7" /><circle cx="450" cy="238" r="11" fill="none" stroke={metal} strokeWidth="7" /></g>}
-
         {config.accent === "tassel" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><circle cx="466" cy="250" r="9" fill={metal} /><path d="M472 258 Q488 270 482 292" fill="none" stroke={bagColor} strokeWidth="10" strokeLinecap="round" />{[0,1,2,3,4,5].map((index) => <path key={index} d={`M${473 + index * 4} 286 Q${478 + index * 4} 350 ${468 + index * 5} 405`} fill="none" stroke={index % 2 ? bagColor : "#F0D7DE"} strokeWidth="7" strokeLinecap="round" />)}</g>}
-
         {config.accent === "scarf" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M186 176 C135 135 104 160 130 206 C154 248 197 220 205 191 C215 229 259 250 279 211 C302 167 261 139 211 176 Z" fill="#F2C6D0" stroke="#FFFFFF" strokeWidth="3" /><path d="M196 192 L146 353 Q174 368 199 348 L220 207 Z" fill="#F6DDE3" /><path d="M211 194 L254 340 Q279 330 286 307 L224 203 Z" fill="#D9829A" opacity=".9" /><circle cx="173" cy="189" r="8" fill="#B95B74" /><circle cx="238" cy="196" r="7" fill="#C7962F" /></g>}
-
         {config.accent === "charm" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M455 246 Q492 265 487 302" fill="none" stroke={metal} strokeWidth="5" /><path d="M487 300 C470 278 444 301 487 336 C530 301 504 278 487 300 Z" fill="#B87880" stroke={metal} strokeWidth="4" /></g>}
-
         <g data-layer="label" className="abags-builder-layer abags-builder-layer-label"><rect x="260" y="452" width="80" height="24" rx="12" fill={metal} opacity=".9" /><text x="300" y="468" textAnchor="middle" fill="#FFF" fontSize="11" fontFamily="serif">a_bags</text></g>
       </g>}
     </svg>
-
-    <div className="abags-builder-preview-status" aria-live="polite">
-      {!hasShape ? <><strong>Zacznij od fasonu</strong><span>Podgląd pozostanie aktywny przez cały proces.</span></> : !hasColor ? <><strong>{labelFor(FAMILIES, config.family)}</strong><span>Teraz wybierz kolor sznurka.</span></> : <><strong>{labelFor(FAMILIES, config.family)} · {labelFor(COLORS, config.color)}</strong><span>{config.stitch ? labelFor(STITCHES, config.stitch) : "Wybierz splot"} · podgląd aktualizowany na żywo</span></>}
-    </div>
+    <div className="abags-builder-preview-status" aria-live="polite">{!hasShape ? <><strong>Zacznij od fasonu</strong><span>Podgląd pozostanie aktywny przez cały proces.</span></> : !hasColor ? <><strong>{labelFor(FAMILIES, config.family)}</strong><span>Teraz wybierz kolor sznurka.</span></> : <><strong>{labelFor(FAMILIES, config.family)} · {labelFor(COLORS, config.color)}</strong><span>{config.stitch ? labelFor(STITCHES, config.stitch) : "Wybierz splot"} · podgląd aktualizowany na żywo</span></>}</div>
   </div>;
 }
 
@@ -280,9 +231,7 @@ export default function BagBuilderEngine() {
         target.className = "abags-exact-live-mount";
         if (layout) layout.insertBefore(target, previewColumn);
         else dialog.appendChild(target);
-      } else if (layout && target.parentElement !== layout) {
-        layout.insertBefore(target, previewColumn);
-      }
+      } else if (layout && target.parentElement !== layout) layout.insertBefore(target, previewColumn);
       if (!dialog.classList.contains("abags-vc-builder-active")) dialog.classList.add("abags-vc-exact-live-active", "abags-vc-builder-active");
       const eyebrow = dialog.querySelector<HTMLElement>(".abags-vc-header .eyebrow");
       const title = dialog.querySelector<HTMLElement>(".abags-vc-header h2");
@@ -318,16 +267,11 @@ export default function BagBuilderEngine() {
   const canSave = Boolean(config.family && config.color && config.stitch);
   const familyHandles = useMemo(() => config.family === "round" || config.family === "mini" ? HANDLES.filter((item) => !item.value.startsWith("wood-")) : HANDLES, [config.family]);
 
-  const reset = () => {
-    setConfig(EMPTY);
-    window.localStorage.removeItem(DRAFT_KEY);
-    setSaved(false);
-  };
+  const reset = () => { setConfig(EMPTY); window.localStorage.removeItem(DRAFT_KEY); setSaved(false); };
   const save = () => {
     if (!canSave) return;
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
     setSaved(true);
-    window.setTimeout(() => setSaved(false), 1800);
   };
 
   if (!mount || !preview) return null;
@@ -336,11 +280,7 @@ export default function BagBuilderEngine() {
 
   return <>
     {createPortal(<section className="abags-exact-live abags-builder-controls" aria-labelledby="abags-builder-title" data-abags-exact-workspace="controls">
-      <div className="abags-exact-live-heading abags-builder-heading">
-        <div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Najpierw wybierz fason. Potem nadaj mu kolor i splot sznurka, a następnie dodawaj klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div>
-        <span>{completed}/8 decyzji</span>
-      </div>
-
+      <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Najpierw wybierz fason. Potem nadaj mu kolor i splot sznurka, a następnie dodawaj klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
       <ChoiceGroup title="Fason" step={1} options={FAMILIES.filter((item): item is Option<Exclude<Family, "">> => Boolean(item.value))} value={config.family} onChange={(value) => update("family", value)} dataKey="family" />
       <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
       <ChoiceGroup title="Splot / ścieg" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
@@ -349,16 +289,10 @@ export default function BagBuilderEngine() {
       <ChoiceGroup title="Pasek" step={6} options={STRAPS} value={config.strap} onChange={(value) => update("strap", value)} disabled={!canCustomize} dataKey="strap" />
       <ChoiceGroup title="Okucia" step={7} options={HARDWARE} value={config.hardware} onChange={(value) => update("hardware", value)} disabled={!canCustomize} compact dataKey="hardware" />
       <ChoiceGroup title="Detal / ozdoba" step={8} options={ACCENTS} value={config.accent} onChange={(value) => update("accent", value)} disabled={!canCustomize} dataKey="accent" />
-
-      <div className="abags-builder-summary" aria-live="polite">
-        <div><strong>Twój projekt</strong><span>{canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i splot"}</span></div>
-        <p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p>
-        <small>Personalizacja jest wyceniana indywidualnie po potwierdzeniu projektu.</small>
-      </div>
-
-      <div className="abags-exact-live-actions abags-builder-actions">
+      <div className="abags-builder-summary" aria-live="polite"><div><strong>Twój projekt</strong><span>{saved ? "zapisany lokalnie ✓" : canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i splot"}</span></div><p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p><small>Personalizacja jest wyceniana indywidualnie po potwierdzeniu projektu.</small></div>
+      <div className="abags-exact-live-actions abags-builder-actions" data-builder-saved={saved ? "true" : "false"}>
         <button type="button" onClick={reset}>Wyczyść</button>
-        <button type="button" onClick={save} disabled={!canSave}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button>
+        <button type="button" onClick={save} disabled={!canSave} data-builder-save-state={saved ? "saved" : "ready"}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button>
         <a href={whatsappHref(contact.whatsappNumber, message)} target="_blank" rel="noopener noreferrer" aria-disabled={!canSave} onClick={(event) => { if (!canSave) event.preventDefault(); }}>Wyślij projekt do pracowni →</a>
       </div>
     </section>, mount)}
