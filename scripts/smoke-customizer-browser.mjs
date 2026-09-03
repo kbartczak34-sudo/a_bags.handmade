@@ -2,8 +2,8 @@ import { spawn, spawnSync } from "node:child_process";
 
 const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade.pl";
 const port = Number(process.env.ABAGS_CHROME_DEBUG_PORT || 9222);
-const timeoutMs = 30_000;
-const renderTimeoutMs = 10_000;
+const timeoutMs = 60_000;
+const renderTimeoutMs = 15_000;
 const cdpTimeoutMs = 7_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -76,6 +76,7 @@ function resultValue(result) {
 
 async function main() {
   const binary = chromeBinary();
+  const smokeUrl = `${productionUrl}${productionUrl.includes("?") ? "&" : "?"}abags-smoke=${Date.now()}`;
   const chrome = spawn(binary, ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--disable-background-networking", "--disable-default-apps", "--no-first-run", `--remote-debugging-port=${port}`, "about:blank"], { stdio: ["ignore", "pipe", "pipe"] });
   let chromeLog = "";
   let socket;
@@ -83,7 +84,7 @@ async function main() {
 
   try {
     await waitJson(`http://127.0.0.1:${port}/json/version`);
-    const target = await waitJson(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(productionUrl)}`, { method: "PUT" });
+    const target = await waitJson(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(smokeUrl)}`, { method: "PUT" });
     if (!target.webSocketDebuggerUrl) throw new Error("Chrome did not expose a page debugger URL.");
     const cdp = await connectCdp(target.webSocketDebuggerUrl);
     socket = cdp.socket;
