@@ -117,11 +117,51 @@
   transform:none!important;
 }
 
+/* Screenshot-driven polish: the visible badge number follows the seven
+ * customer decisions rather than the legacy number of raw fieldsets. */
+.abags-reference-layout-v3 .abags-builder-group legend > span{
+  font-size:0!important;
+}
+.abags-reference-layout-v3 .abags-builder-group legend > span::after{
+  display:block!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  line-height:1!important;
+}
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="family"] legend > span::after{content:"01"!important}
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="color"] legend > span::after{content:"02"!important}
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="stitch"] legend > span::after{content:"03"!important}
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="flap"] legend > span::after{content:"04"!important}
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="handles"] legend > span::after,
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="strap"] legend > span::after{content:"05"!important}
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="hardware"] legend > span::after,
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key="accent"] legend > span::after{content:"06"!important}
+
 /* The consent banner remains available normally, but an open aria-modal
  * customizer must be the top interaction layer. Closing the creator exposes
  * the consent controls again without changing the user's privacy choice. */
 body.abags-vc-open .abags-vc-layer-root{
   z-index:2147483200!important;
+}
+
+@media(min-width:901px){
+  /* A slightly wider step rail keeps full labels such as “Podsumowanie”
+   * readable and removes the incidental horizontal scrollbar seen in QA #204. */
+  .abags-reference-layout-v3 .abags-exact-live-mount{
+    grid-template-columns:160px minmax(0,1fr)!important;
+  }
+  .abags-reference-layout-v3 .abags-ref-step-rail{
+    overflow-x:hidden!important;
+  }
+  .abags-reference-layout-v3 .abags-ref-step-rail button{
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  .abags-reference-layout-v3 .abags-ref-step-rail button strong{
+    min-width:0!important;
+    white-space:normal!important;
+    word-break:normal!important;
+  }
 }
 
 @media(max-width:980px){
@@ -146,6 +186,18 @@ body.abags-vc-open .abags-vc-layer-root{
     display:none!important;
   }
 }
+
+@media(max-width:900px){
+  /* Keep the color row swipeable without exposing a platform-gray scrollbar. */
+  .abags-reference-layout-v3 .abags-builder-group[data-v3-key="color"] .abags-builder-options{
+    scrollbar-width:none!important;
+    -ms-overflow-style:none!important;
+  }
+  .abags-reference-layout-v3 .abags-builder-group[data-v3-key="color"] .abags-builder-options::-webkit-scrollbar{
+    display:none!important;
+  }
+}
+
 @media(max-width:620px){
   .abags-bag-builder-stage.abags-pro3d-active,
   .abags-bag-builder-stage.abags-canvas3d-active{
