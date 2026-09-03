@@ -26,6 +26,7 @@ import "./bag-builder-v6.css";
 import "./atelier-bag-renderer-v7.css";
 import "./bag-builder-v8-2d.css";
 import "./bag-builder-webgl3d.css";
+import "./bag-builder-real3d.css";
 import "./customizer-admin.css";
 
 const display = Cormorant_Garamond({
