@@ -24,7 +24,7 @@ test("review covers every Bag Builder decision and the real material", () => {
 
 test("project receives a deterministic code from the selected configuration", () => {
   assert.match(review, /function projectCode/);
-  assert.match(review, /Object\.values\(config\)\.join\("\\\|"\)/);
+  assert.match(review, /Object\.values\(config\)\.join\("\|"\)/);
   assert.match(review, /AB-/);
   assert.match(review, /Math\.imul\(hash, 16777619\)/);
 });
