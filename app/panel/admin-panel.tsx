@@ -13,6 +13,7 @@ import CustomerCasesManager from "./customer-cases-manager";
 import BusinessDashboard from "./business-dashboard";
 import ContactSocialManager from "./contact-social-manager";
 import CustomizerAssetsManager from "./customizer-assets-manager";
+import BagBuilderSettingsManager from "./bag-builder-settings-manager";
 
 type AdminTab =
   | "status"
@@ -91,7 +92,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "page" && <SiteContentEditor />}
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
-        {activeTab === "customizer" && <CustomizerAssetsManager />}
+        {activeTab === "customizer" && <><BagBuilderSettingsManager /><CustomizerAssetsManager /></>}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
