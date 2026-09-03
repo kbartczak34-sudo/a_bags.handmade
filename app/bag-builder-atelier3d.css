@@ -1,0 +1,35 @@
+/* Calibrated A-Bags atelier renderer — visual target aligned with the approved customizer reference. */
+.abags-bag-builder-stage.abags-atelier3d-calibrated{
+  min-height:520px!important;
+  background:
+    radial-gradient(circle at 22% 22%,rgba(255,255,255,.98) 0 11%,rgba(255,255,255,0) 36%),
+    radial-gradient(circle at 82% 26%,rgba(235,211,194,.62) 0 8%,rgba(235,211,194,0) 34%),
+    linear-gradient(180deg,#fffaf6 0%,#f8eee7 66%,#ead8cb 100%)!important;
+}
+.abags-bag-builder-stage.abags-atelier3d-calibrated .abags-pro3d-layer{
+  inset:0 0 40px!important;
+}
+.abags-bag-builder-stage.abags-atelier3d-calibrated .abags-pro3d-canvas{
+  filter:saturate(1.03) contrast(1.025);
+}
+.abags-bag-builder-stage.abags-atelier3d-calibrated .abags-pro3d-view-controls button.is-active{
+  background:#efd6dc!important;
+  color:#754b54!important;
+  box-shadow:inset 0 0 0 1px rgba(184,120,128,.22);
+}
+.abags-bag-builder-stage.abags-atelier3d-calibrated .abags-pro3d-chip{
+  background:rgba(255,250,246,.96);
+  border-color:rgba(128,90,97,.16);
+}
+.abags-bag-builder-stage.abags-atelier3d-calibrated .abags-pro3d-hint{
+  color:rgba(90,66,69,.62);
+}
+
+@media(max-width:620px){
+  .abags-bag-builder-stage.abags-atelier3d-calibrated{min-height:455px!important}
+  .abags-bag-builder-stage.abags-atelier3d-calibrated .abags-pro3d-layer{inset:0 0 36px!important}
+}
+
+@media(max-width:420px){
+  .abags-bag-builder-stage.abags-atelier3d-calibrated{min-height:438px!important}
+}
