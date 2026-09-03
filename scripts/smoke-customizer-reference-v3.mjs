@@ -72,6 +72,8 @@ function valueOf(result) {
   return result?.result?.value;
 }
 
+const V3_DIALOG = `([...document.querySelectorAll('.abags-vc-dialog')].find((dialog)=>dialog.dataset.abagsReferenceLayout==='v3') || null)`;
+
 async function main() {
   const binary = chromeBinary();
   const url = `${productionUrl}${productionUrl.includes("?") ? "&" : "?"}abags-v3-qa=${Date.now()}`;
@@ -89,6 +91,8 @@ async function main() {
   ], { stdio: ["ignore", "pipe", "pipe"] });
 
   let socket;
+  let capture = async () => 0;
+  let diagnostics = async () => null;
   try {
     await waitJson(`http://127.0.0.1:${port}/json/version`);
     const target = await waitJson(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, { method: "PUT" });
@@ -112,6 +116,38 @@ async function main() {
       throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}`);
     };
 
+    capture = async (name) => {
+      const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
+      if (outputDir) {
+        mkdirSync(outputDir, { recursive: true });
+        writeFileSync(join(outputDir, name), Buffer.from(shot.data, "base64"));
+      }
+      return shot.data.length;
+    };
+
+    diagnostics = async () => evaluate(`(() => [...document.querySelectorAll('.abags-vc-dialog')].map((dialog,index)=>{
+      const rect=dialog.getBoundingClientRect();
+      const style=getComputedStyle(dialog);
+      return {
+        index,
+        className:dialog.className,
+        referenceLayout:dialog.dataset.abagsReferenceLayout||'',
+        headerLocked:dialog.dataset.abagsV3HeaderLocked||'',
+        eyebrow:dialog.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
+        title:dialog.querySelector('.abags-vc-header h2')?.textContent?.trim()||'',
+        subtitle:dialog.querySelector('.abags-v3-subtitle')?.textContent?.trim()||'',
+        display:style.display,
+        visibility:style.visibility,
+        opacity:style.opacity,
+        width:Math.round(rect.width),
+        height:Math.round(rect.height),
+        top:Math.round(rect.top),
+        left:Math.round(rect.left),
+        hasStage:Boolean(dialog.querySelector('.abags-bag-builder-stage')),
+        activeBuilder:dialog.classList.contains('abags-vc-builder-active'),
+      };
+    }))()`);
+
     await send("Runtime.enable");
     await send("Page.enable");
     await send("Emulation.setDeviceMetricsOverride", {
@@ -132,36 +168,55 @@ async function main() {
     })()`);
     if (!opened) throw new Error("Could not open the visual customizer.");
 
-    await waitFor("document.querySelector('.abags-vc-dialog')?.dataset.abagsReferenceLayout === 'v3'", "Reference Layout V3");
-    await waitFor("document.querySelector('.abags-vc-header .eyebrow')?.textContent?.includes('A-BAGS VISUAL CUSTOMIZER')", "V3 header");
-    await waitFor("Boolean(document.querySelector('.abags-ref-step-rail'))", "desktop step rail");
-    await waitFor("Boolean(document.querySelector('.abags-ref-layers'))", "desktop active layers");
-    await waitFor("Boolean(document.querySelector('.abags-ref-inspirations'))", "inspiration rail");
-    await waitFor("Boolean(document.querySelector('.abags-ref-family-photo[data-reference-id]'))", "real A-Bags family references");
+    await waitFor(`Boolean(${V3_DIALOG})`, "Reference Layout V3");
+    const initialDiagnostics = await diagnostics();
+    console.log("Reference Layout V3 DOM diagnostics:", JSON.stringify(initialDiagnostics));
+    await capture("customizer-diagnostic-v3.png");
+
+    await waitFor(`(() => {
+      const dialog=${V3_DIALOG};
+      if(!dialog)return false;
+      const eyebrow=dialog.querySelector('.abags-vc-header .eyebrow')?.textContent||'';
+      return dialog.dataset.abagsV3HeaderLocked==='true' && eyebrow.includes('A-BAGS VISUAL CUSTOMIZER');
+    })()`, "scoped stable V3 header");
+    await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-step-rail'))`, "desktop step rail");
+    await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-layers'))`, "desktop active layers");
+    await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-inspirations'))`, "inspiration rail");
+    await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-family-photo[data-reference-id]'))`, "real A-Bags family references");
 
     const desktopLayout = await evaluate(`(() => {
-      const dialog=document.querySelector('.abags-vc-dialog');
-      const mount=document.querySelector('[data-abags-exact-live]');
-      const preview=document.querySelector('.abags-vc-preview-column');
-      if(!dialog||!mount||!preview)return null;
+      const dialog=${V3_DIALOG};
+      const mount=dialog?.querySelector('[data-abags-exact-live]');
+      const preview=dialog?.querySelector('.abags-vc-preview-column');
+      const rail=dialog?.querySelector('.abags-ref-step-rail');
+      if(!dialog||!mount||!preview||!rail)return null;
       const d=dialog.getBoundingClientRect(),m=mount.getBoundingClientRect(),p=preview.getBoundingClientRect();
       return {
         marker:dialog.dataset.abagsReferenceLayout,
+        headerLocked:dialog.dataset.abagsV3HeaderLocked,
+        eyebrow:dialog.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
+        title:dialog.querySelector('.abags-vc-header h2')?.textContent?.trim()||'',
         dialogWidth:Math.round(d.width),
         dialogHeight:Math.round(d.height),
         mountLeft:Math.round(m.left),
         previewLeft:Math.round(p.left),
         previewWidth:Math.round(p.width),
-        railDisplay:getComputedStyle(document.querySelector('.abags-ref-step-rail')).display,
+        railDisplay:getComputedStyle(rail).display,
       };
     })()`);
-    if (!desktopLayout || desktopLayout.marker !== "v3" || desktopLayout.previewLeft <= desktopLayout.mountLeft || desktopLayout.previewWidth < 500 || desktopLayout.railDisplay === "none") {
+    if (!desktopLayout || desktopLayout.marker !== "v3" || desktopLayout.headerLocked !== "true" || desktopLayout.previewLeft <= desktopLayout.mountLeft || desktopLayout.previewWidth < 500 || desktopLayout.railDisplay === "none") {
       throw new Error(`Desktop V3 layout mismatch: ${JSON.stringify(desktopLayout)}`);
     }
 
     const choose = async (key, value) => {
-      const selector = `button[data-builder-key="${key}"][data-builder-value="${value}"]`;
-      const ok = await evaluate(`(() => { const button=document.querySelector(${JSON.stringify(selector)}); if(!button)return false; button.click(); return true; })()`);
+      const ok = await evaluate(`(() => {
+        const dialog=${V3_DIALOG};
+        const selector='button[data-builder-key=${JSON.stringify(key)}][data-builder-value=${JSON.stringify(value)}]';
+        const button=dialog?.querySelector(selector);
+        if(!button)return false;
+        button.click();
+        return true;
+      })()`);
       if (!ok) throw new Error(`Missing builder choice ${key}=${value}.`);
       await sleep(110);
     };
@@ -175,30 +230,22 @@ async function main() {
     await choose("hardware", "gold");
     await choose("accent", "scarf");
 
-    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-color') === '#E4A9B5'", "pink live configuration");
+    await waitFor(`(${V3_DIALOG}?.querySelector('.abags-bag-builder-stage')?.getAttribute('data-color') || '') === '#E4A9B5'`, "pink live configuration");
     await waitFor(`(() => {
-      const stage=document.querySelector('.abags-bag-builder-stage');
+      const stage=${V3_DIALOG}?.querySelector('.abags-bag-builder-stage');
       return stage?.getAttribute('data-abags-pro3d-ready')==='true' || stage?.getAttribute('data-abags-canvas3d-ready')==='true';
     })()`, "interactive preview readiness");
-    await waitFor("Boolean(document.querySelector('.abags-ref-layer-row[data-ref-edit-key=\"accent\"]'))", "synchronized active layers");
+    await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-layer-row[data-ref-edit-key="accent"]'))`, "synchronized active layers");
 
     const saveReady = await evaluate(`(() => {
-      const button=document.querySelector('[data-builder-save-state="ready"]');
+      const dialog=${V3_DIALOG};
+      const button=dialog?.querySelector('[data-builder-save-state="ready"]');
       if(!button)return false;
       button.click();
       return true;
     })()`);
     if (!saveReady) throw new Error("V3 project did not reach save-ready state.");
     await waitFor("Boolean(window.localStorage.getItem('abags-bag-builder-v3'))", "saved V3 project");
-
-    const capture = async (name) => {
-      const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
-      if (outputDir) {
-        mkdirSync(outputDir, { recursive: true });
-        writeFileSync(join(outputDir, name), Buffer.from(shot.data, "base64"));
-      }
-      return shot.data.length;
-    };
 
     await sleep(500);
     const desktopBytes = await capture("customizer-desktop-v3.png");
@@ -213,11 +260,11 @@ async function main() {
     await sleep(700);
 
     const mobileLayout = await evaluate(`(() => {
-      const dialog=document.querySelector('.abags-vc-dialog');
-      const preview=document.querySelector('.abags-vc-preview-column');
-      const mount=document.querySelector('[data-abags-exact-live]');
-      const rail=document.querySelector('.abags-ref-step-rail');
-      const inspirations=document.querySelector('.abags-ref-inspirations');
+      const dialog=${V3_DIALOG};
+      const preview=dialog?.querySelector('.abags-vc-preview-column');
+      const mount=dialog?.querySelector('[data-abags-exact-live]');
+      const rail=dialog?.querySelector('.abags-ref-step-rail');
+      const inspirations=dialog?.querySelector('.abags-ref-inspirations');
       if(!dialog||!preview||!mount||!rail||!inspirations)return null;
       const d=dialog.getBoundingClientRect(),p=preview.getBoundingClientRect(),m=mount.getBoundingClientRect(),i=inspirations.getBoundingClientRect();
       return {
@@ -228,10 +275,11 @@ async function main() {
         mountTop:Math.round(m.top),
         inspirationsHeight:Math.round(i.height),
         railDisplay:getComputedStyle(rail).display,
-        header:document.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
+        header:dialog.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
+        headerLocked:dialog.dataset.abagsV3HeaderLocked||'',
       };
     })()`);
-    if (!mobileLayout || mobileLayout.width > 392 || mobileLayout.height < 800 || mobileLayout.previewTop >= mobileLayout.mountTop || mobileLayout.previewHeight < 300 || mobileLayout.inspirationsHeight < 90 || mobileLayout.railDisplay !== "none" || !mobileLayout.header.includes("A-BAGS VISUAL CUSTOMIZER")) {
+    if (!mobileLayout || mobileLayout.width > 392 || mobileLayout.height < 800 || mobileLayout.previewTop >= mobileLayout.mountTop || mobileLayout.previewHeight < 300 || mobileLayout.inspirationsHeight < 90 || mobileLayout.railDisplay !== "none" || mobileLayout.headerLocked !== "true" || !mobileLayout.header.includes("A-BAGS VISUAL CUSTOMIZER")) {
       throw new Error(`Mobile V3 layout mismatch: ${JSON.stringify(mobileLayout)}`);
     }
 
@@ -243,6 +291,15 @@ async function main() {
       mobileScreenshotBytes: mobileBytes,
       screenshots: Boolean(outputDir),
     }));
+  } catch (error) {
+    try {
+      const state = await diagnostics();
+      console.error("Reference Layout V3 failure DOM diagnostics:", JSON.stringify(state));
+      await capture("customizer-failure-v3.png");
+    } catch (diagnosticError) {
+      console.error(`Could not capture V3 failure diagnostics: ${diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError)}`);
+    }
+    throw error;
   } finally {
     try { socket?.close(); } catch {}
     chrome.kill("SIGTERM");
