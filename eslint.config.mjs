@@ -19,6 +19,7 @@ export default defineConfig([
       "app/bag-builder-real3d.tsx",
       "app/bag-builder-pro3d.tsx",
       "app/bag-builder-atelier3d.tsx",
+      "app/bag-builder-fidelity3d.tsx",
       "app/bag-builder-material-pass.tsx",
     ],
     rules: {
