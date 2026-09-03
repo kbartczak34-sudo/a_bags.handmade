@@ -17,16 +17,16 @@ test("checkout confirmation exposes only validated builder project identity", ()
 test("paid personalized checkout clears the completed builder draft", () => {
   assert.match(successPage, /confirmation\.paymentStatus === "paid"/);
   assert.match(successPage, /confirmation\.paymentStatus === "no_payment_required"/);
-  assert.match(successPage, /if \(confirmation\.builderProjectCode\)/);
-  assert.match(successPage, /localStorage\.removeItem\("abags-bag-builder-v3"\)/);
+  assert.match(successPage, /if \(confirmation\.builderProjectCode\) \{\s*window\.localStorage\.removeItem\("abags-bag-builder-v3"\);\s*\}/);
 });
 
-test("processing payment does not clear the personalized draft", () => {
-  const paidBranch = successPage.indexOf('window.localStorage.removeItem("abags-bag-builder-v3")');
-  const processingBranch = successPage.indexOf('setState({ kind: "processing", confirmation })');
-  assert.ok(paidBranch > -1 && processingBranch > paidBranch);
-  const between = successPage.slice(paidBranch + 1, processingBranch);
-  assert.doesNotMatch(between, /removeItem\("abags-bag-builder-v3"\)/);
+test("processing payment keeps the personalized draft intact", () => {
+  assert.match(successPage, /\} else \{\s*setState\(\{ kind: "processing", confirmation \}\);\s*\}/);
+  const processingStart = successPage.indexOf('} else {\n          setState({ kind: "processing", confirmation });');
+  const catchStart = successPage.indexOf('      } catch (error)', processingStart);
+  assert.ok(processingStart > -1 && catchStart > processingStart);
+  const processingSection = successPage.slice(processingStart, catchStart);
+  assert.doesNotMatch(processingSection, /removeItem\("abags-bag-builder-v3"\)/);
 });
 
 test("success screen shows project code and stored specification", () => {
