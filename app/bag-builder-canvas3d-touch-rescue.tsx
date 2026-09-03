@@ -86,7 +86,7 @@ export default function BagBuilderCanvas3DTouchRescue() {
         if (pointers.size >= 2) pinchStart = { distance: distance(), percent };
       };
       const onCanvasMove = (event: PointerEvent) => {
-        if (!pointers.current && !pointers.has(event.pointerId)) return;
+        if (!pointers.has(event.pointerId)) return;
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         if (pointers.size >= 2 && pinchStart && pinchStart.distance > 0) {
           if (event.cancelable) event.preventDefault();
