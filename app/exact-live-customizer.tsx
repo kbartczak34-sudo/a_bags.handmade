@@ -1,17 +1,13 @@
-import AtelierBagRendererV7 from "./atelier-bag-renderer-v7";
 import BagBuilderAutosave from "./bag-builder-autosave";
-import BagBuilderCanvas3D from "./bag-builder-canvas3d";
-import BagBuilderCanvas3DTouchRescue from "./bag-builder-canvas3d-touch-rescue";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
-import BagBuilderConstructionPass from "./bag-builder-construction-pass";
 import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderFidelity3D from "./bag-builder-fidelity3d";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
-import BagBuilderMaterialPass from "./bag-builder-material-pass";
 import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
 import BagBuilderProjectReview from "./bag-builder-project-review";
 import BagBuilderReferenceExperience from "./bag-builder-reference-experience";
+import BagBuilderReferenceLayoutV2 from "./bag-builder-reference-layout-v2";
 import BagBuilderShareLink from "./bag-builder-share-link";
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
@@ -19,16 +15,12 @@ import BagBuilderViewSync from "./bag-builder-view-sync";
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
-    <AtelierBagRendererV7 />
     <BagBuilderFidelity3D />
     <BagBuilderPro3DTouchRescue />
-    <BagBuilderCanvas3D />
-    <BagBuilderCanvas3DTouchRescue />
-    <BagBuilderMaterialPass />
-    <BagBuilderConstructionPass />
     <BagBuilderViewSync />
     <BagBuilderCommerce />
     <BagBuilderReferenceExperience />
+    <BagBuilderReferenceLayoutV2 />
     <BagBuilderMaterialInfo />
     <BagBuilderValidationGuard />
     <BagBuilderAutosave />
