@@ -11,6 +11,8 @@ type Confirmation = {
   amountTotal: number | null;
   currency: string | null;
   email: string | null;
+  builderProjectCode: string | null;
+  builderProjectReference: string | null;
 };
 
 type PageState =
@@ -67,6 +69,9 @@ export default function OrderSuccessPage() {
           confirmation.paymentStatus === "no_payment_required"
         ) {
           window.localStorage.removeItem("abags-cart");
+          if (confirmation.builderProjectCode) {
+            window.localStorage.removeItem("abags-bag-builder-v3");
+          }
           setState({ kind: "success", confirmation });
         } else {
           setState({ kind: "processing", confirmation });
@@ -94,6 +99,10 @@ export default function OrderSuccessPage() {
         .confirmation-home-hint{margin:.8rem 0 0;font-size:.76rem;opacity:.66}
         .confirmation-wordmark{cursor:pointer}
         .confirmation-intro{max-width:650px;margin:0 auto 1.3rem;font:400 .92rem/1.7 var(--font-sans);opacity:.76}
+        .confirmation-project{width:100%;margin:1.1rem 0 0;padding:1.1rem 1.2rem;border-radius:20px;text-align:left;background:color-mix(in srgb,var(--cream,#fff4ef) 80%,white);border:1px solid color-mix(in srgb,var(--rose-deep,#9b6670) 14%,transparent)}
+        .confirmation-project span{display:block;margin-bottom:.4rem;font:700 .66rem/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase;color:var(--rose-deep,#9b6670)}
+        .confirmation-project strong{font-family:var(--font-display);font-size:1.28rem;font-weight:500}
+        .confirmation-project p{margin:.55rem 0 0;font:400 .76rem/1.55 var(--font-sans);opacity:.72;overflow-wrap:anywhere}
         .confirmation-journey{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;width:100%;margin:1.35rem 0 0;text-align:left}
         .confirmation-journey article{padding:1rem;border-radius:18px;background:color-mix(in srgb,var(--cream,#fff4ef) 72%,white);border:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
         .confirmation-journey span{font:700 .62rem/1 var(--font-sans);letter-spacing:.12em;color:var(--rose-deep,#9b6670)}
@@ -146,9 +155,17 @@ export default function OrderSuccessPage() {
               )}
             </div>
 
+            {state.confirmation.builderProjectCode && (
+              <div className="confirmation-project" aria-label="Potwierdzenie personalizowanego projektu">
+                <span>Twój projekt A-Bags</span>
+                <strong>{state.confirmation.builderProjectCode}</strong>
+                {state.confirmation.builderProjectReference && <p>{state.confirmation.builderProjectReference}</p>}
+              </div>
+            )}
+
             <div className="confirmation-journey" aria-label="Co wydarzy się dalej">
               <article><span>01</span><strong>Potwierdzenie</strong><p>Otrzymasz wiadomość e-mail z informacją o zamówieniu.</p></article>
-              <article><span>02</span><strong>Przygotowanie</strong><p>Model przechodzi do realizacji i kontroli przed wysyłką.</p></article>
+              <article><span>02</span><strong>Przygotowanie</strong><p>{state.confirmation.builderProjectCode ? "Twój projekt trafia do realizacji zgodnie z zapisaną konfiguracją." : "Model przechodzi do realizacji i kontroli przed wysyłką."}</p></article>
               <article><span>03</span><strong>Wysyłka</strong><p>Po nadaniu przesyłki otrzymasz dalsze informacje.</p></article>
             </div>
 
@@ -157,7 +174,7 @@ export default function OrderSuccessPage() {
               <a href={contact.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram ↗</a>
               <a href={contact.facebookUrl} target="_blank" rel="noopener noreferrer">Facebook ↗</a>
             </div>
-            <p className="confirmation-home-hint">Zachowaj numer zamówienia na wypadek kontaktu z pracownią.</p>
+            <p className="confirmation-home-hint">{state.confirmation.builderProjectCode ? `Zachowaj kod ${state.confirmation.builderProjectCode} i numer zamówienia na wypadek kontaktu z pracownią.` : "Zachowaj numer zamówienia na wypadek kontaktu z pracownią."}</p>
           </>
         )}
 
