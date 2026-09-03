@@ -19,11 +19,11 @@ export default defineConfig([
       "app/bag-builder-real3d.tsx",
       "app/bag-builder-pro3d.tsx",
       "app/bag-builder-atelier3d.tsx",
+      "app/bag-builder-material-pass.tsx",
     ],
     rules: {
-      // WebGL context creation is an imperative browser bridge. The ready flag is
-      // set only after a real context/program exists so the SVG/canvas fallback
-      // remains available on devices without WebGL.
+      // 3D/material renderers are imperative browser bridges. Their ready/mount
+      // state is synchronized only after the real browser rendering surface exists.
       "react-hooks/set-state-in-effect": "off",
     },
   },
