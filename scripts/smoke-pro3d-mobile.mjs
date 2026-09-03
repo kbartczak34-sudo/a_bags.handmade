@@ -79,6 +79,8 @@ async function main() {
     "--disable-background-networking",
     "--disable-default-apps",
     "--no-first-run",
+    "--enable-webgl",
+    "--use-angle=swiftshader",
     `--remote-debugging-port=${port}`,
     "about:blank",
   ], { stdio: ["ignore", "pipe", "pipe"] });
@@ -121,47 +123,55 @@ async function main() {
     await choose("handles", "crochet");
     await choose("strap", "leather");
 
-    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-abags-pro3d-ready') === 'true'", "WebGL Pro3D readiness");
-    await waitFor("Boolean(document.querySelector('.abags-pro3d-canvas'))", "Pro3D canvas");
+    await waitFor(`(() => {
+      const stage=document.querySelector('.abags-bag-builder-stage');
+      return stage?.getAttribute('data-abags-pro3d-ready')==='true' || stage?.getAttribute('data-abags-canvas3d-ready')==='true';
+    })()`, "interactive 3D readiness");
+
+    const mode = await evaluate(`document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-abags-pro3d-ready')==='true' ? 'webgl' : 'canvas'`);
+    const canvasSelector = mode === "webgl" ? ".abags-pro3d-canvas" : ".abags-canvas3d-canvas";
+    const viewsSelector = mode === "webgl" ? ".abags-pro3d-view-controls button" : ".abags-canvas3d-views button";
+    const zoomSelector = mode === "webgl" ? ".abags-pro3d-zoom" : ".abags-canvas3d-zoom";
+    await waitFor(`Boolean(document.querySelector(${JSON.stringify(canvasSelector)}))`, `${mode} 3D canvas`);
 
     const screenshotHash = async () => digest((await send("Page.captureScreenshot", { format: "png", fromSurface: true })).data);
     const rect = async (selector, text = "") => evaluate(`(() => { const nodes=[...document.querySelectorAll(${JSON.stringify(selector)})]; const el=${text ? `nodes.find((n)=>n.textContent?.trim()===${JSON.stringify(text)})` : "nodes[0]"}; if(!el)return null; const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height}; })()`);
     const tap = async (point) => {
       if (!point) throw new Error("Touch target not found.");
       await send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: point.x, y: point.y, radiusX: 4, radiusY: 4, force: 1, id: 1 }] });
-      await sleep(70);
+      await sleep(80);
       await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-      await sleep(240);
+      await sleep(300);
     };
 
     const beforeView = await screenshotHash();
-    await tap(await rect(".abags-pro3d-view-controls button", "Bok"));
+    await tap(await rect(viewsSelector, "Bok"));
     const afterSide = await screenshotHash();
-    if (afterSide === beforeView) throw new Error("Touching 'Bok' did not visibly rotate the 3D model.");
+    if (afterSide === beforeView) throw new Error(`Touching 'Bok' did not visibly rotate the ${mode} 3D model.`);
 
     const beforeZoom = afterSide;
-    const plus = await rect('.abags-pro3d-zoom button[aria-label="Przybliż model"]');
+    const plus = await rect(`${zoomSelector} button[aria-label="Przybliż model"]`);
     await tap(plus);
     const afterZoom = await screenshotHash();
-    if (afterZoom === beforeZoom) throw new Error("Touching '+' did not visibly zoom the 3D model.");
+    if (afterZoom === beforeZoom) throw new Error(`Touching '+' did not visibly zoom the ${mode} 3D model.`);
 
-    const canvas = await rect(".abags-pro3d-canvas");
+    const canvas = await rect(canvasSelector);
     if (!canvas) throw new Error("Canvas bounds unavailable.");
     const beforeDrag = afterZoom;
     const sx = canvas.x - Math.min(canvas.w * 0.18, 55);
     const sy = canvas.y;
     const ex = canvas.x + Math.min(canvas.w * 0.2, 65);
     await send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: sx, y: sy, radiusX: 5, radiusY: 5, force: 1, id: 7 }] });
-    for (let i = 1; i <= 5; i += 1) {
-      await send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: sx + ((ex - sx) * i) / 5, y: sy + i, radiusX: 5, radiusY: 5, force: 1, id: 7 }] });
-      await sleep(45);
+    for (let i = 1; i <= 6; i += 1) {
+      await send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: sx + ((ex - sx) * i) / 6, y: sy + i, radiusX: 5, radiusY: 5, force: 1, id: 7 }] });
+      await sleep(55);
     }
     await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await sleep(280);
+    await sleep(320);
     const afterDrag = await screenshotHash();
-    if (afterDrag === beforeDrag) throw new Error("Dragging one finger did not visibly rotate the 3D model.");
+    if (afterDrag === beforeDrag) throw new Error(`Dragging one finger did not visibly rotate the ${mode} 3D model.`);
 
-    console.log("Mobile Pro3D touch controls passed:", JSON.stringify({ sideChanged: true, zoomChanged: true, dragChanged: true }));
+    console.log("Mobile interactive 3D controls passed:", JSON.stringify({ mode, sideChanged: true, zoomChanged: true, dragChanged: true }));
   } finally {
     try { socket?.close(); } catch {}
     chrome.kill("SIGTERM");
