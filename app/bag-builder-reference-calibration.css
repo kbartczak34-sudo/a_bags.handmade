@@ -1,3 +1,5 @@
+@import "./bag-builder-fidelity3d.css";
+
 /*
  * Family proportion calibration derived from the real A-Bags atelier reference library.
  * The same transform is applied to WebGL, software fallback and visual passes so all
