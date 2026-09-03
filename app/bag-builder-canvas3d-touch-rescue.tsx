@@ -25,6 +25,7 @@ export default function BagBuilderCanvas3DTouchRescue() {
       if (!canvas || !controls || !range || !minus || !plus || !reset) return;
 
       let percent = clamp(Number(range.value) || BASE);
+      let lastControlAction = 0;
       const pointers = new Map<number, { x: number; y: number }>();
       let pinchStart: { distance: number; percent: number } | null = null;
 
@@ -36,6 +37,7 @@ export default function BagBuilderCanvas3DTouchRescue() {
       const apply = (next: number) => {
         percent = clamp(next);
         range.value = String(percent);
+        range.setAttribute("aria-valuenow", String(percent));
         reset.textContent = `${percent}%`;
         canvas.style.transform = `scale(${percent / BASE})`;
         canvas.style.transformOrigin = "50% 50%";
@@ -43,34 +45,51 @@ export default function BagBuilderCanvas3DTouchRescue() {
       };
 
       const consume = (event: Event) => {
-        event.preventDefault();
+        if (event.cancelable) event.preventDefault();
         event.stopPropagation();
-        if ("stopImmediatePropagation" in event) event.stopImmediatePropagation();
+        event.stopImmediatePropagation?.();
       };
 
-      const onMinusPointer = (event: PointerEvent) => { consume(event); apply(percent - 12); };
-      const onPlusPointer = (event: PointerEvent) => { consume(event); apply(percent + 12); };
-      const onResetPointer = (event: PointerEvent) => { consume(event); apply(BASE); };
-      const onBlockedClick = (event: MouseEvent) => consume(event);
+      const makeControlHandler = (next: () => number) => (event: Event) => {
+        const now = Date.now();
+        consume(event);
+        // A mobile tap can emit pointerup, touchend and click. Apply only once.
+        if (now - lastControlAction < 180) return;
+        lastControlAction = now;
+        apply(next());
+      };
+
+      const onMinus = makeControlHandler(() => percent - 12);
+      const onPlus = makeControlHandler(() => percent + 12);
+      const onReset = makeControlHandler(() => BASE);
       const onRange = () => apply(Number(range.value));
 
-      minus.addEventListener("pointerup", onMinusPointer, true);
-      plus.addEventListener("pointerup", onPlusPointer, true);
-      reset.addEventListener("pointerup", onResetPointer, true);
-      minus.addEventListener("click", onBlockedClick, true);
-      plus.addEventListener("click", onBlockedClick, true);
-      reset.addEventListener("click", onBlockedClick, true);
+      const bindControl = (button: HTMLButtonElement, handler: (event: Event) => void) => {
+        button.addEventListener("pointerup", handler, true);
+        button.addEventListener("touchend", handler, { capture: true, passive: false });
+        button.addEventListener("click", handler, true);
+        return () => {
+          button.removeEventListener("pointerup", handler, true);
+          button.removeEventListener("touchend", handler, true);
+          button.removeEventListener("click", handler, true);
+        };
+      };
+
+      const unbindMinus = bindControl(minus, onMinus);
+      const unbindPlus = bindControl(plus, onPlus);
+      const unbindReset = bindControl(reset, onReset);
       range.addEventListener("input", onRange, true);
+      range.addEventListener("change", onRange, true);
 
       const onCanvasDown = (event: PointerEvent) => {
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         if (pointers.size >= 2) pinchStart = { distance: distance(), percent };
       };
       const onCanvasMove = (event: PointerEvent) => {
-        if (!pointers.has(event.pointerId)) return;
+        if (!pointers.current && !pointers.has(event.pointerId)) return;
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         if (pointers.size >= 2 && pinchStart && pinchStart.distance > 0) {
-          event.preventDefault();
+          if (event.cancelable) event.preventDefault();
           apply(pinchStart.percent * (distance() / pinchStart.distance));
         }
       };
@@ -85,13 +104,11 @@ export default function BagBuilderCanvas3DTouchRescue() {
 
       apply(percent);
       cleanups.set(layer, () => {
-        minus.removeEventListener("pointerup", onMinusPointer, true);
-        plus.removeEventListener("pointerup", onPlusPointer, true);
-        reset.removeEventListener("pointerup", onResetPointer, true);
-        minus.removeEventListener("click", onBlockedClick, true);
-        plus.removeEventListener("click", onBlockedClick, true);
-        reset.removeEventListener("click", onBlockedClick, true);
+        unbindMinus();
+        unbindPlus();
+        unbindReset();
         range.removeEventListener("input", onRange, true);
+        range.removeEventListener("change", onRange, true);
         canvas.removeEventListener("pointerdown", onCanvasDown, true);
         canvas.removeEventListener("pointermove", onCanvasMove, true);
         canvas.removeEventListener("pointerup", onCanvasEnd, true);
