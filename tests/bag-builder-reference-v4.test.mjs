@@ -56,7 +56,7 @@ test("V4 makes the live product materially larger without replacing the renderer
 });
 
 test("V4 moves technical cards after the real choices and tags the core summary", () => {
-  assert.match(v4, /data\.v4CoreSummary = "true"/);
+  assert.match(v4, /card\.dataset\.v4CoreSummary = "true"/);
   assert.match(v4, /\[data-builder-material\] \{ order: 72 !important; \}/);
   assert.match(v4, /\[data-builder-validation-status\] \{ order: 73 !important; \}/);
   assert.match(v4, /\[data-builder-project-review\] \{ order: 74 !important; \}/);
