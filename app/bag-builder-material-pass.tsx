@@ -26,6 +26,7 @@ type Point = { x: number; y: number };
 const DEFAULT_VIEW: ViewState = { rx: -0.08, ry: 0.52, zoom: 0.8 };
 const MIN_ZOOM = 0.34;
 const MAX_ZOOM = 1.45;
+const POLYESTER_CORD = "pimiotki-polyester";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -110,86 +111,103 @@ function silhouette(ctx: CanvasRenderingContext2D, width: number, height: number
   return { left, top, right, bottom, cx, cy, w, h, foreshorten };
 }
 
-function drawYarn(ctx: CanvasRenderingContext2D, bounds: ReturnType<typeof silhouette>, config: Config, width: number, height: number) {
+function drawPolyesterSatin(ctx: CanvasRenderingContext2D, bounds: ReturnType<typeof silhouette>, config: Config, view: ViewState, light: Point) {
+  const bandX = bounds.left + (bounds.right - bounds.left) * clamp(light.x + Math.sin(view.ry) * 0.08, 0.08, 0.92);
+  const bandWidth = Math.max(20, bounds.w * 0.52);
+  const gradient = ctx.createLinearGradient(bandX - bandWidth, 0, bandX + bandWidth, 0);
+  gradient.addColorStop(0, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.32, colorShift(config.color, 105, 0.025));
+  gradient.addColorStop(0.5, colorShift(config.color, 125, 0.16));
+  gradient.addColorStop(0.63, colorShift(config.color, 88, 0.05));
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.fillStyle = gradient;
+  ctx.fillRect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
+  ctx.restore();
+}
+
+function drawYarn(ctx: CanvasRenderingContext2D, bounds: ReturnType<typeof silhouette>, config: Config, width: number, height: number, view: ViewState, light: Point) {
   ctx.save();
   ctx.clip();
   const spacing = Math.max(8, Math.min(width, height) * 0.021);
-  const dark = colorShift(config.color, -56, 0.23);
-  const light = colorShift(config.color, 92, 0.31);
-  const fiber = colorShift(config.color, 118, 0.22);
+  const dark = colorShift(config.color, -64, 0.29);
+  const edge = colorShift(config.color, -34, 0.19);
+  const satin = colorShift(config.color, 112, 0.38);
+  const satinSoft = colorShift(config.color, 82, 0.18);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
+  const cordStroke = (draw: () => void) => {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(1.6, spacing * 0.31);
+    draw();
+    ctx.stroke();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = Math.max(1.1, spacing * 0.22);
+    draw();
+    ctx.stroke();
+    ctx.strokeStyle = satinSoft;
+    ctx.lineWidth = Math.max(0.8, spacing * 0.12);
+    draw();
+    ctx.stroke();
+    ctx.strokeStyle = satin;
+    ctx.lineWidth = Math.max(0.55, spacing * 0.055);
+    draw();
+    ctx.stroke();
+  };
+
   if (config.stitch === "herringbone") {
-    ctx.lineWidth = Math.max(1, spacing * 0.16);
-    for (let y = bounds.top - spacing; y <= bounds.bottom + spacing; y += spacing * 0.72) {
-      for (let x = bounds.left - spacing; x <= bounds.right + spacing; x += spacing * 1.15) {
-        ctx.strokeStyle = dark;
-        ctx.beginPath();
-        ctx.moveTo(x, y + spacing * 0.12);
-        ctx.lineTo(x + spacing * 0.55, y + spacing * 0.56);
-        ctx.lineTo(x + spacing * 1.1, y + spacing * 0.12);
-        ctx.stroke();
-        ctx.strokeStyle = light;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + spacing * 0.55, y + spacing * 0.44);
-        ctx.lineTo(x + spacing * 1.1, y);
-        ctx.stroke();
+    for (let y = bounds.top - spacing; y <= bounds.bottom + spacing; y += spacing * 0.76) {
+      for (let x = bounds.left - spacing; x <= bounds.right + spacing; x += spacing * 1.18) {
+        cordStroke(() => {
+          ctx.beginPath();
+          ctx.moveTo(x, y + spacing * 0.08);
+          ctx.lineTo(x + spacing * 0.55, y + spacing * 0.5);
+          ctx.lineTo(x + spacing * 1.1, y + spacing * 0.08);
+        });
       }
     }
   } else if (config.stitch === "basket") {
-    ctx.lineWidth = Math.max(1.1, spacing * 0.2);
-    for (let y = bounds.top; y <= bounds.bottom; y += spacing) {
-      ctx.strokeStyle = light;
-      ctx.beginPath(); ctx.moveTo(bounds.left, y); ctx.lineTo(bounds.right, y); ctx.stroke();
-      ctx.strokeStyle = dark;
-      ctx.beginPath(); ctx.moveTo(bounds.left, y + spacing * 0.19); ctx.lineTo(bounds.right, y + spacing * 0.19); ctx.stroke();
+    for (let y = bounds.top; y <= bounds.bottom; y += spacing * 1.05) {
+      cordStroke(() => { ctx.beginPath(); ctx.moveTo(bounds.left, y); ctx.lineTo(bounds.right, y); });
     }
-    for (let x = bounds.left; x <= bounds.right; x += spacing) {
-      ctx.strokeStyle = fiber;
-      ctx.beginPath(); ctx.moveTo(x, bounds.top); ctx.lineTo(x, bounds.bottom); ctx.stroke();
+    for (let x = bounds.left; x <= bounds.right; x += spacing * 1.05) {
+      cordStroke(() => { ctx.beginPath(); ctx.moveTo(x, bounds.top); ctx.lineTo(x, bounds.bottom); });
     }
   } else if (config.stitch === "shell") {
-    ctx.lineWidth = Math.max(1.1, spacing * 0.16);
-    for (let y = bounds.top; y <= bounds.bottom + spacing; y += spacing * 0.72) {
-      for (let x = bounds.left - spacing; x <= bounds.right + spacing; x += spacing * 1.25) {
-        ctx.strokeStyle = dark;
-        ctx.beginPath(); ctx.arc(x, y + 2, spacing * 0.58, Math.PI, 0); ctx.stroke();
-        ctx.strokeStyle = light;
-        ctx.beginPath(); ctx.arc(x, y, spacing * 0.55, Math.PI, 0); ctx.stroke();
+    for (let y = bounds.top; y <= bounds.bottom + spacing; y += spacing * 0.78) {
+      for (let x = bounds.left - spacing; x <= bounds.right + spacing; x += spacing * 1.28) {
+        cordStroke(() => { ctx.beginPath(); ctx.arc(x, y, spacing * 0.58, Math.PI, 0); });
       }
     }
   } else {
-    ctx.lineWidth = Math.max(1, spacing * 0.15);
-    for (let y = bounds.top; y <= bounds.bottom + spacing; y += spacing * 0.62) {
-      for (let x = bounds.left - spacing; x <= bounds.right + spacing; x += spacing * 0.82) {
-        ctx.strokeStyle = dark;
-        ctx.beginPath();
-        ctx.moveTo(x - spacing * 0.3, y + spacing * 0.3);
-        ctx.quadraticCurveTo(x, y - spacing * 0.35, x + spacing * 0.3, y + spacing * 0.3);
-        ctx.stroke();
-        ctx.strokeStyle = light;
-        ctx.beginPath();
-        ctx.moveTo(x - spacing * 0.26, y + spacing * 0.2);
-        ctx.quadraticCurveTo(x, y - spacing * 0.27, x + spacing * 0.26, y + spacing * 0.2);
-        ctx.stroke();
+    for (let y = bounds.top; y <= bounds.bottom + spacing; y += spacing * 0.66) {
+      for (let x = bounds.left - spacing; x <= bounds.right + spacing; x += spacing * 0.86) {
+        cordStroke(() => {
+          ctx.beginPath();
+          ctx.moveTo(x - spacing * 0.3, y + spacing * 0.29);
+          ctx.quadraticCurveTo(x, y - spacing * 0.35, x + spacing * 0.3, y + spacing * 0.29);
+        });
       }
     }
   }
 
+  // Polyester cord is smooth: use restrained longitudinal micro-glints rather than fuzzy fibres.
   const random = mulberry(6119 + config.color.length * 17 + config.stitch.length * 53);
-  ctx.lineWidth = 0.7;
-  for (let i = 0; i < 170; i += 1) {
+  ctx.globalCompositeOperation = "screen";
+  ctx.lineWidth = 0.45;
+  for (let i = 0; i < 58; i += 1) {
     const x = bounds.left + random() * (bounds.right - bounds.left);
     const y = bounds.top + random() * (bounds.bottom - bounds.top);
-    const length = 2 + random() * 7;
-    ctx.strokeStyle = random() > 0.46 ? fiber : dark;
+    const length = 4 + random() * 10;
+    ctx.strokeStyle = colorShift(config.color, 132, 0.08 + random() * 0.08);
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.quadraticCurveTo(x + length * 0.45, y - 1.2, x + length, y + (random() - 0.5) * 2.5);
+    ctx.quadraticCurveTo(x + length * 0.48, y - 0.35, x + length, y + (random() - 0.5) * 0.7);
     ctx.stroke();
   }
+  drawPolyesterSatin(ctx, bounds, config, view, light);
   ctx.restore();
 }
 
@@ -285,7 +303,7 @@ function render(canvas: HTMLCanvasElement, config: Config, view: ViewState, ligh
   if (!config.family) return;
 
   const bounds = silhouette(ctx, width, height, config.family, view);
-  drawYarn(ctx, bounds, config, width, height);
+  drawYarn(ctx, bounds, config, width, height, view, lightNorm);
   drawLeatherGrain(ctx, bounds, config);
   drawWoodGrain(ctx, bounds, config);
   drawMetalGlints(ctx, bounds, config, { x: lightNorm.x * width, y: lightNorm.y * height });
@@ -295,8 +313,8 @@ function render(canvas: HTMLCanvasElement, config: Config, view: ViewState, ligh
   const lx = lightNorm.x * width;
   const ly = lightNorm.y * height;
   const glow = ctx.createRadialGradient(lx, ly, 0, lx, ly, Math.min(width, height) * 0.42);
-  glow.addColorStop(0, "rgba(255,250,242,.14)");
-  glow.addColorStop(0.52, "rgba(255,246,236,.045)");
+  glow.addColorStop(0, "rgba(255,250,242,.11)");
+  glow.addColorStop(0.52, "rgba(255,246,236,.035)");
   glow.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
@@ -410,7 +428,8 @@ export default function BagBuilderMaterialPass() {
     stage.addEventListener("input", input, true);
     window.addEventListener("resize", resize);
     stage.classList.add("abags-material-pass-active");
-    stage.setAttribute("data-abags-material-pass", "procedural-v1");
+    stage.setAttribute("data-abags-material-pass", `procedural-v2-${POLYESTER_CORD}`);
+    stage.setAttribute("data-abags-yarn-material", POLYESTER_CORD);
     redraw();
 
     return () => {
@@ -425,6 +444,7 @@ export default function BagBuilderMaterialPass() {
       window.removeEventListener("resize", resize);
       stage.classList.remove("abags-material-pass-active");
       stage.removeAttribute("data-abags-material-pass");
+      stage.removeAttribute("data-abags-yarn-material");
     };
   }, [stage]);
 
@@ -437,7 +457,7 @@ export default function BagBuilderMaterialPass() {
 
   if (!stage) return null;
   return createPortal(
-    <div className="abags-material-pass" aria-hidden="true" data-abags-material-realism="true">
+    <div className="abags-material-pass" aria-hidden="true" data-abags-material-realism="polyester-cord-v2">
       <canvas ref={canvasRef} className="abags-material-pass-canvas" />
       <div className="abags-material-pass-vignette" />
     </div>,
