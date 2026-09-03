@@ -4,10 +4,12 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer mounts the procedural material realism pass", async () => {
+test("live customizer keeps the procedural material pass out of the visible renderer stack", async () => {
   const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /BagBuilderMaterialPass/);
-  assert.match(source, /<BagBuilderMaterialPass\s*\/>/);
+  assert.match(source, /BagBuilderFidelity3D/);
+  assert.match(source, /<BagBuilderFidelity3D\s*\/>/);
+  assert.doesNotMatch(source, /BagBuilderMaterialPass/);
+  assert.doesNotMatch(source, /<BagBuilderMaterialPass\s*\/>/);
 });
 
 test("material pass reacts to the same live construction dimensions", async () => {
@@ -52,7 +54,7 @@ test("material pass follows rotation zoom touch and preset views without stealin
   assert.match(css, /pointer-events:none!important/);
 });
 
-test("material realism styles are loaded and support both WebGL and Canvas3D fallback", async () => {
+test("material realism implementation remains available as a fallback calibration", async () => {
   const layout = await read("app/layout.tsx");
   const css = await read("app/bag-builder-material-pass.css");
   assert.match(layout, /bag-builder-material-pass\.css/);
