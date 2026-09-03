@@ -133,8 +133,8 @@ async function main() {
         className:dialog.className,
         referenceLayout:dialog.dataset.abagsReferenceLayout||'',
         headerLocked:dialog.dataset.abagsV3HeaderLocked||'',
-        eyebrow:dialog.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
-        title:dialog.querySelector('.abags-vc-header h2')?.textContent?.trim()||'',
+        eyebrow:dialog.querySelector('.abags-vc-header .abags-v3-eyebrow, .abags-vc-header .eyebrow')?.textContent?.trim()||'',
+        title:dialog.querySelector('.abags-vc-header .abags-v3-title, .abags-vc-header h2')?.textContent?.trim()||'',
         subtitle:dialog.querySelector('.abags-v3-subtitle')?.textContent?.trim()||'',
         display:style.display,
         visibility:style.visibility,
@@ -176,8 +176,9 @@ async function main() {
     await waitFor(`(() => {
       const dialog=${V3_DIALOG};
       if(!dialog)return false;
-      const eyebrow=dialog.querySelector('.abags-vc-header .eyebrow')?.textContent||'';
-      return dialog.dataset.abagsV3HeaderLocked==='true' && eyebrow.includes('A-BAGS VISUAL CUSTOMIZER');
+      const eyebrow=dialog.querySelector('.abags-vc-header .abags-v3-eyebrow')?.textContent||'';
+      const title=dialog.querySelector('.abags-vc-header .abags-v3-title')?.textContent||'';
+      return dialog.dataset.abagsV3HeaderLocked==='true' && eyebrow.includes('A-BAGS VISUAL CUSTOMIZER') && title.includes('Zbuduj swoją torebkę od podstaw');
     })()`, "scoped stable V3 header");
     await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-step-rail'))`, "desktop step rail");
     await waitFor(`Boolean(${V3_DIALOG}?.querySelector('.abags-ref-layers'))`, "desktop active layers");
@@ -194,8 +195,8 @@ async function main() {
       return {
         marker:dialog.dataset.abagsReferenceLayout,
         headerLocked:dialog.dataset.abagsV3HeaderLocked,
-        eyebrow:dialog.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
-        title:dialog.querySelector('.abags-vc-header h2')?.textContent?.trim()||'',
+        eyebrow:dialog.querySelector('.abags-vc-header .abags-v3-eyebrow')?.textContent?.trim()||'',
+        title:dialog.querySelector('.abags-vc-header .abags-v3-title')?.textContent?.trim()||'',
         dialogWidth:Math.round(d.width),
         dialogHeight:Math.round(d.height),
         mountLeft:Math.round(m.left),
@@ -275,11 +276,12 @@ async function main() {
         mountTop:Math.round(m.top),
         inspirationsHeight:Math.round(i.height),
         railDisplay:getComputedStyle(rail).display,
-        header:dialog.querySelector('.abags-vc-header .eyebrow')?.textContent?.trim()||'',
+        header:dialog.querySelector('.abags-vc-header .abags-v3-eyebrow')?.textContent?.trim()||'',
+        title:dialog.querySelector('.abags-vc-header .abags-v3-title')?.textContent?.trim()||'',
         headerLocked:dialog.dataset.abagsV3HeaderLocked||'',
       };
     })()`);
-    if (!mobileLayout || mobileLayout.width > 392 || mobileLayout.height < 800 || mobileLayout.previewTop >= mobileLayout.mountTop || mobileLayout.previewHeight < 300 || mobileLayout.inspirationsHeight < 90 || mobileLayout.railDisplay !== "none" || mobileLayout.headerLocked !== "true" || !mobileLayout.header.includes("A-BAGS VISUAL CUSTOMIZER")) {
+    if (!mobileLayout || mobileLayout.width > 392 || mobileLayout.height < 800 || mobileLayout.previewTop >= mobileLayout.mountTop || mobileLayout.previewHeight < 300 || mobileLayout.inspirationsHeight < 90 || mobileLayout.railDisplay !== "none" || mobileLayout.headerLocked !== "true" || !mobileLayout.header.includes("A-BAGS VISUAL CUSTOMIZER") || !mobileLayout.title.includes("Zbuduj swoją torebkę od podstaw")) {
       throw new Error(`Mobile V3 layout mismatch: ${JSON.stringify(mobileLayout)}`);
     }
 
