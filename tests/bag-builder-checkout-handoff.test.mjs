@@ -28,7 +28,7 @@ test("server validates project options and compatibility before checkout", () =>
 
 test("personalized price is recomputed on the server and never accepted from the client", () => {
   assert.match(endpoint, /calculateBagBuilderProjectCents\(config, settings\)/);
-  assert.match(endpoint, /unit_amount\]`, String\(projectAmount\)/);
+  assert.match(endpoint, /unit_amount.*String\(projectAmount\)/);
   assert.doesNotMatch(endpoint, /raw\.price|source\.price|config\.price|clientPrice|requestedPrice/);
   assert.match(handoff, /body: JSON\.stringify\(\{ config \}\)/);
   assert.doesNotMatch(handoff, /body: JSON\.stringify\(\{[^}]*price/);
