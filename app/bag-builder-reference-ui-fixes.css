@@ -110,6 +110,13 @@
   line-height:.95;
 }
 
+/* ReferenceExperience previously rotates its ::after chevron. V3 reuses
+ * ::after for the real accordion label and has its own chevron in ::before,
+ * so the label must never inherit that 180-degree transform. */
+.abags-reference-layout-v3 .abags-builder-group legend::after{
+  transform:none!important;
+}
+
 /* The consent banner remains available normally, but an open aria-modal
  * customizer must be the top interaction layer. Closing the creator exposes
  * the consent controls again without changing the user's privacy choice. */
@@ -123,6 +130,21 @@ body.abags-vc-open .abags-vc-layer-root{
     min-height:min(56vh,520px)!important;
     height:min(56vh,520px)!important;
   }
+
+  /* V3 intentionally uses a compact mobile app bar. Header ownership changed
+   * the element selectors, so mirror the original mobile rules for V3 classes. */
+  .abags-reference-layout-v3 .abags-vc-header .abags-v3-eyebrow{
+    display:block!important;
+    margin:0!important;
+    font-size:8px!important;
+    line-height:1!important;
+    letter-spacing:.11em!important;
+    white-space:nowrap!important;
+  }
+  .abags-reference-layout-v3 .abags-vc-header .abags-v3-title,
+  .abags-reference-layout-v3 .abags-v3-subtitle{
+    display:none!important;
+  }
 }
 @media(max-width:620px){
   .abags-bag-builder-stage.abags-pro3d-active,
@@ -134,7 +156,6 @@ body.abags-vc-open .abags-vc-layer-root{
   .abags-bag-builder-stage.abags-canvas3d-active::before{left:-1%!important;width:25%!important;opacity:.72!important}
   .abags-bag-builder-stage.abags-pro3d-active::after,
   .abags-bag-builder-stage.abags-canvas3d-active::after{right:2%!important;top:14%!important;width:27%!important;height:25%!important;border-width:6px!important;font-size:8px!important}
-  .abags-vc-header .abags-v3-title{font-size:clamp(2.2rem,12vw,3.4rem)}
 }
 @media(max-width:420px){
   .abags-bag-builder-stage.abags-pro3d-active,
