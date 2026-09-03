@@ -1,0 +1,235 @@
+/* Functional layer that brings the live builder closer to the approved A-Bags Visual Customizer reference. */
+
+.abags-vc-dialog.abags-reference-experience-active .abags-exact-live-mount{
+  display:grid!important;
+  grid-template-columns:118px minmax(0,1fr)!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+
+.abags-ref-step-rail{
+  position:sticky;
+  top:0;
+  z-index:45;
+  display:grid;
+  gap:7px;
+  padding:9px;
+  border:1px solid rgba(90,66,69,.1);
+  border-radius:18px;
+  background:rgba(255,252,249,.92);
+  box-shadow:0 10px 28px rgba(90,66,69,.05);
+  backdrop-filter:blur(10px);
+}
+.abags-ref-step-rail button{
+  display:grid;
+  grid-template-columns:22px 1fr;
+  align-items:center;
+  gap:7px;
+  min-height:40px;
+  padding:6px;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  color:#61494f;
+  text-align:left;
+  cursor:pointer;
+  transition:background .16s ease,transform .16s ease,color .16s ease;
+}
+.abags-ref-step-rail button:hover{background:#fbefef;transform:translateX(1px)}
+.abags-ref-step-rail button.is-active{background:#f5e2e5;color:#824f59}
+.abags-ref-step-rail button>span{
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.1);
+  font:800 7px/1 var(--font-sans);
+}
+.abags-ref-step-rail button.is-active>span{background:#d99ba7;color:#fff;box-shadow:none}
+.abags-ref-step-rail button strong{font:750 7.2px/1.25 var(--font-sans)}
+
+.abags-ref-layers{
+  position:absolute;
+  z-index:270;
+  top:68px;
+  right:14px;
+  width:176px;
+  max-height:390px;
+  overflow:auto;
+  padding:10px;
+  border:1px solid rgba(90,66,69,.12);
+  border-radius:15px;
+  background:rgba(255,252,249,.92);
+  box-shadow:0 14px 34px rgba(70,45,50,.11);
+  backdrop-filter:blur(12px);
+}
+.abags-ref-layers-head{display:grid;gap:2px;margin-bottom:7px;padding:0 2px 6px;border-bottom:1px solid rgba(90,66,69,.08)}
+.abags-ref-layers-head strong{color:#4c363b;font:850 7px/1 var(--font-sans);letter-spacing:.07em;text-transform:uppercase}
+.abags-ref-layers-head small{color:#9a8589;font:600 5.5px/1.3 var(--font-sans)}
+.abags-ref-layer-row{
+  display:grid;
+  grid-template-columns:9px minmax(0,1fr) auto;
+  align-items:center;
+  gap:7px;
+  width:100%;
+  min-height:35px;
+  padding:5px 3px;
+  border:0;
+  border-bottom:1px solid rgba(90,66,69,.055);
+  background:transparent;
+  color:#5c444a;
+  text-align:left;
+  cursor:pointer;
+}
+.abags-ref-layer-row:last-child{border-bottom:0}
+.abags-ref-layer-row:hover{background:rgba(244,221,223,.34)}
+.abags-ref-layer-dot{width:7px;height:7px;border-radius:50%;background:#a98778;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 0 3px rgba(90,66,69,.1)}
+.abags-ref-layer-row>span:nth-child(2){display:grid;gap:2px;min-width:0}
+.abags-ref-layer-row strong{overflow:hidden;text-overflow:ellipsis;color:#4e393e;font:780 6px/1.1 var(--font-sans);white-space:nowrap}
+.abags-ref-layer-row small{overflow:hidden;text-overflow:ellipsis;color:#8f7a7f;font:600 5.3px/1.1 var(--font-sans);white-space:nowrap}
+.abags-ref-layer-edit{color:#b37580;font:800 5px/1 var(--font-sans);text-transform:uppercase}
+
+.abags-ref-inspirations{
+  display:grid;
+  gap:9px;
+  width:100%;
+  margin-top:10px;
+  padding:11px;
+  border:1px solid rgba(90,66,69,.1);
+  border-radius:18px;
+  background:rgba(255,252,249,.92);
+  box-shadow:0 12px 30px rgba(90,66,69,.05);
+}
+.abags-ref-inspiration-head{display:flex;align-items:end;justify-content:space-between;gap:12px}
+.abags-ref-inspiration-head strong{color:#4d373c;font:850 7px/1 var(--font-sans);letter-spacing:.05em;text-transform:uppercase}
+.abags-ref-inspiration-head small{color:#9b878b;font:600 5.5px/1.25 var(--font-sans);text-align:right}
+.abags-ref-inspiration-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.abags-ref-inspiration-track button{
+  position:relative;
+  display:grid;
+  grid-template-rows:76px auto;
+  gap:5px;
+  min-width:0;
+  padding:6px;
+  overflow:hidden;
+  border:1px solid rgba(90,66,69,.1);
+  border-radius:12px;
+  background:linear-gradient(180deg,#f6e8dc,#ead3bf);
+  color:#664d53;
+  cursor:pointer;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.abags-ref-inspiration-track button:hover{transform:translateY(-2px);border-color:#c68490;box-shadow:0 8px 18px rgba(90,66,69,.09)}
+.abags-ref-inspiration-track button>span:last-child{font:800 6px/1 var(--font-sans)}
+.abags-ref-mini-bag{
+  position:relative;
+  display:block;
+  width:62px;
+  height:50px;
+  margin:auto auto 0;
+  border-radius:12px 12px 17px 17px;
+  background:
+    repeating-linear-gradient(55deg,rgba(255,255,255,.18) 0 3px,rgba(35,22,26,.12) 3px 5px,transparent 5px 10px),
+    var(--ref-bag,#d89aaa);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.1),0 8px 14px rgba(72,47,52,.18);
+}
+.abags-ref-mini-bag::before{
+  content:"";
+  position:absolute;
+  left:17px;
+  top:-25px;
+  width:28px;
+  height:31px;
+  border:7px solid #bb8a55;
+  border-bottom:0;
+  border-radius:50% 50% 0 0;
+}
+.abags-ref-mini-bag i{
+  position:absolute;
+  left:14px;
+  right:14px;
+  top:3px;
+  height:21px;
+  border-radius:4px 4px 50% 50%;
+  background:rgba(255,218,221,.82);
+  box-shadow:0 2px 4px rgba(64,39,44,.14);
+}
+.abags-ref-mini-bag b{
+  position:absolute;
+  left:50%;
+  top:15px;
+  width:8px;
+  height:8px;
+  transform:translateX(-50%);
+  border-radius:50%;
+  background:#d1a24d;
+  box-shadow:inset 0 0 0 2px #f0d793;
+}
+
+.abags-ref-trust{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  padding:10px 22px 12px;
+  border-top:1px solid rgba(90,66,69,.08);
+  background:rgba(255,252,249,.96);
+  color:#806a6f;
+}
+.abags-ref-trust span{text-align:center;font:700 6px/1.35 var(--font-sans)}
+
+/* Keep the interactive 3D surface visually dominant, like the approved concept. */
+.abags-vc-dialog.abags-reference-experience-active .abags-vc-preview{min-height:630px!important}
+.abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-canvas3d-active,
+.abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-pro3d-active{min-height:630px!important}
+.abags-vc-dialog.abags-reference-experience-active .abags-canvas3d-chip,
+.abags-vc-dialog.abags-reference-experience-active .abags-pro3d-chip{
+  font-size:6.4px!important;
+  letter-spacing:.07em!important;
+}
+
+@media(max-width:1180px){
+  .abags-vc-dialog.abags-reference-experience-active .abags-exact-live-mount{grid-template-columns:96px minmax(0,1fr)!important}
+  .abags-ref-step-rail{padding:7px}
+  .abags-ref-step-rail button{grid-template-columns:20px 1fr;gap:5px;padding:5px}
+  .abags-ref-step-rail button>span{width:20px;height:20px}
+  .abags-ref-layers{width:160px}
+}
+
+@media(max-width:980px){
+  .abags-vc-dialog.abags-reference-experience-active .abags-exact-live-mount{display:block!important}
+  .abags-ref-step-rail{display:none!important}
+  .abags-ref-layers{display:none!important}
+  .abags-ref-trust{grid-template-columns:1fr 1fr;gap:7px;padding:9px 12px}
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-preview{min-height:0!important}
+  .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-canvas3d-active,
+  .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-pro3d-active{min-height:430px!important}
+  .abags-ref-inspirations{margin-top:7px;padding:8px;border-radius:14px}
+  .abags-ref-inspiration-head small{display:none}
+  .abags-ref-inspiration-track{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:2px;scrollbar-width:none}
+  .abags-ref-inspiration-track::-webkit-scrollbar{display:none}
+  .abags-ref-inspiration-track button{flex:0 0 92px;grid-template-rows:68px auto;scroll-snap-align:start}
+  .abags-ref-mini-bag{transform:scale(.9)}
+}
+
+@media(max-width:620px){
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-header .eyebrow{font-size:0!important}
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-header .eyebrow::after{content:"A-BAGS VISUAL CUSTOMIZER";font:800 7px/1 var(--font-sans);letter-spacing:.15em}
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-header h2{font-size:0!important;max-width:none!important}
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-header h2::after{content:"Zbuduj swoją torebkę";display:block;font:500 28px/.96 var(--font-heading);letter-spacing:-.03em}
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-preview-column{padding:6px 8px 7px!important}
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-preview{width:100%!important;max-width:none!important;aspect-ratio:1.08/1!important;border-radius:18px!important}
+  .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-canvas3d-active,
+  .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-pro3d-active{min-height:390px!important}
+  .abags-ref-inspiration-head{padding:0 2px}
+  .abags-ref-inspiration-track button{flex-basis:84px;grid-template-rows:61px auto;padding:5px}
+  .abags-ref-mini-bag{transform:scale(.78);transform-origin:center bottom}
+  .abags-ref-trust{display:none}
+}
+
+@media(max-width:420px){
+  .abags-vc-dialog.abags-reference-experience-active .abags-vc-header h2::after{font-size:25px}
+  .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-canvas3d-active,
+  .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-pro3d-active{min-height:370px!important}
+}
