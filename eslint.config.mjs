@@ -14,7 +14,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["app/bag-builder-webgl3d.tsx"],
+    files: ["app/bag-builder-webgl3d.tsx", "app/bag-builder-real3d.tsx"],
     rules: {
       // WebGL context creation is an imperative browser bridge. The ready flag is
       // set only after a real context/program exists so the SVG fallback remains
