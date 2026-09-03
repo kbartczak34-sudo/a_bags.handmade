@@ -32,7 +32,7 @@ test("compatibility rules actively disable impossible builder options", () => {
   assert.match(settings, /mini:\s*\["none", "crochet"\]/);
   assert.match(commerce, /is-incompatible/);
   assert.match(commerce, /button\.disabled = !compatible/);
-  assert.match(commerce, /data-builder-value=\\"none\\"/);
+  assert.match(commerce, /data-builder-value="none"/);
 });
 
 test("live price composes base price with selected option modifiers", () => {
