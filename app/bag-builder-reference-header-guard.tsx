@@ -6,16 +6,56 @@ const EYEBROW = "A-BAGS VISUAL CUSTOMIZER";
 const TITLE = "Zbuduj swoją torebkę od podstaw";
 const SUBTITLE = "Podgląd na żywo  •  Buduj warstwa po warstwie";
 
+function ownEyebrow(header: HTMLElement) {
+  const legacy = header.querySelector<HTMLElement>(".eyebrow");
+  const current = header.querySelector<HTMLElement>(".abags-v3-eyebrow") ?? legacy;
+  if (!current) return false;
+
+  // BagBuilderEngine writes to `.abags-vc-header .eyebrow` on every sync.
+  // Once Reference Layout V3 owns the header, remove that legacy selector so
+  // the engine can no longer overwrite approved V3 copy.
+  if (current.classList.contains("eyebrow")) current.classList.remove("eyebrow");
+  current.classList.add("abags-v3-eyebrow");
+  if (current.textContent !== EYEBROW) current.textContent = EYEBROW;
+  return true;
+}
+
+function ownTitle(header: HTMLElement) {
+  let current = header.querySelector<HTMLElement>(".abags-v3-title");
+  const legacy = header.querySelector<HTMLHeadingElement>("h2");
+
+  // BagBuilderEngine also writes directly to `.abags-vc-header h2`.
+  // Replace the legacy h2 with an equivalent accessible heading that keeps
+  // the aria-labelledby id but is outside the engine's ownership selector.
+  if (!current && legacy) {
+    const replacement = document.createElement("div");
+    replacement.className = "abags-v3-title";
+    replacement.id = legacy.id || "abags-vc-title";
+    replacement.setAttribute("role", "heading");
+    replacement.setAttribute("aria-level", "2");
+    replacement.textContent = TITLE;
+    legacy.replaceWith(replacement);
+    current = replacement;
+  } else if (legacy && current) {
+    legacy.remove();
+  }
+
+  if (!current) return false;
+  if (!current.id) current.id = "abags-vc-title";
+  current.setAttribute("role", "heading");
+  current.setAttribute("aria-level", "2");
+  if (current.textContent !== TITLE) current.textContent = TITLE;
+  return true;
+}
+
 function syncHeader() {
   const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v3");
   if (!dialog) return false;
   const header = dialog.querySelector<HTMLElement>(".abags-vc-header");
   if (!header) return false;
 
-  const eyebrow = header.querySelector<HTMLElement>(".eyebrow");
-  const title = header.querySelector<HTMLElement>("h2");
-  if (eyebrow && eyebrow.textContent !== EYEBROW) eyebrow.textContent = EYEBROW;
-  if (title && title.textContent !== TITLE) title.textContent = TITLE;
+  const eyebrowOwned = ownEyebrow(header);
+  const titleOwned = ownTitle(header);
 
   const copy = header.querySelector<HTMLElement>(":scope > div");
   if (copy) {
@@ -28,8 +68,8 @@ function syncHeader() {
     if (subtitle.textContent !== SUBTITLE) subtitle.textContent = SUBTITLE;
   }
 
-  dialog.dataset.abagsV3HeaderLocked = "true";
-  return true;
+  if (eyebrowOwned && titleOwned) dialog.dataset.abagsV3HeaderLocked = "true";
+  return eyebrowOwned && titleOwned;
 }
 
 export default function BagBuilderReferenceHeaderGuard() {

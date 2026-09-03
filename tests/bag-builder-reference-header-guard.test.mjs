@@ -4,23 +4,47 @@ import test from "node:test";
 
 const stack = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const guard = fs.readFileSync("app/bag-builder-reference-header-guard.tsx", "utf8");
+const engine = fs.readFileSync("app/bag-builder-engine.tsx", "utf8");
+const fixes = fs.readFileSync("app/bag-builder-reference-ui-fixes.css", "utf8");
 
 test("Reference Layout V3 mounts a dedicated header persistence guard", () => {
   assert.match(stack, /BagBuilderReferenceHeaderGuard/);
   assert.match(stack, /<BagBuilderReferenceLayoutV3 \/>[\s\S]*?<BagBuilderReferenceHeaderGuard \/>/);
 });
 
-test("header guard restores approved copy after React rerenders", () => {
+test("header guard owns approved copy instead of racing the legacy engine selectors", () => {
   assert.match(guard, /A-BAGS VISUAL CUSTOMIZER/);
   assert.match(guard, /Zbuduj swoją torebkę od podstaw/);
   assert.match(guard, /Podgląd na żywo  •  Buduj warstwa po warstwie/);
-  assert.match(guard, /characterData: true/);
+  assert.match(engine, /\.abags-vc-header \.eyebrow/);
+  assert.match(engine, /\.abags-vc-header h2/);
+  assert.match(guard, /classList\.remove\("eyebrow"\)/);
+  assert.match(guard, /classList\.add\("abags-v3-eyebrow"\)/);
+  assert.match(guard, /document\.createElement\("div"\)/);
+  assert.match(guard, /replacement\.setAttribute\("role", "heading"\)/);
+  assert.match(guard, /replacement\.setAttribute\("aria-level", "2"\)/);
+  assert.match(guard, /legacy\.replaceWith\(replacement\)/);
+});
+
+test("V3 heading preserves accessible identity and typography after selector takeover", () => {
+  assert.match(guard, /replacement\.id = legacy\.id \|\| "abags-vc-title"/);
+  assert.match(guard, /current\.id = "abags-vc-title"/);
+  assert.match(fixes, /\.abags-vc-header \.abags-v3-eyebrow/);
+  assert.match(fixes, /\.abags-vc-header \.abags-v3-title/);
+});
+
+test("modal stays above the consent banner without changing the privacy choice", () => {
+  assert.match(fixes, /body\.abags-vc-open \.abags-vc-layer-root/);
+  assert.match(fixes, /z-index:2147483200!important/);
+  assert.doesNotMatch(guard, /privacy-banner/);
+  assert.doesNotMatch(guard, /abags-external-content/);
 });
 
 test("guarded writes avoid a MutationObserver text loop", () => {
-  assert.match(guard, /eyebrow\.textContent !== EYEBROW/);
-  assert.match(guard, /title\.textContent !== TITLE/);
+  assert.match(guard, /current\.textContent !== EYEBROW/);
+  assert.match(guard, /current\.textContent !== TITLE/);
   assert.match(guard, /subtitle\.textContent !== SUBTITLE/);
+  assert.match(guard, /characterData: true/);
 });
 
 test("visual QA can observe an explicit stable-header marker", () => {
