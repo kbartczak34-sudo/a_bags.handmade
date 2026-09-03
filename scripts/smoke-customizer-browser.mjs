@@ -114,6 +114,12 @@ async function main() {
     await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage'))", "persistent realtime preview", true, renderTimeoutMs);
     await waitFor("document.querySelector('.abags-vc-header .eyebrow')?.textContent?.includes('Bag Builder 3.0')", "Bag Builder 3.0 header");
 
+    await waitFor("Boolean(document.querySelector('.abags-ref-step-rail'))", "reference step rail");
+    await waitFor("Boolean(document.querySelector('.abags-ref-layers'))", "active layers panel");
+    await waitFor("Boolean(document.querySelector('.abags-ref-inspirations'))", "inspiration strip");
+    await waitFor("Boolean(document.querySelector('.abags-ref-photo[data-reference-id]'))", "real A-Bags inspiration photographs", true, renderTimeoutMs);
+    await waitFor("Boolean(document.querySelector('.abags-ref-family-photo[data-reference-id]'))", "real A-Bags fason photographs", true, renderTimeoutMs);
+
     const layoutState = await evaluate(`(() => {
       const previewColumn=document.querySelector('.abags-vc-preview-column');
       const mount=document.querySelector('[data-abags-exact-live]');
@@ -125,6 +131,12 @@ async function main() {
     if (!layoutState || layoutState.position !== "sticky") throw new Error(`Realtime preview is not sticky: ${JSON.stringify(layoutState)}`);
 
     const initialSignature = await evaluate("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-builder-signature') || ''");
+
+    const presetApplied = await evaluate(`(() => { const button=document.querySelector('button[data-ref-preset="navy"]'); if(!button)return false; button.click(); return true; })()`);
+    if (!presetApplied) throw new Error("Could not apply the real-photo Navy inspiration preset.");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-family') === 'tote'", "inspiration preset family");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-color') === '#24324D'", "inspiration preset color");
+    await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-handles') === 'wood-light'", "inspiration preset handle");
 
     const choose = async (key, value) => {
       const clicked = await evaluate(`(() => { const button=document.querySelector('[data-builder-key=${JSON.stringify(key)}][data-builder-value=${JSON.stringify(value)}]'); if(!button)return false; button.click(); return true; })()`);
@@ -158,6 +170,7 @@ async function main() {
     await choose("accent", "tassel");
     await waitFor("document.querySelector('.abags-bag-builder-stage')?.getAttribute('data-accent') === 'tassel'", "accent added");
     await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage [data-layer=\"accent\"]'))", "accent layer appears");
+    await waitFor("Boolean(document.querySelector('.abags-ref-layer-row[data-ref-edit-key=" + JSON.stringify("accent") + "]'))", "active layers stay synchronized");
 
     await waitFor("getComputedStyle(document.querySelector('.abags-vc-controls')).display === 'none'", "legacy controls hidden");
     await waitFor("Boolean([...document.querySelectorAll('.abags-builder-actions button')].find((node)=>node.textContent?.includes('Zapisz projekt') && !node.disabled))", "save project enabled");
@@ -177,6 +190,8 @@ async function main() {
       accent:Boolean(document.querySelector('.abags-bag-builder-stage [data-layer="accent"]')),
       previewPosition:getComputedStyle(document.querySelector('.abags-vc-preview-column')).position,
       legacyControlsHidden:getComputedStyle(document.querySelector('.abags-vc-controls')).display==='none',
+      referenceRail:Boolean(document.querySelector('.abags-ref-step-rail')),
+      realReferenceCards:document.querySelectorAll('.abags-ref-photo[data-reference-id]').length,
       workshopLink:Boolean(document.querySelector('.abags-builder-actions a[href]'))
     }))()`);
     console.log("Realtime layered Bag Builder browser smoke passed:", JSON.stringify(result));
