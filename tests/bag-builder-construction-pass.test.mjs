@@ -4,10 +4,12 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer mounts the handbag construction calibration pass", async () => {
+test("live customizer keeps construction calibration out of the visible renderer stack", async () => {
   const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /BagBuilderConstructionPass/);
-  assert.match(source, /<BagBuilderConstructionPass\s*\/>/);
+  assert.match(source, /BagBuilderFidelity3D/);
+  assert.match(source, /<BagBuilderFidelity3D\s*\/>/);
+  assert.doesNotMatch(source, /BagBuilderConstructionPass/);
+  assert.doesNotMatch(source, /<BagBuilderConstructionPass\s*\/>/);
 });
 
 test("construction pass calibrates each fason independently", async () => {
@@ -34,7 +36,7 @@ test("construction details remain attached during rotation and zoom", async () =
   assert.match(source, /viewRef\.current\.zoom/);
 });
 
-test("construction overlay stays visual only and supports both 3D renderers", async () => {
+test("construction overlay remains available as a non-interactive calibration fallback", async () => {
   const css = await read("app/bag-builder-construction-pass.css");
   const layout = await read("app/layout.tsx");
   assert.match(layout, /bag-builder-construction-pass\.css/);
