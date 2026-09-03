@@ -4,29 +4,33 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer uses the calibrated atelier 3D renderer", async () => {
+test("live customizer uses the reference-calibrated fidelity 3D renderer", async () => {
   const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /BagBuilderAtelier3D/);
-  assert.match(source, /<BagBuilderAtelier3D\s*\/>/);
+  assert.match(source, /BagBuilderFidelity3D/);
+  assert.match(source, /<BagBuilderFidelity3D\s*\/>/);
+  assert.doesNotMatch(source, /<BagBuilderAtelier3D\s*\/>/);
 });
 
-test("atelier renderer builds distinct extruded silhouettes instead of one generic shell", async () => {
-  const source = await read("app/bag-builder-atelier3d.tsx");
+test("fidelity renderer builds distinct variable-depth silhouettes instead of one generic extrusion", async () => {
+  const source = await read("app/bag-builder-fidelity3d.tsx");
   assert.match(source, /function familyContour/);
-  assert.match(source, /function makeExtrudedContour/);
+  assert.match(source, /function makeVariableDepthBody/);
+  assert.match(source, /function depthAt/);
+  assert.match(source, /bottomDepth/);
+  assert.match(source, /topDepth/);
   assert.match(source, /family === "tote"/);
   assert.match(source, /family === "round"/);
   assert.match(source, /family === "bucket"/);
-  assert.match(source, /PROFILES/);
+  assert.match(source, /Mini is intentionally wider relative to height/);
   assert.match(source, /flapContour/);
 });
 
-test("atelier renderer keeps realtime 3D interaction and material changes", async () => {
-  const source = await read("app/bag-builder-atelier3d.tsx");
+test("fidelity renderer keeps realtime 3D interaction and material changes", async () => {
+  const source = await read("app/bag-builder-fidelity3d.tsx");
   assert.match(source, /onPointerMove/);
   assert.match(source, /pointers\.current\.size >= 2/);
   assert.match(source, /type="range"/);
-  assert.match(source, /PODGLĄD NA ŻYWO · MODEL ATELIER 3D/);
+  assert.match(source, /MODEL ATELIER 3D · REALNE PROPORCJE/);
   assert.match(source, /uMaterial/);
   assert.match(source, /uRelief/);
   assert.match(source, /config\.handles/);
@@ -35,11 +39,10 @@ test("atelier renderer keeps realtime 3D interaction and material changes", asyn
   assert.match(source, /config\.accent/);
 });
 
-test("calibrated visual polish is loaded after the previous builder layers", async () => {
-  const layout = await read("app/layout.tsx");
-  const css = await read("app/bag-builder-atelier3d.css");
-  assert.match(layout, /bag-builder-atelier3d\.css/);
-  assert.ok(layout.indexOf("bag-builder-atelier3d.css") > layout.indexOf("bag-builder-reference-experience.css"));
-  assert.match(css, /abags-atelier3d-calibrated/);
+test("fidelity polish is loaded through the reference calibration layer", async () => {
+  const calibration = await read("app/bag-builder-reference-calibration.css");
+  const css = await read("app/bag-builder-fidelity3d.css");
+  assert.match(calibration, /@import "\.\/bag-builder-fidelity3d\.css"/);
+  assert.match(css, /abags-fidelity3d-active/);
   assert.match(css, /button\.is-active/);
 });
