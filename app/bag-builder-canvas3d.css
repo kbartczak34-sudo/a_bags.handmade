@@ -1,0 +1,161 @@
+/* Universal software 3D fallback: used when WebGL cannot initialize on the device. */
+.abags-bag-builder-stage.abags-canvas3d-active{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-height:430px!important;
+  background:linear-gradient(180deg,#fffdfb 0%,#fbf4ef 72%,#f0e3db 100%)!important;
+}
+.abags-bag-builder-stage.abags-canvas3d-active>.abags-atelier-v7-layer,
+.abags-bag-builder-stage.abags-canvas3d-active>.abags-photoreal-layer,
+.abags-bag-builder-stage.abags-canvas3d-active>.abags-webgl3d-layer,
+.abags-bag-builder-stage.abags-canvas3d-active>.abags-real3d-layer,
+.abags-bag-builder-stage.abags-canvas3d-active>.abags-pro3d-layer,
+.abags-bag-builder-stage.abags-canvas3d-active>svg{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+.abags-bag-builder-stage.abags-canvas3d-active::before,
+.abags-bag-builder-stage.abags-canvas3d-active::after{display:none!important}
+
+.abags-canvas3d-layer{
+  position:absolute;
+  inset:0 0 38px;
+  z-index:220;
+  overflow:hidden;
+  border-radius:inherit;
+  pointer-events:auto!important;
+  touch-action:none!important;
+  user-select:none;
+  overscroll-behavior:contain;
+}
+.abags-canvas3d-canvas{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  display:block;
+  width:100%;
+  height:100%;
+  pointer-events:auto!important;
+  touch-action:none!important;
+  cursor:grab;
+}
+.abags-canvas3d-canvas:active{cursor:grabbing}
+
+.abags-canvas3d-chip{
+  position:absolute;
+  top:9px;
+  left:50%;
+  z-index:235;
+  transform:translateX(-50%);
+  padding:7px 11px;
+  border:1px solid rgba(90,66,69,.14);
+  border-radius:999px;
+  background:rgba(255,252,249,.96);
+  box-shadow:0 8px 24px rgba(90,66,69,.1);
+  color:#674d53;
+  font:800 7px/1 var(--font-sans);
+  letter-spacing:.08em;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.abags-canvas3d-views{
+  position:absolute;
+  top:42px;
+  right:9px;
+  z-index:240;
+  display:flex;
+  gap:3px;
+  padding:4px;
+  border:1px solid rgba(90,66,69,.14);
+  border-radius:999px;
+  background:rgba(255,252,249,.98);
+  box-shadow:0 8px 22px rgba(90,66,69,.1);
+  pointer-events:auto!important;
+  touch-action:manipulation;
+}
+.abags-canvas3d-views button{
+  min-width:47px;
+  height:35px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#684e54;
+  font:800 7px/1 var(--font-sans);
+  pointer-events:auto!important;
+  touch-action:manipulation;
+  cursor:pointer;
+}
+.abags-canvas3d-views button:active{background:#ecd4d9;transform:scale(.96)}
+
+.abags-canvas3d-zoom{
+  position:absolute;
+  z-index:240;
+  left:8px;
+  right:8px;
+  bottom:8px;
+  display:grid;
+  grid-template-columns:38px minmax(130px,1fr) 38px 54px;
+  gap:7px;
+  align-items:center;
+  padding:7px;
+  border:1px solid rgba(90,66,69,.15);
+  border-radius:999px;
+  background:rgba(255,252,249,.98);
+  box-shadow:0 12px 30px rgba(90,66,69,.13);
+  pointer-events:auto!important;
+  touch-action:manipulation;
+}
+.abags-canvas3d-zoom button{
+  min-width:36px;
+  height:36px;
+  border:0;
+  border-radius:999px;
+  background:#f6e8eb;
+  color:#62484e;
+  font:800 15px/1 var(--font-sans);
+  pointer-events:auto!important;
+  touch-action:manipulation;
+  cursor:pointer;
+}
+.abags-canvas3d-zoom button:active{background:#ecd4d9;transform:scale(.94)}
+.abags-canvas3d-zoom input[type="range"]{
+  width:100%;
+  min-width:130px;
+  height:36px;
+  accent-color:#b87880;
+  pointer-events:auto!important;
+  touch-action:pan-x;
+}
+.abags-canvas3d-zoom .abags-canvas3d-reset{
+  min-width:52px;
+  padding:0 7px;
+  background:#fff;
+  font-size:7px;
+  box-shadow:inset 0 0 0 1px rgba(90,66,69,.13);
+}
+.abags-canvas3d-hint{
+  position:absolute;
+  z-index:230;
+  left:12px;
+  right:12px;
+  bottom:57px;
+  margin:0;
+  text-align:center;
+  color:rgba(90,66,69,.68);
+  font:700 6px/1.35 var(--font-sans);
+  pointer-events:none;
+}
+
+@media(min-width:621px){
+  .abags-canvas3d-layer{inset:0 0 42px}
+  .abags-canvas3d-zoom{left:50%;right:auto;width:min(90%,620px);transform:translateX(-50%)}
+}
+@media(max-width:420px){
+  .abags-bag-builder-stage.abags-canvas3d-active{min-height:420px!important}
+  .abags-canvas3d-views button{min-width:43px;height:34px;font-size:6.5px}
+  .abags-canvas3d-chip{max-width:76%;overflow:hidden;text-overflow:ellipsis}
+  .abags-canvas3d-zoom{grid-template-columns:36px minmax(105px,1fr) 36px 50px;gap:5px}
+  .abags-canvas3d-zoom input[type="range"]{min-width:105px}
+}
