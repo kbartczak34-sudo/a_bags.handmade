@@ -65,13 +65,23 @@ jobs:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
         run: bash scripts/smoke-production.sh
 
-      - name: Browser test realtime personalization
+      - name: Browser test Reference Layout V3 and capture visual QA
         id: customizer
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
-        run: node scripts/smoke-customizer-browser.mjs
+          ABAGS_VISUAL_QA_DIR: artifacts/customizer-v3
+        run: node scripts/smoke-customizer-reference-v3.mjs
+
+      - name: Upload customizer visual QA
+        if: always() && steps.deploy.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: customizer-visual-qa-${{ github.run_number }}
+          path: artifacts/customizer-v3/*.png
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Mobile touch test Pro3D controls
         id: pro3d
@@ -130,7 +140,7 @@ jobs:
       - name: Fail when realtime customizer browser test fails
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.customizer.outcome != 'success'
         run: |
-          echo "Production deployment completed, but the realtime personalization browser test failed." >&2
+          echo "Production deployment completed, but the Reference Layout V3 browser/visual QA failed." >&2
           exit 1
 
       - name: Fail when mobile Pro3D controls fail
