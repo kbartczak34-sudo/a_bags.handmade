@@ -45,6 +45,25 @@ test("V3 accordion labels cannot inherit the legacy rotated chevron transform", 
   assert.match(fixes, /transform:none!important/);
 });
 
+test("V3 legend badges follow seven customer steps instead of raw fieldset numbers", () => {
+  assert.match(fixes, /data-v3-key=\"family\"[^\n]*content:\"01\"!important/);
+  assert.match(fixes, /data-v3-key=\"handles\"[\s\S]*?data-v3-key=\"strap\"[\s\S]*?content:\"05\"!important/);
+  assert.match(fixes, /data-v3-key=\"hardware\"[\s\S]*?data-v3-key=\"accent\"[\s\S]*?content:\"06\"!important/);
+  assert.doesNotMatch(fixes, /data-v3-key=\"accent\"[^\n]*content:\"07\"/);
+});
+
+test("desktop step rail keeps full labels without a horizontal scrollbar", () => {
+  assert.match(fixes, /@media\(min-width:901px\)/);
+  assert.match(fixes, /grid-template-columns:160px minmax\(0,1fr\)!important/);
+  assert.match(fixes, /\.abags-reference-layout-v3 \.abags-ref-step-rail\{[\s\S]*?overflow-x:hidden!important/);
+  assert.match(fixes, /white-space:normal!important/);
+});
+
+test("mobile color choices stay swipeable without the native gray scrollbar", () => {
+  assert.match(fixes, /data-v3-key=\"color\"[^\n]*\.abags-builder-options\{[\s\S]*?scrollbar-width:none!important/);
+  assert.match(fixes, /data-v3-key=\"color\"[^\n]*\.abags-builder-options::\-webkit-scrollbar\{[\s\S]*?display:none!important/);
+});
+
 test("modal stays above the consent banner without changing the privacy choice", () => {
   assert.match(fixes, /body\.abags-vc-open \.abags-vc-layer-root/);
   assert.match(fixes, /z-index:2147483200!important/);
