@@ -21,6 +21,24 @@ test("material pass reacts to the same live construction dimensions", async () =
   assert.match(source, /drawMetalGlints/);
 });
 
+test("A-Bags cord is calibrated as smooth polyester rather than fuzzy cotton yarn", async () => {
+  const source = await read("app/bag-builder-material-pass.tsx");
+  assert.match(source, /POLYESTER_CORD = "pimiotki-polyester"/);
+  assert.match(source, /drawPolyesterSatin/);
+  assert.match(source, /Polyester cord is smooth/);
+  assert.match(source, /data-abags-yarn-material/);
+  assert.match(source, /polyester-cord-v2/);
+  assert.doesNotMatch(source, /for \(let i = 0; i < 170; i \+= 1\)/);
+});
+
+test("polyester highlights follow the live view and light instead of being baked into an image", async () => {
+  const source = await read("app/bag-builder-material-pass.tsx");
+  assert.match(source, /Math\.sin\(view\.ry\)/);
+  assert.match(source, /light\.x/);
+  assert.match(source, /globalCompositeOperation = "screen"/);
+  assert.match(source, /viewRef\.current\.ry/);
+});
+
 test("material pass follows rotation zoom touch and preset views without stealing input", async () => {
   const source = await read("app/bag-builder-material-pass.tsx");
   const css = await read("app/bag-builder-material-pass.css");
