@@ -1,0 +1,129 @@
+/* A-Bags Bag Builder v8 — clean 2D atelier preview.
+   Keeps the live layer-by-layer configurator, but removes the heavy 3D/photo-render treatment. */
+
+/* Flat stage and canvas */
+.abags-bag-builder-stage.abags-v7-active{
+  background:#fffaf7!important;
+}
+.abags-atelier-v7-svg{
+  filter:none!important;
+}
+.abags-atelier-v7-svg>rect:first-of-type{
+  fill:#fffaf7!important;
+}
+.abags-atelier-v7-svg>rect:nth-of-type(2),
+.abags-atelier-v7-svg>path,
+.abags-atelier-v7-svg>ellipse{
+  display:none!important;
+}
+
+/* Remove product-level perspective/shadow filters. */
+.abags-atelier-v7-svg>g[filter*="v7-product-shadow"]{
+  filter:none!important;
+}
+.abags-atelier-v7-svg [filter*="v7-soft-shadow"],
+.abags-atelier-v7-svg [filter*="v7-metal-shadow"]{
+  filter:none!important;
+}
+
+/* Body: readable cord pattern, flat silhouette, no volumetric side/bottom shading. */
+.abags-atelier-v7-svg [data-v7-layer="body"]>g{
+  display:none!important;
+}
+.abags-atelier-v7-svg [data-v7-layer="body"]>path:first-child{
+  stroke-width:5.5!important;
+  stroke-linejoin:round!important;
+}
+.abags-atelier-v7-svg [data-v7-layer="body"]>path:nth-of-type(2){
+  opacity:.28!important;
+  stroke-width:1.6!important;
+}
+.abags-atelier-v7-svg [data-v7-layer="body"]>path:nth-of-type(3){
+  opacity:.18!important;
+  stroke-width:1.4!important;
+}
+
+/* Stitch patterns: less embossed, more illustrative and clearly 2D. */
+.abags-atelier-v7-svg [id^="v7-yarn-"] path:first-of-type{
+  opacity:.22!important;
+  stroke-width:6.5!important;
+}
+.abags-atelier-v7-svg [id^="v7-yarn-"] path:nth-of-type(2){
+  opacity:.38!important;
+  stroke-width:3.8!important;
+}
+.abags-atelier-v7-svg [id^="v7-yarn-"] path:nth-of-type(3){
+  opacity:.95!important;
+  stroke-width:2.8!important;
+}
+.abags-atelier-v7-svg [id^="v7-yarn-"] path:nth-of-type(n+4){
+  opacity:.16!important;
+}
+
+/* Accessories: keep shape/color, remove glossy 3D treatment. */
+.abags-atelier-v7-svg [data-v7-layer="flap"],
+.abags-atelier-v7-svg [data-v7-layer="handles"],
+.abags-atelier-v7-svg [data-v7-layer="strap"],
+.abags-atelier-v7-svg [data-v7-layer="hardware"],
+.abags-atelier-v7-svg [data-v7-layer="accent"],
+.abags-atelier-v7-svg [data-v7-layer="label"]{
+  filter:none!important;
+}
+.abags-atelier-v7-svg [data-v7-layer="flap"]>path:first-child{
+  stroke-width:4!important;
+}
+.abags-atelier-v7-svg [data-v7-layer="handles"] path,
+.abags-atelier-v7-svg [data-v7-layer="strap"] path{
+  filter:none!important;
+}
+
+/* Reduce the visual 'render' feel of highlights while preserving material identity. */
+.abags-atelier-v7-svg [data-v7-layer="handles"] path:nth-of-type(n+3),
+.abags-atelier-v7-svg [data-v7-layer="strap"] path:nth-of-type(n+2){
+  opacity:.24!important;
+}
+.abags-atelier-v7-svg [data-v7-layer="flap"] path:nth-of-type(n+2){
+  opacity:.22!important;
+}
+
+/* Softer, more graphic outline around the bag. */
+.abags-bag-builder-stage.abags-v7-active .abags-atelier-v7-layer{
+  filter:none!important;
+}
+.abags-bag-builder-stage.abags-v7-active::before{
+  content:"PODGLĄD 2D  •  Buduj warstwa po warstwie"!important;
+  box-shadow:none!important;
+  border-color:rgba(90,66,69,.12)!important;
+  background:rgba(255,250,247,.96)!important;
+}
+
+/* The magnified stitch swatch remains useful, but is also flat. */
+.abags-bag-builder-stage.abags-v7-active[data-stitch]:not([data-stitch=""])::after{
+  box-shadow:0 0 0 1px rgba(90,66,69,.12)!important;
+  border-width:2px!important;
+}
+
+/* Keep transitions subtle: this should feel like a configurator, not a 3D render. */
+.abags-atelier-v7-svg [data-v7-layer="handles"],
+.abags-atelier-v7-svg [data-v7-layer="strap"],
+.abags-atelier-v7-svg [data-v7-layer="flap"],
+.abags-atelier-v7-svg [data-v7-layer="accent"]{
+  animation:none!important;
+  transition:opacity .14s ease!important;
+}
+
+@media(max-width:620px){
+  .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview{
+    background:#fffaf7!important;
+    box-shadow:inset 0 0 0 1px rgba(90,66,69,.09)!important;
+  }
+  .abags-atelier-v7-svg{
+    transform:scale(1.02)!important;
+  }
+}
+
+@media(max-width:420px){
+  .abags-atelier-v7-svg{
+    transform:scale(1.035)!important;
+  }
+}
