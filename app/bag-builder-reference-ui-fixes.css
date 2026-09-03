@@ -118,12 +118,16 @@
 }
 
 /* Screenshot-driven polish: the visible badge number follows the seven
- * customer decisions rather than the legacy number of raw fieldsets. */
-.abags-reference-layout-v3 .abags-builder-group legend > span{
+ * customer decisions rather than the legacy number of raw fieldsets. The
+ * data-v3-key selector deliberately outranks the component-injected legend
+ * styles, so only the logical pseudo-number remains visible. */
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key] legend > span{
   font-size:0!important;
+  color:transparent!important;
 }
-.abags-reference-layout-v3 .abags-builder-group legend > span::after{
+.abags-reference-layout-v3 .abags-builder-group[data-v3-key] legend > span::after{
   display:block!important;
+  color:#9a636d!important;
   font-size:9px!important;
   font-weight:800!important;
   line-height:1!important;
