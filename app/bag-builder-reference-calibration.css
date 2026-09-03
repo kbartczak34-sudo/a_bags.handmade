@@ -1,9 +1,9 @@
 @import "./bag-builder-fidelity3d.css";
 
 /*
- * Family proportion calibration derived from the real A-Bags atelier reference library.
- * The same transform is applied to WebGL, software fallback and visual passes so all
- * seams/materials remain registered while the silhouette better matches the product family.
+ * Legacy/fallback family proportion calibration derived from the real A-Bags atelier
+ * reference library. The primary fidelity renderer now owns its proportions in geometry;
+ * these transforms remain for the software fallback and older visual bridge.
  */
 .abags-bag-builder-stage{
   --abags-shape-x:1;
@@ -11,32 +11,39 @@
   --abags-shape-shift-y:0%;
 }
 
-/* Real tote references are a little taller and less box-wide than the original generic shell. */
 .abags-bag-builder-stage[data-family="tote"]{
   --abags-shape-x:.94;
   --abags-shape-y:1.05;
   --abags-shape-shift-y:1%;
 }
 
-/* Real round/shell models keep a compact width but more vertical body volume. */
 .abags-bag-builder-stage[data-family="round"]{
   --abags-shape-x:.90;
   --abags-shape-y:1.08;
   --abags-shape-shift-y:1.5%;
 }
 
-/* Structured/bucket references are tall, with a visually narrower upper construction. */
 .abags-bag-builder-stage[data-family="bucket"]{
   --abags-shape-x:.92;
   --abags-shape-y:1.06;
   --abags-shape-shift-y:1%;
 }
 
-/* The real mini reference is compact and wider relative to its height, not a shrunken bucket. */
 .abags-bag-builder-stage[data-family="mini"]{
   --abags-shape-x:1.14;
   --abags-shape-y:.88;
   --abags-shape-shift-y:4%;
+}
+
+/*
+ * Fidelity3D uses actual contour/depth geometry, so never distort it a second time.
+ * Material and construction passes are calculated from the same family metrics and
+ * therefore remain registered at 1:1 display scale.
+ */
+.abags-bag-builder-stage.abags-fidelity3d-active{
+  --abags-shape-x:1;
+  --abags-shape-y:1;
+  --abags-shape-shift-y:0%;
 }
 
 .abags-bag-builder-stage .abags-pro3d-canvas,
@@ -51,5 +58,10 @@
   .abags-bag-builder-stage[data-family="mini"]{
     --abags-shape-x:1.1;
     --abags-shape-y:.9;
+  }
+  .abags-bag-builder-stage.abags-fidelity3d-active{
+    --abags-shape-x:1;
+    --abags-shape-y:1;
+    --abags-shape-shift-y:0%;
   }
 }
