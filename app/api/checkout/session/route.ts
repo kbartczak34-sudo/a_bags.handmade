@@ -21,6 +21,12 @@ export async function GET(request: Request) {
       return json({ error: "Nie znaleziono zamówienia." }, 404);
     }
 
+    const rawProjectCode = session.metadata?.builder_project_code ?? "";
+    const builderProjectCode = /^AB-[A-Z0-9]{7}$/.test(rawProjectCode) ? rawProjectCode : null;
+    const builderProjectReference = builderProjectCode
+      ? (session.metadata?.cart ?? "").slice(0, 500) || null
+      : null;
+
     return json({
       id: session.id,
       paymentStatus: session.payment_status,
@@ -28,6 +34,8 @@ export async function GET(request: Request) {
       amountTotal: session.amount_total,
       currency: session.currency,
       email: session.customer_details?.email ?? session.customer_email,
+      builderProjectCode,
+      builderProjectReference,
     });
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
