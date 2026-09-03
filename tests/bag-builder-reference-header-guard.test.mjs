@@ -33,6 +33,18 @@ test("V3 heading preserves accessible identity and typography after selector tak
   assert.match(fixes, /\.abags-vc-header \.abags-v3-title/);
 });
 
+test("mobile V3 uses the intended compact app bar instead of overflowing title copy", () => {
+  assert.match(fixes, /@media\(max-width:980px\)/);
+  assert.match(fixes, /\.abags-reference-layout-v3 \.abags-vc-header \.abags-v3-eyebrow/);
+  assert.match(fixes, /font-size:8px!important/);
+  assert.match(fixes, /\.abags-reference-layout-v3 \.abags-vc-header \.abags-v3-title,[\s\S]*?display:none!important/);
+});
+
+test("V3 accordion labels cannot inherit the legacy rotated chevron transform", () => {
+  assert.match(fixes, /\.abags-reference-layout-v3 \.abags-builder-group legend::after/);
+  assert.match(fixes, /transform:none!important/);
+});
+
 test("modal stays above the consent banner without changing the privacy choice", () => {
   assert.match(fixes, /body\.abags-vc-open \.abags-vc-layer-root/);
   assert.match(fixes, /z-index:2147483200!important/);
