@@ -39,9 +39,10 @@ export default function BagBuilderCanvas3DTouchRescue() {
         range.value = String(percent);
         range.setAttribute("aria-valuenow", String(percent));
         reset.textContent = `${percent}%`;
-        canvas.style.transform = `scale(${percent / BASE})`;
-        canvas.style.transformOrigin = "50% 50%";
+        canvas.style.setProperty("transform", `scale(${percent / BASE})`, "important");
+        canvas.style.setProperty("transform-origin", "50% 50%", "important");
         canvas.dataset.abagsTouchZoom = String(percent);
+        layer.dataset.abagsTouchZoom = String(percent);
       };
 
       const consume = (event: Event) => {
@@ -50,25 +51,30 @@ export default function BagBuilderCanvas3DTouchRescue() {
         event.stopImmediatePropagation?.();
       };
 
-      const makeControlHandler = (next: () => number) => (event: Event) => {
+      const trigger = (next: () => number) => (event: Event) => {
         const now = Date.now();
         consume(event);
-        // A mobile tap can emit pointerup, touchend and click. Apply only once.
         if (now - lastControlAction < 180) return;
         lastControlAction = now;
         apply(next());
       };
 
-      const onMinus = makeControlHandler(() => percent - 12);
-      const onPlus = makeControlHandler(() => percent + 12);
-      const onReset = makeControlHandler(() => BASE);
+      const onMinus = trigger(() => percent - 12);
+      const onPlus = trigger(() => percent + 12);
+      const onReset = trigger(() => BASE);
       const onRange = () => apply(Number(range.value));
 
       const bindControl = (button: HTMLButtonElement, handler: (event: Event) => void) => {
+        // touchstart is the most reliable event in Android WebViews and Chrome's
+        // touch emulation; pointer/touch end remain fallbacks for other devices.
+        button.addEventListener("touchstart", handler, { capture: true, passive: false });
+        button.addEventListener("pointerdown", handler, true);
         button.addEventListener("pointerup", handler, true);
         button.addEventListener("touchend", handler, { capture: true, passive: false });
         button.addEventListener("click", handler, true);
         return () => {
+          button.removeEventListener("touchstart", handler, true);
+          button.removeEventListener("pointerdown", handler, true);
           button.removeEventListener("pointerup", handler, true);
           button.removeEventListener("touchend", handler, true);
           button.removeEventListener("click", handler, true);
@@ -116,6 +122,7 @@ export default function BagBuilderCanvas3DTouchRescue() {
         canvas.style.removeProperty("transform");
         canvas.style.removeProperty("transform-origin");
         delete canvas.dataset.abagsTouchZoom;
+        delete layer.dataset.abagsTouchZoom;
       });
     };
 
