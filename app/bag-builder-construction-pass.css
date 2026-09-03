@@ -1,0 +1,47 @@
+/* Construction calibration overlay: seams, gussets, base and attachment points. */
+.abags-construction-pass{
+  position:absolute;
+  inset:0 0 38px;
+  z-index:222;
+  overflow:hidden;
+  border-radius:inherit;
+  pointer-events:none!important;
+  touch-action:none;
+}
+
+.abags-construction-pass-canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  pointer-events:none!important;
+  opacity:.92;
+  mix-blend-mode:normal;
+  filter:contrast(1.02);
+}
+
+.abags-bag-builder-stage.abags-pro3d-active:not(.abags-canvas3d-active) .abags-construction-pass{
+  z-index:122;
+}
+
+.abags-bag-builder-stage.abags-canvas3d-active .abags-construction-pass{
+  z-index:222;
+}
+
+.abags-bag-builder-stage[data-family="round"] .abags-construction-pass-canvas{
+  opacity:.9;
+}
+
+.abags-bag-builder-stage[data-family="bucket"] .abags-construction-pass-canvas{
+  opacity:.94;
+}
+
+@media(max-width:620px){
+  .abags-construction-pass{inset:0 0 36px}
+  .abags-construction-pass-canvas{opacity:.88}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .abags-construction-pass-canvas{filter:none}
+}
