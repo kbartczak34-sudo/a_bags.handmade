@@ -10,6 +10,7 @@ import BagBuilderMaterialPass from "./bag-builder-material-pass";
 import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
 import BagBuilderProjectReview from "./bag-builder-project-review";
 import BagBuilderReferenceExperience from "./bag-builder-reference-experience";
+import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
 export default function ExactLiveCustomizer() {
@@ -26,6 +27,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderCommerce />
     <BagBuilderReferenceExperience />
     <BagBuilderMaterialInfo />
+    <BagBuilderValidationGuard />
     <BagBuilderProjectReview />
   </>;
 }
