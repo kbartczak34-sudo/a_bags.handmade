@@ -1,9 +1,9 @@
+import AtelierBagRendererV7 from "./atelier-bag-renderer-v7";
 import BagBuilderEngine from "./bag-builder-engine";
-import PhotorealBagBuilder from "./photoreal-bag-builder";
 
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
-    <PhotorealBagBuilder />
+    <AtelierBagRendererV7 />
   </>;
 }
