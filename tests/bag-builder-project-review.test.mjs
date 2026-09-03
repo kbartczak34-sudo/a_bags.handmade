@@ -36,6 +36,13 @@ test("complete specification can be copied without enabling incomplete projects"
   assert.match(review, /button\.disabled = !\(config\.family && config\.color && config\.stitch\)/);
 });
 
+test("the same project code is included in the workshop handoff", () => {
+  assert.match(review, /function synchronizeWorkshopLink/);
+  assert.match(review, /Kod projektu:/);
+  assert.match(review, /text\.replace/);
+  assert.match(review, /url\.searchParams\.set\("text", nextText\)/);
+});
+
 test("review keeps pricing individually confirmed by the workshop", () => {
   assert.match(review, /Cena personalizacji: do indywidualnego potwierdzenia przez pracownię/);
   assert.doesNotMatch(review, /optionPrice|previewPrice|surcharge|dopłat|doplat/i);
