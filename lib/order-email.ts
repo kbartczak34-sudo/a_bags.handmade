@@ -21,6 +21,11 @@ function formatAmount(amount: number | null, currency: string | null) {
   }).format(amount / 100);
 }
 
+function readBuilderProjectCode(session: Stripe.Checkout.Session) {
+  const value = session.metadata?.builder_project_code ?? "";
+  return /^AB-[A-Z0-9]{7}$/.test(value) ? value : null;
+}
+
 export async function sendOrderConfirmationEmail(session: Stripe.Checkout.Session) {
   const env = getRuntimeBindings();
   const apiKey = env.RESEND_API_KEY?.trim();
@@ -38,16 +43,24 @@ export async function sendOrderConfirmationEmail(session: Stripe.Checkout.Sessio
   const sellerAddress = config.seller.address || "—";
   const returnsAddress = config.seller.returnsAddress || sellerAddress;
   const nip = config.seller.nip ? `NIP: ${config.seller.nip}` : "";
-  const cartReference = session.metadata?.cart ?? "—";
+  const cartReference = (session.metadata?.cart ?? "—").slice(0, 500);
+  const builderProjectCode = readBuilderProjectCode(session);
+  const personalizedProject = Boolean(builderProjectCode);
 
-  const subject = `Potwierdzenie zamówienia #${orderNumber} · a_bags.handmade`;
+  const subject = builderProjectCode
+    ? `Potwierdzenie projektu ${builderProjectCode} · zamówienie #${orderNumber}`
+    : `Potwierdzenie zamówienia #${orderNumber} · a_bags.handmade`;
+
   const text = [
     "Dziękujemy za zamówienie w a_bags.handmade.",
     "",
     `Numer zamówienia: #${orderNumber}`,
     `Kwota: ${amount}`,
     `Status płatności: ${session.payment_status}`,
-    `Pozycje zamówienia: ${cartReference}`,
+    personalizedProject ? `Kod projektu A-Bags: ${builderProjectCode}` : null,
+    personalizedProject ? "Materiał bazowy: sznurek poliestrowy z Pimiotki" : null,
+    personalizedProject ? `Specyfikacja projektu: ${cartReference}` : `Pozycje zamówienia: ${cartReference}`,
+    personalizedProject ? "Projekt zostanie zrealizowany zgodnie z konfiguracją zapisaną przy płatności." : null,
     "",
     `Sprzedawca: ${sellerName}`,
     `Adres: ${sellerAddress}`,
@@ -64,10 +77,24 @@ export async function sendOrderConfirmationEmail(session: Stripe.Checkout.Sessio
     `Polityka prywatności: ${STORE_URL}/polityka-prywatnosci`,
     `Bezpieczeństwo produktów: ${STORE_URL}/bezpieczenstwo-produktow`,
     "",
-    "Zachowaj tę wiadomość jako potwierdzenie warunków zawartej umowy.",
+    builderProjectCode
+      ? `Zachowaj tę wiadomość oraz kod projektu ${builderProjectCode} jako potwierdzenie zamówionej konfiguracji.`
+      : "Zachowaj tę wiadomość jako potwierdzenie warunków zawartej umowy.",
   ]
-    .filter(Boolean)
+    .filter((line): line is string => Boolean(line))
     .join("\n");
+
+  const personalizedHtml = builderProjectCode
+    ? `
+      <div style="margin:24px 0;padding:18px 20px;border-radius:18px;background:#fff6f3;border:1px solid #ead7d5">
+        <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9b6670">Twój projekt A-Bags</p>
+        <p style="margin:0 0 10px;font-family:Georgia,serif;font-size:24px"><strong>${escapeHtml(builderProjectCode)}</strong></p>
+        <p style="margin:0 0 6px"><strong>Materiał bazowy:</strong> sznurek poliestrowy z Pimiotki</p>
+        <p style="margin:0"><strong>Specyfikacja:</strong> ${escapeHtml(cartReference)}</p>
+        <p style="margin:10px 0 0;font-size:13px;opacity:.78">Projekt zostanie zrealizowany zgodnie z konfiguracją zapisaną przy płatności.</p>
+      </div>
+    `
+    : "";
 
   const html = `
     <div style="font-family:Arial,sans-serif;color:#5a4245;line-height:1.6;max-width:680px;margin:auto">
@@ -77,8 +104,9 @@ export async function sendOrderConfirmationEmail(session: Stripe.Checkout.Sessio
         <tr><td style="padding:8px 0">Numer zamówienia</td><td style="padding:8px 0;text-align:right"><strong>#${escapeHtml(orderNumber)}</strong></td></tr>
         <tr><td style="padding:8px 0">Kwota</td><td style="padding:8px 0;text-align:right"><strong>${escapeHtml(amount)}</strong></td></tr>
         <tr><td style="padding:8px 0">Status płatności</td><td style="padding:8px 0;text-align:right">${escapeHtml(session.payment_status)}</td></tr>
-        <tr><td style="padding:8px 0">Pozycje zamówienia</td><td style="padding:8px 0;text-align:right">${escapeHtml(cartReference)}</td></tr>
+        ${personalizedProject ? "" : `<tr><td style="padding:8px 0">Pozycje zamówienia</td><td style="padding:8px 0;text-align:right">${escapeHtml(cartReference)}</td></tr>`}
       </table>
+      ${personalizedHtml}
       <h2 style="font-family:Georgia,serif;font-weight:500">Sprzedawca</h2>
       <p><strong>${escapeHtml(sellerName)}</strong><br>${escapeHtml(sellerAddress)}${nip ? `<br>${escapeHtml(nip)}` : ""}<br>${escapeHtml(config.seller.email)}<br>${escapeHtml(config.seller.phone)}</p>
       <h2 style="font-family:Georgia,serif;font-weight:500">Prawo odstąpienia i reklamacje</h2>
@@ -90,7 +118,7 @@ export async function sendOrderConfirmationEmail(session: Stripe.Checkout.Sessio
         <a href="${STORE_URL}/polityka-prywatnosci">Polityka prywatności</a> ·
         <a href="${STORE_URL}/bezpieczenstwo-produktow">Bezpieczeństwo produktów</a>
       </p>
-      <p style="font-size:12px;opacity:.75">Zachowaj tę wiadomość jako potwierdzenie warunków zawartej umowy.</p>
+      <p style="font-size:12px;opacity:.75">${builderProjectCode ? `Zachowaj tę wiadomość oraz kod projektu ${escapeHtml(builderProjectCode)} jako potwierdzenie zamówionej konfiguracji.` : "Zachowaj tę wiadomość jako potwierdzenie warunków zawartej umowy."}</p>
     </div>
   `;
 
