@@ -14,11 +14,16 @@ export default defineConfig([
     },
   },
   {
-    files: ["app/bag-builder-webgl3d.tsx", "app/bag-builder-real3d.tsx", "app/bag-builder-pro3d.tsx"],
+    files: [
+      "app/bag-builder-webgl3d.tsx",
+      "app/bag-builder-real3d.tsx",
+      "app/bag-builder-pro3d.tsx",
+      "app/bag-builder-atelier3d.tsx",
+    ],
     rules: {
       // WebGL context creation is an imperative browser bridge. The ready flag is
-      // set only after a real context/program exists so the SVG fallback remains
-      // visible on devices without WebGL.
+      // set only after a real context/program exists so the SVG/canvas fallback
+      // remains available on devices without WebGL.
       "react-hooks/set-state-in-effect": "off",
     },
   },
