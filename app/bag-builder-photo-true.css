@@ -1,0 +1,235 @@
+/* Photo-True Creator V5 — actual A-Bags product photography is the primary renderer.
+   Synthetic 3D remains mounted only as a technical fallback when no real catalog photo exists. */
+
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-bag-builder-stage[data-abags-photo-true="active"]{
+  position:relative!important;
+  isolation:isolate!important;
+  background:
+    radial-gradient(circle at 18% 16%,rgba(255,255,255,.92),transparent 32%),
+    linear-gradient(180deg,#f8eee6 0%,#f2dfd0 72%,#ead4c0 100%)!important;
+}
+
+/* Never redraw a real product underneath the photograph. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-bag-builder-stage[data-abags-photo-true="active"] > svg,
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-bag-builder-stage[data-abags-photo-true="active"] .abags-pro3d-layer,
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-bag-builder-stage[data-abags-photo-true="active"] .abags-canvas3d-layer{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-bag-builder-stage[data-abags-photo-true="active"]::before,
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-bag-builder-stage[data-abags-photo-true="active"]::after{
+  content:none!important;
+  display:none!important;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-builder-preview-status{
+  display:none!important;
+}
+
+.abags-photo-true-stage{
+  position:absolute;
+  inset:0;
+  z-index:240;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  pointer-events:none;
+  background:#f6e9df;
+}
+.abags-photo-true-base,
+.abags-photo-true-overlay{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.abags-photo-true-base{
+  z-index:1;
+  filter:saturate(1.02) contrast(1.01);
+}
+.abags-photo-true-overlay{
+  z-index:2;
+}
+.abags-photo-true-overlay[data-photo-layer="color"]{z-index:3}
+.abags-photo-true-overlay[data-photo-layer="stitch"]{z-index:4}
+.abags-photo-true-overlay[data-photo-layer="flap"]{z-index:5}
+.abags-photo-true-overlay[data-photo-layer="handles"]{z-index:6}
+.abags-photo-true-overlay[data-photo-layer="strap"]{z-index:7}
+.abags-photo-true-overlay[data-photo-layer="hardware"]{z-index:8}
+.abags-photo-true-overlay[data-photo-layer="accent"]{z-index:9}
+
+.abags-photo-true-badge{
+  position:absolute;
+  z-index:20;
+  left:14px;
+  bottom:13px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  max-width:min(70%,420px);
+  padding:7px 10px;
+  border:1px solid rgba(90,66,69,.10);
+  border-radius:999px;
+  background:rgba(255,252,249,.91);
+  color:#5d454b;
+  box-shadow:0 8px 24px rgba(69,47,51,.08);
+  backdrop-filter:blur(10px);
+}
+.abags-photo-true-badge strong{font:850 6px/1 var(--font-sans);letter-spacing:.12em;white-space:nowrap}
+.abags-photo-true-badge span{overflow:hidden;text-overflow:ellipsis;font:650 6px/1 var(--font-sans);white-space:nowrap}
+
+.abags-photo-true-note{
+  position:absolute;
+  z-index:21;
+  right:14px;
+  bottom:13px;
+  display:grid;
+  gap:2px;
+  max-width:42%;
+  padding:7px 9px;
+  border:1px solid rgba(142,101,82,.12);
+  border-radius:10px;
+  background:rgba(255,248,239,.92);
+  color:#785e57;
+  box-shadow:0 8px 22px rgba(75,48,40,.06);
+  backdrop-filter:blur(10px);
+}
+.abags-photo-true-note strong{font:800 5.8px/1.2 var(--font-sans)}
+.abags-photo-true-note span{font:600 5.2px/1.3 var(--font-sans)}
+
+/* V5 replaces the four synthetic family silhouettes with every real photographed store model. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-builder-group[data-photo-true-family-group="true"] > .abags-builder-options{
+  display:none!important;
+}
+.abags-photo-models-mount{width:100%;min-width:0}
+.abags-vc-dialog.abags-reference-layout-v4[data-v4-step]:not([data-v4-step="1"]) .abags-photo-models-mount{
+  display:none!important;
+}
+.abags-photo-models{
+  display:grid;
+  gap:7px;
+  width:100%;
+  padding:0 0 8px;
+}
+.abags-photo-models-head{
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 2px;
+}
+.abags-photo-models-head>div{display:grid;gap:2px;min-width:0}
+.abags-photo-models-head strong{font:800 6.5px/1.15 var(--font-sans);color:#513b40}
+.abags-photo-models-head small{font:600 5.3px/1.2 var(--font-sans);color:#9c858a}
+.abags-photo-models-head>span{
+  display:grid;
+  place-items:center;
+  min-width:24px;
+  height:20px;
+  padding:0 6px;
+  border-radius:999px;
+  background:#f3e1e4;
+  color:#9b626d;
+  font:800 6px/1 var(--font-sans);
+}
+.abags-photo-models-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  max-height:318px;
+  overflow:auto;
+  padding:1px 2px 2px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(154,99,109,.25) transparent;
+}
+.abags-photo-models-grid button{
+  min-width:0;
+  display:grid;
+  grid-template-rows:88px auto;
+  gap:5px;
+  padding:5px;
+  overflow:hidden;
+  border:1px solid rgba(90,66,69,.10);
+  border-radius:11px;
+  background:#fff;
+  color:#5b4348;
+  text-align:left;
+  cursor:pointer;
+  transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.abags-photo-models-grid button:hover{transform:translateY(-1px);border-color:#cf919b}
+.abags-photo-models-grid button.is-active{
+  border-color:#c77f8b;
+  box-shadow:0 0 0 2px rgba(199,127,139,.13),0 8px 18px rgba(90,66,69,.07);
+}
+.abags-photo-model-thumb{
+  display:block;
+  width:100%;
+  height:88px;
+  overflow:hidden;
+  border-radius:8px;
+  background:#f6ece5;
+}
+.abags-photo-model-thumb img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.abags-photo-model-copy{display:grid;gap:2px;min-width:0;padding:0 1px 2px}
+.abags-photo-model-copy strong{overflow:hidden;text-overflow:ellipsis;font:800 6.3px/1.15 var(--font-sans);white-space:nowrap}
+.abags-photo-model-copy small{display:-webkit-box;overflow:hidden;color:#9b8186;font:600 5px/1.2 var(--font-sans);-webkit-box-orient:vertical;-webkit-line-clamp:2}
+
+/* An option without a photographic overlay remains selectable for the written project,
+   but it is visually identified as not yet previewable instead of being synthetically faked. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-builder-key][data-photo-exact="false"]{
+  opacity:.62!important;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-builder-key][data-photo-exact="true"]{
+  opacity:1!important;
+}
+
+@media(max-width:980px){
+  .abags-photo-true-badge{
+    left:9px;
+    bottom:8px;
+    max-width:58%;
+    padding:5px 7px;
+  }
+  .abags-photo-true-badge strong{font-size:5.2px}
+  .abags-photo-true-badge span{font-size:5px}
+  .abags-photo-true-note{
+    right:9px;
+    bottom:8px;
+    max-width:38%;
+    padding:5px 7px;
+  }
+  .abags-photo-true-note strong{font-size:5px}
+  .abags-photo-true-note span{display:none}
+
+  .abags-photo-models{gap:5px;padding-bottom:6px}
+  .abags-photo-models-head strong{font-size:6px}
+  .abags-photo-models-head small{font-size:4.8px}
+  .abags-photo-models-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+    max-height:208px;
+    scrollbar-width:none;
+  }
+  .abags-photo-models-grid::-webkit-scrollbar{display:none}
+  .abags-photo-models-grid button{
+    grid-template-rows:60px auto;
+    min-height:88px;
+    padding:4px;
+    border-radius:9px;
+  }
+  .abags-photo-model-thumb{height:60px;border-radius:7px}
+  .abags-photo-model-copy strong{font-size:5.8px}
+  .abags-photo-model-copy small{font-size:4.6px;-webkit-line-clamp:1}
+}
+
+@media(max-width:420px){
+  .abags-photo-models-grid{max-height:194px}
+  .abags-photo-models-grid button{grid-template-rows:56px auto;min-height:83px}
+  .abags-photo-model-thumb{height:56px}
+}
