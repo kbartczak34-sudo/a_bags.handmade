@@ -1,15 +1,16 @@
 "use client";
 
-import BagBuilderCanvas3D from "./bag-builder-canvas3d";
+import BagBuilderPremiumCanvas3D from "./bag-builder-premium-canvas3d";
 import BagBuilderCanvas3DTouchRescue from "./bag-builder-canvas3d-touch-rescue";
 
 export default function BagBuilderRendererFallback() {
   return <>
-    <BagBuilderCanvas3D />
+    <BagBuilderPremiumCanvas3D />
     <BagBuilderCanvas3DTouchRescue />
     <style jsx global>{`
-      /* Fidelity3D remains the primary renderer. Canvas3D is rendered only when
-         BagBuilderCanvas3D marks the stage as its active software fallback. */
+      /* Fidelity3D remains primary where WebGL is genuinely available. On constrained
+         Android/WebView/headless environments the premium photo-textured canvas is
+         the deterministic software renderer. */
       .abags-target-layout-v2 .abags-bag-builder-stage.abags-canvas3d-active:not(.abags-pro3d-active) > .abags-canvas3d-layer {
         display: block !important;
         opacity: 1 !important;
