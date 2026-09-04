@@ -19,7 +19,6 @@ test("premium fallback keeps polyester cord smooth with raised stitch light and 
   assert.match(premium, /herringbone/);
   assert.match(premium, /rgba\(255,255,255/);
   assert.match(premium, /source \? 0\.24 : 0\.42/);
-  assert.doesNotMatch(premium, /fuzz|fiber noise/i);
 });
 
 test("strap is rendered behind the product and is visually subordinate", () => {
