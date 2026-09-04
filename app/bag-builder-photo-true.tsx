@@ -140,6 +140,42 @@ function clickLegacyFamily(family: string) {
   button?.click();
 }
 
+function anchorPhotoModelsMount(familyGroup: HTMLElement, target: HTMLElement) {
+  const legend = familyGroup.querySelector<HTMLElement>(":scope > legend");
+
+  // The real product selector is part of the Fason step itself. Keep it as the
+  // first real element after the legend instead of appending it after legacy
+  // compatibility children whose old layout rules can create a large blank gap.
+  if (legend) {
+    if (legend.nextElementSibling !== target) legend.insertAdjacentElement("afterend", target);
+  } else if (familyGroup.firstElementChild !== target) {
+    familyGroup.prepend(target);
+  }
+
+  familyGroup.dataset.photoTrueDomOrder = "anchored";
+  target.dataset.photoModelsAnchor = "after-legend";
+
+  // Runtime V3/V4 styles are inserted after static stylesheets. These local
+  // declarations make the Photo-True fieldset authoritative without changing
+  // any other builder step or removing the hidden compatibility controls.
+  familyGroup.style.setProperty("display", "block", "important");
+  familyGroup.style.setProperty("height", "auto", "important");
+  familyGroup.style.setProperty("min-height", "0", "important");
+  familyGroup.style.setProperty("max-height", "none", "important");
+  familyGroup.style.setProperty("flex", "0 0 auto", "important");
+  familyGroup.style.setProperty("align-self", "flex-start", "important");
+  familyGroup.style.setProperty("align-content", "start", "important");
+  familyGroup.style.setProperty("justify-content", "flex-start", "important");
+
+  target.style.setProperty("position", "static", "important");
+  target.style.setProperty("display", "block", "important");
+  target.style.setProperty("height", "auto", "important");
+  target.style.setProperty("min-height", "0", "important");
+  target.style.setProperty("margin", "0", "important");
+  target.style.setProperty("transform", "none", "important");
+  target.style.setProperty("align-self", "start", "important");
+}
+
 export default function BagBuilderPhotoTrue() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [stage, setStage] = useState<HTMLElement | null>(null);
@@ -181,8 +217,8 @@ export default function BagBuilderPhotoTrue() {
         target = document.createElement("div");
         target.dataset.photoTrueModelsMount = "true";
         target.className = "abags-photo-models-mount";
-        familyGroup.appendChild(target);
       }
+      anchorPhotoModelsMount(familyGroup, target);
       setMount((current) => current === target ? current : target);
       setStage((current) => current === nextStage ? current : nextStage);
       setConfig((current) => {
