@@ -13,13 +13,13 @@ test("truth layer runs after Photo-True and its structural flow guard", () => {
 
 test("no-change optional choices are treated as the photographic base, not missing overlays", () => {
   for (const value of ["flap:none", "handles:none", "strap:none", "accent:none"]) {
-    assert.match(truth, new RegExp(value.replace(":", ":")));
+    assert.match(truth, new RegExp(value));
   }
   assert.match(truth, /const status = isBase \? "base" : isExact \? "exact" : "written"/);
 });
 
 test("preview fidelity is explicit without claiming manufacturability", () => {
-  assert.match(truth, /data\.photoPreviewLabel = status === "base" \? "BAZA" : status === "exact" \? "1:1" : "BEZ 1:1"/);
+  assert.match(truth, /button\.dataset\.photoPreviewLabel = status === "base" \? "BAZA" : status === "exact" \? "1:1" : "BEZ 1:1"/);
   assert.match(truth, /Wariant zostanie zapisany w projekcie/);
   assert.match(truth, /Zdjęcie nie będzie sztucznie domalowywane/);
   assert.doesNotMatch(truth, /niedostępn|niemożliw|nie można wykonać/i);
@@ -34,7 +34,12 @@ test("option fidelity is available to sighted and assistive-technology users", (
 });
 
 test("written-only variants stay selectable and fully legible", () => {
-  assert.match(styles, /data-photo-preview-status="written"[\s\S]*?opacity:1!important/);
-  assert.doesNotMatch(styles, /pointer-events:none/);
+  const writtenRule = styles.match(/button\[data-photo-preview-status="written"\]\{([^}]*)\}/s)?.[1] ?? "";
+  assert.match(writtenRule, /opacity:1!important/);
+  assert.match(writtenRule, /border-style:dashed!important/);
+  assert.doesNotMatch(writtenRule, /pointer-events\s*:\s*none/);
   assert.doesNotMatch(truth, /disabled\s*=/);
+
+  // The decorative badge itself must not intercept taps; this does not disable the button.
+  assert.match(styles, /button\[data-photo-preview-status\]::after\{[\s\S]*?pointer-events:none;[\s\S]*?\}/);
 });
