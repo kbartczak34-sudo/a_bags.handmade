@@ -127,9 +127,15 @@ async function main() {
       const base=d?.querySelector('.abags-photo-true-base');
       const photo=d?.querySelector('.abags-photo-true-stage');
       if(!d||!s||!base||!photo)return null;
-      const visibleSynthetic=[...s.querySelectorAll(':scope > svg,.abags-pro3d-layer,.abags-canvas3d-layer')].filter((node)=>{
-        const st=getComputedStyle(node); return st.display!=='none' && st.visibility!=='hidden' && Number(st.opacity||1)>.05;
-      }).length;
+      const isVisible=(node)=>{
+        if(!node)return false;
+        const st=getComputedStyle(node),r=node.getBoundingClientRect();
+        return st.display!=='none' && st.visibility!=='hidden' && Number(st.opacity||1)>.05 && r.width>1 && r.height>1;
+      };
+      const visibleSynthetic=[...s.querySelectorAll(':scope > svg,.abags-pro3d-layer,.abags-canvas3d-layer')].filter(isVisible).length;
+      const visibleLegacyFamilyOptions=[...d.querySelectorAll('button[data-builder-key="family"]')].filter(isVisible).length;
+      const legacyInspirationsVisible=isVisible(d.querySelector('.abags-ref-inspirations'));
+      const legacyFamilyLayerVisible=isVisible(d.querySelector('[data-ref-edit-key="family"]'));
       return {
         ready:photo.dataset.photoTrueReady==='true',
         productId:s.dataset.photoProductId||'',
@@ -139,6 +145,9 @@ async function main() {
         modelCount:d.querySelectorAll('[data-photo-product-choice]').length,
         selectedCount:d.querySelectorAll('[data-photo-product-choice][aria-pressed="true"]').length,
         visibleSynthetic,
+        visibleLegacyFamilyOptions,
+        legacyInspirationsVisible,
+        legacyFamilyLayerVisible,
         note:Boolean(d.querySelector('.abags-photo-true-note')),
       };
     })()`);
@@ -162,24 +171,30 @@ async function main() {
       return switched;
     };
 
+    const assertPhotoTrueContract = (value, label) => {
+      if (!value?.ready || !value.baseLoaded || !value.productId || value.productId !== value.dialogProductId || value.modelCount < 1 || value.selectedCount !== 1 || value.visibleSynthetic !== 0 || value.visibleLegacyFamilyOptions !== 0 || value.legacyInspirationsVisible || value.legacyFamilyLayerVisible) {
+        throw new Error(`${label} Photo-True contract mismatch: ${JSON.stringify(value)}`);
+      }
+    };
+
     await send("Runtime.enable");
     await send("Page.enable");
 
-    // Desktop: actual store photo, real model cards, no visible synthetic renderer.
+    // Desktop: actual store photo, real model cards, no visible synthetic/legacy model UI.
     await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await send("Page.reload", { ignoreCache: true });
     await waitFor("document.readyState === 'complete'", "desktop document load");
     await openPhotoTrue();
     await selectStepOne();
     const desktopBefore = await contract();
-    if (!desktopBefore?.ready || !desktopBefore.baseLoaded || !desktopBefore.productId || desktopBefore.productId !== desktopBefore.dialogProductId || desktopBefore.modelCount < 1 || desktopBefore.selectedCount !== 1 || desktopBefore.visibleSynthetic !== 0) {
-      throw new Error(`Desktop Photo-True contract mismatch: ${JSON.stringify(desktopBefore)}`);
-    }
+    assertPhotoTrueContract(desktopBefore, "Desktop");
     const desktopSwitch = await switchModel();
     const desktopAfter = await contract();
+    assertPhotoTrueContract(desktopAfter, "Desktop after model switch");
     const desktopBytes = await capture("customizer-desktop-v5-photo-true.png");
 
-    // Mobile: fresh real 390x844 viewport and the same photo-first contract.
+    // Mobile: real 390x844 viewport. The cleaned Photo-True layout intentionally uses
+    // a 50px app bar and a compact ~260px photographic preview before the real-model grid.
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     await send("Page.reload", { ignoreCache: true });
@@ -203,28 +218,20 @@ async function main() {
       };
     })()`);
     const mobileContract = await contract();
-    if (!mobile || mobile.width < 388 || mobile.width > 392 || mobile.height < 840 || Math.abs(mobile.top) > 2 || Math.abs(mobile.left) > 2 || mobile.headerHeight < 48 || mobile.headerHeight > 56 || mobile.previewTop < 45 || mobile.previewTop > 75 || mobile.previewHeight < 300 || mobile.gridDisplay !== "grid" || mobile.gridColumns.split(" ").length < 3 || !mobile.baseLoaded || mobile.scrollY !== 0) {
-      throw new Error(`Mobile Photo-True layout mismatch: ${JSON.stringify(mobile)}`);
+    const mobileColumnCount = mobile?.gridColumns?.split(/\s+/).filter(Boolean).length || 0;
+    if (!mobile || mobile.width < 388 || mobile.width > 392 || mobile.height < 840 || mobile.height > 848 || Math.abs(mobile.top) > 2 || Math.abs(mobile.left) > 2 || mobile.headerHeight < 48 || mobile.headerHeight > 56 || mobile.previewTop < 48 || mobile.previewTop > 58 || mobile.previewHeight < 240 || mobile.previewHeight > 285 || mobile.gridDisplay !== "grid" || mobileColumnCount < 3 || !mobile.baseLoaded || mobile.scrollY !== 0) {
+      throw new Error(`Mobile Photo-True layout mismatch: ${JSON.stringify({ ...mobile, mobileColumnCount })}`);
     }
-    if (!mobileContract?.ready || mobileContract.visibleSynthetic !== 0 || mobileContract.modelCount < 1 || mobileContract.selectedCount !== 1) {
-      throw new Error(`Mobile Photo-True renderer mismatch: ${JSON.stringify(mobileContract)}`);
-    }
+    assertPhotoTrueContract(mobileContract, "Mobile");
     const mobileSwitch = await switchModel();
+    const mobileAfter = await contract();
+    assertPhotoTrueContract(mobileAfter, "Mobile after model switch");
     const mobileBytes = await capture("customizer-mobile-v5-photo-true.png");
 
     console.log("Photo-True V5 production acceptance passed:", JSON.stringify({
-      desktopBefore, desktopAfter, desktopSwitch, mobile, mobileContract, mobileSwitch,
+      desktopBefore, desktopAfter, desktopSwitch, mobile, mobileContract, mobileAfter, mobileSwitch,
       desktopScreenshotBytes: desktopBytes, mobileScreenshotBytes: mobileBytes, screenshots: Boolean(outputDir),
     }));
-  } catch (error) {
-    try {
-      const shot = await (async () => {
-        // Best-effort failure capture uses a temporary second connection command only when the page is alive.
-        return null;
-      })();
-      void shot;
-    } catch {}
-    throw error;
   } finally {
     try { socket?.close(); } catch {}
     chrome.kill("SIGTERM");
