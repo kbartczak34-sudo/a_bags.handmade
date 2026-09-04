@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [stack, gate, engine, productionQa, workflow] = await Promise.all([
+const [stack, gate, engine, customerCss, productionQa, workflow] = await Promise.all([
   readFile(new URL("../app/exact-live-customizer.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-photo-true-gate.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-engine.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/bag-builder-customer-realtime.css", import.meta.url), "utf8"),
   readFile(new URL("../scripts/smoke-customizer-realtime.mjs", import.meta.url), "utf8"),
   readFile(new URL("../.github/workflows/deploy-cloudflare.yml", import.meta.url), "utf8"),
 ]);
@@ -27,6 +28,19 @@ test("new bag builder starts from an empty construction and builds decisions liv
   assert.match(engine, /data-stitch=\{config\.stitch\}/);
   assert.match(engine, /onClick=\{\(\) => onChange\(option\.value\)\}/);
   assert.match(engine, /Pusty podgląd konfiguratora/);
+  assert.match(engine, /data-layer="body"/);
+});
+
+test("customer realtime SVG is loaded last and cannot be hidden by a blank experimental renderer", () => {
+  const mobileCss = stack.indexOf('import "./bag-builder-mobile-shell-fix.css"');
+  const customerRendererCss = stack.indexOf('import "./bag-builder-customer-realtime.css"');
+  assert.ok(mobileCss >= 0 && customerRendererCss > mobileCss);
+  assert.match(customerCss, /:not\(\[data-abags-photo-true="active"\]\)[\s\S]*\.abags-bag-builder-stage > svg/);
+  assert.match(customerCss, /opacity:1!important/);
+  assert.match(customerCss, /visibility:visible!important/);
+  assert.match(customerCss, /\.abags-pro3d-layer/);
+  assert.match(customerCss, /\.abags-canvas3d-layer/);
+  assert.match(customerCss, /display:none!important/);
 });
 
 test("production acceptance exercises the customer realtime builder instead of only Photo-True reference mode", () => {
