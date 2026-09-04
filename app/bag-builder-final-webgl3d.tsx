@@ -58,10 +58,11 @@ const EMPTY: Config = {
   accent: "none",
 };
 
-const DEFAULT_ROTATION = { x: -0.08, y: 0.55 };
-const DEFAULT_ZOOM = 0.88;
+const DEFAULT_ROTATION = { x: -0.07, y: 0.46 };
+const DEFAULT_ZOOM = 0.94;
 const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 1.38;
+const MAX_ZOOM = 1.42;
+const RENDERER_VERSION = "abags-fidelity-v3";
 
 const VERTEX = `
 attribute vec3 aPosition;
@@ -90,42 +91,97 @@ uniform vec3 uColor;
 uniform float uStitch;
 uniform float uMaterial;
 uniform vec3 uLight;
-float stitchPattern(vec2 uv,float mode){
-  if(mode<.5){
-    return .76+.14*sin((uv.x*.9+uv.y)*82.0)+.06*sin(uv.x*164.0);
-  }
-  if(mode<1.5){
-    vec2 p=fract(uv*vec2(13.0,15.0));
-    float a=1.0-smoothstep(.06,.25,abs(p.x-p.y));
-    float b=1.0-smoothstep(.06,.25,abs(1.0-p.x-p.y));
-    return .7+.25*max(a,b);
-  }
-  if(mode<2.5){
-    vec2 p=fract(uv*12.0);
-    float x=1.0-smoothstep(.09,.3,abs(p.x-.5));
-    float y=1.0-smoothstep(.09,.3,abs(p.y-.5));
-    return .7+.24*max(x,y);
-  }
-  return .76+.16*sin(uv.x*48.0+sin(uv.y*27.0)*3.0)+.06*sin(uv.y*54.0);
+
+float yarnFibres(vec2 uv){
+  float a=sin((uv.x*.72+uv.y)*430.0);
+  float b=sin((uv.x-uv.y*.42)*690.0);
+  return .965+.018*a+.012*b;
 }
+
+float cord(float d,float width){
+  return 1.0-smoothstep(width,width*1.85,d);
+}
+
+float stitchPattern(vec2 uv,float mode){
+  vec2 tile;
+  float raised=0.0;
+  float shadow=0.0;
+
+  if(mode<.5){
+    // A-Bags: ażurowy V — alternating diagonal cords with an open centre.
+    tile=fract(uv*vec2(10.0,11.0));
+    float left=abs(tile.x-(.5-.54*abs(tile.y-.5)));
+    float right=abs(tile.x-(.5+.54*abs(tile.y-.5)));
+    raised=max(cord(left,.075),cord(right,.075));
+    shadow=1.0-smoothstep(.12,.27,abs(tile.x-.5));
+    return (.73+.30*raised-.08*shadow)*yarnFibres(uv);
+  }
+
+  if(mode<1.5){
+    // A-Bags: pionowy ażurowy — vertical posts joined by compact V bridges.
+    tile=fract(uv*vec2(12.0,10.0));
+    float post=cord(abs(tile.x-.5),.105);
+    float bridgeA=cord(abs((tile.x-.5)-(.34*(tile.y-.5))),.075);
+    float bridgeB=cord(abs((tile.x-.5)+(.34*(tile.y-.5))),.075);
+    float bridge=max(bridgeA,bridgeB)*(1.0-smoothstep(.28,.47,abs(tile.y-.5)));
+    float opening=(1.0-post)*(1.0-bridge);
+    return (.72+.28*max(post,bridge)-.055*opening)*yarnFibres(uv);
+  }
+
+  if(mode<2.5){
+    // A-Bags: koszykowy — paired bands with an alternating over/under rhythm.
+    tile=fract(uv*vec2(8.0,8.0));
+    float vx=max(cord(abs(tile.x-.34),.115),cord(abs(tile.x-.66),.115));
+    float hy=max(cord(abs(tile.y-.34),.115),cord(abs(tile.y-.66),.115));
+    float parity=mod(floor(uv.x*8.0)+floor(uv.y*8.0),2.0);
+    float over=mix(hy,vx,parity);
+    float under=mix(vx,hy,parity);
+    return (.72+.27*over+.10*under)*yarnFibres(uv);
+  }
+
+  // A-Bags: promienisty — repeated crochet fans/scallops rather than waves.
+  tile=fract(uv*vec2(8.5,8.0));
+  vec2 fan=vec2(tile.x-.5,tile.y-.18);
+  float radius=length(vec2(fan.x*1.18,fan.y));
+  float arc=cord(abs(radius-.42),.065)*step(0.0,fan.y);
+  float spoke1=cord(abs(fan.x),.055)*step(.02,fan.y);
+  float spoke2=cord(abs(fan.x-fan.y*.48),.055)*step(.02,fan.y);
+  float spoke3=cord(abs(fan.x+fan.y*.48),.055)*step(.02,fan.y);
+  raised=max(arc,max(spoke1,max(spoke2,spoke3)));
+  return (.74+.27*raised)*yarnFibres(uv);
+}
+
 void main(){
   vec3 n=normalize(vNormal);
   vec3 l=normalize(uLight);
-  vec3 v=normalize(vec3(0.0,.15,5.0)-vWorld);
+  vec3 v=normalize(vec3(0.0,.10,5.8)-vWorld);
   vec3 h=normalize(l+v);
   float diffuse=max(dot(n,l),0.0);
-  float rim=pow(1.0-max(dot(n,v),0.0),2.2);
+  float fill=max(dot(n,normalize(vec3(.6,.35,.8))),0.0);
+  float rim=pow(1.0-max(dot(n,v),0.0),2.4);
   float detail=1.0;
-  float rough=.88;
+  float rough=.9;
   float metallic=0.0;
-  if(uMaterial<.5){detail=stitchPattern(vUv,uStitch);rough=.9;}
-  else if(uMaterial<1.5){detail=.88+.1*sin(vUv.y*90.0);rough=.42;}
-  else if(uMaterial<2.5){detail=1.0;rough=.13;metallic=.92;}
-  else{detail=.82+.13*sin(vUv.x*42.0)*sin(vUv.y*31.0);rough=.72;}
-  float specular=pow(max(dot(n,h),0.0),mix(82.0,10.0,rough))*mix(.12,.92,metallic);
+
+  if(uMaterial<.5){
+    detail=stitchPattern(vUv,uStitch);
+    rough=.94;
+  }else if(uMaterial<1.5){
+    detail=(.88+.08*sin(vUv.y*75.0))*yarnFibres(vUv*.45);
+    rough=.48;
+  }else if(uMaterial<2.5){
+    detail=1.0;
+    rough=.14;
+    metallic=.9;
+  }else{
+    detail=.91+.07*sin(vUv.x*33.0)*sin(vUv.y*29.0);
+    rough=.75;
+  }
+
+  float specular=pow(max(dot(n,h),0.0),mix(76.0,11.0,rough))*mix(.11,.88,metallic);
   vec3 base=uColor*detail;
-  vec3 lit=base*(.32+.78*diffuse)+vec3(specular)+base*.09*(1.0-diffuse)+base*.09*rim;
-  gl_FragColor=vec4(pow(lit,vec3(.96)),1.0);
+  vec3 lit=base*(.38+.65*diffuse+.16*fill)+vec3(specular)+base*.07*rim;
+  gl_FragColor=vec4(pow(max(lit,vec3(0.0)),vec3(.96)),1.0);
 }`;
 
 function readConfig(stage: HTMLElement): Config {
@@ -200,34 +256,25 @@ function scale(x: number, y: number, z: number) {
 
 function rotX(angle: number) {
   const out = identity();
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
-  out[5] = cosine;
-  out[6] = sine;
-  out[9] = -sine;
-  out[10] = cosine;
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  out[5] = c; out[6] = s; out[9] = -s; out[10] = c;
   return out;
 }
 
 function rotY(angle: number) {
   const out = identity();
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
-  out[0] = cosine;
-  out[2] = -sine;
-  out[8] = sine;
-  out[10] = cosine;
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  out[0] = c; out[2] = -s; out[8] = s; out[10] = c;
   return out;
 }
 
 function rotZ(angle: number) {
   const out = identity();
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
-  out[0] = cosine;
-  out[1] = sine;
-  out[4] = -sine;
-  out[5] = cosine;
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  out[0] = c; out[1] = s; out[4] = -s; out[5] = c;
   return out;
 }
 
@@ -249,52 +296,83 @@ function perspective(fov: number, aspect: number, near: number, far: number) {
   return out;
 }
 
-function familyContour(family: Exclude<Family, "">): Point[] {
-  if (family === "tote") return [[-1.02, -.82], [1.02, -.82], [.93, .82], [-.93, .82]];
-  if (family === "bucket") return [[-.78, -.9], [.78, -.9], [.96, .77], [-.96, .77]];
-  if (family === "mini") return [[-.75, -.66], [.75, -.66], [.79, .5], [.58, .72], [-.58, .72], [-.79, .5]];
-  return Array.from({ length: 28 }, (_, index) => {
-    const angle = (index / 28) * Math.PI * 2;
-    return [Math.cos(angle) * .92, Math.sin(angle) * .9] as Point;
+function superellipseContour(rx: number, ry: number, power: number, count = 48, taper = 0): Point[] {
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2;
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const exponent = 2 / power;
+    const y = Math.sign(s) * ry * Math.pow(Math.abs(s), exponent);
+    const baseX = Math.sign(c) * rx * Math.pow(Math.abs(c), exponent);
+    const normalizedY = y / ry;
+    const widthScale = 1 + taper * normalizedY;
+    return [baseX * widthScale, y] as Point;
   });
 }
 
-function extrudedPolygon(contour: Point[], depth: number) {
+function familyContour(family: Exclude<Family, "">): Point[] {
+  if (family === "tote") return superellipseContour(1.02, .79, 4.6, 52, -.055);
+  if (family === "round") return superellipseContour(.88, .89, 2.08, 56, 0);
+  if (family === "bucket") return superellipseContour(.84, .83, 4.4, 52, -.045);
+  return superellipseContour(.76, .64, 5.4, 52, -.025);
+}
+
+function scaledContour(contour: Point[], factor: number): Point[] {
+  return contour.map(([x, y]) => [x * factor, y * factor]);
+}
+
+function pushTriangle(
+  positions: number[],
+  normals: number[],
+  uvs: number[],
+  a: [number, number, number],
+  b: [number, number, number],
+  c: [number, number, number],
+  normal: [number, number, number],
+) {
+  for (const point of [a, b, c]) {
+    positions.push(...point);
+    normals.push(...normal);
+    uvs.push(point[0] * .5 + .5, point[1] * .5 + .5);
+  }
+}
+
+function beveledExtrusion(contour: Point[], depth: number, bevel = .055) {
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
   const half = depth / 2;
-  const push = (point: Point, z: number, normal: [number, number, number]) => {
-    positions.push(point[0], point[1], z);
-    normals.push(...normal);
-    uvs.push(point[0] * .5 + .5, point[1] * .5 + .5);
-  };
+  const face = scaledContour(contour, .965);
+  const sideFront = half - bevel;
+  const sideBack = -half + bevel;
 
-  for (let index = 1; index < contour.length - 1; index += 1) {
-    push(contour[0], half, [0, 0, 1]);
-    push(contour[index], half, [0, 0, 1]);
-    push(contour[index + 1], half, [0, 0, 1]);
-    push(contour[0], -half, [0, 0, -1]);
-    push(contour[index + 1], -half, [0, 0, -1]);
-    push(contour[index], -half, [0, 0, -1]);
+  for (let index = 1; index < face.length - 1; index += 1) {
+    pushTriangle(positions, normals, uvs, [face[0][0], face[0][1], half], [face[index][0], face[index][1], half], [face[index + 1][0], face[index + 1][1], half], [0, 0, 1]);
+    pushTriangle(positions, normals, uvs, [face[0][0], face[0][1], -half], [face[index + 1][0], face[index + 1][1], -half], [face[index][0], face[index][1], -half], [0, 0, -1]);
   }
 
   for (let index = 0; index < contour.length; index += 1) {
     const next = (index + 1) % contour.length;
     const a = contour[index];
     const b = contour[next];
-    const sideNormal = normalize(b[1] - a[1], -(b[0] - a[0]), 0);
-    push(a, half, sideNormal);
-    push(b, half, sideNormal);
-    push(b, -half, sideNormal);
-    push(a, half, sideNormal);
-    push(b, -half, sideNormal);
-    push(a, -half, sideNormal);
+    const ia = face[index];
+    const ib = face[next];
+    const sideNormal = normalize(b[1] - a[1], -(b[0] - a[0]), .04);
+
+    pushTriangle(positions, normals, uvs, [ia[0], ia[1], half], [a[0], a[1], sideFront], [b[0], b[1], sideFront], normalize(sideNormal[0], sideNormal[1], .55));
+    pushTriangle(positions, normals, uvs, [ia[0], ia[1], half], [b[0], b[1], sideFront], [ib[0], ib[1], half], normalize(sideNormal[0], sideNormal[1], .55));
+
+    pushTriangle(positions, normals, uvs, [a[0], a[1], sideFront], [a[0], a[1], sideBack], [b[0], b[1], sideBack], sideNormal);
+    pushTriangle(positions, normals, uvs, [a[0], a[1], sideFront], [b[0], b[1], sideBack], [b[0], b[1], sideFront], sideNormal);
+
+    pushTriangle(positions, normals, uvs, [a[0], a[1], sideBack], [ia[0], ia[1], -half], [ib[0], ib[1], -half], normalize(sideNormal[0], sideNormal[1], -.55));
+    pushTriangle(positions, normals, uvs, [a[0], a[1], sideBack], [ib[0], ib[1], -half], [b[0], b[1], sideBack], normalize(sideNormal[0], sideNormal[1], -.55));
   }
+
   return { positions, normals, uvs };
 }
 
-function tubeArc(rx: number, ry: number, minor: number, full = false, segments = 52, tubeSegments = 8) {
+function tubeArc(rx: number, ry: number, minor: number, full = false, segments = 56, tubeSegments = 10) {
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
@@ -309,9 +387,7 @@ function tubeArc(rx: number, ry: number, minor: number, full = false, segments =
     const ux = tangentX / tangentLength;
     const uy = tangentY / tangentLength;
     const ringAngle = (ring / tubeSegments) * Math.PI * 2;
-    const cosine = Math.cos(ringAngle);
-    const sine = Math.sin(ringAngle);
-    const normal = normalize(-uy * cosine, ux * cosine, sine);
+    const normal = normalize(-uy * Math.cos(ringAngle), ux * Math.cos(ringAngle), Math.sin(ringAngle));
     return {
       position: [cx + minor * normal[0], cy + minor * normal[1], minor * normal[2]] as [number, number, number],
       normal,
@@ -335,7 +411,7 @@ function tubeArc(rx: number, ry: number, minor: number, full = false, segments =
   return { positions, normals, uvs };
 }
 
-function sphereMesh(rows = 12, columns = 18) {
+function sphereMesh(rows = 14, columns = 20) {
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
@@ -386,7 +462,7 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
 }
 
 function init(canvas: HTMLCanvasElement): Renderer {
-  const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: false, preserveDrawingBuffer:true, powerPreference: "high-performance" });
+  const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true, powerPreference: "high-performance" });
   if (!gl) throw new Error("WebGL nie jest dostępny na tym urządzeniu.");
   const program = gl.createProgram();
   if (!program) throw new Error("Nie udało się utworzyć programu WebGL.");
@@ -395,6 +471,7 @@ function init(canvas: HTMLCanvasElement): Renderer {
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Błąd linkowania WebGL.");
   gl.useProgram(program);
+
   const attribute = (name: string) => {
     const location = gl.getAttribLocation(program, name);
     if (location < 0) throw new Error(`Brak atrybutu ${name}.`);
@@ -405,6 +482,7 @@ function init(canvas: HTMLCanvasElement): Renderer {
     if (location === null) throw new Error(`Brak uniformu ${name}.`);
     return location;
   };
+
   return {
     gl,
     program,
@@ -419,14 +497,14 @@ function init(canvas: HTMLCanvasElement): Renderer {
       light: uniform("uLight"),
     },
     meshes: {
-      tote: createMesh(gl, extrudedPolygon(familyContour("tote"), .58)),
-      round: createMesh(gl, extrudedPolygon(familyContour("round"), .62)),
-      bucket: createMesh(gl, extrudedPolygon(familyContour("bucket"), .64)),
-      mini: createMesh(gl, extrudedPolygon(familyContour("mini"), .5)),
-      flap: createMesh(gl, extrudedPolygon([[-.78, -.4], [.78, -.4], [.72, .4], [-.72, .4]], .09)),
-      handle: createMesh(gl, tubeArc(.72, .72, .07)),
-      strap: createMesh(gl, tubeArc(1.18, 1.55, .045)),
-      ring: createMesh(gl, tubeArc(.14, .14, .027, true, 38, 8)),
+      tote: createMesh(gl, beveledExtrusion(familyContour("tote"), .39, .06)),
+      round: createMesh(gl, beveledExtrusion(familyContour("round"), .34, .055)),
+      bucket: createMesh(gl, beveledExtrusion(familyContour("bucket"), .37, .06)),
+      mini: createMesh(gl, beveledExtrusion(familyContour("mini"), .30, .05)),
+      flap: createMesh(gl, beveledExtrusion(superellipseContour(.80, .36, 4.2, 44, -.04), .075, .022)),
+      handle: createMesh(gl, tubeArc(.67, .50, .058)),
+      strap: createMesh(gl, tubeArc(1.10, 1.40, .038)),
+      ring: createMesh(gl, tubeArc(.13, .13, .024, true, 40, 9)),
       sphere: createMesh(gl, sphereMesh()),
     },
   };
@@ -454,6 +532,13 @@ function stitchId(stitch: Stitch) {
   return stitch === "herringbone" ? 1 : stitch === "basket" ? 2 : stitch === "shell" ? 3 : 0;
 }
 
+function familyMetrics(family: Exclude<Family, "">) {
+  if (family === "tote") return { depth: .39, topY: .80, side: .91, handleScale: [.94, .88] as const, flapScale: [.94, .90] as const };
+  if (family === "round") return { depth: .34, topY: .82, side: .80, handleScale: [.82, .80] as const, flapScale: [.79, .72] as const };
+  if (family === "bucket") return { depth: .37, topY: .84, side: .76, handleScale: [.82, .82] as const, flapScale: [.90, .92] as const };
+  return { depth: .30, topY: .66, side: .67, handleScale: [.70, .68] as const, flapScale: [.73, .78] as const };
+}
+
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
   const { gl, uniforms, meshes } = renderer;
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -463,6 +548,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     canvas.width = width;
     canvas.height = height;
   }
+
   gl.viewport(0, 0, width, height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -470,24 +556,32 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   gl.depthFunc(gl.LEQUAL);
   gl.disable(gl.CULL_FACE);
   gl.useProgram(renderer.program);
-  gl.uniformMatrix4fv(uniforms.projection, false, perspective(Math.PI / 5, width / height, .1, 100));
-  gl.uniformMatrix4fv(uniforms.view, false, translation(0, -.02, -5));
-  gl.uniform3fv(uniforms.light, new Float32Array([-.48, .9, 1.1]));
+
+  const aspect = width / Math.max(1, height);
+  const narrow = aspect < .82;
+  const cameraZ = narrow ? -6.45 : aspect < 1.15 ? -5.85 : -5.25;
+  const verticalOffset = narrow ? -.08 : -.03;
+  gl.uniformMatrix4fv(uniforms.projection, false, perspective(Math.PI / 5.15, aspect, .1, 100));
+  gl.uniformMatrix4fv(uniforms.view, false, translation(0, verticalOffset, cameraZ));
+  gl.uniform3fv(uniforms.light, new Float32Array([-.55, .95, 1.25]));
+
   if (!config.family) {
     gl.finish();
     return;
   }
 
-  const root = multiply(rotY(rotation.y), multiply(rotX(rotation.x), scale(zoom, zoom, zoom)));
+  const fit = narrow ? .92 : aspect < 1.15 ? .97 : 1;
+  const rootScale = zoom * fit;
+  const root = multiply(rotY(rotation.y), multiply(rotX(rotation.x), scale(rootScale, rootScale, rootScale)));
   const bodyColor = config.color || "#eadfd7";
   const stitch = stitchId(config.stitch);
-  const depth = config.family === "mini" ? .5 : config.family === "round" ? .62 : config.family === "bucket" ? .64 : .58;
-  const topY = config.family === "bucket" ? .88 : config.family === "mini" ? .74 : config.family === "round" ? .78 : .9;
+  const metrics = familyMetrics(config.family);
+  const { depth, topY, side } = metrics;
   const hardware = config.hardware === "silver" ? "#d5d9dd" : config.hardware === "black" ? "#2a292b" : "#c9a354";
 
   if (config.strap !== "none") {
     const strapColor = config.strap === "chain" ? hardware : config.strap === "leather" ? "#76503d" : "#9a7580";
-    drawMesh(renderer, meshes.strap, multiply(root, matrix([0, .18, -.34], [.94, .98, 1])), strapColor, stitch, config.strap === "chain" ? 2 : config.strap === "leather" ? 1 : 3);
+    drawMesh(renderer, meshes.strap, multiply(root, matrix([0, .16, -.25], [.92, .96, 1])), strapColor, stitch, config.strap === "chain" ? 2 : config.strap === "leather" ? 1 : 3);
   }
 
   drawMesh(renderer, meshes[config.family], root, bodyColor, stitch, 0);
@@ -495,30 +589,45 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.handles !== "none") {
     const handleColor = config.handles === "wood-dark" ? "#60402f" : config.handles === "wood-light" ? "#d7b985" : bodyColor;
     const handleMaterial = config.handles === "crochet" ? 0 : 1;
-    drawMesh(renderer, meshes.handle, multiply(root, matrix([0, topY - .06, .04], [config.family === "mini" ? .72 : .9, config.family === "mini" ? .7 : .88, 1])), handleColor, stitch, handleMaterial);
+    drawMesh(
+      renderer,
+      meshes.handle,
+      multiply(root, matrix([0, topY - .01, .015], [metrics.handleScale[0], metrics.handleScale[1], 1])),
+      handleColor,
+      stitch,
+      handleMaterial,
+    );
   }
 
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#292426" : config.flap === "leather-cognac" ? "#9a6345" : config.flap === "suede-burgundy" ? "#773c4b" : bodyColor;
     const flapMaterial = config.flap === "crochet" ? 0 : 1;
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, .31, depth / 2 + .075], [config.family === "mini" ? .72 : .88, config.family === "round" ? .7 : .88, 1], [.05, 0, 0])), flapColor, stitch, flapMaterial);
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, .08, depth / 2 + .19], [.085, .085, .055])), hardware, 0, 2);
+    const flapY = config.family === "round" ? .31 : config.family === "mini" ? .24 : .29;
+    drawMesh(
+      renderer,
+      meshes.flap,
+      multiply(root, matrix([0, flapY, depth / 2 + .058], [metrics.flapScale[0], metrics.flapScale[1], 1], [.045, 0, 0])),
+      flapColor,
+      stitch,
+      flapMaterial,
+    );
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, flapY - .22, depth / 2 + .145], [.072, .072, .045])), hardware, 0, 2);
   }
 
   if (config.handles !== "none" || config.strap !== "none") {
-    const side = config.family === "mini" ? .69 : config.family === "bucket" ? .82 : .9;
-    drawMesh(renderer, meshes.ring, multiply(root, matrix([-side, .48, depth / 2 + .02], [.72, .72, .72], [0, Math.PI / 2, 0])), hardware, 0, 2);
-    drawMesh(renderer, meshes.ring, multiply(root, matrix([side, .48, depth / 2 + .02], [.72, .72, .72], [0, Math.PI / 2, 0])), hardware, 0, 2);
+    const ringY = config.family === "mini" ? .42 : config.family === "round" ? .46 : .49;
+    drawMesh(renderer, meshes.ring, multiply(root, matrix([-side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
+    drawMesh(renderer, meshes.ring, multiply(root, matrix([side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
   }
 
   if (config.accent === "charm") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([.78, .08, depth / 2 + .22], [.12, .12, .07])), "#b86f82", 0, 2);
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([side * .86, .04, depth / 2 + .17], [.105, .105, .06])), "#b86f82", 0, 2);
   } else if (config.accent === "tassel") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([.82, .28, depth / 2 + .18], [.08, .08, .06])), hardware, 0, 2);
-    drawMesh(renderer, meshes.strap, multiply(root, matrix([.78, -.52, depth / 2 + .2], [.16, .3, .4], [0, 0, -.12])), bodyColor, stitch, 0);
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([side * .91, .25, depth / 2 + .14], [.07, .07, .05])), hardware, 0, 2);
+    drawMesh(renderer, meshes.strap, multiply(root, matrix([side * .86, -.48, depth / 2 + .16], [.14, .27, .34], [0, 0, -.10])), bodyColor, stitch, 0);
   } else if (config.accent === "scarf") {
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([-.66, .4, depth / 2 + .22], [.25, .42, .18], [0, 0, .45])), "#efb7c5", 0, 3);
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([-.48, .24, depth / 2 + .23], [.2, .34, .16], [0, 0, -.38])), "#c66f89", 0, 3);
+    drawMesh(renderer, meshes.flap, multiply(root, matrix([-side * .68, .36, depth / 2 + .17], [.22, .37, .16], [0, 0, .42])), "#efb7c5", 0, 3);
+    drawMesh(renderer, meshes.flap, multiply(root, matrix([-side * .49, .19, depth / 2 + .18], [.18, .31, .15], [0, 0, -.34])), "#c66f89", 0, 3);
   }
 
   gl.finish();
@@ -574,7 +683,8 @@ export default function BagBuilderFinalWebGL3D() {
       rendererRef.current = init(canvas);
       target.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
       target.dataset.abagsPro3dReady = "true";
-      target.dataset.abagsFidelity3dReady="variable-depth-v2";
+      target.dataset.abagsFidelity3dReady = RENDERER_VERSION;
+      target.dataset.abagsFidelity3dModel = "real-product-calibrated";
       target.removeAttribute("data-abags-fidelity3d-error");
     } catch (error) {
       rendererRef.current = null;
@@ -586,6 +696,7 @@ export default function BagBuilderFinalWebGL3D() {
       target.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       target.removeAttribute("data-abags-pro3d-ready");
       target.removeAttribute("data-abags-fidelity3d-ready");
+      target.removeAttribute("data-abags-fidelity3d-model");
       target.removeAttribute("data-abags-fidelity3d-frame");
       target.removeAttribute("data-abags-fidelity3d-frame-at");
       target.removeAttribute("data-abags-fidelity3d-error");
@@ -597,11 +708,12 @@ export default function BagBuilderFinalWebGL3D() {
     const canvas = canvasRef.current;
     const target = currentStage();
     if (!renderer || !canvas || !target || !portalTarget) return;
+
     const paint = () => {
       try {
         draw(renderer, canvas, config, rotation, zoom);
         if (config.family) {
-          target.dataset.abagsFidelity3dFrame=configSignature(config);
+          target.dataset.abagsFidelity3dFrame = configSignature(config);
           target.dataset.abagsFidelity3dFrameAt = String(Date.now());
         } else {
           target.removeAttribute("data-abags-fidelity3d-frame");
@@ -613,6 +725,7 @@ export default function BagBuilderFinalWebGL3D() {
         target.removeAttribute("data-abags-fidelity3d-frame");
       }
     };
+
     let frame = requestAnimationFrame(paint);
     const redraw = () => {
       cancelAnimationFrame(frame);
@@ -632,7 +745,7 @@ export default function BagBuilderFinalWebGL3D() {
 
   const setView = (next: "front" | "three" | "side") => {
     setViewState(next);
-    setRotation(next === "front" ? { x: -.02, y: 0 } : next === "side" ? { x: -.04, y: Math.PI / 2 } : DEFAULT_ROTATION);
+    setRotation(next === "front" ? { x: -.02, y: 0 } : next === "side" ? { x: -.035, y: Math.PI / 2 } : DEFAULT_ROTATION);
   };
 
   const label = config.family ? "Interaktywny model 3D A-Bags" : "Wybierz fason, aby rozpocząć model 3D";
@@ -640,7 +753,7 @@ export default function BagBuilderFinalWebGL3D() {
   if (!portalTarget) return null;
 
   return createPortal(
-    <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d data-abags-final-webgl="v2">
+    <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d data-abags-final-webgl="v3">
       <canvas
         ref={canvasRef}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
@@ -668,7 +781,7 @@ export default function BagBuilderFinalWebGL3D() {
           if (!drag.current) return;
           setViewState("three");
           setRotation({
-            x: clamp(drag.current.rx + (event.clientY - drag.current.y) * .008, -.68, .52),
+            x: clamp(drag.current.rx + (event.clientY - drag.current.y) * .008, -.64, .48),
             y: drag.current.ry + (event.clientX - drag.current.x) * .012,
           });
         }}
@@ -687,7 +800,7 @@ export default function BagBuilderFinalWebGL3D() {
           setZoom((value) => clamp(value - event.deltaY * .0008, MIN_ZOOM, MAX_ZOOM));
         }}
       />
-      <div className="abags-pro3d-chip">A-BAGS REALTIME 3D</div>
+      <div className="abags-pro3d-chip">A-BAGS REALTIME 3D · FIDELITY V3</div>
       <div className="abags-pro3d-view-controls" aria-label="Widok modelu 3D">
         <button type="button" aria-pressed={view === "front"} onClick={() => setView("front")}>Przód</button>
         <button type="button" aria-pressed={view === "three"} onClick={() => setView("three")}>3/4</button>
