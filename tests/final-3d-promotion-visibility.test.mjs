@@ -24,6 +24,14 @@ test("controller exposes an explicit compositor promotion state before ready", (
   assert.match(controller, /requestAnimationFrame[\s\S]*requestAnimationFrame/);
 });
 
+test("unverified states expose only the deterministic SVG fallback", () => {
+  const unverified = /data-abags-final3d\]:not\(\[data-abags-final3d="promoting"\]\):not\(\[data-abags-final3d="ready"\]\)/;
+  assert.match(promotionCss, unverified);
+  assert.match(promotionCss, /not\(\[data-abags-final3d="ready"\]\) > svg\{[\s\S]*?opacity:1!important;[\s\S]*?visibility:visible!important;/);
+  assert.match(promotionCss, /not\(\[data-abags-final3d="ready"\]\) > \.abags-fidelity3d-layer\{[\s\S]*?opacity:0!important;[\s\S]*?visibility:hidden!important;[\s\S]*?pointer-events:none!important;/);
+  assert.match(promotionCss, /not\(\[data-abags-final3d="ready"\]\) > \.abags-fidelity3d-layer \.abags-fidelity3d-canvas\{[\s\S]*?opacity:0!important;[\s\S]*?visibility:hidden!important;/);
+});
+
 test("WebGL is actually visible while the controller is promoting it", () => {
   assert.match(promotionCss, /data-abags-final3d="promoting"[\s\S]*> \.abags-fidelity3d-layer/);
   assert.match(promotionCss, /opacity:1!important/);
@@ -34,8 +42,17 @@ test("WebGL is actually visible while the controller is promoting it", () => {
 
 test("SVG stays available during promotion and is hidden only when 3D is ready", () => {
   assert.match(promotionCss, /data-abags-final3d="promoting"[\s\S]*> svg[\s\S]*opacity:1!important/);
+  assert.match(promotionCss, /data-abags-final3d="ready"\] > svg[\s\S]*opacity:0!important/);
+  assert.match(promotionCss, /data-abags-final3d="ready"\] > \.abags-fidelity3d-layer[\s\S]*pointer-events:auto!important/);
   assert.match(realtimeCss, /data-abags-final3d="ready"\] > svg[\s\S]*opacity:0!important/);
-  assert.match(realtimeCss, /data-abags-final3d="ready"\] > \.abags-fidelity3d-layer[\s\S]*pointer-events:auto!important/);
+});
+
+test("final visibility contract stays isolated from Photo-True reference mode", () => {
+  const customerIsolation = ':not([data-abags-photo-true="active"])';
+  assert.ok(promotionCss.includes(customerIsolation));
+  const stateRules = promotionCss.split("body.abags-vc-open").slice(1);
+  assert.ok(stateRules.length >= 7, "expected explicit customer renderer state rules");
+  assert.ok(stateRules.every((rule) => rule.includes(customerIsolation)), "every final 3D visibility rule must exclude Photo-True");
 });
 
 test("renderer paint metadata cannot cancel an in-flight compositor promotion", () => {
