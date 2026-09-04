@@ -65,9 +65,27 @@ jobs:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
         run: bash scripts/smoke-production.sh
 
+      - name: Browser test customer realtime builder from empty construction
+        id: realtime
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
+        continue-on-error: true
+        env:
+          ABAGS_PRODUCTION_URL: https://abagshandmade.pl
+          ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
+        run: node scripts/smoke-customizer-realtime.mjs
+
+      - name: Upload realtime builder visual QA
+        if: always() && steps.deploy.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: realtime-builder-visual-qa-${{ github.run_number }}
+          path: artifacts/customizer-realtime/*.png
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Browser test Photo-True V5 and capture real-product visual QA
         id: customizer
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -85,7 +103,7 @@ jobs:
 
       - name: Mobile Photo-True real-product interaction test
         id: pro3d
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.customizer.outcome == 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.customizer.outcome == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -97,6 +115,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+          REALTIME_OUTCOME: ${{ steps.realtime.outcome }}
           CUSTOMIZER_OUTCOME: ${{ steps.customizer.outcome }}
           MOBILE_OUTCOME: ${{ steps.pro3d.outcome }}
           COMMIT_SHA: ${{ github.sha }}
@@ -104,14 +123,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" && "${CUSTOMIZER_OUTCOME:-}" == "success" && "${MOBILE_OUTCOME:-}" == "success" ]]; then
+          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" && "${REALTIME_OUTCOME:-}" == "success" && "${CUSTOMIZER_OUTCOME:-}" == "success" && "${MOBILE_OUTCOME:-}" == "success" ]]; then
             RESULT="✅ PASS"
           elif [[ "${DEPLOY_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ DEPLOY FAIL"
           elif [[ "${SMOKE_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ SMOKE FAIL"
+          elif [[ "${REALTIME_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ REALTIME BUILDER FAIL"
           elif [[ "${CUSTOMIZER_OUTCOME:-}" != "success" ]]; then
-            RESULT="❌ PHOTO-TRUE BROWSER FAIL"
+            RESULT="❌ PHOTO-TRUE REFERENCE FAIL"
           else
             RESULT="❌ PHOTO-TRUE MOBILE FAIL"
           fi
@@ -122,8 +143,9 @@ jobs:
           - Commit: \`${COMMIT_SHA}\`
           - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
           - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
-          - Photo-True V5 browser acceptance: \`${CUSTOMIZER_OUTCOME:-skipped}\`
-          - Mobile real-product interaction: \`${MOBILE_OUTCOME:-skipped}\`
+          - Customer realtime builder acceptance: \`${REALTIME_OUTCOME:-skipped}\`
+          - Photo-True internal reference acceptance: \`${CUSTOMIZER_OUTCOME:-skipped}\`
+          - Mobile Photo-True reference interaction: \`${MOBILE_OUTCOME:-skipped}\`
           - Run: ${RUN_URL}
 
           Automated deployment record for \`main\`.
@@ -137,14 +159,20 @@ jobs:
           echo "Production deployment completed, but the live smoke test failed." >&2
           exit 1
 
-      - name: Fail when Photo-True customizer browser test fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.customizer.outcome != 'success'
+      - name: Fail when customer realtime builder acceptance fails
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome != 'success'
         run: |
-          echo "Production deployment completed, but the Photo-True V5 browser/visual acceptance failed." >&2
+          echo "Production deployment completed, but the customer realtime builder did not build a new bag live from an empty construction." >&2
+          exit 1
+
+      - name: Fail when Photo-True customizer browser test fails
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.customizer.outcome != 'success'
+        run: |
+          echo "Production deployment completed, but the internal Photo-True reference acceptance failed." >&2
           exit 1
 
       - name: Fail when mobile Photo-True interaction fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.customizer.outcome == 'success' && steps.pro3d.outcome != 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.customizer.outcome == 'success' && steps.pro3d.outcome != 'success'
         run: |
-          echo "Production deployment completed, but the mobile Photo-True real-product interaction failed." >&2
+          echo "Production deployment completed, but the mobile Photo-True reference interaction failed." >&2
           exit 1
