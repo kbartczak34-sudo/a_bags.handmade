@@ -65,21 +65,21 @@ jobs:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
         run: bash scripts/smoke-production.sh
 
-      - name: Browser test Reference Layout V3 and capture visual QA
+      - name: Browser test Reference Layout V4 and capture visual QA
         id: customizer
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
-          ABAGS_VISUAL_QA_DIR: artifacts/customizer-v3
-        run: node scripts/smoke-customizer-reference-v3.mjs
+          ABAGS_VISUAL_QA_DIR: artifacts/customizer-v4
+        run: node scripts/smoke-customizer-reference-v4.mjs
 
       - name: Upload customizer visual QA
         if: always() && steps.deploy.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: customizer-visual-qa-${{ github.run_number }}
-          path: artifacts/customizer-v3/*.png
+          path: artifacts/customizer-v4/*.png
           if-no-files-found: warn
           retention-days: 7
 
@@ -122,7 +122,7 @@ jobs:
           - Commit: \`${COMMIT_SHA}\`
           - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
           - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
-          - Realtime customizer browser smoke: \`${CUSTOMIZER_OUTCOME:-skipped}\`
+          - Realtime customizer V4 acceptance: \`${CUSTOMIZER_OUTCOME:-skipped}\`
           - Mobile Pro3D touch smoke: \`${PRO3D_OUTCOME:-skipped}\`
           - Run: ${RUN_URL}
 
@@ -140,7 +140,7 @@ jobs:
       - name: Fail when realtime customizer browser test fails
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.customizer.outcome != 'success'
         run: |
-          echo "Production deployment completed, but the Reference Layout V3 browser/visual QA failed." >&2
+          echo "Production deployment completed, but the Reference Layout V4 browser/visual acceptance failed." >&2
           exit 1
 
       - name: Fail when mobile Pro3D controls fail
