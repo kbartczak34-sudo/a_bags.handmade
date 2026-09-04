@@ -12,10 +12,14 @@ const [stack, controller, css, smoke] = await Promise.all([
 test("final customer stack verifies 3D before promoting it", () => {
   assert.match(stack, /<BagBuilderFidelity3D\s*\/>[\s\S]*<BagBuilderFinal3DController\s*\/>/);
   assert.match(controller, /gl\.readPixels/);
-  assert.match(controller, /data-abags-final3d-signature|abagsFinal3dSignature/);
+  assert.match(controller, /for \(let iy = 1; iy <= 9/);
+  assert.match(controller, /CURRENT_PROGRAM/);
+  assert.match(controller, /gl\.isContextLost\(\)/);
   assert.match(controller, /window\.dispatchEvent\(new Event\("resize"\)\)/);
+  assert.match(controller, /requestAnimationFrame[\s\S]*requestAnimationFrame/);
+  assert.match(controller, /data-abags-final3d-signature|abagsFinal3dSignature/);
   assert.match(controller, /abagsFinal3d = "ready"/);
-  assert.match(controller, /markFallback\("no-rendered-pixels"\)/);
+  assert.match(controller, /healthy-webgl-frame/);
 });
 
 test("SVG remains fallback and verified Fidelity3D becomes primary", () => {
