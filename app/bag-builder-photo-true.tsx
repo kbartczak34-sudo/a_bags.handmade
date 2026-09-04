@@ -199,36 +199,40 @@ export default function BagBuilderPhotoTrue() {
   const selected = useMemo(() => products.find((product) => product.id === selectedId) ?? null, [products, selectedId]);
 
   useEffect(() => {
-    if (!stage || !selected?.imageUrl) return;
-    const dialog = stage.closest<HTMLElement>(".abags-vc-dialog");
+    if (!selected?.imageUrl) return;
+    const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage");
+    if (!liveStage) return;
+    const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog");
     const family = inferLegacyFamily(selected);
-    stage.dataset.abagsPhotoTrue = "active";
-    stage.dataset.photoProductId = selected.id;
-    stage.dataset.photoProductName = selected.name;
+    liveStage.dataset.abagsPhotoTrue = "active";
+    liveStage.dataset.photoProductId = selected.id;
+    liveStage.dataset.photoProductName = selected.name;
     dialog?.setAttribute("data-abags-photo-true", "active");
     dialog?.setAttribute("data-photo-product-id", selected.id);
     try { window.localStorage.setItem(STORAGE_KEY, selected.id); } catch {}
-    if (stage.dataset.family !== family) clickLegacyFamily(family);
+    if (liveStage.dataset.family !== family) clickLegacyFamily(family);
     return () => {
-      stage.removeAttribute("data-abags-photo-true");
-      stage.removeAttribute("data-photo-product-id");
-      stage.removeAttribute("data-photo-product-name");
+      liveStage.removeAttribute("data-abags-photo-true");
+      liveStage.removeAttribute("data-photo-product-id");
+      liveStage.removeAttribute("data-photo-product-name");
       dialog?.removeAttribute("data-abags-photo-true");
       dialog?.removeAttribute("data-photo-product-id");
     };
-  }, [stage, selected]);
+  }, [selected]);
 
   useEffect(() => {
-    if (!selectedId) { setAssets([]); return; }
+    if (!selectedId) return;
     const controller = new AbortController();
-    setAssetError("");
     fetch(`/api/customizer-assets?productId=${encodeURIComponent(selectedId)}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json() as { assets?: Asset[]; error?: string };
         if (!response.ok || !Array.isArray(payload.assets)) throw new Error(payload.error || "Nie udało się wczytać warstw 1:1.");
         return payload.assets;
       })
-      .then(setAssets)
+      .then((items) => {
+        setAssets(items);
+        setAssetError("");
+      })
       .catch((reason) => {
         if (!controller.signal.aborted) {
           setAssets([]);
@@ -281,7 +285,7 @@ export default function BagBuilderPhotoTrue() {
       <section className="abags-photo-models" aria-label="Rzeczywiste fasony A-Bags" data-photo-true-model-count={products.length}>
         <div className="abags-photo-models-head"><div><strong>Rzeczywiste modele A‑Bags</strong><small>Wybierz bazę 1:1 ze zdjęcia produktu</small></div><span>{products.length}</span></div>
         <div className="abags-photo-models-grid">
-          {products.map((product) => <button key={product.id} type="button" className={product.id === selected.id ? "is-active" : ""} aria-pressed={product.id === selected.id} onClick={() => setSelectedId(product.id)} data-photo-product-choice={product.id}>
+          {products.map((product) => <button key={product.id} type="button" className={product.id === selected.id ? "is-active" : ""} aria-pressed={product.id === selected.id} onClick={() => { setAssets([]); setAssetError(""); setSelectedId(product.id); }} data-photo-product-choice={product.id}>
             <span className="abags-photo-model-thumb"><img src={product.imageUrl ?? ""} alt="" loading={product.id === selected.id ? "eager" : "lazy"} draggable={false} /></span>
             <span className="abags-photo-model-copy"><strong>{product.name}</strong><small>{product.detail || product.stitchType || "Rzeczywisty produkt A-Bags"}</small></span>
           </button>)}
