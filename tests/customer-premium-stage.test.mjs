@@ -12,8 +12,9 @@ test("customer premium polish is the final customizer stylesheet", () => {
   assert.ok(fidelity >= 0 && premium > fidelity);
 });
 
-test("customer stage keeps one clean live-preview label and removes the duplicate Pro3D chip", () => {
-  assert.match(css, /\.abags-pro3d-chip\{[\s\S]*display:none!important/);
+test("customer stage keeps one clean live-preview label and removes both legacy 3D chips", () => {
+  assert.match(css, /\.abags-pro3d-chip,/);
+  assert.match(css, /\.abags-canvas3d-chip\{[\s\S]*display:none!important/);
   assert.match(css, /\.abags-v4-preview-meta span\{[\s\S]*display:none!important/);
   assert.match(css, /:not\(\[data-abags-photo-true="active"\]\)/);
 });
