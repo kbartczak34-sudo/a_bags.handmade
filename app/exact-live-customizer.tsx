@@ -19,6 +19,7 @@ import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-composi
 import BagBuilderFidelity3DControlNamespace from "./bag-builder-fidelity3d-control-namespace";
 import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
 import BagBuilderFinal3DController from "./bag-builder-final3d-controller";
+import BagBuilderLegacyChromeRetirement from "./bag-builder-legacy-chrome-retirement";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
 import BagBuilderPhotoTrue from "./bag-builder-photo-true";
 import BagBuilderPhotoTrueFlowGuard from "./bag-builder-photo-true-flow-guard";
@@ -53,6 +54,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderReferenceLayoutV3 />
     <BagBuilderReferenceHeaderGuard />
     <BagBuilderReferenceV4 />
+    <BagBuilderLegacyChromeRetirement />
     <BagBuilderAbagsFidelityContract />
     <BagBuilderPhotoTrueGate>
       <BagBuilderPhotoTrue />
