@@ -42,6 +42,24 @@ function productComplianceComplete(product: CatalogProduct) {
   );
 }
 
+function requestedBaseProductId(raw: unknown) {
+  if (typeof raw !== "object" || !raw) return null;
+  const value = (raw as Record<string, unknown>).baseProductId;
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") return "invalid";
+  const id = value.trim();
+  return /^[a-zA-Z0-9-]{1,80}$/.test(id) ? id : "invalid";
+}
+
+function personalizationCents(config: NonNullable<ReturnType<typeof normalizeBagBuilderProjectConfig>>, settings: Awaited<ReturnType<typeof getBagBuilderSettings>>) {
+  return settings.stitchCents[config.stitch]
+    + settings.flapCents[config.flap]
+    + settings.handlesCents[config.handles]
+    + settings.strapCents[config.strap]
+    + settings.hardwareCents[config.hardware]
+    + settings.accentCents[config.accent];
+}
+
 function publicStripeErrorMessage(code: string) {
   if (code === "api_key_expired" || code === "invalid_api_key") return "Stripe odrzucił klucz API używany przez sklep.";
   if (code === "stripe_permission_error") return "Klucz Stripe nie ma uprawnień do tworzenia płatności Checkout.";
@@ -74,6 +92,8 @@ export async function POST(request: Request) {
   const source = typeof raw === "object" && raw ? (raw as Record<string, unknown>).config : null;
   const config = normalizeBagBuilderProjectConfig(source);
   if (!config) return json({ error: "Projekt jest niekompletny lub zawiera nieobsługiwaną opcję." }, 400);
+  const photoBaseProductId = requestedBaseProductId(raw);
+  if (photoBaseProductId === "invalid") return json({ error: "Nieprawidłowy produkt bazowy projektu." }, 400);
 
   let settings: Awaited<ReturnType<typeof getBagBuilderSettings>>;
   try {
@@ -89,14 +109,9 @@ export async function POST(request: Request) {
     return json({ error: "Wybrana konfiguracja nie jest możliwa dla tego fasonu. Wróć do kreatora i wybierz inną opcję.", code: "builder_incompatible" }, 409);
   }
 
-  const productId = settings.familyProductIds[config.family];
+  const productId = photoBaseProductId || settings.familyProductIds[config.family];
   if (!productId) {
     return json({ error: "Ten fason nie ma jeszcze przypisanego produktu bazowego do bezpiecznej sprzedaży online.", code: "builder_product_unmapped" }, 409);
-  }
-
-  const projectAmount = calculateBagBuilderProjectCents(config, settings);
-  if (projectAmount === null || projectAmount < 1) {
-    return json({ error: "Cena projektu nie została jeszcze skonfigurowana przez pracownię.", code: "builder_price_unavailable" }, 409);
   }
 
   let baseProduct: CatalogProduct | undefined;
@@ -106,7 +121,7 @@ export async function POST(request: Request) {
     return json({ error: "Nie udało się sprawdzić produktu bazowego." }, 503);
   }
   if (!baseProduct) {
-    return json({ error: "Przypisany produkt bazowy nie jest obecnie dostępny w sklepie.", code: "builder_product_unavailable" }, 409);
+    return json({ error: "Wybrany produkt bazowy nie jest obecnie dostępny w sklepie.", code: "builder_product_unavailable" }, 409);
   }
   if (!productComplianceComplete(baseProduct)) {
     return json({
@@ -115,10 +130,19 @@ export async function POST(request: Request) {
     }, 503);
   }
 
+  const legacyProjectAmount = calculateBagBuilderProjectCents(config, settings);
+  const projectAmount = photoBaseProductId
+    ? baseProduct.unitAmount + personalizationCents(config, settings)
+    : legacyProjectAmount;
+  if (projectAmount === null || projectAmount < 1) {
+    return json({ error: "Cena projektu nie została jeszcze skonfigurowana przez pracownię.", code: "builder_price_unavailable" }, 409);
+  }
+
   const projectCode = bagBuilderProjectCode(config);
   const summary = bagBuilderProjectSummary(config);
   const material = "Sznurek poliestrowy z Pimiotki";
-  const cartReference = `Projekt ${projectCode} · ${baseProduct.name} · ${material} · ${summary}`.slice(0, 500);
+  const photoMode = Boolean(photoBaseProductId);
+  const cartReference = `Projekt ${projectCode} · ${baseProduct.name}${photoMode ? " · baza fotograficzna 1:1" : ""} · ${material} · ${summary}`.slice(0, 500);
   const configJson = JSON.stringify(config);
   const paymentChoice = readPaymentChoice(request);
   const requestUrl = new URL(request.url);
@@ -154,10 +178,11 @@ export async function POST(request: Request) {
     form.set("line_items[0][price_data][currency]", "pln");
     form.set("line_items[0][price_data][unit_amount]", String(projectAmount));
     form.set("line_items[0][price_data][product_data][name]", `${baseProduct.name} · projekt ${projectCode}`);
-    form.set("line_items[0][price_data][product_data][description]", `${material}. ${summary}`.slice(0, 500));
+    form.set("line_items[0][price_data][product_data][description]", `${photoMode ? "Baza fotograficzna produktu 1:1. " : ""}${material}. ${summary}`.slice(0, 500));
     form.set("line_items[0][price_data][product_data][metadata][catalog_id]", baseProduct.id);
     form.set("line_items[0][price_data][product_data][metadata][project_code]", projectCode);
     form.set("line_items[0][price_data][product_data][metadata][personalized]", "true");
+    form.set("line_items[0][price_data][product_data][metadata][photo_true]", photoMode ? "true" : "false");
 
     form.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
     form.set("shipping_options[0][shipping_rate_data][fixed_amount][amount]", String(standardShippingAmount));
@@ -184,12 +209,14 @@ export async function POST(request: Request) {
     form.set("metadata[builder_project_code]", projectCode);
     form.set("metadata[builder_project_config]", configJson);
     form.set("metadata[builder_catalog_id]", baseProduct.id);
+    form.set("metadata[builder_photo_true]", photoMode ? "true" : "false");
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][cart]", cartReference);
     form.set("payment_intent_data[metadata][payment_choice]", paymentChoice);
     form.set("payment_intent_data[metadata][builder_project_code]", projectCode);
     form.set("payment_intent_data[metadata][builder_project_config]", configJson);
     form.set("payment_intent_data[metadata][builder_catalog_id]", baseProduct.id);
+    form.set("payment_intent_data[metadata][builder_photo_true]", photoMode ? "true" : "false");
 
     const shippingMessage = orderSettings.pickupEnabled && orderSettings.pickupAddress
       ? `Dostawa na terenie Polski lub bezpłatny odbiór osobisty: ${orderSettings.pickupAddress}`
@@ -228,7 +255,7 @@ export async function POST(request: Request) {
       return json({ error: "Stripe utworzył sesję bez adresu przekierowania. [stripe_missing_url]", code: "stripe_missing_url", requestId }, 502);
     }
 
-    return json({ url: stripeBody.url, projectCode });
+    return json({ url: stripeBody.url, projectCode, baseProductId: baseProduct.id, photoTrue: photoMode });
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
       return json({ error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym." }, 503);
