@@ -135,6 +135,15 @@ async function main() {
       const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
       const activeView=[...s.querySelectorAll('.abags-fidelity3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
       const legacyControlCount=s.querySelectorAll('.abags-fidelity3d-layer .abags-pro3d-view-controls, .abags-fidelity3d-layer .abags-pro3d-zoom').length;
+      const legacyChipSelector='.abags-canvas3d-chip, .abags-webgl3d-chip, .abags-real3d-chip, .abags-pro3d-chip';
+      const visibleLegacy3dChips=[...s.querySelectorAll(legacyChipSelector)].filter((node)=>{
+        const chipStyle=getComputedStyle(node);
+        const chipRect=node.getBoundingClientRect();
+        return chipStyle.display!=='none' && chipStyle.visibility!=='hidden' && Number.parseFloat(chipStyle.opacity||'1')>.05 && chipRect.width>1 && chipRect.height>1;
+      }).map((node)=>{
+        const chipRect=node.getBoundingClientRect();
+        return {className:String(node.className||''),text:node.textContent?.trim()||'',width:Math.round(chipRect.width),height:Math.round(chipRect.height)};
+      });
       let webgl=null;
       if(canvas){
         try{
@@ -158,7 +167,7 @@ async function main() {
         photoTrue:Boolean(d.querySelector('.abags-photo-true-base')) || d.dataset.abagsPhotoTrue==='active' || s.dataset.abagsPhotoTrue==='active',
         readyProductChoices:d.querySelectorAll('[data-photo-product-choice]').length,
         svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, activeView, webgl,
-        fidelityControlNamespace:Boolean(viewControls&&zoomControls), legacyControlCount,
+        fidelityControlNamespace:Boolean(viewControls&&zoomControls), legacyControlCount, visibleLegacy3dChips,
         viewControls:viewRect?{width:Math.round(viewRect.width),height:Math.round(viewRect.height),top:Math.round(viewRect.top),left:Math.round(viewRect.left)}:null,
         zoomControls:zoomRect?{width:Math.round(zoomRect.width),height:Math.round(zoomRect.height),top:Math.round(zoomRect.top),left:Math.round(zoomRect.left)}:null,
         dialogWidth:Math.round(rect.width), dialogHeight:Math.round(rect.height),
@@ -184,8 +193,8 @@ async function main() {
         throw new Error(`${label} verification timeout. State: ${JSON.stringify(state)}. ${error instanceof Error ? error.message : String(error)}`);
       }
       const state = await stageState();
-      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || state.final3d !== "ready" || !state.canvasPresent || !state.canvasVisible || !state.fidelityVisible || state.svgVisible || !state.fidelityControlNamespace || state.legacyControlCount !== 0) {
-        throw new Error(`${label} is not verified visible final 3D with isolated controls: ${JSON.stringify(state)}`);
+      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || state.final3d !== "ready" || !state.canvasPresent || !state.canvasVisible || !state.fidelityVisible || state.svgVisible || !state.fidelityControlNamespace || state.legacyControlCount !== 0 || state.visibleLegacy3dChips?.length !== 0) {
+        throw new Error(`${label} is not verified visible final 3D with isolated controls and clean stage chrome: ${JSON.stringify(state)}`);
       }
       return state;
     };
@@ -247,6 +256,7 @@ async function main() {
     console.log("- finished-product Photo-True takeover: absent");
     console.log("- WebGL Fidelity3D produced verified pixels: yes");
     console.log("- Fidelity3D controls are isolated from legacy Pro3D CSS: yes");
+    console.log("- visible legacy 3D preview chips: 0");
     console.log("- family/color/stitch redraw verified 3D: yes");
     console.log("- Przód / 3/4 / Bok view controls are interactive: yes");
     console.log(`- desktop screenshot bytes: ${desktopBytes}`);
