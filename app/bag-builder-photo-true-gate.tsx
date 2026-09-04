@@ -8,7 +8,8 @@ function subscribe() {
 
 function readQaMode() {
   if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("photoTrueQa") === "1";
+  const params = new URLSearchParams(window.location.search);
+  return params.get("photoTrueQa") === "1" || params.has("abags-photo-true-v5");
 }
 
 /**
