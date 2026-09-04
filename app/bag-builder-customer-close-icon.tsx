@@ -25,17 +25,12 @@ function createCloseSvg() {
 }
 
 function restoreClose(button: HTMLButtonElement) {
-  if (button.dataset.abagsCustomerCloseIcon !== "svg") return;
-  button.replaceChildren(document.createTextNode("×"));
+  button.querySelector(SVG_SELECTOR)?.remove();
   delete button.dataset.abagsCustomerCloseIcon;
 }
 
 function installClose(button: HTMLButtonElement) {
-  if (button.querySelector(SVG_SELECTOR)) {
-    button.dataset.abagsCustomerCloseIcon = "svg";
-    return;
-  }
-  button.replaceChildren(createCloseSvg());
+  if (!button.querySelector(SVG_SELECTOR)) button.appendChild(createCloseSvg());
   button.dataset.abagsCustomerCloseIcon = "svg";
 }
 
@@ -59,9 +54,7 @@ export default function BagBuilderCustomerCloseIcon() {
 
       document.querySelectorAll<HTMLButtonElement>(MARKED_CLOSE_SELECTOR).forEach((button) => {
         const dialog = button.closest<HTMLElement>(DIALOG_SELECTOR);
-        if (!dialog || !activeDialogs.has(dialog) || !desktop.matches || dialog.dataset.abagsPhotoTrue === "active") {
-          restoreClose(button);
-        }
+        if (!dialog || !activeDialogs.has(dialog) || !desktop.matches || dialog.dataset.abagsPhotoTrue === "active") restoreClose(button);
       });
     };
 
