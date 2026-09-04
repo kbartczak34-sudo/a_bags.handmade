@@ -53,18 +53,33 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   }
 }
 
-/* Desktop Chromium/SwiftShader visual QA exposed a platform glyph as a solid black bar.
-   Keep the original accessible button and click handler, but make its visible mark an
-   explicit SVG background. Mobile already renders its native close control correctly. */
+/* Customer desktop close icon is a real DOM SVG appended to the original React button.
+   The original multiplication glyph remains owned by React but is visually neutralized.
+   Pseudo-elements and the failed data-URI background path are explicitly retired. */
 @media(min-width:981px){
-  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button:not(.abags-v4-header-tool){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button[data-abags-customer-close-icon="svg"]{
     font-size:0!important;
-    color:transparent!important;
+    line-height:0!important;
+    color:#674d53!important;
     background-color:#fff!important;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' fill='none' stroke='%23674d53' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E")!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    background-size:17px 17px!important;
+    background-image:none!important;
+    overflow:hidden!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button[data-abags-customer-close-icon="svg"]::before,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button[data-abags-customer-close-icon="svg"]::after{
+    content:none!important;
+    display:none!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button[data-abags-customer-close-icon="svg"]>svg[data-abags-customer-close-svg]{
+    display:block!important;
+    width:17px!important;
+    height:17px!important;
+    margin:auto!important;
+    overflow:visible!important;
+    pointer-events:none!important;
+    color:#674d53!important;
   }
 }
 
