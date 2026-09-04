@@ -150,9 +150,6 @@ export default function BagBuilderFinal3DController() {
 
     const attachStage = (next: HTMLElement | null) => {
       if (next === stage) {
-        // The body observer watches the whole document only so it can detect stage
-        // replacement/removal. Revalidating an unchanged stage here lets unrelated
-        // React DOM mutations cancel the two requestAnimationFrame promotion frames.
         bindCanvasEvents();
         return;
       }
@@ -167,10 +164,11 @@ export default function BagBuilderFinal3DController() {
         if (shouldIgnorePaintMetadata(records)) return;
         validate();
       });
+      // Only stage-level state is a validation input. Fallback canvases, view controls,
+      // portals and other descendant UI mount/unmount independently and must never cancel
+      // an already verified WebGL frame while it is crossing promoting -> ready.
       stageObserver.observe(stage, {
         attributes: true,
-        childList: true,
-        subtree: true,
         attributeFilter: [
           "data-family", "data-color", "data-stitch", "data-flap", "data-handles",
           "data-strap", "data-hardware", "data-accent", "data-abags-fidelity3d-ready",
@@ -183,6 +181,8 @@ export default function BagBuilderFinal3DController() {
 
     const findStage = () => attachStage(document.querySelector<HTMLElement>(".abags-bag-builder-stage"));
     findStage();
+    // The body observer is lifecycle-only: it discovers/rebinds a replaced stage and lets
+    // bindCanvasEvents see a canvas that was inserted after initial attachment.
     bodyObserver = new MutationObserver(findStage);
     bodyObserver.observe(document.body, { childList: true, subtree: true });
 
