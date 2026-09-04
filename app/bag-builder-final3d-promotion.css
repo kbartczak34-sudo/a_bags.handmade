@@ -1,8 +1,37 @@
-/* Chromium/Android promotion bridge for the final realtime WebGL renderer.
-   The controller intentionally enters `promoting` before declaring the frame `ready`.
-   During that bridge the WebGL layer must be compositor-visible, otherwise a hidden canvas
-   can never be validated as the visible customer frame. SVG remains underneath as a safe fallback. */
+/* Final customer renderer visibility state machine.
+   WebGL is initialized eagerly so Chromium/Android can allocate and validate the context,
+   but initialization is NOT equivalent to customer-visible readiness.
 
+   States:
+   - waiting / fallback / any unverified state: SVG only
+   - promoting: SVG + WebGL (WebGL composited above SVG, non-interactive)
+   - ready: WebGL only, interactive
+
+   These rules deliberately carry higher specificity than legacy `.abags-pro3d-active`
+   reference styles, because that class is attached as soon as the WebGL context exists. */
+
+/* 1) Unverified states: keep the deterministic SVG visible even though WebGL is warm. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d]:not([data-abags-final3d="promoting"]):not([data-abags-final3d="ready"]) > svg{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d]:not([data-abags-final3d="promoting"]):not([data-abags-final3d="ready"]) > .abags-fidelity3d-layer{
+  display:block!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d]:not([data-abags-final3d="promoting"]):not([data-abags-final3d="ready"]) > .abags-fidelity3d-layer .abags-fidelity3d-canvas{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* 2) Chromium/Android promotion bridge: compositor-visible but not interactive yet. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > .abags-fidelity3d-layer{
   display:block!important;
   opacity:1!important;
@@ -14,11 +43,31 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   display:block!important;
   opacity:1!important;
   visibility:visible!important;
+  pointer-events:none!important;
 }
 
-/* Do not hide the deterministic SVG until the controller reaches `ready`.
-   It stays below WebGL (z-index 250 vs 270), preventing a blank flash if promotion is rejected. */
+/* Keep SVG underneath during promotion so a rejected frame can fall back without a blank flash. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > svg{
+  display:block!important;
   opacity:1!important;
   visibility:visible!important;
+  pointer-events:none!important;
+}
+
+/* 3) Accepted frame: WebGL is the sole visible product renderer and owns interaction. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > svg{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-fidelity3d-canvas{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer{
+  pointer-events:auto!important;
 }
