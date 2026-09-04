@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 const MAX_ATTEMPTS = 16;
 const REQUIRED_RENDERER = "variable-depth-v2";
+const PAINT_METADATA = new Set(["data-abags-fidelity3d-frame", "data-abags-fidelity3d-frame-at"]);
 
 function inspectWebGlContext(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl");
@@ -135,6 +136,18 @@ export default function BagBuilderFinal3DController() {
       canvas.addEventListener("webglcontextrestored", () => validate(), { passive: true });
     };
 
+    const shouldIgnorePaintMetadata = (records: MutationRecord[]) => {
+      if (!stage || !records.length) return false;
+      const onlyPaintMetadata = records.every((record) => record.type === "attributes" && Boolean(record.attributeName) && PAINT_METADATA.has(record.attributeName!));
+      if (!onlyPaintMetadata) return false;
+      const state = stage.dataset.abagsFinal3d || "";
+      if (state !== "promoting" && state !== "ready") return false;
+      const expectedSignature = signature(stage);
+      return !stage.dataset.abagsFidelity3dError
+        && stage.dataset.abagsFinal3dSignature === expectedSignature
+        && stage.dataset.abagsFidelity3dFrame === expectedSignature;
+    };
+
     const attachStage = (next: HTMLElement | null) => {
       if (next === stage) {
         bindCanvasEvents();
@@ -147,8 +160,9 @@ export default function BagBuilderFinal3DController() {
       boundCanvas = null;
       if (!stage) return;
 
-      stageObserver = new MutationObserver(() => {
+      stageObserver = new MutationObserver((records) => {
         bindCanvasEvents();
+        if (shouldIgnorePaintMetadata(records)) return;
         validate();
       });
       stageObserver.observe(stage, {
