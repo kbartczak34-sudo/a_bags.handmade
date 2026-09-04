@@ -44,22 +44,25 @@ test("desktop customer step rail leaves enough room for Podsumowanie", () => {
   assert.match(css, /:not\(\[data-abags-photo-true="active"\]\)[\s\S]*\.abags-exact-live-mount/);
 });
 
-test("desktop customer close control mounts a real DOM SVG without replacing React-owned text", () => {
+test("desktop customer close control renders deterministic DOM lines without replacing React-owned text", () => {
   assert.match(live, /import BagBuilderCustomerCloseIcon from "\.\/bag-builder-customer-close-icon"/);
   assert.match(live, /<BagBuilderReferenceV4 \/>[\s\S]*?<BagBuilderCustomerCloseIcon \/>/);
-  assert.match(closeIcon, /appendChild\(createCloseSvg\(\)\)/);
-  assert.match(closeIcon, /querySelector\(SVG_SELECTOR\)\?\.remove\(\)/);
-  assert.match(closeIcon, /M6 6l12 12M18 6L6 18/);
+  assert.match(closeIcon, /data-abags-customer-close-icon="lines-v2"/);
+  assert.match(closeIcon, /createStroke\("45deg"\)/);
+  assert.match(closeIcon, /createStroke\("-45deg"\)/);
+  assert.match(closeIcon, /setImportant\(button, "font-size", "0"\)/);
+  assert.match(closeIcon, /setImportant\(line, "background", "#674d53"\)/);
   assert.match(closeIcon, /desktop\.matches && dialog\.dataset\.abagsPhotoTrue !== "active"/);
   assert.doesNotMatch(closeIcon, /replaceChildren/);
   assert.doesNotMatch(closeIcon, /textContent\s*=/);
+  assert.doesNotMatch(closeIcon, /createElementNS/);
 });
 
-test("desktop customer close SVG neutralizes legacy glyph and pseudo-element rendering", () => {
-  assert.match(css, /button\[data-abags-customer-close-icon="svg"\]\{[\s\S]*font-size:0!important/);
-  assert.match(css, /background-image:none!important/);
-  assert.match(css, /button\[data-abags-customer-close-icon="svg"\]::before,[\s\S]*::after\{[\s\S]*content:none!important/);
-  assert.match(css, /svg\[data-abags-customer-close-svg\][\s\S]*width:17px!important/);
+test("desktop customer close v2 preserves restoration and does not depend on the failed SVG background path", () => {
+  assert.match(closeIcon, /savedStyles/);
+  assert.match(closeIcon, /button\.style\.setProperty\(property, state\.value, state\.priority\)/);
+  assert.match(closeIcon, /button\.style\.removeProperty\(property\)/);
+  assert.doesNotMatch(closeIcon, /currentColor/);
   assert.doesNotMatch(css, /data:image\/svg\+xml/);
 });
 
