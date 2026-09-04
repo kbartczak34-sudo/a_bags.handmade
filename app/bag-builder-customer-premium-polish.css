@@ -1,7 +1,8 @@
 /* Final customer visual polish. This file is imported after every legacy/customizer stylesheet.
    It intentionally touches customer realtime mode only; Photo-True internal QA is excluded. */
 
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage .abags-pro3d-chip{
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage .abags-pro3d-chip,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage .abags-canvas3d-chip{
   display:none!important;
   opacity:0!important;
   visibility:hidden!important;
