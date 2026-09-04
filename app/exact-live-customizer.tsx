@@ -11,6 +11,7 @@ import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contra
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
+import BagBuilderCustomerCompositorGuard from "./bag-builder-customer-compositor-guard";
 import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
 import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
@@ -59,5 +60,6 @@ export default function ExactLiveCustomizer() {
     <BagBuilderProjectReview />
     <BagBuilderShareLink />
     <BagBuilderCheckoutHandoff />
+    <BagBuilderCustomerCompositorGuard />
   </>;
 }
