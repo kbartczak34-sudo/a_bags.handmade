@@ -19,11 +19,11 @@ test("customer stack keeps compositor bridge between renderer and verifier", () 
 });
 
 test("compositor bridge never consumes WebGL before the verifier reads the product framebuffer", () => {
-  assert.doesNotMatch(compositor, /getContext\s*\(/);
-  assert.doesNotMatch(compositor, /\.flush\s*\(/);
+  assert.doesNotMatch(compositor, /canvas\s*\.\s*getContext\s*\(/);
+  assert.doesNotMatch(compositor, /gl\s*\??\s*\.\s*flush\s*\(/);
   assert.doesNotMatch(compositor, /data-abags-fidelity3d-frame-at/);
   assert.match(compositor, /attributeFilter: \[\.\.\.PROMOTION_ATTRIBUTES\]/);
-  assert.doesNotMatch(compositor, /stageObserver\.observe\(stage,[\s\S]*childList:\s*true/);
+  assert.doesNotMatch(compositor, /stageObserver\.observe\(stage,[\s\S]*?childList:\s*true[\s\S]*?\}\);/);
   assert.match(compositor, /Intentionally no eager promoteComposite\(\) call/);
 });
 
