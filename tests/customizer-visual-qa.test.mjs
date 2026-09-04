@@ -37,6 +37,16 @@ test("approved screenshots return to Fason and expose real store model cards", (
   assert.match(photoSmoke, /switchModel/);
 });
 
+test("production QA rejects the huge blank gap formerly visible inside Fason", () => {
+  assert.match(photoSmoke, /const family=d\?\.querySelector\('\[data-photo-true-family-group="true"\]'\)/);
+  assert.match(photoSmoke, /fasonGap:Math\.round\(mr\.top-lr\.bottom\)/);
+  assert.match(photoSmoke, /familyHeight:Math\.round\(fr\.height\)/);
+  assert.match(photoSmoke, /value\.fasonGap < -2/);
+  assert.match(photoSmoke, /value\.fasonGap > 32/);
+  assert.match(photoSmoke, /value\.familyHeight > 340/);
+  assert.match(photoSmoke, /mobileContract\?\.familyHeight > 255/);
+});
+
 test("mobile acceptance follows the cleaned Photo-True geometry from production", () => {
   assert.match(photoSmoke, /mobile\.width < 388/);
   assert.match(photoSmoke, /mobile\.width > 392/);
