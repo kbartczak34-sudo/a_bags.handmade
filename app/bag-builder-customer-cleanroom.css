@@ -23,3 +23,118 @@ body.abags-vc-open .hero-product-photo{
 .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track{
   margin-top:0!important;
 }
+
+/* Customer mobile compositor safety.
+   Legacy V4 positioned the view controls with bottom/left/transform values while the
+   realtime layer later supplied top/right. In an absolutely-positioned flex box that
+   combination stretches the control container through the product area. Hard-reset
+   every opposing edge and size here, in the final customer-only stylesheet. */
+@media(max-width:980px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-view-controls{
+    position:absolute!important;
+    top:8px!important;
+    right:8px!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:max-content!important;
+    min-width:0!important;
+    max-width:calc(100% - 16px)!important;
+    height:35px!important;
+    min-height:35px!important;
+    max-height:35px!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:2px!important;
+    padding:2px!important;
+    transform:none!important;
+    overflow:hidden!important;
+    border:1px solid rgba(90,66,69,.12)!important;
+    border-radius:999px!important;
+    background:rgba(255,252,249,.86)!important;
+    box-shadow:0 5px 14px rgba(90,66,69,.08)!important;
+    backdrop-filter:blur(8px)!important;
+    z-index:150!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-view-controls button{
+    flex:0 0 auto!important;
+    min-width:37px!important;
+    width:auto!important;
+    height:29px!important;
+    min-height:29px!important;
+    max-height:29px!important;
+    padding:0 6px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:999px!important;
+    font-size:6px!important;
+    line-height:1!important;
+  }
+
+  /* Zoom remains available, but it may never become a full-width white overlay.
+     Pinch/drag stay active on the canvas; this compact rail supplies explicit −/+ and reset. */
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-zoom{
+    position:absolute!important;
+    top:auto!important;
+    right:8px!important;
+    bottom:8px!important;
+    left:auto!important;
+    width:min(184px,calc(100% - 16px))!important;
+    min-width:0!important;
+    max-width:184px!important;
+    height:38px!important;
+    min-height:38px!important;
+    max-height:38px!important;
+    display:grid!important;
+    grid-template-columns:28px minmax(48px,1fr) 28px 42px!important;
+    align-items:center!important;
+    gap:3px!important;
+    padding:3px 4px!important;
+    transform:none!important;
+    overflow:hidden!important;
+    border:1px solid rgba(90,66,69,.12)!important;
+    border-radius:999px!important;
+    background:rgba(255,252,249,.88)!important;
+    box-shadow:0 5px 14px rgba(90,66,69,.08)!important;
+    backdrop-filter:blur(8px)!important;
+    z-index:150!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-zoom > span{
+    display:none!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-zoom button{
+    min-width:0!important;
+    width:100%!important;
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+    padding:0 4px!important;
+    margin:0!important;
+    font-size:10px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-zoom .abags-pro3d-reset{
+    min-width:0!important;
+    width:42px!important;
+    font-size:6px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage .abags-pro3d-zoom input[type="range"]{
+    width:100%!important;
+    min-width:0!important;
+    height:28px!important;
+    margin:0!important;
+  }
+}
