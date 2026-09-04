@@ -243,7 +243,11 @@ async function main() {
 
     const runScenario = async ({ label, viewport, choices, incompatible = [] }) => {
       await send("Emulation.setDeviceMetricsOverride", viewport);
-      await send("Emulation.setTouchEmulationEnabled", { enabled: Boolean(viewport.mobile), maxTouchPoints: viewport.mobile ? 5 : 0 });
+      if (viewport.mobile) {
+        await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+      } else {
+        await send("Emulation.setTouchEmulationEnabled", { enabled: false });
+      }
       await clearAndReload();
       await openBuilder();
 
