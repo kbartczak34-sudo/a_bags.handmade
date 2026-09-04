@@ -37,3 +37,21 @@ test("SVG stays available during promotion and is hidden only when 3D is ready",
   assert.match(realtimeCss, /data-abags-final3d="ready"\] > svg[\s\S]*opacity:0!important/);
   assert.match(realtimeCss, /data-abags-final3d="ready"\] > \.abags-fidelity3d-layer[\s\S]*pointer-events:auto!important/);
 });
+
+test("renderer paint metadata cannot cancel an in-flight compositor promotion", () => {
+  assert.match(controller, /PAINT_METADATA = new Set\(\["data-abags-fidelity3d-frame", "data-abags-fidelity3d-frame-at"\]\)/);
+  assert.match(controller, /const shouldIgnorePaintMetadata = \(records: MutationRecord\[\]\)/);
+  assert.match(controller, /state !== "promoting" && state !== "ready"/);
+  assert.match(controller, /stage\.dataset\.abagsFinal3dSignature === expectedSignature/);
+  assert.match(controller, /stage\.dataset\.abagsFidelity3dFrame === expectedSignature/);
+  assert.match(controller, /if \(shouldIgnorePaintMetadata\(records\)\) return;[\s\S]*validate\(\);/);
+});
+
+test("real configuration and renderer health mutations still retrigger final 3D validation", () => {
+  for (const attribute of [
+    "data-family", "data-color", "data-stitch", "data-flap", "data-handles",
+    "data-strap", "data-hardware", "data-accent", "data-abags-fidelity3d-ready", "data-abags-fidelity3d-error",
+  ]) {
+    assert.ok(controller.includes(`"${attribute}"`), `${attribute} must stay in the observer contract`);
+  }
+});
