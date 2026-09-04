@@ -24,8 +24,8 @@ test("model picker is driven by current real store products rather than four syn
 test("selected product photo is the primary exact preview and synthetic renderers are hidden", () => {
   assert.match(component, /abags-photo-true-base/);
   assert.match(component, /src=\{selected\.imageUrl\}/);
-  assert.match(component, /stage\.dataset\.abagsPhotoTrue = "active"/);
-  assert.match(component, /stage\.dataset\.photoProductId = selected\.id/);
+  assert.match(component, /liveStage\.dataset\.abagsPhotoTrue = "active"/);
+  assert.match(component, /liveStage\.dataset\.photoProductId = selected\.id/);
   assert.match(styles, /data-abags-photo-true="active"[\s\S]*?> svg/);
   assert.match(styles, /\.abags-pro3d-layer/);
   assert.match(styles, /\.abags-canvas3d-layer/);
