@@ -6,13 +6,14 @@ const controller = readFileSync("app/bag-builder-customer-close-icon.tsx", "utf8
 const css = readFileSync("app/bag-builder-customer-premium-polish.css", "utf8");
 const live = readFileSync("app/exact-live-customizer.tsx", "utf8");
 
-test("customer close SVG targets only the real close button and preserves accessibility", () => {
+test("customer close v2 targets only the real close button and preserves accessibility", () => {
   assert.match(controller, /button\[aria-label="Zamknij"\]/);
+  assert.match(controller, /data-abags-customer-close-surface/);
   assert.match(controller, /aria-hidden/);
-  assert.match(controller, /focusable/);
-  assert.match(controller, /data-abags-customer-close-svg/);
-  assert.match(controller, /appendChild\(createCloseSvg\(\)\)/);
+  assert.match(controller, /createStroke\("45deg"\)/);
+  assert.match(controller, /createStroke\("-45deg"\)/);
   assert.doesNotMatch(controller, /replaceChildren/);
+  assert.doesNotMatch(controller, /textContent\s*=/);
 });
 
 test("customer close controller targets the actual V4 dialog used by production QA", () => {
@@ -20,9 +21,21 @@ test("customer close controller targets the actual V4 dialog used by production 
   assert.doesNotMatch(controller, /abags-vc-builder-active/);
 });
 
-test("customer close SVG remains isolated from mobile and Photo-True", () => {
+test("customer close v2 is independent from fonts and SVG styling", () => {
+  assert.match(controller, /data-abags-customer-close-icon="lines-v2"/);
+  assert.match(controller, /setImportant\(button, "font-size", "0"\)/);
+  assert.match(controller, /setImportant\(line, "background", "#674d53"\)/);
+  assert.match(controller, /setImportant\(line, "transform", `translate\(-50%, -50%\) rotate\(\$\{angle\}\)`\)/);
+  assert.doesNotMatch(controller, /createElementNS/);
+  assert.doesNotMatch(controller, /currentColor/);
+});
+
+test("customer close v2 restores inline styles and remains isolated from mobile and Photo-True", () => {
   assert.match(controller, /matchMedia\("\(min-width: 981px\)"\)/);
   assert.match(controller, /abagsPhotoTrue !== "active"/);
+  assert.match(controller, /savedStyles/);
+  assert.match(controller, /button\.style\.setProperty\(property, state\.value, state\.priority\)/);
+  assert.match(controller, /button\.style\.removeProperty\(property\)/);
   assert.match(css, /@media\(min-width:981px\)/);
   assert.doesNotMatch(css, /data:image\/svg\+xml/);
 });
