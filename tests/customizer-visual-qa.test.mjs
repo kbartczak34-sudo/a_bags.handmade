@@ -83,16 +83,18 @@ test("Photo-True contract is rechecked after switching the real model", () => {
   assert.match(photoSmoke, /assertPhotoTrueContract/);
 });
 
-test("deployment uploads short-lived V5 visual artifacts and gates mobile real-product interaction", () => {
+test("deployment keeps Photo-True as an explicit internal reference check after customer realtime acceptance", () => {
+  assert.match(workflow, /Browser test customer realtime builder from empty construction/);
   assert.match(workflow, /Browser test Photo-True V5 and capture real-product visual QA/);
   assert.match(workflow, /ABAGS_VISUAL_QA_DIR: artifacts\/customizer-v5/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
   assert.match(workflow, /customizer-visual-qa-\$\{\{ github\.run_number \}\}/);
   assert.match(workflow, /artifacts\/customizer-v5\/\*\.png/);
   assert.match(workflow, /retention-days: 7/);
+  assert.match(workflow, /steps\.realtime\.outcome == 'success'/);
   assert.match(workflow, /steps\.customizer\.outcome == 'success'/);
   assert.match(workflow, /smoke-photo-true-mobile\.mjs/);
-  assert.match(workflow, /Photo-True V5 browser\/visual acceptance failed/);
+  assert.match(workflow, /internal Photo-True reference acceptance failed/);
   assert.match(mobileSmoke, /visibleSynthetic/);
   assert.match(mobileSmoke, /touch-selected real product/);
   assert.match(mobileSmoke, /screenshot hash|screenshotHash/);
