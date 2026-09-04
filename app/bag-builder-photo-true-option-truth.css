@@ -1,0 +1,61 @@
+/* Truthful option states for Photo-True V5.
+   These badges describe preview fidelity only — never manufacturability or price. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status]{
+  position:relative!important;
+  opacity:1!important;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status]::after{
+  content:attr(data-photo-preview-label);
+  position:absolute;
+  z-index:3;
+  top:4px;
+  right:4px;
+  min-width:19px;
+  min-height:13px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:2px 4px;
+  border:1px solid rgba(90,66,69,.10);
+  border-radius:999px;
+  background:rgba(255,252,249,.94);
+  color:#77565d;
+  box-shadow:0 3px 9px rgba(71,48,52,.05);
+  font:800 4.7px/1 var(--font-sans);
+  letter-spacing:.035em;
+  pointer-events:none;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status="exact"]::after{
+  border-color:rgba(126,158,132,.24);
+  background:#f2f8f2;
+  color:#4f7357;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status="base"]::after{
+  border-color:rgba(183,138,98,.20);
+  background:#fff8ed;
+  color:#86684f;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status="written"]{
+  border-style:dashed!important;
+  opacity:1!important;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status="written"]::after{
+  border-color:rgba(154,99,109,.18);
+  background:#fbf2f3;
+  color:#8f6970;
+}
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status="written"].is-active{
+  border-style:dashed!important;
+  box-shadow:0 0 0 2px rgba(199,127,139,.10)!important;
+}
+
+@media(max-width:980px){
+  .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] button[data-photo-preview-status]::after{
+    top:3px;
+    right:3px;
+    min-width:17px;
+    min-height:11px;
+    padding:2px 3px;
+    font-size:4.2px;
+  }
+}
