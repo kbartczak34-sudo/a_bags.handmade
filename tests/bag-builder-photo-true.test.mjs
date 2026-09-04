@@ -51,7 +51,13 @@ test("photo variants are fetched per selected product and never synthesized when
 test("legacy family is only an internal compatibility bridge, not the visible model source", () => {
   assert.match(component, /inferLegacyFamily/);
   assert.match(component, /clickLegacyFamily/);
-  assert.match(styles, /data-photo-true-family-group="true"[^}]*>[\s\S]*?\.abags-builder-options[\s\S]*?display:none!important/);
+  assert.match(styles, /\[data-photo-true-family-group="true"\][\s\S]*?> \.abags-builder-options[\s\S]*?display:none!important/);
+});
+
+test("Photo-True hides legacy presets and misleading synthetic family layer labels", () => {
+  assert.match(styles, /\.abags-ref-inspirations[\s\S]*?display:none!important/);
+  assert.match(styles, /\.abags-ref-layer-row\[data-ref-edit-key="family"\][\s\S]*?display:none!important/);
+  assert.match(styles, /pointer-events:none!important/);
 });
 
 test("real model cards stay usable on desktop and mobile", () => {
