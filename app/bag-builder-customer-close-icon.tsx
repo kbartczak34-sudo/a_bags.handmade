@@ -96,27 +96,31 @@ function installClose(button: HTMLButtonElement) {
   setImportant(button, "overflow", "hidden");
 }
 
+function isDesktopViewport() {
+  return window.innerWidth >= 981;
+}
+
 export default function BagBuilderCustomerCloseIcon() {
   useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 981px)");
     let frame = 0;
 
     const sync = () => {
       frame = 0;
+      const desktop = isDesktopViewport();
       const activeDialogs = new Set<HTMLElement>();
 
       document.querySelectorAll<HTMLElement>(DIALOG_SELECTOR).forEach((dialog) => {
         activeDialogs.add(dialog);
         const button = dialog.querySelector<HTMLButtonElement>(CLOSE_SELECTOR);
         if (!button) return;
-        const customerDesktop = desktop.matches && dialog.dataset.abagsPhotoTrue !== "active";
+        const customerDesktop = desktop && dialog.dataset.abagsPhotoTrue !== "active";
         if (customerDesktop) installClose(button);
         else restoreClose(button);
       });
 
       document.querySelectorAll<HTMLButtonElement>(MARKED_CLOSE_SELECTOR).forEach((button) => {
         const dialog = button.closest<HTMLElement>(DIALOG_SELECTOR);
-        if (!dialog || !activeDialogs.has(dialog) || !desktop.matches || dialog.dataset.abagsPhotoTrue === "active") restoreClose(button);
+        if (!dialog || !activeDialogs.has(dialog) || !desktop || dialog.dataset.abagsPhotoTrue === "active") restoreClose(button);
       });
     };
 
@@ -133,11 +137,11 @@ export default function BagBuilderCustomerCloseIcon() {
       attributes: true,
       attributeFilter: ["class", "data-abags-photo-true"],
     });
-    desktop.addEventListener?.("change", requestSync);
+    window.addEventListener("resize", requestSync);
 
     return () => {
       observer.disconnect();
-      desktop.removeEventListener?.("change", requestSync);
+      window.removeEventListener("resize", requestSync);
       if (frame) window.cancelAnimationFrame(frame);
       document.querySelectorAll<HTMLButtonElement>(MARKED_CLOSE_SELECTOR).forEach(restoreClose);
     };
