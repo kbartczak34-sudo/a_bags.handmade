@@ -1,0 +1,89 @@
+/* Mobile shell hardening for the Photo-True visual customizer.
+   Keep the creator isolated from the storefront and size it from the fixed viewport,
+   rather than from 100dvh alone (which can leave a visible strip on Android browsers
+   with dynamic top/bottom chrome). Imported last by ExactLiveCustomizer on purpose. */
+
+@media (max-width: 980px) {
+  html:has(body.abags-vc-open),
+  body.abags-vc-open {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
+  body.abags-vc-open .social-quick-links {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-layer-root:has(.abags-reference-layout-v4) {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483000 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    width: auto !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #fffaf7 !important;
+    isolation: isolate !important;
+  }
+
+  body.abags-vc-open .abags-vc-layer-root:has(.abags-reference-layout-v4) > .abags-vc-backdrop {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    background: #fffaf7 !important;
+    backdrop-filter: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 {
+    position: relative !important;
+    inset: auto !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    background: #fffaf7 !important;
+    box-shadow: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    top: auto !important;
+    z-index: 1000 !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-layout {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overscroll-behavior: contain !important;
+  }
+}
+
+@media (max-width: 620px) {
+  body.abags-vc-open .abags-vc-layer-root:has(.abags-reference-layout-v4),
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+}

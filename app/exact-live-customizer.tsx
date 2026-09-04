@@ -3,6 +3,7 @@ import "./bag-builder-reference-v4-final.css";
 import "./bag-builder-reference-v4-product-stage.css";
 import "./bag-builder-photo-true.css";
 import "./bag-builder-photo-true-option-truth.css";
+import "./bag-builder-mobile-shell-fix.css";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
