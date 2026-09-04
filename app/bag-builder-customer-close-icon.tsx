@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const DIALOG_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4";
+const DIALOG_SELECTOR = ".abags-vc-dialog.abags-reference-layout-v4";
 const CLOSE_SELECTOR = '.abags-vc-header > button[aria-label="Zamknij"]:not(.abags-v4-header-tool)';
 const MARKED_CLOSE_SELECTOR = 'button[data-abags-customer-close-icon="svg"]';
 const SVG_SELECTOR = "svg[data-abags-customer-close-svg]";
