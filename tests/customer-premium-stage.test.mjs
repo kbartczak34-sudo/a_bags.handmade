@@ -37,6 +37,20 @@ test("production realtime acceptance rejects every visible legacy 3D chip", () =
   assert.match(realtimeQa, /visible legacy 3D preview chips: 0/);
 });
 
+test("desktop customer step rail leaves enough room for Podsumowanie", () => {
+  assert.match(css, /@media\(min-width:1181px\)[\s\S]*grid-template-columns:160px minmax\(0,1fr\)!important/);
+  assert.match(css, /@media\(min-width:981px\) and \(max-width:1180px\)[\s\S]*grid-template-columns:132px minmax\(0,1fr\)!important/);
+  assert.match(css, /:not\(\[data-abags-photo-true="active"\]\)[\s\S]*\.abags-exact-live-mount/);
+});
+
+test("customer close control uses a deterministic drawn X instead of the platform glyph", () => {
+  assert.match(css, /\.abags-vc-header>button:not\(\.abags-v4-header-tool\)\{[\s\S]*font-size:0!important/);
+  assert.match(css, /button:not\(\.abags-v4-header-tool\)::before,[\s\S]*button:not\(\.abags-v4-header-tool\)::after/);
+  assert.match(css, /rotate\(45deg\)/);
+  assert.match(css, /rotate\(-45deg\)/);
+  assert.match(css, /background:#674d53/);
+});
+
 test("small mobile stage is shorter without affecting Photo-True", () => {
   assert.match(css, /@media\(max-width:420px\)[\s\S]*height:230px!important/);
   assert.match(css, /\.abags-fidelity3d-view-controls[\s\S]*top:10px!important/);
