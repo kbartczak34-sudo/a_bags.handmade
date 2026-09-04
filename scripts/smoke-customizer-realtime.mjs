@@ -116,14 +116,21 @@ async function main() {
       if(!d||!s)return null;
       const svg=s.querySelector(':scope > svg');
       const canvas=s.querySelector('canvas');
+      const body=svg?.querySelector('[data-layer="body"]');
+      const svgStyle=svg?getComputedStyle(svg):null;
+      const svgRect=svg?.getBoundingClientRect();
+      const bodyRect=body?.getBoundingClientRect();
       const style=getComputedStyle(d);
       const rect=d.getBoundingClientRect();
+      const svgVisible=Boolean(svg && svgStyle && svgRect && svgStyle.display!=='none' && svgStyle.visibility!=='hidden' && Number.parseFloat(svgStyle.opacity||'1')>.05 && svgRect.width>20 && svgRect.height>20);
+      const bodyVisible=Boolean(body && bodyRect && svgVisible && bodyRect.width>20 && bodyRect.height>20);
       return {
         family:s.dataset.family||'', color:s.dataset.color||'', stitch:s.dataset.stitch||'',
         signature:s.dataset.builderSignature||'',
         photoTrue:Boolean(d.querySelector('.abags-photo-true-base')) || d.dataset.abagsPhotoTrue==='active' || s.dataset.abagsPhotoTrue==='active',
         readyProductChoices:d.querySelectorAll('[data-photo-product-choice]').length,
-        svgPresent:Boolean(svg), canvasPresent:Boolean(canvas),
+        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), bodyVisible,
+        bodyFill:body?.getAttribute('fill')||'', bodyPath:body?.getAttribute('d')||'',
         dialogWidth:Math.round(rect.width), dialogHeight:Math.round(rect.height),
         dialogTop:Math.round(rect.top), dialogLeft:Math.round(rect.left),
         dialogVisible:style.display!=='none' && style.visibility!=='hidden' && rect.width>1 && rect.height>1,
@@ -138,8 +145,8 @@ async function main() {
       await waitFor(`document.querySelector('.abags-bag-builder-stage')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`, `${key}=${value}`);
     };
     const assertCustomerMode = (state, label) => {
-      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || (!state.svgPresent && !state.canvasPresent)) {
-        throw new Error(`${label} is not the customer realtime builder: ${JSON.stringify(state)}`);
+      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || !state.svgPresent || !state.svgVisible) {
+        throw new Error(`${label} is not a visible customer realtime builder: ${JSON.stringify(state)}`);
       }
     };
     const buildBag = async ({ family, color, stitch }, label) => {
@@ -151,17 +158,17 @@ async function main() {
       await choose("family", family);
       const afterFamily = await stageState();
       assertCustomerMode(afterFamily, `${label} after family`);
-      if (afterFamily.signature === initialSignature) throw new Error(`${label} family selection did not update the live preview signature.`);
+      if (afterFamily.signature === initialSignature || !afterFamily.bodyVisible || !afterFamily.bodyPath) throw new Error(`${label} family selection did not create a visible bag body.`);
 
       await choose("color", color);
       const afterColor = await stageState();
       assertCustomerMode(afterColor, `${label} after color`);
-      if (afterColor.signature === afterFamily.signature || afterColor.color.toUpperCase() !== color.toUpperCase()) throw new Error(`${label} color selection did not update the live preview.`);
+      if (afterColor.signature === afterFamily.signature || afterColor.color.toUpperCase() !== color.toUpperCase() || !afterColor.bodyVisible || afterColor.bodyFill === afterFamily.bodyFill) throw new Error(`${label} color selection did not visibly update the bag body.`);
 
       await choose("stitch", stitch);
       const afterStitch = await stageState();
       assertCustomerMode(afterStitch, `${label} after stitch`);
-      if (afterStitch.signature === afterColor.signature || afterStitch.stitch !== stitch) throw new Error(`${label} stitch selection did not update the live preview.`);
+      if (afterStitch.signature === afterColor.signature || afterStitch.stitch !== stitch || !afterStitch.bodyVisible || afterStitch.bodyFill === afterColor.bodyFill) throw new Error(`${label} stitch selection did not visibly update the bag texture.`);
       return afterStitch;
     };
 
@@ -188,7 +195,10 @@ async function main() {
     console.log("REALTIME BUILDER PASS:", productionUrl);
     console.log("- starts from empty construction: yes");
     console.log("- finished-product Photo-True takeover: absent");
-    console.log("- family/color/stitch update live signature: yes");
+    console.log("- customer SVG renderer visible: yes");
+    console.log("- family creates visible body: yes");
+    console.log("- color visibly changes body fill: yes");
+    console.log("- stitch visibly changes body texture: yes");
     console.log(`- desktop screenshot bytes: ${desktopBytes}`);
     console.log(`- mobile screenshot bytes: ${mobileBytes}`);
     console.log(`- desktop final: ${desktop.family} / ${desktop.color} / ${desktop.stitch}`);
