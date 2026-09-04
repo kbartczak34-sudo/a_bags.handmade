@@ -8,16 +8,14 @@ function subscribe() {
 
 function readQaMode() {
   if (typeof window === "undefined") return false;
-  const explicitQa = new URLSearchParams(window.location.search).get("photoTrueQa") === "1";
-  const automatedQa = navigator.webdriver === true;
-  return explicitQa || automatedQa;
+  return new URLSearchParams(window.location.search).get("photoTrueQa") === "1";
 }
 
 /**
  * Photo-True is a reference/QA aid, not the customer-facing builder.
- * Normal shoppers always build a new bag from the live construction renderer.
- * Automated production visual QA can still mount Photo-True so the historical
- * reference contract remains testable without taking over the real configurator.
+ * Normal shoppers and ordinary automated browsers always use the realtime
+ * construction renderer. The photographic reference mode is enabled only by
+ * an explicit internal QA query flag.
  */
 export default function BagBuilderPhotoTrueGate({ children }: { children: ReactNode }) {
   const enabled = useSyncExternalStore(subscribe, readQaMode, () => false);
