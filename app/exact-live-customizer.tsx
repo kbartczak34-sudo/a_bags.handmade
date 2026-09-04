@@ -7,13 +7,14 @@ import "./bag-builder-mobile-shell-fix.css";
 import "./bag-builder-customer-realtime.css";
 import "./bag-builder-final3d-promotion.css";
 import "./bag-builder-customer-cleanroom.css";
+import "./bag-builder-fidelity3d-controls.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
-import BagBuilderCustomerCompositorGuard from "./bag-builder-customer-compositor-guard";
 import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
+import BagBuilderFidelity3DControlNamespace from "./bag-builder-fidelity3d-control-namespace";
 import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
 import BagBuilderFinal3DController from "./bag-builder-final3d-controller";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
@@ -37,6 +38,7 @@ export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
     <BagBuilderFinalWebGL3D />
+    <BagBuilderFidelity3DControlNamespace />
     <BagBuilderFidelity3DCompositorSync />
     <BagBuilderFinal3DController />
     <BagBuilderPro3DTouchRescue />
@@ -60,6 +62,5 @@ export default function ExactLiveCustomizer() {
     <BagBuilderProjectReview />
     <BagBuilderShareLink />
     <BagBuilderCheckoutHandoff />
-    <BagBuilderCustomerCompositorGuard />
   </>;
 }

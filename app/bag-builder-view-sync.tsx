@@ -14,7 +14,7 @@ export default function BagBuilderViewSync() {
         requestAnimationFrame(() => {
           const stage = button.closest<HTMLElement>(".abags-bag-builder-stage");
           const range = stage?.querySelector<HTMLInputElement>(
-            '.abags-pro3d-zoom input[type="range"], .abags-canvas3d-zoom input[type="range"]',
+            '.abags-fidelity3d-zoom input[type="range"], .abags-pro3d-zoom input[type="range"], .abags-canvas3d-zoom input[type="range"]',
           );
           if (!range) return;
           range.dispatchEvent(new Event("input", { bubbles: true }));

@@ -118,18 +118,23 @@ async function main() {
       const svg=s.querySelector(':scope > svg');
       const canvas=s.querySelector('.abags-fidelity3d-canvas');
       const fidelity=s.querySelector('.abags-fidelity3d-layer');
+      const viewControls=s.querySelector('.abags-fidelity3d-view-controls');
+      const zoomControls=s.querySelector('.abags-fidelity3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
       const svgRect=svg?.getBoundingClientRect();
       const canvasStyle=canvas?getComputedStyle(canvas):null;
       const canvasRect=canvas?.getBoundingClientRect();
       const fidelityStyle=fidelity?getComputedStyle(fidelity):null;
       const fidelityRect=fidelity?.getBoundingClientRect();
+      const viewRect=viewControls?.getBoundingClientRect();
+      const zoomRect=zoomControls?.getBoundingClientRect();
       const style=getComputedStyle(d);
       const rect=d.getBoundingClientRect();
       const svgVisible=Boolean(svg && svgStyle && svgRect && svgStyle.display!=='none' && svgStyle.visibility!=='hidden' && Number.parseFloat(svgStyle.opacity||'1')>.05 && svgRect.width>20 && svgRect.height>20);
       const canvasVisible=Boolean(canvas && canvasStyle && canvasRect && canvasStyle.display!=='none' && canvasStyle.visibility!=='hidden' && Number.parseFloat(canvasStyle.opacity||'1')>.05 && canvasRect.width>20 && canvasRect.height>20);
       const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
-      const activeView=[...s.querySelectorAll('.abags-pro3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
+      const activeView=[...s.querySelectorAll('.abags-fidelity3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
+      const legacyControlCount=s.querySelectorAll('.abags-fidelity3d-layer .abags-pro3d-view-controls, .abags-fidelity3d-layer .abags-pro3d-zoom').length;
       let webgl=null;
       if(canvas){
         try{
@@ -153,6 +158,9 @@ async function main() {
         photoTrue:Boolean(d.querySelector('.abags-photo-true-base')) || d.dataset.abagsPhotoTrue==='active' || s.dataset.abagsPhotoTrue==='active',
         readyProductChoices:d.querySelectorAll('[data-photo-product-choice]').length,
         svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, activeView, webgl,
+        fidelityControlNamespace:Boolean(viewControls&&zoomControls), legacyControlCount,
+        viewControls:viewRect?{width:Math.round(viewRect.width),height:Math.round(viewRect.height),top:Math.round(viewRect.top),left:Math.round(viewRect.left)}:null,
+        zoomControls:zoomRect?{width:Math.round(zoomRect.width),height:Math.round(zoomRect.height),top:Math.round(zoomRect.top),left:Math.round(zoomRect.left)}:null,
         dialogWidth:Math.round(rect.width), dialogHeight:Math.round(rect.height),
         dialogTop:Math.round(rect.top), dialogLeft:Math.round(rect.left),
         dialogVisible:style.display!=='none' && style.visibility!=='hidden' && rect.width>1 && rect.height>1,
@@ -176,15 +184,15 @@ async function main() {
         throw new Error(`${label} verification timeout. State: ${JSON.stringify(state)}. ${error instanceof Error ? error.message : String(error)}`);
       }
       const state = await stageState();
-      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || state.final3d !== "ready" || !state.canvasPresent || !state.canvasVisible || !state.fidelityVisible || state.svgVisible) {
-        throw new Error(`${label} is not verified visible final 3D: ${JSON.stringify(state)}`);
+      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || state.final3d !== "ready" || !state.canvasPresent || !state.canvasVisible || !state.fidelityVisible || state.svgVisible || !state.fidelityControlNamespace || state.legacyControlCount !== 0) {
+        throw new Error(`${label} is not verified visible final 3D with isolated controls: ${JSON.stringify(state)}`);
       }
       return state;
     };
     const clickView = async (label) => {
-      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-pro3d-view-controls button')].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
+      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-fidelity3d-view-controls button')].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
       if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
-      await waitFor(`[...document.querySelectorAll('.abags-pro3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
+      await waitFor(`[...document.querySelectorAll('.abags-fidelity3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
     };
     const buildBag = async ({ family, color, stitch }, label) => {
       const empty = await stageState();
@@ -228,6 +236,8 @@ async function main() {
     await openBuilder();
     const mobile = await buildBag({ family: "mini", color: "#087E81", stitch: "basket" }, "Mobile");
     if (mobile.dialogWidth > 390 || mobile.dialogLeft < -1 || mobile.dialogTop < -1) throw new Error(`Mobile builder escaped the viewport: ${JSON.stringify(mobile)}`);
+    if (!mobile.viewControls || mobile.viewControls.height > 44 || mobile.viewControls.width > 190) throw new Error(`Mobile Fidelity3D view controls cover too much of the product stage: ${JSON.stringify(mobile)}`);
+    if (!mobile.zoomControls || mobile.zoomControls.height > 48 || mobile.zoomControls.width > 192) throw new Error(`Mobile Fidelity3D zoom controls cover too much of the product stage: ${JSON.stringify(mobile)}`);
     const socialsVisible = await evaluate(`[...document.querySelectorAll('.social-quick-links')].some((n)=>{const s=getComputedStyle(n),r=n.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>1&&r.height>1;})`);
     if (socialsVisible) throw new Error("Floating storefront social links are visible over the mobile builder.");
     const mobileBytes = await capture("customizer-mobile-realtime.png");
@@ -236,6 +246,7 @@ async function main() {
     console.log("- starts from empty construction with SVG safety fallback: yes");
     console.log("- finished-product Photo-True takeover: absent");
     console.log("- WebGL Fidelity3D produced verified pixels: yes");
+    console.log("- Fidelity3D controls are isolated from legacy Pro3D CSS: yes");
     console.log("- family/color/stitch redraw verified 3D: yes");
     console.log("- Przód / 3/4 / Bok view controls are interactive: yes");
     console.log(`- desktop screenshot bytes: ${desktopBytes}`);
