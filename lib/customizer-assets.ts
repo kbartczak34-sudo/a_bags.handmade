@@ -1,6 +1,6 @@
 import { getProductBucket, getProductDb } from "./products";
 
-export const CUSTOMIZER_CATEGORIES = ["color", "stitch", "handles", "hardware", "strap", "accent"] as const;
+export const CUSTOMIZER_CATEGORIES = ["color", "stitch", "flap", "handles", "hardware", "strap", "accent"] as const;
 export type CustomizerCategory = (typeof CUSTOMIZER_CATEGORIES)[number];
 
 export type CustomizerAsset = {
