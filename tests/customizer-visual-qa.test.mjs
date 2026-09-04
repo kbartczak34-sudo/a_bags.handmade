@@ -37,26 +37,40 @@ test("approved screenshots return to Fason and expose real store model cards", (
   assert.match(photoSmoke, /switchModel/);
 });
 
-test("mobile acceptance uses full-screen V4 shell with a loaded Photo-True base", () => {
+test("mobile acceptance follows the cleaned Photo-True geometry from production", () => {
   assert.match(photoSmoke, /mobile\.width < 388/);
   assert.match(photoSmoke, /mobile\.width > 392/);
   assert.match(photoSmoke, /mobile\.height < 840/);
+  assert.match(photoSmoke, /mobile\.height > 848/);
   assert.match(photoSmoke, /mobile\.headerHeight < 48/);
   assert.match(photoSmoke, /mobile\.headerHeight > 56/);
-  assert.match(photoSmoke, /mobile\.previewTop < 45/);
-  assert.match(photoSmoke, /mobile\.previewTop > 75/);
-  assert.match(photoSmoke, /mobile\.previewHeight < 300/);
+  assert.match(photoSmoke, /mobile\.previewTop < 48/);
+  assert.match(photoSmoke, /mobile\.previewTop > 58/);
+  assert.match(photoSmoke, /mobile\.previewHeight < 240/);
+  assert.match(photoSmoke, /mobile\.previewHeight > 285/);
+  assert.match(photoSmoke, /mobileColumnCount < 3/);
   assert.match(photoSmoke, /mobile\.baseLoaded/);
   assert.match(photoSmoke, /mobile\.scrollY !== 0/);
 });
 
-test("Photo-True acceptance refuses any visible synthetic product renderer", () => {
+test("Photo-True acceptance refuses synthetic renderers and all legacy model UI", () => {
   assert.match(photoSmoke, /visibleSynthetic/);
+  assert.match(photoSmoke, /visibleLegacyFamilyOptions/);
+  assert.match(photoSmoke, /legacyInspirationsVisible/);
+  assert.match(photoSmoke, /legacyFamilyLayerVisible/);
   assert.match(photoSmoke, /:scope > svg/);
   assert.match(photoSmoke, /\.abags-pro3d-layer/);
   assert.match(photoSmoke, /\.abags-canvas3d-layer/);
-  assert.match(photoSmoke, /desktopBefore\.visibleSynthetic !== 0/);
-  assert.match(photoSmoke, /mobileContract\.visibleSynthetic !== 0/);
+  assert.match(photoSmoke, /value\.visibleSynthetic !== 0/);
+  assert.match(photoSmoke, /value\.visibleLegacyFamilyOptions !== 0/);
+  assert.match(photoSmoke, /value\.legacyInspirationsVisible/);
+  assert.match(photoSmoke, /value\.legacyFamilyLayerVisible/);
+});
+
+test("Photo-True contract is rechecked after switching the real model", () => {
+  assert.match(photoSmoke, /Desktop after model switch/);
+  assert.match(photoSmoke, /Mobile after model switch/);
+  assert.match(photoSmoke, /assertPhotoTrueContract/);
 });
 
 test("deployment uploads short-lived V5 visual artifacts and gates mobile real-product interaction", () => {
