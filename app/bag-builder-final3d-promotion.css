@@ -54,11 +54,17 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:none!important;
 }
 
-/* 3) Accepted frame: WebGL is the sole visible product renderer and owns interaction. */
+/* 3) Accepted frame: WebGL is the sole visible product renderer and owns interaction.
+   Important: the SVG is removed from layout, not merely made transparent. On Chromium/
+   SwiftShader a transparent promoted SVG layer can retain its stale raster texture above
+   a freshly rendered WebGL surface on narrow/mobile viewports. All non-ready states above
+   explicitly restore display:block, so fallback remains deterministic and reversible. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > svg{
+  display:none!important;
   opacity:0!important;
   visibility:hidden!important;
   pointer-events:none!important;
+  transition:none!important;
 }
 
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer,
