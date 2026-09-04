@@ -38,6 +38,49 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   white-space:nowrap!important;
 }
 
+/* Visual QA on the real 1440px production capture showed that the seventh step label
+   clipped inside the legacy-width rail. Give customer steps enough room without changing
+   the overall left workspace width or the Photo-True reference layout. */
+@media(min-width:1181px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-exact-live-mount{
+    grid-template-columns:160px minmax(0,1fr)!important;
+  }
+}
+
+@media(min-width:981px) and (max-width:1180px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-exact-live-mount{
+    grid-template-columns:132px minmax(0,1fr)!important;
+  }
+}
+
+/* Do not depend on the platform/font rendering of the multiplication glyph used by the
+   base modal. Draw a deterministic close mark while keeping the original button, click
+   handler and accessible name intact. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button:not(.abags-v4-header-tool){
+  font-size:0!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button:not(.abags-v4-header-tool)::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button:not(.abags-v4-header-tool)::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:15px;
+  height:1.6px;
+  border-radius:999px;
+  background:#674d53;
+  transform-origin:center;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button:not(.abags-v4-header-tool)::before{
+  transform:translate(-50%,-50%) rotate(45deg);
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-header>button:not(.abags-v4-header-tool)::after{
+  transform:translate(-50%,-50%) rotate(-45deg);
+}
+
 @media(max-width:980px){
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-preview,
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage{
