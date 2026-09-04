@@ -9,13 +9,22 @@ const [stack, controller, compositor, stageCss] = await Promise.all([
   readFile(new URL("../app/bag-builder-reference-v4-product-stage.css", import.meta.url), "utf8"),
 ]);
 
-test("customer stack forces a compositor commit before final 3D verification", () => {
+test("customer stack keeps compositor bridge between renderer and verifier", () => {
   assert.match(stack, /<BagBuilderFinalWebGL3D\s*\/>[\s\S]*<BagBuilderFidelity3DCompositorSync\s*\/>[\s\S]*<BagBuilderFinal3DController\s*\/>/);
-  assert.match(compositor, /gl\?\.flush\(\)/);
+  assert.match(compositor, /state !== "promoting"/);
+  assert.match(compositor, /data-abags-final3d-signature/);
   assert.match(compositor, /translate3d\(0,0,/);
-  assert.match(compositor, /data-abags-fidelity3d-frame-at/);
-  assert.match(compositor, /abagsFidelity3dComposite/);
+  assert.match(compositor, /abagsFidelity3dComposite = signature/);
   assert.match(compositor, /requestAnimationFrame[\s\S]*requestAnimationFrame/);
+});
+
+test("compositor bridge never consumes WebGL before the verifier reads the product framebuffer", () => {
+  assert.doesNotMatch(compositor, /getContext\s*\(/);
+  assert.doesNotMatch(compositor, /\.flush\s*\(/);
+  assert.doesNotMatch(compositor, /data-abags-fidelity3d-frame-at/);
+  assert.match(compositor, /attributeFilter: \[\.\.\.PROMOTION_ATTRIBUTES\]/);
+  assert.doesNotMatch(compositor, /stageObserver\.observe\(stage,[\s\S]*childList:\s*true/);
+  assert.match(compositor, /Intentionally no eager promoteComposite\(\) call/);
 });
 
 test("verified framebuffer must preserve the selected chromatic cord hue", () => {
