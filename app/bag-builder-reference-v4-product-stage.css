@@ -1,0 +1,30 @@
+/* V4 product-stage cleanup — loaded last so legacy reference scenery cannot leak into the final creator. */
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active::after,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active{
+  background:
+    radial-gradient(ellipse at 50% 30%,rgba(255,255,255,.82) 0 18%,rgba(255,255,255,.24) 42%,transparent 64%),
+    linear-gradient(180deg,#f8eee5 0 66%,#ead5c1 66% 100%)!important;
+}
+
+/* The source renderer is deliberately product-first: soften legacy high-contrast canvas filtering
+   without reducing live stitch/color visibility or touch interaction. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-premium-canvas3d-canvas{
+  filter:drop-shadow(0 16px 17px rgba(65,43,48,.14)) saturate(.97) contrast(.92) brightness(1.025)!important;
+}
+
+/* The stage itself provides the floor; no decorative framed objects may compete with the bag. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
+  background:#f4e3d5!important;
+}
