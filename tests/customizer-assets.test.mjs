@@ -15,7 +15,7 @@ const adminStyles = fs.readFileSync("app/customizer-admin.css", "utf8");
 test("customizer assets are stored per product, category and variant", () => {
   assert.match(store, /CREATE TABLE IF NOT EXISTS customizer_assets/);
   assert.match(store, /UNIQUE\(product_id, category, variant\)/);
-  assert.match(store, /color.*stitch.*handles.*hardware.*strap.*accent/s);
+  assert.match(store, /color.*stitch.*flap.*handles.*hardware.*strap.*accent/s);
   assert.match(store, /getProductBucket/);
 });
 
@@ -42,19 +42,22 @@ test("owner API validates transparent layer formats and requires admin access", 
 test("owner panel contains a styled personalization asset manager", () => {
   assert.match(panel, /CustomizerAssetsManager/);
   assert.match(panel, /Personalizacja/);
-  assert.match(manager, /Warstwy personalizacji/);
-  assert.match(manager, /Dodaj \/ zastąp warstwę/);
+  assert.match(manager, /Warstwy personalizacji 1:1/);
+  assert.match(manager, /Dodaj \/ zastąp warstwę 1:1/);
   assert.match(manager, /api\/admin\/customizer-assets/);
   assert.match(layout, /customizer-admin\.css/);
   assert.match(adminStyles, /admin-customizer-manager/);
 });
 
-test("owner panel suggests frontend-compatible variant keys", () => {
+test("owner panel suggests frontend-compatible variant keys including exact flaps", () => {
   assert.match(manager, /PRESET_VARIANTS/);
   assert.match(manager, /natural-bez/);
   assert.match(manager, /pudrowy-roz/);
   assert.match(manager, /gleboki-granat/);
-  assert.match(manager, /drewniane/);
+  assert.match(manager, /flap:[\s\S]*?bez-klapy/);
+  assert.match(manager, /skorzana-czarna/);
+  assert.match(manager, /zamszowa-bordo/);
+  assert.match(manager, /drewniane-jasne/);
   assert.match(manager, /lancuszek-premium/);
   assert.match(manager, /customizer-variant-presets/);
 });
