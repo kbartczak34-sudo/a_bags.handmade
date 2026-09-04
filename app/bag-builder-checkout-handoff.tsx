@@ -13,6 +13,7 @@ type Config = {
   strap: string;
   hardware: string;
   accent: string;
+  baseProductId: string;
 };
 type Settings = {
   pricingEnabled: boolean;
@@ -30,8 +31,9 @@ type Settings = {
     flaps: Record<Family, string[]>;
   };
 };
+type CatalogBase = { id: string; name: string; unitAmount: number; imageUrl: string | null };
 
-const EMPTY: Config = { family: "", color: "", stitch: "", flap: "none", handles: "none", strap: "none", hardware: "gold", accent: "none" };
+const EMPTY: Config = { family: "", color: "", stitch: "", flap: "none", handles: "none", strap: "none", hardware: "gold", accent: "none", baseProductId: "" };
 const money = new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" });
 
 function readConfig(stage: HTMLElement): Config {
@@ -44,20 +46,25 @@ function readConfig(stage: HTMLElement): Config {
     strap: stage.dataset.strap || "none",
     hardware: stage.dataset.hardware || "gold",
     accent: stage.dataset.accent || "none",
+    baseProductId: stage.dataset.photoProductId || "",
   };
 }
 
-function calculateTotal(config: Config, settings: Settings) {
-  if (!config.family || !settings.pricingEnabled) return null;
-  const base = settings.familyBaseCents[config.family];
-  if (base === null) return null;
-  return base
-    + (settings.stitchCents[config.stitch] ?? 0)
+function extras(config: Config, settings: Settings) {
+  return (settings.stitchCents[config.stitch] ?? 0)
     + (settings.flapCents[config.flap] ?? 0)
     + (settings.handlesCents[config.handles] ?? 0)
     + (settings.strapCents[config.strap] ?? 0)
     + (settings.hardwareCents[config.hardware] ?? 0)
     + (settings.accentCents[config.accent] ?? 0);
+}
+
+function calculateTotal(config: Config, settings: Settings, photographedBase: CatalogBase | null) {
+  if (!config.family || !settings.pricingEnabled) return null;
+  if (photographedBase) return photographedBase.unitAmount + extras(config, settings);
+  const base = settings.familyBaseCents[config.family];
+  if (base === null) return null;
+  return base + extras(config, settings);
 }
 
 function compatible(config: Config, settings: Settings) {
@@ -71,21 +78,29 @@ export default function BagBuilderCheckoutHandoff() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<Config>(EMPTY);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [catalog, setCatalog] = useState<CatalogBase[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/bag-builder-settings", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
+    Promise.all([
+      fetch("/api/bag-builder-settings", { cache: "no-store", signal: controller.signal }).then(async (response) => {
         const payload = await response.json() as { settings?: Settings; error?: string };
         if (!response.ok || !payload.settings) throw new Error(payload.error || "Nie udało się wczytać ustawień sprzedaży.");
         return payload.settings;
-      })
-      .then(setSettings)
-      .catch((reason) => {
-        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Nie udało się wczytać ustawień sprzedaży.");
-      });
+      }),
+      fetch("/api/products", { cache: "no-store", signal: controller.signal }).then(async (response) => {
+        const payload = await response.json() as { products?: CatalogBase[] };
+        if (!response.ok || !Array.isArray(payload.products)) return [];
+        return payload.products;
+      }),
+    ]).then(([nextSettings, products]) => {
+      setSettings(nextSettings);
+      setCatalog(products);
+    }).catch((reason) => {
+      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Nie udało się wczytać ustawień sprzedaży.");
+    });
     return () => controller.abort();
   }, []);
 
@@ -112,7 +127,7 @@ export default function BagBuilderCheckoutHandoff() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"],
+      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent", "data-photo-product-id"],
     });
     return () => {
       observer.disconnect();
@@ -121,8 +136,9 @@ export default function BagBuilderCheckoutHandoff() {
   }, []);
 
   const complete = Boolean(config.family && config.color && config.stitch);
-  const total = useMemo(() => settings ? calculateTotal(config, settings) : null, [config, settings]);
-  const mapped = Boolean(settings && config.family && settings.familyProductIds[config.family]);
+  const photographedBase = useMemo(() => config.baseProductId ? catalog.find((product) => product.id === config.baseProductId) ?? null : null, [catalog, config.baseProductId]);
+  const total = useMemo(() => settings ? calculateTotal(config, settings, photographedBase) : null, [config, settings, photographedBase]);
+  const mapped = Boolean(photographedBase || (settings && config.family && settings.familyProductIds[config.family]));
   const isCompatible = Boolean(settings && compatible(config, settings));
   const ready = Boolean(settings?.pricingEnabled && complete && mapped && isCompatible && total && total > 0);
 
@@ -131,10 +147,11 @@ export default function BagBuilderCheckoutHandoff() {
     setPending(true);
     setError("");
     try {
+      const { baseProductId, ...projectConfig } = config;
       const response = await fetch("/api/bag-builder-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config }),
+        body: JSON.stringify({ config: projectConfig, baseProductId: baseProductId || undefined }),
       });
       const payload = await response.json() as { url?: string; error?: string };
       if (!response.ok || !payload.url) throw new Error(payload.error || "Nie udało się rozpocząć płatności projektu.");
@@ -149,22 +166,24 @@ export default function BagBuilderCheckoutHandoff() {
 
   let title = "Zakup projektu online";
   let status = "konsultacja";
-  let copy = "Dokończ fason, kolor sznurka i splot. Projekt możesz nadal zapisać, udostępnić albo wysłać do pracowni.";
+  let copy = "Dokończ model, kolor sznurka i splot. Projekt możesz nadal zapisać, udostępnić albo wysłać do pracowni.";
   if (complete && settings && !settings.pricingEnabled) {
     copy = "Pracownia nie włączyła jeszcze bezpośredniej sprzedaży personalizacji. Wyślij projekt do konsultacji i potwierdzenia ceny.";
   } else if (complete && settings?.pricingEnabled && !mapped) {
-    copy = "Ten fason nie ma jeszcze przypisanego produktu bazowego do sprzedaży online. Konsultacja projektu pozostaje dostępna.";
+    copy = "Ten model nie ma jeszcze bezpiecznie powiązanego produktu bazowego do sprzedaży online. Konsultacja projektu pozostaje dostępna.";
   } else if (complete && settings && !isCompatible) {
     title = "Sprawdź konfigurację";
     copy = "Jedna z wybranych opcji nie jest kompatybilna z fasonem. Zmień ją przed zakupem.";
   } else if (ready && total !== null) {
     title = "Projekt gotowy do bezpiecznego zakupu";
     status = money.format(total / 100);
-    copy = "Cena zostanie ponownie obliczona na serwerze, a produkt bazowy przejdzie kontrolę dostępności i danych bezpieczeństwa przed Stripe Checkout.";
+    copy = photographedBase
+      ? `Bazą zamówienia jest dokładnie widoczny produkt: ${photographedBase.name}. Cena bazowa pochodzi z katalogu sklepu, a personalizacja jest ponownie liczona na serwerze.`
+      : "Cena zostanie ponownie obliczona na serwerze, a produkt bazowy przejdzie kontrolę dostępności i danych bezpieczeństwa przed Stripe Checkout.";
   }
 
   return createPortal(
-    <section className="abags-builder-summary" aria-live="polite" data-builder-checkout-ready={ready ? "true" : "false"}>
+    <section className="abags-builder-summary" aria-live="polite" data-builder-checkout-ready={ready ? "true" : "false"} data-photo-checkout-product={photographedBase?.id || ""}>
       <div><strong>{title}</strong><span>{status}</span></div>
       <p>{copy}</p>
       <small>Sznurek poliestrowy z Pimiotki · płatność Stripe / BLIK po walidacji projektu.</small>
