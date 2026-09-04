@@ -2,6 +2,7 @@ import "./bag-builder-reference-v4.css";
 import "./bag-builder-reference-v4-final.css";
 import "./bag-builder-reference-v4-product-stage.css";
 import "./bag-builder-photo-true.css";
+import "./bag-builder-photo-true-option-truth.css";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
@@ -10,6 +11,7 @@ import BagBuilderFidelity3D from "./bag-builder-fidelity3d";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
 import BagBuilderPhotoTrue from "./bag-builder-photo-true";
 import BagBuilderPhotoTrueFlowGuard from "./bag-builder-photo-true-flow-guard";
+import BagBuilderPhotoTrueOptionTruth from "./bag-builder-photo-true-option-truth";
 import BagBuilderPremiumCompat from "./bag-builder-premium-compat";
 import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
 import BagBuilderProjectReview from "./bag-builder-project-review";
@@ -37,6 +39,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderReferenceV4 />
     <BagBuilderPhotoTrue />
     <BagBuilderPhotoTrueFlowGuard />
+    <BagBuilderPhotoTrueOptionTruth />
     <BagBuilderMaterialInfo />
     <BagBuilderValidationGuard />
     <BagBuilderAutosave />
