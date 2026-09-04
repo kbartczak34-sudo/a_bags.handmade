@@ -126,7 +126,10 @@ async function main() {
       const s=d?.querySelector('.abags-bag-builder-stage');
       const base=d?.querySelector('.abags-photo-true-base');
       const photo=d?.querySelector('.abags-photo-true-stage');
-      if(!d||!s||!base||!photo)return null;
+      const family=d?.querySelector('[data-photo-true-family-group="true"]');
+      const familyLegend=family?.querySelector(':scope > legend');
+      const modelsMount=family?.querySelector(':scope > .abags-photo-models-mount');
+      if(!d||!s||!base||!photo||!family||!familyLegend||!modelsMount)return null;
       const isVisible=(node)=>{
         if(!node)return false;
         const st=getComputedStyle(node),r=node.getBoundingClientRect();
@@ -136,6 +139,7 @@ async function main() {
       const visibleLegacyFamilyOptions=[...d.querySelectorAll('button[data-builder-key="family"]')].filter(isVisible).length;
       const legacyInspirationsVisible=isVisible(d.querySelector('.abags-ref-inspirations'));
       const legacyFamilyLayerVisible=isVisible(d.querySelector('[data-ref-edit-key="family"]'));
+      const fr=family.getBoundingClientRect(), lr=familyLegend.getBoundingClientRect(), mr=modelsMount.getBoundingClientRect();
       return {
         ready:photo.dataset.photoTrueReady==='true',
         productId:s.dataset.photoProductId||'',
@@ -148,6 +152,8 @@ async function main() {
         visibleLegacyFamilyOptions,
         legacyInspirationsVisible,
         legacyFamilyLayerVisible,
+        fasonGap:Math.round(mr.top-lr.bottom),
+        familyHeight:Math.round(fr.height),
         note:Boolean(d.querySelector('.abags-photo-true-note')),
       };
     })()`);
@@ -172,7 +178,7 @@ async function main() {
     };
 
     const assertPhotoTrueContract = (value, label) => {
-      if (!value?.ready || !value.baseLoaded || !value.productId || value.productId !== value.dialogProductId || value.modelCount < 1 || value.selectedCount !== 1 || value.visibleSynthetic !== 0 || value.visibleLegacyFamilyOptions !== 0 || value.legacyInspirationsVisible || value.legacyFamilyLayerVisible) {
+      if (!value?.ready || !value.baseLoaded || !value.productId || value.productId !== value.dialogProductId || value.modelCount < 1 || value.selectedCount !== 1 || value.visibleSynthetic !== 0 || value.visibleLegacyFamilyOptions !== 0 || value.legacyInspirationsVisible || value.legacyFamilyLayerVisible || value.fasonGap < -2 || value.fasonGap > 32 || value.familyHeight > 340) {
         throw new Error(`${label} Photo-True contract mismatch: ${JSON.stringify(value)}`);
       }
     };
@@ -219,8 +225,8 @@ async function main() {
     })()`);
     const mobileContract = await contract();
     const mobileColumnCount = mobile?.gridColumns?.split(/\s+/).filter(Boolean).length || 0;
-    if (!mobile || mobile.width < 388 || mobile.width > 392 || mobile.height < 840 || mobile.height > 848 || Math.abs(mobile.top) > 2 || Math.abs(mobile.left) > 2 || mobile.headerHeight < 48 || mobile.headerHeight > 56 || mobile.previewTop < 48 || mobile.previewTop > 58 || mobile.previewHeight < 240 || mobile.previewHeight > 285 || mobile.gridDisplay !== "grid" || mobileColumnCount < 3 || !mobile.baseLoaded || mobile.scrollY !== 0) {
-      throw new Error(`Mobile Photo-True layout mismatch: ${JSON.stringify({ ...mobile, mobileColumnCount })}`);
+    if (!mobile || mobile.width < 388 || mobile.width > 392 || mobile.height < 840 || mobile.height > 848 || Math.abs(mobile.top) > 2 || Math.abs(mobile.left) > 2 || mobile.headerHeight < 48 || mobile.headerHeight > 56 || mobile.previewTop < 48 || mobile.previewTop > 58 || mobile.previewHeight < 240 || mobile.previewHeight > 285 || mobile.gridDisplay !== "grid" || mobileColumnCount < 3 || !mobile.baseLoaded || mobile.scrollY !== 0 || mobileContract?.familyHeight > 255) {
+      throw new Error(`Mobile Photo-True layout mismatch: ${JSON.stringify({ ...mobile, mobileColumnCount, familyHeight: mobileContract?.familyHeight, fasonGap: mobileContract?.fasonGap })}`);
     }
     assertPhotoTrueContract(mobileContract, "Mobile");
     const mobileSwitch = await switchModel();

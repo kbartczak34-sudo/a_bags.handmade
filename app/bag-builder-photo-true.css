@@ -111,6 +111,42 @@
   pointer-events:none!important;
 }
 
+/* Photo-True owns the height of the Fason step. Older reference layers used a stretched
+   accordion cell, which left the real product grid hundreds of pixels below the legend.
+   The real-model selector must flow immediately under Fason, like the approved reference. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] [data-photo-true-family-group="true"]{
+  display:block!important;
+  flex:0 0 auto!important;
+  align-self:flex-start!important;
+  align-content:start!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding-bottom:8px!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] [data-photo-true-family-group="true"] > legend{
+  margin:0 0 4px!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] [data-photo-true-family-group="true"] > .abags-photo-models-mount{
+  position:static!important;
+  inset:auto!important;
+  display:block!important;
+  flex:0 0 auto!important;
+  align-self:start!important;
+  justify-self:stretch!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+}
+
 /* Legacy atelier presets can change only the synthetic family/configuration and therefore may
    contradict the selected photographed product. They are intentionally unavailable in Photo-True. */
 .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-ref-inspirations{
@@ -133,6 +169,7 @@
   display:grid;
   gap:7px;
   width:100%;
+  margin:0!important;
   padding:0 0 8px;
 }
 .abags-photo-models-head{
@@ -160,7 +197,7 @@
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:6px;
-  max-height:318px;
+  max-height:238px;
   overflow:auto;
   padding:1px 2px 2px;
   scrollbar-width:thin;
@@ -169,7 +206,7 @@
 .abags-photo-models-grid button{
   min-width:0;
   display:grid;
-  grid-template-rows:88px auto;
+  grid-template-rows:82px auto;
   gap:5px;
   padding:5px;
   overflow:hidden;
@@ -189,7 +226,7 @@
 .abags-photo-model-thumb{
   display:block;
   width:100%;
-  height:88px;
+  height:82px;
   overflow:hidden;
   border-radius:8px;
   background:#f6ece5;
@@ -197,7 +234,9 @@
 .abags-photo-model-thumb img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 .abags-photo-model-copy{display:grid;gap:2px;min-width:0;padding:0 1px 2px}
 .abags-photo-model-copy strong{overflow:hidden;text-overflow:ellipsis;font:800 6.3px/1.15 var(--font-sans);white-space:nowrap}
-.abags-photo-model-copy small{display:-webkit-box;overflow:hidden;color:#9b8186;font:600 5px/1.2 var(--font-sans);-webkit-box-orient:vertical;-webkit-line-clamp:2}
+/* Model cards are shape selectors. Keep the reference-like visual hierarchy: photo + model name.
+   Full product copy remains available in the catalog and the accessible product context. */
+.abags-photo-model-copy small{display:none!important}
 
 /* An option without a photographic overlay remains selectable for the written project,
    but it is visually identified as not yet previewable instead of being synthetically faked. */
@@ -226,29 +265,34 @@
   .abags-photo-true-note strong{font-size:5px}
   .abags-photo-true-note span{display:none}
 
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] [data-photo-true-family-group="true"]{
+    padding-bottom:5px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] [data-photo-true-family-group="true"] > legend{
+    margin-bottom:2px!important;
+  }
   .abags-photo-models{gap:5px;padding-bottom:6px}
   .abags-photo-models-head strong{font-size:6px}
-  .abags-photo-models-head small{font-size:4.8px}
+  .abags-photo-models-head small{display:none}
   .abags-photo-models-grid{
     grid-template-columns:repeat(3,minmax(0,1fr));
     gap:5px;
-    max-height:208px;
+    max-height:174px;
     scrollbar-width:none;
   }
   .abags-photo-models-grid::-webkit-scrollbar{display:none}
   .abags-photo-models-grid button{
     grid-template-rows:60px auto;
-    min-height:88px;
+    min-height:80px;
     padding:4px;
     border-radius:9px;
   }
   .abags-photo-model-thumb{height:60px;border-radius:7px}
-  .abags-photo-model-copy strong{font-size:5.8px}
-  .abags-photo-model-copy small{font-size:4.6px;-webkit-line-clamp:1}
+  .abags-photo-model-copy strong{font-size:5.8px;text-align:center}
 }
 
 @media(max-width:420px){
-  .abags-photo-models-grid{max-height:194px}
-  .abags-photo-models-grid button{grid-template-rows:56px auto;min-height:83px}
+  .abags-photo-models-grid{max-height:166px}
+  .abags-photo-models-grid button{grid-template-rows:56px auto;min-height:77px}
   .abags-photo-model-thumb{height:56px}
 }
