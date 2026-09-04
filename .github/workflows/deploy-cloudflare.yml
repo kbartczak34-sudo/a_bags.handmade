@@ -74,18 +74,27 @@ jobs:
           ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
         run: node scripts/smoke-customizer-realtime.mjs
 
+      - name: Verify realtime render integrity on the composited surface
+        id: render_integrity
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success'
+        continue-on-error: true
+        env:
+          ABAGS_PRODUCTION_URL: https://abagshandmade.pl
+          ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
+        run: node scripts/smoke-customizer-render-integrity.mjs
+
       - name: Upload realtime builder visual QA
         if: always() && steps.deploy.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: realtime-builder-visual-qa-${{ github.run_number }}
-          path: artifacts/customizer-realtime/*.png
+          path: artifacts/customizer-realtime/*
           if-no-files-found: warn
           retention-days: 7
 
       - name: Browser test Photo-True V5 and capture real-product visual QA
         id: customizer
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.render_integrity.outcome == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -103,7 +112,7 @@ jobs:
 
       - name: Mobile Photo-True real-product interaction test
         id: pro3d
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.customizer.outcome == 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.customizer.outcome == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -116,6 +125,7 @@ jobs:
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
           REALTIME_OUTCOME: ${{ steps.realtime.outcome }}
+          RENDER_INTEGRITY_OUTCOME: ${{ steps.render_integrity.outcome }}
           CUSTOMIZER_OUTCOME: ${{ steps.customizer.outcome }}
           MOBILE_OUTCOME: ${{ steps.pro3d.outcome }}
           COMMIT_SHA: ${{ github.sha }}
@@ -123,7 +133,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" && "${REALTIME_OUTCOME:-}" == "success" && "${CUSTOMIZER_OUTCOME:-}" == "success" && "${MOBILE_OUTCOME:-}" == "success" ]]; then
+          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" && "${REALTIME_OUTCOME:-}" == "success" && "${RENDER_INTEGRITY_OUTCOME:-}" == "success" && "${CUSTOMIZER_OUTCOME:-}" == "success" && "${MOBILE_OUTCOME:-}" == "success" ]]; then
             RESULT="✅ PASS"
           elif [[ "${DEPLOY_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ DEPLOY FAIL"
@@ -131,6 +141,8 @@ jobs:
             RESULT="❌ SMOKE FAIL"
           elif [[ "${REALTIME_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ REALTIME BUILDER FAIL"
+          elif [[ "${RENDER_INTEGRITY_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ REALTIME RENDER INTEGRITY FAIL"
           elif [[ "${CUSTOMIZER_OUTCOME:-}" != "success" ]]; then
             RESULT="❌ PHOTO-TRUE REFERENCE FAIL"
           else
@@ -144,6 +156,7 @@ jobs:
           - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
           - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
           - Customer realtime builder acceptance: \`${REALTIME_OUTCOME:-skipped}\`
+          - Realtime composited render integrity: \`${RENDER_INTEGRITY_OUTCOME:-skipped}\`
           - Photo-True internal reference acceptance: \`${CUSTOMIZER_OUTCOME:-skipped}\`
           - Mobile Photo-True reference interaction: \`${MOBILE_OUTCOME:-skipped}\`
           - Run: ${RUN_URL}
@@ -165,14 +178,20 @@ jobs:
           echo "Production deployment completed, but the customer realtime builder did not build a new bag live from an empty construction." >&2
           exit 1
 
+      - name: Fail when realtime composited render integrity fails
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.render_integrity.outcome != 'success'
+        run: |
+          echo "Production deployment completed, but the visible composited customer render does not match the verified Fidelity3D canvas." >&2
+          exit 1
+
       - name: Fail when Photo-True customizer browser test fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.customizer.outcome != 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.customizer.outcome != 'success'
         run: |
           echo "Production deployment completed, but the internal Photo-True reference acceptance failed." >&2
           exit 1
 
       - name: Fail when mobile Photo-True interaction fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.customizer.outcome == 'success' && steps.pro3d.outcome != 'success'
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.customizer.outcome == 'success' && steps.pro3d.outcome != 'success'
         run: |
           echo "Production deployment completed, but the mobile Photo-True reference interaction failed." >&2
           exit 1
