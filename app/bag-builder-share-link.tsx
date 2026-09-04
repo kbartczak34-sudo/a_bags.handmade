@@ -3,7 +3,9 @@
 import { useEffect } from "react";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
+const PHOTO_MODEL_KEY = "abags-photo-true-v1";
 const PARAM = "projekt";
+const MODEL_PARAM = "model";
 
 type BuilderConfig = {
   family: string;
@@ -52,6 +54,10 @@ function isComplete(config: BuilderConfig) {
   return Boolean(config.family && config.color && config.stitch && isValid(config));
 }
 
+function validModelId(value: string) {
+  return value.length > 0 && value.length <= 160 && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
 function encodeProject(config: BuilderConfig) {
   return [
     "v1",
@@ -83,9 +89,12 @@ function decodeProject(value: string | null): BuilderConfig | null {
   return isValid(config) && isComplete(config) ? config : null;
 }
 
-function projectUrl(config: BuilderConfig) {
+function projectUrl(config: BuilderConfig, stage: HTMLElement) {
   const url = new URL(window.location.href);
   url.searchParams.set(PARAM, encodeProject(config));
+  const modelId = stage.dataset.photoProductId || "";
+  if (stage.dataset.abagsPhotoTrue === "active" && validModelId(modelId)) url.searchParams.set(MODEL_PARAM, modelId);
+  else url.searchParams.delete(MODEL_PARAM);
   return url.toString();
 }
 
@@ -138,32 +147,73 @@ async function applyChoice(controls: HTMLElement, stage: HTMLElement, key: Build
   return false;
 }
 
-function persistImportedProject(config: BuilderConfig) {
+async function applyPhotoProduct(stage: HTMLElement, modelId: string) {
+  if (!modelId) return true;
+  if (!validModelId(modelId)) return false;
+  if (stage.dataset.photoProductId === modelId) return true;
+
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const button = [...document.querySelectorAll<HTMLButtonElement>("[data-photo-product-choice]")]
+      .find((candidate) => candidate.dataset.photoProductChoice === modelId);
+    if (button && !button.disabled) {
+      button.click();
+      for (let wait = 0; wait < 60; wait += 1) {
+        if (stage.dataset.photoProductId === modelId) return true;
+        await nextFrame();
+      }
+      return false;
+    }
+    await nextFrame();
+  }
+  return false;
+}
+
+function persistImportedProject(config: BuilderConfig, modelId: string) {
   try {
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
+    if (modelId) window.localStorage.setItem(PHOTO_MODEL_KEY, modelId);
   } catch {
     // Shared project still remains active for the current session.
   }
 }
 
-function removeImportedParam() {
+function removeImportedParams() {
   const url = new URL(window.location.href);
-  if (!url.searchParams.has(PARAM)) return;
-  url.searchParams.delete(PARAM);
-  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  let changed = false;
+  for (const param of [PARAM, MODEL_PARAM]) {
+    if (!url.searchParams.has(param)) continue;
+    url.searchParams.delete(param);
+    changed = true;
+  }
+  if (changed) window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
-async function importSharedProject(stage: HTMLElement, controls: HTMLElement, config: BuilderConfig) {
+async function importSharedProject(stage: HTMLElement, controls: HTMLElement, config: BuilderConfig, modelId: string) {
   controls.dataset.builderSharedImport = "loading";
-  for (const key of ORDER) {
+
+  // In Photo-True links the real product is authoritative. Selecting it first
+  // lets the existing compatibility bridge derive its internal family without
+  // exposing or trusting the old generic silhouette as the model identity.
+  if (modelId) {
+    const modelApplied = await applyPhotoProduct(stage, modelId);
+    if (!modelApplied) {
+      controls.dataset.builderSharedImport = "error";
+      return false;
+    }
+  }
+
+  const keys = modelId ? ORDER.filter((key) => key !== "family") : ORDER;
+  for (const key of keys) {
     const applied = await applyChoice(controls, stage, key, config[key]);
     if (!applied) {
       controls.dataset.builderSharedImport = "error";
       return false;
     }
   }
-  persistImportedProject(config);
-  removeImportedParam();
+
+  const finalConfig = readConfig(stage);
+  persistImportedProject(finalConfig, modelId);
+  removeImportedParams();
   controls.dataset.builderSharedImport = "ready";
   return true;
 }
@@ -184,10 +234,11 @@ function ensureShareButton(controls: HTMLElement, stage: HTMLElement) {
 
     button.addEventListener("click", async () => {
       const config = readConfig(stage);
-      if (!isComplete(config)) return;
+      const photoReady = stage.dataset.abagsPhotoTrue !== "active" || Boolean(stage.dataset.photoProductId);
+      if (!isComplete(config) || !photoReady) return;
       const original = "Udostępnij projekt";
       try {
-        const copied = await copyText(projectUrl(config));
+        const copied = await copyText(projectUrl(config, stage));
         button!.textContent = copied ? "Link skopiowany ✓" : "Nie udało się skopiować";
       } catch {
         button!.textContent = "Nie udało się skopiować";
@@ -197,7 +248,8 @@ function ensureShareButton(controls: HTMLElement, stage: HTMLElement) {
   }
 
   const config = readConfig(stage);
-  button.disabled = !isComplete(config);
+  const photoReady = stage.dataset.abagsPhotoTrue !== "active" || Boolean(stage.dataset.photoProductId);
+  button.disabled = !isComplete(config) || !photoReady;
   button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
 }
 
@@ -219,13 +271,13 @@ function ensureImportNotice(controls: HTMLElement, state: "loading" | "error" | 
   const copy = document.createElement("p");
   if (state === "loading") {
     title.textContent = "Otwieram udostępniony projekt";
-    copy.textContent = "Przenoszę zapisane wybory do kreatora…";
+    copy.textContent = "Przenoszę zapisany model A-Bags i personalizację do kreatora…";
   } else if (state === "error") {
     title.textContent = "Nie udało się odtworzyć projektu";
-    copy.textContent = "Link zawiera konfigurację, której nie można zastosować w aktualnej wersji kreatora.";
+    copy.textContent = "Link zawiera model lub konfigurację, których nie można zastosować w aktualnej wersji kreatora.";
   } else {
     title.textContent = "Udostępniony projekt został otwarty";
-    copy.textContent = "Możesz dalej zmieniać jego elementy, zapisać projekt lub wysłać go do pracowni.";
+    copy.textContent = "Rzeczywisty model bazowy i jego wybory zostały odtworzone. Możesz dalej edytować projekt.";
   }
   notice.replaceChildren(title, copy);
   if (state === "ready") window.setTimeout(() => notice?.remove(), 2600);
@@ -244,16 +296,19 @@ export default function BagBuilderShareLink() {
       ensureShareButton(controls, stage);
 
       if (!importStarted) {
-        const encoded = new URL(window.location.href).searchParams.get(PARAM);
+        const url = new URL(window.location.href);
+        const encoded = url.searchParams.get(PARAM);
+        const rawModelId = url.searchParams.get(MODEL_PARAM) || "";
         if (encoded) {
           importStarted = true;
           const config = decodeProject(encoded);
-          if (!config) {
+          const modelId = rawModelId && validModelId(rawModelId) ? rawModelId : "";
+          if (!config || (rawModelId && !modelId)) {
             controls.dataset.builderSharedImport = "error";
             ensureImportNotice(controls, "error");
           } else {
             ensureImportNotice(controls, "loading");
-            const applied = await importSharedProject(stage, controls, config);
+            const applied = await importSharedProject(stage, controls, config, modelId);
             if (!cancelled) ensureImportNotice(controls, applied ? "ready" : "error");
           }
         }
@@ -266,7 +321,7 @@ export default function BagBuilderShareLink() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"],
+      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent", "data-abags-photo-true", "data-photo-product-id"],
     });
 
     return () => {

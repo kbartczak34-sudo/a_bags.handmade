@@ -13,6 +13,12 @@ type BuilderConfig = {
   accent: string;
 };
 
+type PhotoIdentity = {
+  active: boolean;
+  productId: string;
+  productName: string;
+};
+
 const MATERIAL = "Sznurek poliestrowy · Pimiotki";
 
 const FAMILY_LABELS: Record<string, string> = {
@@ -90,12 +96,23 @@ function readConfig(stage: HTMLElement): BuilderConfig {
   };
 }
 
+function readPhotoIdentity(stage: HTMLElement): PhotoIdentity {
+  const productId = stage.dataset.photoProductId || "";
+  const productName = stage.dataset.photoProductName || "";
+  return {
+    active: stage.dataset.abagsPhotoTrue === "active" && Boolean(productId),
+    productId,
+    productName,
+  };
+}
+
 function label(map: Record<string, string>, value: string, fallback = "Nie wybrano") {
   return map[value] || fallback;
 }
 
-function projectCode(config: BuilderConfig) {
-  const signature = Object.values(config).join("|");
+function projectCode(config: BuilderConfig, photo: PhotoIdentity) {
+  const legacySignature = Object.values(config).join("|");
+  const signature = photo.active ? `${photo.productId}|${legacySignature}` : legacySignature;
   let hash = 2166136261;
   for (let index = 0; index < signature.length; index += 1) {
     hash ^= signature.charCodeAt(index);
@@ -104,12 +121,22 @@ function projectCode(config: BuilderConfig) {
   return `AB-${(hash >>> 0).toString(36).toUpperCase().padStart(7, "0").slice(-7)}`;
 }
 
-function specification(config: BuilderConfig) {
-  const code = projectCode(config);
+function modelLines(config: BuilderConfig, photo: PhotoIdentity) {
+  if (photo.active) {
+    return [
+      `Model bazowy 1:1: ${photo.productName || "Produkt A-Bags"}`,
+      `ID produktu bazowego: ${photo.productId}`,
+    ];
+  }
+  return [`Fason: ${label(FAMILY_LABELS, config.family)}`];
+}
+
+function specification(config: BuilderConfig, photo: PhotoIdentity) {
+  const code = projectCode(config, photo);
   return [
     `A-Bags · projekt ${code}`,
     `Materiał: ${MATERIAL}`,
-    `Fason: ${label(FAMILY_LABELS, config.family)}`,
+    ...modelLines(config, photo),
     `Kolor sznurka: ${label(COLOR_LABELS, config.color)}`,
     `Splot / ścieg: ${label(STITCH_LABELS, config.stitch)}`,
     `Klapa: ${label(FLAP_LABELS, config.flap)}`,
@@ -119,6 +146,10 @@ function specification(config: BuilderConfig) {
     `Detal / ozdoba: ${label(ACCENT_LABELS, config.accent)}`,
     "Cena personalizacji: do indywidualnego potwierdzenia przez pracownię.",
   ].join("\n");
+}
+
+function isComplete(config: BuilderConfig, photo: PhotoIdentity) {
+  return Boolean(config.family && config.color && config.stitch && (!photo.active || photo.productId));
 }
 
 function copyFallback(text: string) {
@@ -142,7 +173,7 @@ async function copyText(text: string) {
   return copyFallback(text);
 }
 
-function ensureReviewCard(controls: HTMLElement, config: BuilderConfig) {
+function ensureReviewCard(controls: HTMLElement, config: BuilderConfig, photo: PhotoIdentity) {
   const actions = controls.querySelector<HTMLElement>(".abags-builder-actions");
   if (!actions) return;
 
@@ -155,9 +186,9 @@ function ensureReviewCard(controls: HTMLElement, config: BuilderConfig) {
     actions.insertAdjacentElement("beforebegin", card);
   }
 
-  const code = projectCode(config);
-  const complete = Boolean(config.family && config.color && config.stitch);
-  const content = `${code}|${Object.values(config).join("|")}|${complete}`;
+  const code = projectCode(config, photo);
+  const complete = isComplete(config, photo);
+  const content = `${code}|${photo.productId}|${photo.productName}|${Object.values(config).join("|")}|${complete}`;
   if (card.dataset.reviewSignature === content) return;
   card.dataset.reviewSignature = content;
 
@@ -168,13 +199,16 @@ function ensureReviewCard(controls: HTMLElement, config: BuilderConfig) {
   status.textContent = complete ? `kod ${code}` : "uzupełnij podstawę projektu";
   heading.append(title, status);
 
+  const model = photo.active ? (photo.productName || "Produkt A-Bags") : label(FAMILY_LABELS, config.family);
   const summary = document.createElement("p");
   summary.textContent = complete
-    ? `${label(FAMILY_LABELS, config.family)} · ${label(COLOR_LABELS, config.color)} · ${label(STITCH_LABELS, config.stitch)} · ${label(FLAP_LABELS, config.flap)} · ${label(HANDLE_LABELS, config.handles)} · ${label(STRAP_LABELS, config.strap)} · ${label(HARDWARE_LABELS, config.hardware)} · ${label(ACCENT_LABELS, config.accent)}`
-    : "Wybierz fason, kolor sznurka i splot, aby otrzymać kompletną specyfikację.";
+    ? `${model} · ${label(COLOR_LABELS, config.color)} · ${label(STITCH_LABELS, config.stitch)} · ${label(FLAP_LABELS, config.flap)} · ${label(HANDLE_LABELS, config.handles)} · ${label(STRAP_LABELS, config.strap)} · ${label(HARDWARE_LABELS, config.hardware)} · ${label(ACCENT_LABELS, config.accent)}`
+    : "Wybierz model bazowy, kolor sznurka i splot, aby otrzymać kompletną specyfikację.";
 
   const material = document.createElement("small");
-  material.textContent = `${MATERIAL}. Kod projektu zmienia się automatycznie wraz z konfiguracją.`;
+  material.textContent = photo.active
+    ? `${MATERIAL}. Bazą projektu jest rzeczywisty produkt A-Bags 1:1. Kod projektu zmienia się wraz z modelem i konfiguracją.`
+    : `${MATERIAL}. Kod projektu zmienia się automatycznie wraz z konfiguracją.`;
 
   card.replaceChildren(heading, summary, material);
 }
@@ -195,10 +229,11 @@ function ensureCopyButton(controls: HTMLElement, stage: HTMLElement) {
 
     button.addEventListener("click", async () => {
       const current = readConfig(stage);
-      if (!(current.family && current.color && current.stitch)) return;
+      const photo = readPhotoIdentity(stage);
+      if (!isComplete(current, photo)) return;
       const original = "Kopiuj specyfikację";
       try {
-        const copied = await copyText(specification(current));
+        const copied = await copyText(specification(current, photo));
         button!.textContent = copied ? "Skopiowano ✓" : "Nie udało się skopiować";
       } catch {
         button!.textContent = "Nie udało się skopiować";
@@ -208,12 +243,13 @@ function ensureCopyButton(controls: HTMLElement, stage: HTMLElement) {
   }
 
   const config = readConfig(stage);
-  button.disabled = !(config.family && config.color && config.stitch);
+  const photo = readPhotoIdentity(stage);
+  button.disabled = !isComplete(config, photo);
   button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
 }
 
-function synchronizeWorkshopLink(controls: HTMLElement, config: BuilderConfig) {
-  if (!(config.family && config.color && config.stitch)) return;
+function synchronizeWorkshopLink(controls: HTMLElement, config: BuilderConfig, photo: PhotoIdentity) {
+  if (!isComplete(config, photo)) return;
   const link = controls.querySelector<HTMLAnchorElement>(".abags-builder-actions a");
   const href = link?.getAttribute("href");
   if (!link || !href) return;
@@ -222,9 +258,11 @@ function synchronizeWorkshopLink(controls: HTMLElement, config: BuilderConfig) {
     const url = new URL(href, window.location.origin);
     const text = url.searchParams.get("text");
     if (!text) return;
-    const codeSentence = `Kod projektu: ${projectCode(config)}.`;
+    const codeSentence = `Kod projektu: ${projectCode(config, photo)}.`;
+    const modelSentence = photo.active ? `Model bazowy 1:1: ${photo.productName || "Produkt A-Bags"} [${photo.productId}].` : "";
     const withoutOldCode = text.replace(/\s*Kod projektu:\s*AB-[A-Z0-9]+\./g, "").trim();
-    const nextText = `${withoutOldCode} ${codeSentence}`.trim();
+    const withoutOldModel = withoutOldCode.replace(/\s*Model bazowy 1:1:[^\n]*?\[[^\]]+\]\./g, "").trim();
+    const nextText = `${withoutOldModel}${modelSentence ? ` ${modelSentence}` : ""} ${codeSentence}`.trim();
     if (nextText === text) return;
     url.searchParams.set("text", nextText);
     link.setAttribute("href", url.toString());
@@ -238,9 +276,10 @@ function synchronize() {
   const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
   if (!stage || !controls) return;
   const config = readConfig(stage);
-  ensureReviewCard(controls, config);
+  const photo = readPhotoIdentity(stage);
+  ensureReviewCard(controls, config, photo);
   ensureCopyButton(controls, stage);
-  synchronizeWorkshopLink(controls, config);
+  synchronizeWorkshopLink(controls, config, photo);
 }
 
 export default function BagBuilderProjectReview() {
@@ -251,7 +290,7 @@ export default function BagBuilderProjectReview() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"],
+      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent", "data-abags-photo-true", "data-photo-product-id", "data-photo-product-name"],
     });
 
     return () => {
