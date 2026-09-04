@@ -1,0 +1,25 @@
+/* Customer Bag Builder clean-room contract.
+   A shopper constructs a new bag from decisions. Finished A-Bags photography stays
+   outside the customer realtime surface and remains available only to dedicated
+   internal Photo-True QA. */
+
+body.abags-vc-open .hero-product-photo{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+.abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspirations,
+.abags-vc-dialog.abags-reference-layout-v4 .abags-ref-family-photo{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+/* Do not let hidden preset/reference photography reserve space on mobile. */
+.abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspirations + *,
+.abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track{
+  margin-top:0!important;
+}
