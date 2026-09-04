@@ -69,7 +69,8 @@ async function main() {
   const url = `${productionUrl}${productionUrl.includes("?") ? "&" : "?"}abags-realtime-builder-qa=${Date.now()}`;
   const chrome = spawn(binary, [
     "--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--disable-background-networking",
-    "--disable-default-apps", "--no-first-run", `--remote-debugging-port=${port}`, "about:blank",
+    "--disable-default-apps", "--no-first-run", "--use-gl=swiftshader", "--enable-unsafe-swiftshader",
+    `--remote-debugging-port=${port}`, "about:blank",
   ], { stdio: ["ignore", "pipe", "pipe"] });
   let socket;
 
@@ -115,22 +116,27 @@ async function main() {
       const s=d?.querySelector('.abags-bag-builder-stage');
       if(!d||!s)return null;
       const svg=s.querySelector(':scope > svg');
-      const canvas=s.querySelector('canvas');
-      const body=svg?.querySelector('[data-layer="body"]');
+      const canvas=s.querySelector('.abags-fidelity3d-canvas');
+      const fidelity=s.querySelector('.abags-fidelity3d-layer');
       const svgStyle=svg?getComputedStyle(svg):null;
       const svgRect=svg?.getBoundingClientRect();
-      const bodyRect=body?.getBoundingClientRect();
+      const canvasStyle=canvas?getComputedStyle(canvas):null;
+      const canvasRect=canvas?.getBoundingClientRect();
+      const fidelityStyle=fidelity?getComputedStyle(fidelity):null;
+      const fidelityRect=fidelity?.getBoundingClientRect();
       const style=getComputedStyle(d);
       const rect=d.getBoundingClientRect();
       const svgVisible=Boolean(svg && svgStyle && svgRect && svgStyle.display!=='none' && svgStyle.visibility!=='hidden' && Number.parseFloat(svgStyle.opacity||'1')>.05 && svgRect.width>20 && svgRect.height>20);
-      const bodyVisible=Boolean(body && bodyRect && svgVisible && bodyRect.width>20 && bodyRect.height>20);
+      const canvasVisible=Boolean(canvas && canvasStyle && canvasRect && canvasStyle.display!=='none' && canvasStyle.visibility!=='hidden' && Number.parseFloat(canvasStyle.opacity||'1')>.05 && canvasRect.width>20 && canvasRect.height>20);
+      const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
+      const activeView=[...s.querySelectorAll('.abags-pro3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
       return {
         family:s.dataset.family||'', color:s.dataset.color||'', stitch:s.dataset.stitch||'',
-        signature:s.dataset.builderSignature||'',
+        signature:s.dataset.builderSignature||'', final3d:s.dataset.abagsFinal3d||'', final3dReason:s.dataset.abagsFinal3dReason||'',
+        final3dSignature:s.dataset.abagsFinal3dSignature||'', fidelityReady:s.dataset.abagsFidelity3dReady||'',
         photoTrue:Boolean(d.querySelector('.abags-photo-true-base')) || d.dataset.abagsPhotoTrue==='active' || s.dataset.abagsPhotoTrue==='active',
         readyProductChoices:d.querySelectorAll('[data-photo-product-choice]').length,
-        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), bodyVisible,
-        bodyFill:body?.getAttribute('fill')||'', bodyPath:body?.getAttribute('d')||'',
+        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, activeView,
         dialogWidth:Math.round(rect.width), dialogHeight:Math.round(rect.height),
         dialogTop:Math.round(rect.top), dialogLeft:Math.round(rect.left),
         dialogVisible:style.display!=='none' && style.visibility!=='hidden' && rect.width>1 && rect.height>1,
@@ -144,32 +150,43 @@ async function main() {
       if (!clicked) throw new Error(`Could not select ${key}=${value}.`);
       await waitFor(`document.querySelector('.abags-bag-builder-stage')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`, `${key}=${value}`);
     };
-    const assertCustomerMode = (state, label) => {
-      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || !state.svgPresent || !state.svgVisible) {
-        throw new Error(`${label} is not a visible customer realtime builder: ${JSON.stringify(state)}`);
+    const waitVerified3d = async (label) => {
+      await waitFor(`(() => { const s=document.querySelector('.abags-bag-builder-stage'); return s?.dataset.abagsFinal3d==='ready' && s.dataset.abagsFinal3dSignature===s.dataset.builderSignature; })()`, `${label} verified 3D`, 15_000);
+      const state = await stageState();
+      if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || state.final3d !== "ready" || !state.canvasPresent || !state.canvasVisible || !state.fidelityVisible || state.svgVisible) {
+        throw new Error(`${label} is not verified visible final 3D: ${JSON.stringify(state)}`);
       }
+      return state;
+    };
+    const clickView = async (label) => {
+      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-pro3d-view-controls button')].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
+      if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
+      await waitFor(`[...document.querySelectorAll('.abags-pro3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
     };
     const buildBag = async ({ family, color, stitch }, label) => {
       const empty = await stageState();
-      assertCustomerMode(empty, `${label} initial`);
-      if (empty.family || empty.color || empty.stitch) throw new Error(`${label} did not start from an empty construction: ${JSON.stringify(empty)}`);
+      if (!empty?.dialogVisible || empty.photoTrue || empty.readyProductChoices !== 0 || !empty.svgPresent || !empty.svgVisible || empty.family || empty.color || empty.stitch) {
+        throw new Error(`${label} did not start from the safe empty construction: ${JSON.stringify(empty)}`);
+      }
       const initialSignature = empty.signature;
 
       await choose("family", family);
-      const afterFamily = await stageState();
-      assertCustomerMode(afterFamily, `${label} after family`);
-      if (afterFamily.signature === initialSignature || !afterFamily.bodyVisible || !afterFamily.bodyPath) throw new Error(`${label} family selection did not create a visible bag body.`);
+      const afterFamily = await waitVerified3d(`${label} after family`);
+      if (afterFamily.signature === initialSignature || afterFamily.family !== family) throw new Error(`${label} family selection did not create verified 3D.`);
 
       await choose("color", color);
-      const afterColor = await stageState();
-      assertCustomerMode(afterColor, `${label} after color`);
-      if (afterColor.signature === afterFamily.signature || afterColor.color.toUpperCase() !== color.toUpperCase() || !afterColor.bodyVisible || afterColor.bodyFill === afterFamily.bodyFill) throw new Error(`${label} color selection did not visibly update the bag body.`);
+      const afterColor = await waitVerified3d(`${label} after color`);
+      if (afterColor.signature === afterFamily.signature || afterColor.color.toUpperCase() !== color.toUpperCase()) throw new Error(`${label} color selection did not redraw verified 3D.`);
 
       await choose("stitch", stitch);
-      const afterStitch = await stageState();
-      assertCustomerMode(afterStitch, `${label} after stitch`);
-      if (afterStitch.signature === afterColor.signature || afterStitch.stitch !== stitch || !afterStitch.bodyVisible || afterStitch.bodyFill === afterColor.bodyFill) throw new Error(`${label} stitch selection did not visibly update the bag texture.`);
-      return afterStitch;
+      const afterStitch = await waitVerified3d(`${label} after stitch`);
+      if (afterStitch.signature === afterColor.signature || afterStitch.stitch !== stitch) throw new Error(`${label} stitch selection did not redraw verified 3D.`);
+
+      await clickView("Bok");
+      const side = await stageState();
+      if (side.activeView !== "Bok") throw new Error(`${label} side view is not interactive: ${JSON.stringify(side)}`);
+      await clickView("3/4");
+      return waitVerified3d(`${label} restored 3/4`);
     };
 
     await send("Runtime.enable");
@@ -192,13 +209,12 @@ async function main() {
     if (socialsVisible) throw new Error("Floating storefront social links are visible over the mobile builder.");
     const mobileBytes = await capture("customizer-mobile-realtime.png");
 
-    console.log("REALTIME BUILDER PASS:", productionUrl);
-    console.log("- starts from empty construction: yes");
+    console.log("FINAL 3D BUILDER PASS:", productionUrl);
+    console.log("- starts from empty construction with SVG safety fallback: yes");
     console.log("- finished-product Photo-True takeover: absent");
-    console.log("- customer SVG renderer visible: yes");
-    console.log("- family creates visible body: yes");
-    console.log("- color visibly changes body fill: yes");
-    console.log("- stitch visibly changes body texture: yes");
+    console.log("- WebGL Fidelity3D produced verified pixels: yes");
+    console.log("- family/color/stitch redraw verified 3D: yes");
+    console.log("- Przód / 3/4 / Bok view controls are interactive: yes");
     console.log(`- desktop screenshot bytes: ${desktopBytes}`);
     console.log(`- mobile screenshot bytes: ${mobileBytes}`);
     console.log(`- desktop final: ${desktop.family} / ${desktop.color} / ${desktop.stitch}`);
@@ -210,6 +226,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("Realtime builder production acceptance failed:", error);
+  console.error("Final 3D builder production acceptance failed:", error);
   process.exitCode = 1;
 });
