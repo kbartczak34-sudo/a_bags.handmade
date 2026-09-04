@@ -130,13 +130,29 @@ async function main() {
       const canvasVisible=Boolean(canvas && canvasStyle && canvasRect && canvasStyle.display!=='none' && canvasStyle.visibility!=='hidden' && Number.parseFloat(canvasStyle.opacity||'1')>.05 && canvasRect.width>20 && canvasRect.height>20);
       const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
       const activeView=[...s.querySelectorAll('.abags-pro3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
+      let webgl=null;
+      if(canvas){
+        try{
+          const gl=canvas.getContext('webgl');
+          webgl=gl?{
+            context:true,
+            lost:gl.isContextLost(),
+            drawingBufferWidth:gl.drawingBufferWidth,
+            drawingBufferHeight:gl.drawingBufferHeight,
+            currentProgram:Boolean(gl.getParameter(gl.CURRENT_PROGRAM)),
+            error:gl.getError(),
+          }:{context:false};
+        }catch(error){webgl={context:false,exception:String(error)};}
+      }
       return {
         family:s.dataset.family||'', color:s.dataset.color||'', stitch:s.dataset.stitch||'',
+        flap:s.dataset.flap||'', handles:s.dataset.handles||'', strap:s.dataset.strap||'', hardware:s.dataset.hardware||'', accent:s.dataset.accent||'',
         signature:s.dataset.builderSignature||'', final3d:s.dataset.abagsFinal3d||'', final3dReason:s.dataset.abagsFinal3dReason||'',
         final3dSignature:s.dataset.abagsFinal3dSignature||'', fidelityReady:s.dataset.abagsFidelity3dReady||'',
+        rendererFrame:s.dataset.abagsFidelity3dFrame||'', rendererFrameAt:s.dataset.abagsFidelity3dFrameAt||'', rendererError:s.dataset.abagsFidelity3dError||'',
         photoTrue:Boolean(d.querySelector('.abags-photo-true-base')) || d.dataset.abagsPhotoTrue==='active' || s.dataset.abagsPhotoTrue==='active',
         readyProductChoices:d.querySelectorAll('[data-photo-product-choice]').length,
-        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, activeView,
+        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, activeView, webgl,
         dialogWidth:Math.round(rect.width), dialogHeight:Math.round(rect.height),
         dialogTop:Math.round(rect.top), dialogLeft:Math.round(rect.left),
         dialogVisible:style.display!=='none' && style.visibility!=='hidden' && rect.width>1 && rect.height>1,
@@ -151,7 +167,14 @@ async function main() {
       await waitFor(`document.querySelector('.abags-bag-builder-stage')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`, `${key}=${value}`);
     };
     const waitVerified3d = async (label) => {
-      await waitFor(`(() => { const s=document.querySelector('.abags-bag-builder-stage'); return s?.dataset.abagsFinal3d==='ready' && s.dataset.abagsFinal3dSignature===s.dataset.builderSignature; })()`, `${label} verified 3D`, 15_000);
+      try {
+        await waitFor(`(() => { const s=document.querySelector('.abags-bag-builder-stage'); return s?.dataset.abagsFinal3d==='ready' && s.dataset.abagsFinal3dSignature===s.dataset.builderSignature; })()`, `${label} verified 3D`, 15_000);
+      } catch (error) {
+        const state = await stageState();
+        const safeLabel = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        try { await capture(`customizer-${safeLabel || "verification"}-failure.png`); } catch {}
+        throw new Error(`${label} verification timeout. State: ${JSON.stringify(state)}. ${error instanceof Error ? error.message : String(error)}`);
+      }
       const state = await stageState();
       if (!state?.dialogVisible || state.photoTrue || state.readyProductChoices !== 0 || state.final3d !== "ready" || !state.canvasPresent || !state.canvasVisible || !state.fidelityVisible || state.svgVisible) {
         throw new Error(`${label} is not verified visible final 3D: ${JSON.stringify(state)}`);
