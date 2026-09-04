@@ -5,42 +5,14 @@ import { useEffect } from "react";
 const MAX_ATTEMPTS = 16;
 const REQUIRED_RENDERER = "variable-depth-v2";
 
-function inspectWebGl(canvas: HTMLCanvasElement) {
+function inspectWebGlContext(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl");
-  if (!gl || gl.isContextLost()) return { renderedPixels: false, reason: "context-unavailable" };
-  const width = gl.drawingBufferWidth;
-  const height = gl.drawingBufferHeight;
-  if (width < 16 || height < 16) return { renderedPixels: false, reason: "buffer-too-small" };
-
-  let renderedPixels = 0;
-  const pixel = new Uint8Array(4);
-  try {
-    for (let iy = 1; iy <= 13; iy += 1) {
-      for (let ix = 1; ix <= 13; ix += 1) {
-        gl.readPixels(
-          Math.max(0, Math.min(width - 1, Math.floor((width * ix) / 14))),
-          Math.max(0, Math.min(height - 1, Math.floor((height * iy) / 14))),
-          1,
-          1,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          pixel,
-        );
-        if (pixel[3] > 8 && (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)) renderedPixels += 1;
-      }
-    }
-  } catch {
-    return { renderedPixels: false, reason: "readback-failed" };
-  }
-
-  const program = gl.getParameter(gl.CURRENT_PROGRAM) as WebGLProgram | null;
+  if (!gl || gl.isContextLost()) return { ok: false, reason: "context-unavailable" };
+  if (gl.drawingBufferWidth < 16 || gl.drawingBufferHeight < 16) return { ok: false, reason: "buffer-too-small" };
+  if (!gl.getParameter(gl.CURRENT_PROGRAM)) return { ok: false, reason: "no-active-program" };
   const error = gl.getError();
-  if (!program) return { renderedPixels: false, reason: "no-active-program" };
-  if (error !== gl.NO_ERROR) return { renderedPixels: false, reason: `webgl-error-${error}` };
-  return {
-    renderedPixels: renderedPixels >= 2,
-    reason: renderedPixels >= 2 ? "rendered-pixels-v2" : "transparent-frame",
-  };
+  if (error !== gl.NO_ERROR) return { ok: false, reason: `webgl-error-${error}` };
+  return { ok: true, reason: "renderer-frame-v2" };
 }
 
 function signature(stage: HTMLElement) {
@@ -100,7 +72,7 @@ export default function BagBuilderFinal3DController() {
       const rendererReady = stage.dataset.abagsFidelity3dReady || "";
       const frameSignature = stage.dataset.abagsFidelity3dFrame || "";
 
-      if (!canvas || rendererReady !== REQUIRED_RENDERER || frameSignature !== expectedSignature) {
+      if (!canvas || rendererError || rendererReady !== REQUIRED_RENDERER || frameSignature !== expectedSignature) {
         if (attempt < MAX_ATTEMPTS) {
           timer = window.setTimeout(() => validate(attempt + 1), 100);
         } else {
@@ -114,8 +86,17 @@ export default function BagBuilderFinal3DController() {
         return;
       }
 
-      stage.dataset.abagsFinal3d = "probing";
-      stage.dataset.abagsFinal3dReason = "verifying-v2-frame";
+      const context = inspectWebGlContext(canvas);
+      if (!context.ok) {
+        if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 100);
+        else markFallback(context.reason);
+        return;
+      }
+
+      stage.dataset.abagsFinal3d = "promoting";
+      stage.dataset.abagsFinal3dReason = "showing-current-v2-frame";
+      stage.dataset.abagsFinal3dSignature = expectedSignature;
+      stage.classList.add("abags-final3d-ready");
 
       window.dispatchEvent(new Event("resize"));
       frame = window.requestAnimationFrame(() => {
@@ -124,21 +105,23 @@ export default function BagBuilderFinal3DController() {
           secondFrame = 0;
           if (!stage) return;
           const currentSignature = signature(stage);
-          if (currentSignature !== expectedSignature || stage.dataset.abagsFidelity3dFrame !== currentSignature) {
+          const currentFrame = stage.dataset.abagsFidelity3dFrame || "";
+          const currentError = stage.dataset.abagsFidelity3dError || "";
+          if (currentError || currentSignature !== expectedSignature || currentFrame !== currentSignature) {
             if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 100);
-            else markFallback("stale-rendered-frame");
+            else markFallback(currentError ? `renderer-error:${currentError}` : "stale-rendered-frame");
             return;
           }
-          const inspection = inspectWebGl(canvas);
-          if (inspection.renderedPixels) {
-            stage.dataset.abagsFinal3d = "ready";
-            stage.dataset.abagsFinal3dReason = inspection.reason;
-            stage.dataset.abagsFinal3dSignature = currentSignature;
-            stage.classList.add("abags-final3d-ready");
+          const finalContext = inspectWebGlContext(canvas);
+          if (!finalContext.ok) {
+            if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 100);
+            else markFallback(finalContext.reason);
             return;
           }
-          if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 100);
-          else markFallback(inspection.reason || "no-rendered-frame");
+          stage.dataset.abagsFinal3d = "ready";
+          stage.dataset.abagsFinal3dReason = finalContext.reason;
+          stage.dataset.abagsFinal3dSignature = currentSignature;
+          stage.classList.add("abags-final3d-ready");
         });
       });
     };
