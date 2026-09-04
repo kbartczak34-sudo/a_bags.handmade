@@ -31,15 +31,16 @@ test("new bag builder starts from an empty construction and builds decisions liv
   assert.match(engine, /data-layer="body"/);
 });
 
-test("customer realtime SVG is loaded last and cannot be hidden by a blank experimental renderer", () => {
+test("customer renderer keeps SVG safe until verified Fidelity3D is ready", () => {
   const mobileCss = stack.indexOf('import "./bag-builder-mobile-shell-fix.css"');
   const customerRendererCss = stack.indexOf('import "./bag-builder-customer-realtime.css"');
   assert.ok(mobileCss >= 0 && customerRendererCss > mobileCss);
   assert.match(customerCss, /:not\(\[data-abags-photo-true="active"\]\)[\s\S]*\.abags-bag-builder-stage > svg/);
-  assert.match(customerCss, /opacity:1!important/);
-  assert.match(customerCss, /visibility:visible!important/);
-  assert.match(customerCss, /\.abags-pro3d-layer/);
+  assert.match(customerCss, /\.abags-fidelity3d-layer/);
+  assert.match(customerCss, /data-abags-final3d="ready"\][\s\S]*> svg[\s\S]*opacity:0!important/);
+  assert.match(customerCss, /data-abags-final3d="ready"\][\s\S]*> \.abags-fidelity3d-layer[\s\S]*opacity:1!important/);
   assert.match(customerCss, /\.abags-canvas3d-layer/);
+  assert.match(customerCss, /\.abags-premium-canvas3d-layer/);
   assert.match(customerCss, /display:none!important/);
 });
 
@@ -50,7 +51,7 @@ test("production acceptance exercises the customer realtime builder instead of o
   assert.match(productionQa, /choose\("family"/);
   assert.match(productionQa, /choose\("color"/);
   assert.match(productionQa, /choose\("stitch"/);
-  assert.match(productionQa, /signature === afterFamily\.signature/);
+  assert.match(productionQa, /abagsFinal3dSignature===s\.dataset\.builderSignature/);
   assert.match(workflow, /Browser test customer realtime builder from empty construction/);
   assert.match(workflow, /Fail when customer realtime builder acceptance fails/);
 });
