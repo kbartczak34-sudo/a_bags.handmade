@@ -43,12 +43,14 @@ test("desktop customer step rail leaves enough room for Podsumowanie", () => {
   assert.match(css, /:not\(\[data-abags-photo-true="active"\]\)[\s\S]*\.abags-exact-live-mount/);
 });
 
-test("customer close control uses a deterministic drawn X instead of the platform glyph", () => {
-  assert.match(css, /\.abags-vc-header>button:not\(\.abags-v4-header-tool\)\{[\s\S]*font-size:0!important/);
-  assert.match(css, /button:not\(\.abags-v4-header-tool\)::before,[\s\S]*button:not\(\.abags-v4-header-tool\)::after/);
-  assert.match(css, /rotate\(45deg\)/);
-  assert.match(css, /rotate\(-45deg\)/);
-  assert.match(css, /background:#674d53/);
+test("desktop customer close control uses an explicit SVG instead of the platform glyph", () => {
+  assert.match(css, /@media\(min-width:981px\)[\s\S]*\.abags-vc-header>button:not\(\.abags-v4-header-tool\)/);
+  assert.match(css, /font-size:0!important/);
+  assert.match(css, /color:transparent!important/);
+  assert.match(css, /background-image:url\("data:image\/svg\+xml/);
+  assert.match(css, /M6 6l12 12M18 6L6 18/);
+  assert.match(css, /background-size:17px 17px!important/);
+  assert.doesNotMatch(css, /button:not\(\.abags-v4-header-tool\)::before/);
 });
 
 test("small mobile stage is shorter without affecting Photo-True", () => {
