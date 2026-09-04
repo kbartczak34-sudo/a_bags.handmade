@@ -1,0 +1,77 @@
+/* Final customer visual polish. This file is imported after every legacy/customizer stylesheet.
+   It intentionally touches customer realtime mode only; Photo-True internal QA is excluded. */
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage .abags-pro3d-chip{
+  display:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-v4-preview-meta{
+  right:auto!important;
+  width:auto!important;
+  max-width:calc(100% - 24px)!important;
+  display:block!important;
+  pointer-events:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-v4-preview-meta span{
+  display:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-v4-preview-meta strong{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:27px!important;
+  padding:0 10px!important;
+  border:1px solid rgba(90,66,69,.10)!important;
+  border-radius:999px!important;
+  background:rgba(255,252,249,.90)!important;
+  box-shadow:0 6px 18px rgba(90,66,69,.06)!important;
+  backdrop-filter:blur(10px)!important;
+  color:#664d52!important;
+  letter-spacing:.12em!important;
+  white-space:nowrap!important;
+}
+
+@media(max-width:980px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-preview,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage{
+    height:238px!important;
+    min-height:238px!important;
+    max-height:238px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-v4-preview-meta{
+    top:10px!important;
+    left:12px!important;
+    right:auto!important;
+    max-width:44%!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-v4-preview-meta strong{
+    min-height:30px!important;
+    padding:0 10px!important;
+    font-size:6.2px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-fidelity3d-view-controls{
+    top:10px!important;
+    right:12px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-fidelity3d-zoom{
+    right:12px!important;
+    bottom:10px!important;
+  }
+}
+
+@media(max-width:420px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-vc-preview,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage{
+    height:230px!important;
+    min-height:230px!important;
+    max-height:230px!important;
+  }
+}
