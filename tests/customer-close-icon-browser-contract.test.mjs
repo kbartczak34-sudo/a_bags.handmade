@@ -15,6 +15,11 @@ test("customer close SVG targets only the real close button and preserves access
   assert.doesNotMatch(controller, /replaceChildren/);
 });
 
+test("customer close controller targets the actual V4 dialog used by production QA", () => {
+  assert.match(controller, /const DIALOG_SELECTOR = "\.abags-vc-dialog\.abags-reference-layout-v4"/);
+  assert.doesNotMatch(controller, /abags-vc-builder-active/);
+});
+
 test("customer close SVG remains isolated from mobile and Photo-True", () => {
   assert.match(controller, /matchMedia\("\(min-width: 981px\)"\)/);
   assert.match(controller, /abagsPhotoTrue !== "active"/);
