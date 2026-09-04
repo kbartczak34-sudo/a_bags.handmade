@@ -2,49 +2,44 @@
 
 import { useEffect } from "react";
 
-const MAX_ATTEMPTS = 12;
+const MAX_ATTEMPTS = 16;
+const REQUIRED_RENDERER = "variable-depth-v2";
 
 function inspectWebGl(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl");
-  if (!gl || gl.isContextLost()) return { healthy: false, renderedPixels: false, reason: "context-unavailable" };
+  if (!gl || gl.isContextLost()) return { renderedPixels: false, reason: "context-unavailable" };
   const width = gl.drawingBufferWidth;
   const height = gl.drawingBufferHeight;
-  if (width < 16 || height < 16) return { healthy: false, renderedPixels: false, reason: "buffer-too-small" };
+  if (width < 16 || height < 16) return { renderedPixels: false, reason: "buffer-too-small" };
 
   let renderedPixels = 0;
   const pixel = new Uint8Array(4);
   try {
-    // Scan a coarse grid instead of a few fixed points. The bag silhouette changes by family,
-    // rotation and viewport, so a sparse fixed-point probe can miss a perfectly valid frame.
-    for (let iy = 1; iy <= 9; iy += 1) {
-      for (let ix = 1; ix <= 9; ix += 1) {
+    for (let iy = 1; iy <= 13; iy += 1) {
+      for (let ix = 1; ix <= 13; ix += 1) {
         gl.readPixels(
-          Math.max(0, Math.min(width - 1, Math.floor((width * ix) / 10))),
-          Math.max(0, Math.min(height - 1, Math.floor((height * iy) / 10))),
+          Math.max(0, Math.min(width - 1, Math.floor((width * ix) / 14))),
+          Math.max(0, Math.min(height - 1, Math.floor((height * iy) / 14))),
           1,
           1,
           gl.RGBA,
           gl.UNSIGNED_BYTE,
           pixel,
         );
-        if (pixel[3] > 8) renderedPixels += 1;
+        if (pixel[3] > 8 && (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)) renderedPixels += 1;
       }
     }
   } catch {
-    return { healthy: false, renderedPixels: false, reason: "readback-failed" };
+    return { renderedPixels: false, reason: "readback-failed" };
   }
 
-  // Some Chromium/Android compositors discard the default framebuffer before a later readback
-  // when preserveDrawingBuffer is false. A live linked program + non-lost, correctly-sized WebGL
-  // context after Fidelity3D's redraw is therefore the secondary proof of a valid render surface.
-  // The production browser acceptance still captures and inspects the real visible canvas.
   const program = gl.getParameter(gl.CURRENT_PROGRAM) as WebGLProgram | null;
   const error = gl.getError();
-  const healthy = Boolean(program) && error === gl.NO_ERROR;
+  if (!program) return { renderedPixels: false, reason: "no-active-program" };
+  if (error !== gl.NO_ERROR) return { renderedPixels: false, reason: `webgl-error-${error}` };
   return {
-    healthy,
     renderedPixels: renderedPixels >= 2,
-    reason: renderedPixels >= 2 ? "rendered-pixels" : healthy ? "healthy-webgl-frame" : `webgl-error-${error}`,
+    reason: renderedPixels >= 2 ? "rendered-pixels-v2" : "transparent-frame",
   };
 }
 
@@ -99,37 +94,50 @@ export default function BagBuilderFinal3DController() {
         return;
       }
 
+      const expectedSignature = signature(stage);
       const canvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
       const rendererError = stage.dataset.abagsFidelity3dError || "";
-      if (!canvas || stage.dataset.abagsFidelity3dReady !== "variable-depth-v1") {
+      const rendererReady = stage.dataset.abagsFidelity3dReady || "";
+      const frameSignature = stage.dataset.abagsFidelity3dFrame || "";
+
+      if (!canvas || rendererReady !== REQUIRED_RENDERER || frameSignature !== expectedSignature) {
         if (attempt < MAX_ATTEMPTS) {
-          timer = window.setTimeout(() => validate(attempt + 1), 110);
+          timer = window.setTimeout(() => validate(attempt + 1), 100);
         } else {
-          markFallback(rendererError ? `renderer-error:${rendererError}` : "webgl-not-ready");
+          const reason = rendererError
+            ? `renderer-error:${rendererError}`
+            : rendererReady !== REQUIRED_RENDERER
+              ? `renderer-not-ready:${rendererReady || "missing"}`
+              : "current-frame-not-drawn";
+          markFallback(reason);
         }
         return;
       }
 
       stage.dataset.abagsFinal3d = "probing";
-      stage.dataset.abagsFinal3dReason = "verifying-frame";
+      stage.dataset.abagsFinal3dReason = "verifying-v2-frame";
 
-      // Fidelity3D schedules its own redraw from this event. Two animation frames let React state,
-      // WebGL drawing and the browser compositor settle before the final renderer is promoted.
       window.dispatchEvent(new Event("resize"));
       frame = window.requestAnimationFrame(() => {
         frame = 0;
         secondFrame = window.requestAnimationFrame(() => {
           secondFrame = 0;
           if (!stage) return;
+          const currentSignature = signature(stage);
+          if (currentSignature !== expectedSignature || stage.dataset.abagsFidelity3dFrame !== currentSignature) {
+            if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 100);
+            else markFallback("stale-rendered-frame");
+            return;
+          }
           const inspection = inspectWebGl(canvas);
-          if (inspection.renderedPixels || inspection.healthy) {
+          if (inspection.renderedPixels) {
             stage.dataset.abagsFinal3d = "ready";
             stage.dataset.abagsFinal3dReason = inspection.reason;
-            stage.dataset.abagsFinal3dSignature = signature(stage);
+            stage.dataset.abagsFinal3dSignature = currentSignature;
             stage.classList.add("abags-final3d-ready");
             return;
           }
-          if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 110);
+          if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 100);
           else markFallback(inspection.reason || "no-rendered-frame");
         });
       });
@@ -167,7 +175,7 @@ export default function BagBuilderFinal3DController() {
         attributeFilter: [
           "data-family", "data-color", "data-stitch", "data-flap", "data-handles",
           "data-strap", "data-hardware", "data-accent", "data-abags-fidelity3d-ready",
-          "data-abags-fidelity3d-error",
+          "data-abags-fidelity3d-frame", "data-abags-fidelity3d-frame-at", "data-abags-fidelity3d-error",
         ],
       });
       bindCanvasEvents();

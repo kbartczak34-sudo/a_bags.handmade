@@ -4,14 +4,15 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer uses the reference-calibrated fidelity 3D renderer", async () => {
+test("live customizer uses the final verified WebGL v2 renderer", async () => {
   const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /BagBuilderFidelity3D/);
-  assert.match(source, /<BagBuilderFidelity3D\s*\/>/);
+  assert.match(source, /BagBuilderFinalWebGL3D/);
+  assert.match(source, /<BagBuilderFinalWebGL3D\s*\/>/);
+  assert.doesNotMatch(source, /<BagBuilderFidelity3D\s*\/>/);
   assert.doesNotMatch(source, /<BagBuilderAtelier3D\s*\/>/);
 });
 
-test("fidelity renderer builds distinct variable-depth silhouettes instead of one generic extrusion", async () => {
+test("legacy fidelity calibration still documents distinct variable-depth silhouettes", async () => {
   const source = await read("app/bag-builder-fidelity3d.tsx");
   assert.match(source, /function familyContour/);
   assert.match(source, /function makeVariableDepthBody/);
@@ -25,7 +26,7 @@ test("fidelity renderer builds distinct variable-depth silhouettes instead of on
   assert.match(source, /flapContour/);
 });
 
-test("fidelity renderer keeps realtime 3D interaction and material changes", async () => {
+test("legacy fidelity calibration retains realtime interaction and material references", async () => {
   const source = await read("app/bag-builder-fidelity3d.tsx");
   assert.match(source, /onPointerMove/);
   assert.match(source, /pointers\.current\.size >= 2/);
@@ -39,7 +40,7 @@ test("fidelity renderer keeps realtime 3D interaction and material changes", asy
   assert.match(source, /config\.accent/);
 });
 
-test("fidelity polish is loaded through the reference calibration layer", async () => {
+test("fidelity polish remains available through the reference calibration layer", async () => {
   const calibration = await read("app/bag-builder-reference-calibration.css");
   const css = await read("app/bag-builder-fidelity3d.css");
   assert.match(calibration, /@import "\.\/bag-builder-fidelity3d\.css"/);
