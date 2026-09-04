@@ -1,17 +1,17 @@
-/* Customer realtime renderer safety net.
-   Loaded after all legacy/reference layers so a ready-but-blank WebGL/canvas renderer
-   can never hide the actual Bag Builder construction. Photo-True remains untouched
-   when explicitly enabled for internal reference QA. */
+/* Final customer renderer contract.
+   SVG is the deterministic fallback. Fidelity3D is allowed to become primary only after
+   BagBuilderFinal3DController confirms real rendered pixels. Photo-True internal QA stays isolated. */
 
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage{
   position:relative!important;
   isolation:isolate!important;
   overflow:hidden!important;
+  background:
+    radial-gradient(circle at 50% 22%,rgba(255,255,255,.96),rgba(255,255,255,.08) 42%,transparent 62%),
+    linear-gradient(180deg,#fffaf6 0%,#f5e7dc 72%,#ead5c1 100%)!important;
 }
 
-/* The React/SVG Bag Builder is the customer-facing source of truth. It is deterministic,
-   layer-based and responds immediately to family, color, stitch, flap, handles, strap,
-   hardware and accent changes. */
+/* Stable construction fallback. It remains visible until verified 3D has actually drawn pixels. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > svg{
   display:block!important;
   position:absolute!important;
@@ -25,11 +25,48 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:none!important;
   z-index:250!important;
   transform:none!important;
+  transition:opacity .18s ease!important;
 }
 
-/* Experimental renderers remain mounted as internal infrastructure, but cannot cover the
-   deterministic customer preview with a transparent/blank surface on Android or headless Chrome. */
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-pro3d-layer,
+/* Fidelity3D must have real layout size while being probed, therefore it is not display:none.
+   It remains visually hidden and non-interactive until the pixel verifier marks it ready. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-fidelity3d-layer{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:270!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  overflow:hidden!important;
+  background:transparent!important;
+  transition:opacity .18s ease!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-fidelity3d-layer .abags-fidelity3d-canvas{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:1!important;
+  opacity:1!important;
+  visibility:visible!important;
+  touch-action:none!important;
+}
+
+/* Verified final 3D becomes the primary renderer. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > svg{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+
+/* All older experimental renderers remain disabled in customer mode. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-canvas3d-layer,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-premium-canvas3d-layer,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-atelier-v7-layer,
@@ -42,7 +79,24 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:none!important;
 }
 
-/* Preserve the premium UI around the model while keeping the model itself readable. */
+/* Restore the interaction chrome only for a verified 3D frame. Reference V4 hides it by default. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-view-controls,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-zoom{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-chip{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-builder-preview-status{
+  display:none!important;
+}
+
+/* Premium interface always stays above the product renderer. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-v4-preview-meta,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-layers{
   z-index:310!important;
@@ -51,5 +105,63 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 @media(max-width:980px){
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > svg{
     object-fit:contain!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-chip{
+    top:8px!important;
+    left:10px!important;
+    right:auto!important;
+    max-width:44%!important;
+    transform:none!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    padding:5px 7px!important;
+    font-size:5.7px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-view-controls{
+    top:7px!important;
+    right:8px!important;
+    gap:2px!important;
+    padding:3px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-view-controls button{
+    min-width:37px!important;
+    width:auto!important;
+    height:29px!important;
+    padding:0 6px!important;
+    font-size:6px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-zoom{
+    left:9px!important;
+    right:9px!important;
+    bottom:8px!important;
+    width:auto!important;
+    transform:none!important;
+    grid-template-columns:31px minmax(80px,1fr) 31px 43px!important;
+    gap:4px!important;
+    padding:5px 6px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-zoom > span{
+    display:none!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-zoom button{
+    height:28px!important;
+    min-width:28px!important;
+    padding:0 5px!important;
+    font-size:11px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-zoom input[type="range"]{
+    min-width:70px!important;
+    height:28px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] .abags-pro3d-hint{
+    display:none!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > svg,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage > .abags-fidelity3d-layer{
+    transition:none!important;
   }
 }
