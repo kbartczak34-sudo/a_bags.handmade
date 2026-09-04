@@ -52,7 +52,10 @@ test("desktop customer close control renders deterministic DOM lines without rep
   assert.match(closeIcon, /createStroke\("-45deg"\)/);
   assert.match(closeIcon, /setImportant\(button, "font-size", "0"\)/);
   assert.match(closeIcon, /setImportant\(line, "background", "#674d53"\)/);
-  assert.match(closeIcon, /desktop\.matches && dialog\.dataset\.abagsPhotoTrue !== "active"/);
+  assert.match(closeIcon, /const desktop = isDesktopViewport\(\)/);
+  assert.match(closeIcon, /customerDesktop = desktop && dialog\.dataset\.abagsPhotoTrue !== "active"/);
+  assert.doesNotMatch(closeIcon, /desktop\.matches/);
+  assert.doesNotMatch(closeIcon, /matchMedia/);
   assert.doesNotMatch(closeIcon, /replaceChildren/);
   assert.doesNotMatch(closeIcon, /textContent\s*=/);
   assert.doesNotMatch(closeIcon, /createElementNS/);
@@ -62,6 +65,7 @@ test("desktop customer close v2 preserves restoration and does not depend on the
   assert.match(closeIcon, /savedStyles/);
   assert.match(closeIcon, /button\.style\.setProperty\(property, state\.value, state\.priority\)/);
   assert.match(closeIcon, /button\.style\.removeProperty\(property\)/);
+  assert.match(closeIcon, /window\.addEventListener\("resize", requestSync\)/);
   assert.doesNotMatch(closeIcon, /currentColor/);
   assert.doesNotMatch(css, /data:image\/svg\+xml/);
 });
