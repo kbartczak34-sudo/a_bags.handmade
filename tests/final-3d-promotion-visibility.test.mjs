@@ -27,7 +27,7 @@ test("controller exposes an explicit compositor promotion state before ready", (
 test("unverified states expose only the deterministic SVG fallback", () => {
   const unverified = /data-abags-final3d\]:not\(\[data-abags-final3d="promoting"\]\):not\(\[data-abags-final3d="ready"\]\)/;
   assert.match(promotionCss, unverified);
-  assert.match(promotionCss, /not\(\[data-abags-final3d="ready"\]\) > svg\{[\s\S]*?opacity:1!important;[\s\S]*?visibility:visible!important;/);
+  assert.match(promotionCss, /not\(\[data-abags-final3d="ready"\]\) > svg\{[\s\S]*?display:block!important;[\s\S]*?opacity:1!important;[\s\S]*?visibility:visible!important;/);
   assert.match(promotionCss, /not\(\[data-abags-final3d="ready"\]\) > \.abags-fidelity3d-layer\{[\s\S]*?opacity:0!important;[\s\S]*?visibility:hidden!important;[\s\S]*?pointer-events:none!important;/);
 });
 
@@ -38,9 +38,9 @@ test("WebGL is actually visible while the controller is promoting it", () => {
   assert.match(promotionCss, /pointer-events:none!important/);
 });
 
-test("SVG stays available during promotion and is hidden only when 3D is ready", () => {
-  assert.match(promotionCss, /data-abags-final3d="promoting"[\s\S]*> svg[\s\S]*opacity:1!important/);
-  assert.match(promotionCss, /data-abags-final3d="ready"\] > svg[\s\S]*opacity:0!important/);
+test("SVG stays available during promotion and is removed from layout only when 3D is ready", () => {
+  assert.match(promotionCss, /data-abags-final3d="promoting"[\s\S]*> svg[\s\S]*display:block!important;[\s\S]*opacity:1!important/);
+  assert.match(promotionCss, /data-abags-final3d="ready"\] > svg\{[\s\S]*display:none!important;[\s\S]*opacity:0!important;[\s\S]*visibility:hidden!important;[\s\S]*transition:none!important;/);
   assert.match(promotionCss, /data-abags-final3d="ready"\] > \.abags-fidelity3d-layer[\s\S]*pointer-events:auto!important/);
   assert.match(realtimeCss, /data-abags-final3d="ready"\] > svg[\s\S]*opacity:0!important/);
 });
