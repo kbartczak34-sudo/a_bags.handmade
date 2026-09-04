@@ -33,7 +33,7 @@ test("isolated mobile controls have bounded product-safe geometry", () => {
 });
 
 test("view synchronization prefers the Fidelity3D zoom namespace", () => {
-  assert.match(viewSync, /\.abags-fidelity3d-zoom input\[type=\\"range\\"\]/);
+  assert.ok(viewSync.includes('.abags-fidelity3d-zoom input[type="range"]'));
 });
 
 test("production realtime acceptance exercises only isolated Fidelity3D view controls", () => {
