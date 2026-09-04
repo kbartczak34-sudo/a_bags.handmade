@@ -1,0 +1,24 @@
+/* Chromium/Android promotion bridge for the final realtime WebGL renderer.
+   The controller intentionally enters `promoting` before declaring the frame `ready`.
+   During that bridge the WebGL layer must be compositor-visible, otherwise a hidden canvas
+   can never be validated as the visible customer frame. SVG remains underneath as a safe fallback. */
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > .abags-fidelity3d-layer{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > .abags-fidelity3d-layer .abags-fidelity3d-canvas{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+/* Do not hide the deterministic SVG until the controller reaches `ready`.
+   It stays below WebGL (z-index 250 vs 270), preventing a blank flash if promotion is rejected. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > svg{
+  opacity:1!important;
+  visibility:visible!important;
+}
