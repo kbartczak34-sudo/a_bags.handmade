@@ -12,7 +12,32 @@ type PixelInspection = {
   opaqueSamples: number;
   chromaSamples: number;
   lumaSpread: number;
+  colorRequired: boolean;
+  colorSamples: number;
+  hueMatches: number;
+  expectedHue: number | null;
+  averageHueDelta: number | null;
 };
+
+type HueSample = {
+  hue: number;
+  saturation: number;
+};
+
+function emptyInspection(reason: string): PixelInspection {
+  return {
+    ok: false,
+    reason,
+    opaqueSamples: 0,
+    chromaSamples: 0,
+    lumaSpread: 0,
+    colorRequired: false,
+    colorSamples: 0,
+    hueMatches: 0,
+    expectedHue: null,
+    averageHueDelta: null,
+  };
+}
 
 function inspectWebGlContext(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl");
@@ -24,23 +49,56 @@ function inspectWebGlContext(canvas: HTMLCanvasElement) {
   return { ok: true, reason: "renderer-context-v3" };
 }
 
-function inspectVisiblePixels(canvas: HTMLCanvasElement): PixelInspection {
+function parseHexColor(value: string): [number, number, number] | null {
+  const match = value.trim().match(/^#([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1], 16);
+  return [(parsed >> 16) & 255, (parsed >> 8) & 255, parsed & 255];
+}
+
+function hueSample(red: number, green: number, blue: number): HueSample {
+  const r = red / 255;
+  const g = green / 255;
+  const b = blue / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  const saturation = max === 0 ? 0 : delta / max;
+  if (delta === 0) return { hue: 0, saturation };
+
+  let hue = 0;
+  if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  if (hue < 0) hue += 360;
+  return { hue, saturation };
+}
+
+function hueDistance(a: number, b: number) {
+  const direct = Math.abs(a - b) % 360;
+  return Math.min(direct, 360 - direct);
+}
+
+function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string): PixelInspection {
   const gl = canvas.getContext("webgl");
-  if (!gl || gl.isContextLost()) {
-    return { ok: false, reason: "framebuffer-unavailable", opaqueSamples: 0, chromaSamples: 0, lumaSpread: 0 };
-  }
+  if (!gl || gl.isContextLost()) return emptyInspection("framebuffer-unavailable");
 
   const width = gl.drawingBufferWidth;
   const height = gl.drawingBufferHeight;
-  if (width < 16 || height < 16) {
-    return { ok: false, reason: "framebuffer-too-small", opaqueSamples: 0, chromaSamples: 0, lumaSpread: 0 };
-  }
+  if (width < 16 || height < 16) return emptyInspection("framebuffer-too-small");
 
+  const expectedRgb = parseHexColor(expectedColor);
+  const expectedSample = expectedRgb ? hueSample(...expectedRgb) : null;
+  const colorRequired = Boolean(expectedSample && expectedSample.saturation >= .16);
+  const expectedHue = colorRequired && expectedSample ? expectedSample.hue : null;
   const pixel = new Uint8Array(4);
   const columns = 9;
   const rows = 9;
   let opaqueSamples = 0;
   let chromaSamples = 0;
+  let colorSamples = 0;
+  let hueMatches = 0;
+  let hueDeltaTotal = 0;
   let lumaMin = 255;
   let lumaMax = 0;
 
@@ -52,6 +110,7 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement): PixelInspection {
       const x = Math.max(0, Math.min(width - 1, Math.floor(width * nx)));
       gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
       if (pixel[3] <= 24) continue;
+
       opaqueSamples += 1;
       const maxChannel = Math.max(pixel[0], pixel[1], pixel[2]);
       const minChannel = Math.min(pixel[0], pixel[1], pixel[2]);
@@ -59,24 +118,58 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement): PixelInspection {
       const luma = Math.round(pixel[0] * .2126 + pixel[1] * .7152 + pixel[2] * .0722);
       lumaMin = Math.min(lumaMin, luma);
       lumaMax = Math.max(lumaMax, luma);
+
+      if (expectedHue === null) continue;
+      const rendered = hueSample(pixel[0], pixel[1], pixel[2]);
+      if (rendered.saturation < .10) continue;
+      colorSamples += 1;
+      const delta = hueDistance(rendered.hue, expectedHue);
+      hueDeltaTotal += delta;
+      if (delta <= 48) hueMatches += 1;
     }
   }
 
   const error = gl.getError();
+  const lumaSpread = opaqueSamples ? Math.max(0, lumaMax - lumaMin) : 0;
+  const averageHueDelta = colorSamples ? Math.round((hueDeltaTotal / colorSamples) * 10) / 10 : null;
   if (error !== gl.NO_ERROR) {
-    return { ok: false, reason: `readpixels-error-${error}`, opaqueSamples, chromaSamples, lumaSpread: Math.max(0, lumaMax - lumaMin) };
+    return {
+      ok: false,
+      reason: `readpixels-error-${error}`,
+      opaqueSamples,
+      chromaSamples,
+      lumaSpread,
+      colorRequired,
+      colorSamples,
+      hueMatches,
+      expectedHue,
+      averageHueDelta,
+    };
   }
 
-  const lumaSpread = opaqueSamples ? Math.max(0, lumaMax - lumaMin) : 0;
-  // The canvas is transparent outside the bag. Requiring several non-transparent samples
-  // across the central 84% proves that the product itself occupies meaningful framebuffer area.
-  const ok = opaqueSamples >= 5;
+  // A non-transparent canvas is not sufficient. Several product pixels must be present and,
+  // for chromatic cord colors, a meaningful share must retain the selected hue after lighting.
+  const productPixelsOk = opaqueSamples >= 5;
+  const minimumHueMatches = colorRequired ? Math.max(2, Math.ceil(opaqueSamples * .2)) : 0;
+  const colorOk = !colorRequired || hueMatches >= minimumHueMatches;
+  const ok = productPixelsOk && colorOk;
+  const reason = !productPixelsOk
+    ? `framebuffer-empty-${opaqueSamples}`
+    : !colorOk
+      ? `framebuffer-color-mismatch-${hueMatches}-${minimumHueMatches}`
+      : `renderer-frame-v3-pixels-${opaqueSamples}-hue-${hueMatches}`;
+
   return {
     ok,
-    reason: ok ? `renderer-frame-v3-pixels-${opaqueSamples}` : `framebuffer-empty-${opaqueSamples}`,
+    reason,
     opaqueSamples,
     chromaSamples,
     lumaSpread,
+    colorRequired,
+    colorSamples,
+    hueMatches,
+    expectedHue,
+    averageHueDelta,
   };
 }
 
@@ -117,6 +210,10 @@ export default function BagBuilderFinal3DController() {
       stage.removeAttribute("data-abags-final3d-pixels");
       stage.removeAttribute("data-abags-final3d-chroma");
       stage.removeAttribute("data-abags-final3d-luma-spread");
+      stage.removeAttribute("data-abags-final3d-color-samples");
+      stage.removeAttribute("data-abags-final3d-hue-matches");
+      stage.removeAttribute("data-abags-final3d-expected-hue");
+      stage.removeAttribute("data-abags-final3d-average-hue-delta");
     };
 
     const markFallback = (reason: string) => {
@@ -125,7 +222,6 @@ export default function BagBuilderFinal3DController() {
       stage.dataset.abagsFinal3dReason = reason.slice(0, 120);
       stage.classList.remove("abags-final3d-ready");
       stage.removeAttribute("data-abags-final3d-signature");
-      clearPixelDiagnostics();
     };
 
     const recordPixels = (inspection: PixelInspection) => {
@@ -133,6 +229,16 @@ export default function BagBuilderFinal3DController() {
       stage.dataset.abagsFinal3dPixels = String(inspection.opaqueSamples);
       stage.dataset.abagsFinal3dChroma = String(inspection.chromaSamples);
       stage.dataset.abagsFinal3dLumaSpread = String(inspection.lumaSpread);
+      stage.dataset.abagsFinal3dColorSamples = String(inspection.colorSamples);
+      stage.dataset.abagsFinal3dHueMatches = String(inspection.hueMatches);
+      if (inspection.expectedHue === null) stage.removeAttribute("data-abags-final3d-expected-hue");
+      else stage.dataset.abagsFinal3dExpectedHue = String(Math.round(inspection.expectedHue * 10) / 10);
+      if (inspection.averageHueDelta === null) stage.removeAttribute("data-abags-final3d-average-hue-delta");
+      else stage.dataset.abagsFinal3dAverageHueDelta = String(inspection.averageHueDelta);
+    };
+
+    let validate = (attempt = 0) => {
+      void attempt;
     };
 
     const retryOrFallback = (attempt: number, reason: string) => {
@@ -140,7 +246,7 @@ export default function BagBuilderFinal3DController() {
       else markFallback(reason);
     };
 
-    const validate = (attempt = 0) => {
+    validate = (attempt = 0) => {
       clearPending();
       if (!stage) return;
       if (!stage.dataset.family) {
@@ -174,8 +280,7 @@ export default function BagBuilderFinal3DController() {
         return;
       }
 
-      // A valid GL context is not enough: the real product must occupy the framebuffer.
-      const firstPixels = inspectVisiblePixels(canvas);
+      const firstPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
       recordPixels(firstPixels);
       if (!firstPixels.ok) {
         retryOrFallback(attempt, firstPixels.reason);
@@ -187,7 +292,8 @@ export default function BagBuilderFinal3DController() {
       stage.dataset.abagsFinal3dSignature = expectedSignature;
       stage.classList.add("abags-final3d-ready");
 
-      // Force one adaptive-camera redraw after the canvas becomes the promoted surface.
+      // Force both the adaptive camera redraw and a browser compositor commit before the
+      // verified WebGL surface becomes the sole visible customer renderer.
       window.dispatchEvent(new Event("resize"));
       frame = window.requestAnimationFrame(() => {
         frame = 0;
@@ -208,7 +314,7 @@ export default function BagBuilderFinal3DController() {
             return;
           }
 
-          const finalPixels = inspectVisiblePixels(canvas);
+          const finalPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
           recordPixels(finalPixels);
           if (!finalPixels.ok) {
             retryOrFallback(attempt, finalPixels.reason);
@@ -263,8 +369,6 @@ export default function BagBuilderFinal3DController() {
         validate();
       });
 
-      // Only renderer/configuration state participates in validation. Descendant controls and
-      // fallback renderers may mount independently without cancelling promoting -> ready.
       stageObserver.observe(stage, {
         attributes: true,
         attributeFilter: [
@@ -279,8 +383,6 @@ export default function BagBuilderFinal3DController() {
 
     const findStage = () => attachStage(document.querySelector<HTMLElement>(".abags-bag-builder-stage"));
     findStage();
-
-    // Lifecycle-only observer: it discovers a replaced stage/canvas, never revalidates a stable stage.
     bodyObserver = new MutationObserver(findStage);
     bodyObserver.observe(document.body, { childList: true, subtree: true });
 
