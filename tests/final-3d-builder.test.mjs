@@ -29,7 +29,7 @@ test("SVG remains fallback and verified Fidelity3D becomes primary", () => {
 test("production acceptance requires real interactive 3D", () => {
   assert.match(smoke, /--use-gl=swiftshader/);
   assert.match(smoke, /abagsFinal3d==='ready'/);
-  assert.match(smoke, /final3dSignature===s\.dataset\.builderSignature/);
+  assert.match(smoke, /abagsFinal3dSignature===s\.dataset\.builderSignature/);
   assert.match(smoke, /canvasVisible/);
   assert.match(smoke, /fidelityVisible/);
   assert.match(smoke, /clickView\("Bok"\)/);
