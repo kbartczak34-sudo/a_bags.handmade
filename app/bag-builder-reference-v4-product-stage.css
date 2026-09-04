@@ -3,25 +3,50 @@
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active::before,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active::after,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active::before,
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active::after{
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active::after,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active::after,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active::after,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="promoting"]::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="promoting"]::after,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="ready"]::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="ready"]::after{
   content:none!important;
   display:none!important;
   background:none!important;
   border:0!important;
   box-shadow:none!important;
+  filter:none!important;
 }
 
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active,
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active{
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="promoting"],
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="ready"]{
   background:
     radial-gradient(ellipse at 50% 30%,rgba(255,255,255,.82) 0 18%,rgba(255,255,255,.24) 42%,transparent 64%),
     linear-gradient(180deg,#f8eee5 0 66%,#ead5c1 66% 100%)!important;
 }
 
-/* The source renderer is deliberately product-first: soften legacy high-contrast canvas filtering
-   without reducing live stitch/color visibility or touch interaction. */
+/* Older premium-canvas visuals remain softened only for their own isolated surface. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-premium-canvas3d-canvas{
   filter:drop-shadow(0 16px 17px rgba(65,43,48,.14)) saturate(.97) contrast(.92) brightness(1.025)!important;
+}
+
+/* The verified Fidelity3D framebuffer must reach the compositor without legacy color filters,
+   blend modes or inherited opacity that could turn a selected saturated cord into a pale body. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-layer,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-canvas{
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  background:transparent!important;
+  backface-visibility:hidden!important;
+  transform-style:preserve-3d!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-canvas{
+  isolation:isolate!important;
 }
 
 /* The stage itself provides the floor; no decorative framed objects may compete with the bag. */
