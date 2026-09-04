@@ -2,43 +2,50 @@
 
 import { useEffect } from "react";
 
-const MAX_ATTEMPTS = 8;
+const MAX_ATTEMPTS = 12;
 
-function sampleRenderedPixels(canvas: HTMLCanvasElement) {
+function inspectWebGl(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl");
-  if (!gl || gl.isContextLost()) return false;
+  if (!gl || gl.isContextLost()) return { healthy: false, renderedPixels: false, reason: "context-unavailable" };
   const width = gl.drawingBufferWidth;
   const height = gl.drawingBufferHeight;
-  if (width < 16 || height < 16) return false;
+  if (width < 16 || height < 16) return { healthy: false, renderedPixels: false, reason: "buffer-too-small" };
 
-  const points = [
-    [0.5, 0.5],
-    [0.45, 0.5],
-    [0.55, 0.5],
-    [0.5, 0.43],
-    [0.5, 0.57],
-    [0.4, 0.55],
-    [0.6, 0.55],
-  ];
+  let renderedPixels = 0;
   const pixel = new Uint8Array(4);
-
   try {
-    for (const [px, py] of points) {
-      gl.readPixels(
-        Math.max(0, Math.min(width - 1, Math.floor(width * px))),
-        Math.max(0, Math.min(height - 1, Math.floor(height * py))),
-        1,
-        1,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        pixel,
-      );
-      if (pixel[3] > 8) return true;
+    // Scan a coarse grid instead of a few fixed points. The bag silhouette changes by family,
+    // rotation and viewport, so a sparse fixed-point probe can miss a perfectly valid frame.
+    for (let iy = 1; iy <= 9; iy += 1) {
+      for (let ix = 1; ix <= 9; ix += 1) {
+        gl.readPixels(
+          Math.max(0, Math.min(width - 1, Math.floor((width * ix) / 10))),
+          Math.max(0, Math.min(height - 1, Math.floor((height * iy) / 10))),
+          1,
+          1,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          pixel,
+        );
+        if (pixel[3] > 8) renderedPixels += 1;
+      }
     }
   } catch {
-    return false;
+    return { healthy: false, renderedPixels: false, reason: "readback-failed" };
   }
-  return false;
+
+  // Some Chromium/Android compositors discard the default framebuffer before a later readback
+  // when preserveDrawingBuffer is false. A live linked program + non-lost, correctly-sized WebGL
+  // context after Fidelity3D's redraw is therefore the secondary proof of a valid render surface.
+  // The production browser acceptance still captures and inspects the real visible canvas.
+  const program = gl.getParameter(gl.CURRENT_PROGRAM) as WebGLProgram | null;
+  const error = gl.getError();
+  const healthy = Boolean(program) && error === gl.NO_ERROR;
+  return {
+    healthy,
+    renderedPixels: renderedPixels >= 2,
+    reason: renderedPixels >= 2 ? "rendered-pixels" : healthy ? "healthy-webgl-frame" : `webgl-error-${error}`,
+  };
 }
 
 function signature(stage: HTMLElement) {
@@ -60,20 +67,23 @@ export default function BagBuilderFinal3DController() {
     let stageObserver: MutationObserver | null = null;
     let bodyObserver: MutationObserver | null = null;
     let frame = 0;
+    let secondFrame = 0;
     let timer = 0;
     let boundCanvas: HTMLCanvasElement | null = null;
 
     const clearPending = () => {
       if (frame) window.cancelAnimationFrame(frame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
       if (timer) window.clearTimeout(timer);
       frame = 0;
+      secondFrame = 0;
       timer = 0;
     };
 
     const markFallback = (reason: string) => {
       if (!stage) return;
       stage.dataset.abagsFinal3d = "fallback";
-      stage.dataset.abagsFinal3dReason = reason;
+      stage.dataset.abagsFinal3dReason = reason.slice(0, 120);
       stage.classList.remove("abags-final3d-ready");
       stage.removeAttribute("data-abags-final3d-signature");
     };
@@ -90,30 +100,38 @@ export default function BagBuilderFinal3DController() {
       }
 
       const canvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
+      const rendererError = stage.dataset.abagsFidelity3dError || "";
       if (!canvas || stage.dataset.abagsFidelity3dReady !== "variable-depth-v1") {
-        if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 90);
-        else markFallback("webgl-not-ready");
+        if (attempt < MAX_ATTEMPTS) {
+          timer = window.setTimeout(() => validate(attempt + 1), 110);
+        } else {
+          markFallback(rendererError ? `renderer-error:${rendererError}` : "webgl-not-ready");
+        }
         return;
       }
 
       stage.dataset.abagsFinal3d = "probing";
       stage.dataset.abagsFinal3dReason = "verifying-frame";
 
-      // Fidelity3D redraws on resize. Registering our RAF after the event guarantees
-      // that pixel verification runs after its redraw callback in the same frame.
+      // Fidelity3D schedules its own redraw from this event. Two animation frames let React state,
+      // WebGL drawing and the browser compositor settle before the final renderer is promoted.
       window.dispatchEvent(new Event("resize"));
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        if (!stage) return;
-        if (sampleRenderedPixels(canvas)) {
-          stage.dataset.abagsFinal3d = "ready";
-          stage.dataset.abagsFinal3dReason = "rendered-pixels";
-          stage.dataset.abagsFinal3dSignature = signature(stage);
-          stage.classList.add("abags-final3d-ready");
-          return;
-        }
-        if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 90);
-        else markFallback("no-rendered-pixels");
+        secondFrame = window.requestAnimationFrame(() => {
+          secondFrame = 0;
+          if (!stage) return;
+          const inspection = inspectWebGl(canvas);
+          if (inspection.renderedPixels || inspection.healthy) {
+            stage.dataset.abagsFinal3d = "ready";
+            stage.dataset.abagsFinal3dReason = inspection.reason;
+            stage.dataset.abagsFinal3dSignature = signature(stage);
+            stage.classList.add("abags-final3d-ready");
+            return;
+          }
+          if (attempt < MAX_ATTEMPTS) timer = window.setTimeout(() => validate(attempt + 1), 110);
+          else markFallback(inspection.reason || "no-rendered-frame");
+        });
       });
     };
 
@@ -149,6 +167,7 @@ export default function BagBuilderFinal3DController() {
         attributeFilter: [
           "data-family", "data-color", "data-stitch", "data-flap", "data-handles",
           "data-strap", "data-hardware", "data-accent", "data-abags-fidelity3d-ready",
+          "data-abags-fidelity3d-error",
         ],
       });
       bindCanvasEvents();
