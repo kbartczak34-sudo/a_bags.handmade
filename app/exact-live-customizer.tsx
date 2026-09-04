@@ -13,6 +13,7 @@ import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contra
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
+import BagBuilderCustomerLegacyChipRetirement from "./bag-builder-customer-legacy-chip-retirement";
 import BagBuilderCustomerPremiumFit from "./bag-builder-customer-premium-fit";
 import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
@@ -53,6 +54,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderReferenceLayoutV3 />
     <BagBuilderReferenceHeaderGuard />
     <BagBuilderReferenceV4 />
+    <BagBuilderCustomerLegacyChipRetirement />
     <BagBuilderAbagsFidelityContract />
     <BagBuilderPhotoTrueGate>
       <BagBuilderPhotoTrue />
