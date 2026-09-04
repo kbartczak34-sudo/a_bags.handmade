@@ -102,10 +102,29 @@
 .abags-photo-true-note strong{font:800 5.8px/1.2 var(--font-sans)}
 .abags-photo-true-note span{font:600 5.2px/1.3 var(--font-sans)}
 
-/* V5 replaces the four synthetic family silhouettes with every real photographed store model. */
-.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-builder-group[data-photo-true-family-group="true"] > .abags-builder-options{
+/* V5 replaces the four synthetic family silhouettes with every real photographed store model.
+   The family fieldset is not guaranteed to carry the legacy .abags-builder-group class, so the
+   data marker itself is the source of truth. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] [data-photo-true-family-group="true"] > .abags-builder-options{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* Legacy atelier presets can change only the synthetic family/configuration and therefore may
+   contradict the selected photographed product. They are intentionally unavailable in Photo-True. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-ref-inspirations{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* The old active-layer family label describes the compatibility bridge (tote/round/etc.), not
+   the actual photographed A-Bags model. Do not present that internal value as the customer's model. */
+.abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-ref-layer-row[data-ref-edit-key="family"]{
   display:none!important;
 }
+
 .abags-photo-models-mount{width:100%;min-width:0}
 .abags-vc-dialog.abags-reference-layout-v4[data-v4-step]:not([data-v4-step="1"]) .abags-photo-models-mount{
   display:none!important;
