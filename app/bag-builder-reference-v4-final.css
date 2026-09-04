@@ -1,0 +1,210 @@
+/* V4 final visual contract. High-specificity rules intentionally outrank V3 compatibility styles. */
+
+/* A 3D renderer must be the only visible product layer. The engine SVG stays in the DOM
+   as state/accessibility infrastructure, but cannot shine through a transparent canvas. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active > svg,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active > svg{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* The approved reference is product-first. 3D remains fully interactive by drag/pinch,
+   while implementation controls stay available in the DOM for keyboard/QA without visual noise. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-pro3d-chip,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-canvas3d-chip,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-pro3d-hint,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-canvas3d-hint{
+  display:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-pro3d-view-controls,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-canvas3d-views,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-pro3d-zoom,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-canvas3d-zoom{
+  opacity:0!important;
+  pointer-events:auto!important;
+}
+
+/* V4 owns which real fieldset is open. This removes races with the two older accordion classes. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step] .abags-builder-group .abags-builder-options{
+  display:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="1"] .abags-builder-group[data-v4-key="family"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="2"] .abags-builder-group[data-v4-key="color"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="3"] .abags-builder-group[data-v4-key="stitch"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="4"] .abags-builder-group[data-v4-key="flap"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="5"] .abags-builder-group[data-v4-key="handles"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="5"] .abags-builder-group[data-v4-key="strap"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="6"] .abags-builder-group[data-v4-key="hardware"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="6"] .abags-builder-group[data-v4-key="accent"] .abags-builder-options{
+  display:grid!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="2"] .abags-builder-group[data-v4-key="color"] .abags-builder-options,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="6"] .abags-builder-group[data-v4-key="hardware"] .abags-builder-options{
+  display:flex!important;
+}
+
+@media(min-width:981px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-preview-status{
+    bottom:14px!important;
+  }
+}
+
+@media(max-width:980px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header{
+    flex-basis:50px!important;
+    min-height:50px!important;
+    height:50px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active{
+    height:258px!important;
+    min-height:258px!important;
+    max-height:258px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v4-preview-meta{
+    top:9px!important;
+    left:10px!important;
+    right:10px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v4-preview-meta strong,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v4-preview-meta span{
+    padding:5px 7px!important;
+    font-size:5.8px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-preview-status{
+    display:none!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspirations{
+    height:70px!important;
+    min-height:70px!important;
+    max-height:70px!important;
+    padding:6px 10px 7px!important;
+    overflow:hidden!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-head{
+    display:none!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track{
+    height:57px!important;
+    gap:7px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scrollbar-width:none!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track::-webkit-scrollbar{
+    display:none!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track button,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track button:last-child{
+    display:block!important;
+    flex:0 0 56px!important;
+    width:56px!important;
+    min-width:56px!important;
+    height:56px!important;
+    min-height:56px!important;
+    padding:3px!important;
+    border-radius:9px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-photo{
+    width:100%!important;
+    height:50px!important;
+    border-radius:7px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-copy{
+    display:none!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls{
+    padding:7px 12px 28px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend{
+    height:41px!important;
+    min-height:41px!important;
+    padding:0 1px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend>span{
+    width:22px!important;
+    height:22px!important;
+    flex:0 0 22px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend::after{
+    font-size:13px!important;
+    line-height:1!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend::before{
+    font-size:9px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group.is-v3-open,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group.is-ref-expanded{
+    padding-bottom:5px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-v4-step="1"] .abags-builder-group[data-v4-key="family"] .abags-builder-options{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:6px!important;
+    padding:0 0 7px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-options button{
+    min-height:82px!important;
+    height:82px!important;
+    padding:4px!important;
+    border-radius:9px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-family-photo{
+    height:55px!important;
+    min-height:55px!important;
+    border-radius:7px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-option-copy strong{
+    font-size:6.5px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-option-copy small{
+    display:none!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v4-subgroup-label{
+    margin:2px 0 4px!important;
+    font-size:5.8px!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-actions{
+    margin-top:6px!important;
+    padding-bottom:calc(9px + env(safe-area-inset-bottom))!important;
+  }
+}
+
+@media(max-width:420px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active{
+    height:246px!important;
+    min-height:246px!important;
+    max-height:246px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspirations{
+    height:66px!important;
+    min-height:66px!important;
+    max-height:66px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track{
+    height:53px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track button,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-inspiration-track button:last-child{
+    flex-basis:52px!important;
+    width:52px!important;
+    min-width:52px!important;
+    height:52px!important;
+    min-height:52px!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-ref-photo{height:46px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend{
+    height:39px!important;
+    min-height:39px!important;
+  }
+}

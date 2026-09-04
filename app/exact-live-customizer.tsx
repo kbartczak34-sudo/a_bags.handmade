@@ -1,4 +1,5 @@
 import "./bag-builder-reference-v4.css";
+import "./bag-builder-reference-v4-final.css";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
