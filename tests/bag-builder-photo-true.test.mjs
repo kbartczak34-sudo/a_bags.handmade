@@ -60,8 +60,21 @@ test("Photo-True hides legacy presets and misleading synthetic family layer labe
   assert.match(styles, /pointer-events:none!important/);
 });
 
-test("real model cards stay usable on desktop and mobile", () => {
+test("Photo-True Fason uses natural height instead of a stretched legacy accordion", () => {
+  assert.match(styles, /\[data-photo-true-family-group="true"\]\{[\s\S]*?display:block!important/);
+  assert.match(styles, /flex:0 0 auto!important/);
+  assert.match(styles, /align-content:start!important/);
+  assert.match(styles, /min-height:0!important/);
+  assert.match(styles, /height:auto!important/);
+  assert.match(styles, /max-height:none!important/);
+  assert.match(styles, /\.abags-photo-models-mount[\s\S]*?position:static!important/);
+  assert.match(styles, /\.abags-photo-models-mount[\s\S]*?align-self:start!important/);
+});
+
+test("real model cards match reference density on desktop and mobile", () => {
   assert.match(styles, /\.abags-photo-models-grid\{[\s\S]*?grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(styles, /max-height:318px/);
-  assert.match(styles, /@media\(max-width:980px\)[\s\S]*?max-height:208px/);
+  assert.match(styles, /max-height:238px/);
+  assert.match(styles, /\.abags-photo-model-copy small\{display:none!important\}/);
+  assert.match(styles, /@media\(max-width:980px\)[\s\S]*?max-height:174px/);
+  assert.match(styles, /@media\(max-width:420px\)[\s\S]*?max-height:166px/);
 });
