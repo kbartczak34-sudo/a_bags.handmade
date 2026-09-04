@@ -6,6 +6,7 @@ import "./bag-builder-photo-true-option-truth.css";
 import "./bag-builder-mobile-shell-fix.css";
 import "./bag-builder-customer-realtime.css";
 import "./bag-builder-final3d-promotion.css";
+import "./bag-builder-customer-cleanroom.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
