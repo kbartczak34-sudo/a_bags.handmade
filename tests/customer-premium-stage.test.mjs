@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 const live = readFileSync("app/exact-live-customizer.tsx", "utf8");
 const css = readFileSync("app/bag-builder-customer-premium-polish.css", "utf8");
 const fit = readFileSync("app/bag-builder-customer-premium-fit.tsx", "utf8");
+const closeIcon = readFileSync("app/bag-builder-customer-close-icon.tsx", "utf8");
 const realtimeQa = readFileSync("scripts/smoke-customizer-realtime.mjs", "utf8");
 
 const legacyChips = [
@@ -43,14 +44,23 @@ test("desktop customer step rail leaves enough room for Podsumowanie", () => {
   assert.match(css, /:not\(\[data-abags-photo-true="active"\]\)[\s\S]*\.abags-exact-live-mount/);
 });
 
-test("desktop customer close control uses an explicit SVG instead of the platform glyph", () => {
-  assert.match(css, /@media\(min-width:981px\)[\s\S]*\.abags-vc-header>button:not\(\.abags-v4-header-tool\)/);
-  assert.match(css, /font-size:0!important/);
-  assert.match(css, /color:transparent!important/);
-  assert.match(css, /background-image:url\("data:image\/svg\+xml/);
-  assert.match(css, /M6 6l12 12M18 6L6 18/);
-  assert.match(css, /background-size:17px 17px!important/);
-  assert.doesNotMatch(css, /button:not\(\.abags-v4-header-tool\)::before/);
+test("desktop customer close control mounts a real DOM SVG without replacing React-owned text", () => {
+  assert.match(live, /import BagBuilderCustomerCloseIcon from "\.\/bag-builder-customer-close-icon"/);
+  assert.match(live, /<BagBuilderReferenceV4 \/>[\s\S]*?<BagBuilderCustomerCloseIcon \/>/);
+  assert.match(closeIcon, /appendChild\(createCloseSvg\(\)\)/);
+  assert.match(closeIcon, /querySelector\(SVG_SELECTOR\)\?\.remove\(\)/);
+  assert.match(closeIcon, /M6 6l12 12M18 6L6 18/);
+  assert.match(closeIcon, /desktop\.matches && dialog\.dataset\.abagsPhotoTrue !== "active"/);
+  assert.doesNotMatch(closeIcon, /replaceChildren/);
+  assert.doesNotMatch(closeIcon, /textContent\s*=/);
+});
+
+test("desktop customer close SVG neutralizes legacy glyph and pseudo-element rendering", () => {
+  assert.match(css, /button\[data-abags-customer-close-icon="svg"\]\{[\s\S]*font-size:0!important/);
+  assert.match(css, /background-image:none!important/);
+  assert.match(css, /button\[data-abags-customer-close-icon="svg"\]::before,[\s\S]*::after\{[\s\S]*content:none!important/);
+  assert.match(css, /svg\[data-abags-customer-close-svg\][\s\S]*width:17px!important/);
+  assert.doesNotMatch(css, /data:image\/svg\+xml/);
 });
 
 test("small mobile stage is shorter without affecting Photo-True", () => {
