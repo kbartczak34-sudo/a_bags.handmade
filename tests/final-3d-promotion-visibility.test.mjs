@@ -64,6 +64,13 @@ test("renderer paint metadata cannot cancel an in-flight compositor promotion", 
   assert.match(controller, /if \(shouldIgnorePaintMetadata\(records\)\) return;[\s\S]*validate\(\);/);
 });
 
+test("unrelated document mutations cannot cancel the two-frame promotion", () => {
+  assert.match(controller, /if \(next === stage\) \{[\s\S]*bindCanvasEvents\(\);[\s\S]*return;[\s\S]*\}/);
+  const sameStageBranch = controller.match(/if \(next === stage\) \{([\s\S]*?)\n\s*\}/)?.[1] || "";
+  assert.doesNotMatch(sameStageBranch, /validate\(\)/, "unchanged-stage body scans must not revalidate and clear promotion frames");
+  assert.match(controller, /bodyObserver = new MutationObserver\(findStage\)/);
+});
+
 test("real configuration and renderer health mutations still retrigger final 3D validation", () => {
   for (const attribute of [
     "data-family", "data-color", "data-stitch", "data-flap", "data-handles",

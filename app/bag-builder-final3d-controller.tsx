@@ -150,8 +150,10 @@ export default function BagBuilderFinal3DController() {
 
     const attachStage = (next: HTMLElement | null) => {
       if (next === stage) {
+        // The body observer watches the whole document only so it can detect stage
+        // replacement/removal. Revalidating an unchanged stage here lets unrelated
+        // React DOM mutations cancel the two requestAnimationFrame promotion frames.
         bindCanvasEvents();
-        validate();
         return;
       }
       stageObserver?.disconnect();
