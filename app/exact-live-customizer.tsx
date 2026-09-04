@@ -11,6 +11,7 @@ import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
 import BagBuilderEngine from "./bag-builder-engine";
+import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
 import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
 import BagBuilderFinal3DController from "./bag-builder-final3d-controller";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
@@ -34,6 +35,7 @@ export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
     <BagBuilderFinalWebGL3D />
+    <BagBuilderFidelity3DCompositorSync />
     <BagBuilderFinal3DController />
     <BagBuilderPro3DTouchRescue />
     <BagBuilderRendererFallback />
