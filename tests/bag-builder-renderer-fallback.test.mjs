@@ -6,11 +6,12 @@ const stack = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const fallback = fs.readFileSync("app/bag-builder-renderer-fallback.tsx", "utf8");
 const canvas = fs.readFileSync("app/bag-builder-premium-canvas3d.tsx", "utf8");
 
-test("Fidelity3D remains primary while premium software 3D is mounted as fallback infrastructure", () => {
-  const fidelityIndex = stack.indexOf("<BagBuilderFidelity3D />");
+test("FinalWebGL3D remains primary while premium software 3D is mounted as fallback infrastructure", () => {
+  const primaryIndex = stack.indexOf("<BagBuilderFinalWebGL3D />");
   const fallbackIndex = stack.indexOf("<BagBuilderRendererFallback />");
-  assert.ok(fidelityIndex > -1);
-  assert.ok(fallbackIndex > fidelityIndex);
+  assert.ok(primaryIndex > -1);
+  assert.ok(fallbackIndex > primaryIndex);
+  assert.ok(stack.indexOf("<BagBuilderFidelity3D />") === -1);
   assert.match(fallback, /<BagBuilderPremiumCanvas3D \/>/);
   assert.match(fallback, /<BagBuilderCanvas3DTouchRescue \/>/);
 });
