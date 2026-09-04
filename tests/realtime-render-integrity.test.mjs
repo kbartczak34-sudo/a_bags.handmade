@@ -24,7 +24,7 @@ test("mobile render integrity requires the composited screenshot to preserve sel
   assert.match(script, /strongMatchRatio/);
   assert.match(script, /averageMatchSaturation/);
   assert.match(script, /Mobile composited stage screenshot does not visibly preserve selected turquoise/);
-  assert.match(script, /Mobile native Fidelity3D canvas does not preserve selected turquoise/);
+  assert.match(script, /Mobile native WebGL canvas does not visibly preserve selected turquoise/);
 });
 
 test("production deployment blocks Photo-True QA until realtime compositor integrity passes", () => {
