@@ -30,8 +30,16 @@ test("customer close v2 is independent from fonts and SVG styling", () => {
   assert.doesNotMatch(controller, /currentColor/);
 });
 
-test("customer close v2 restores inline styles and remains isolated from mobile and Photo-True", () => {
-  assert.match(controller, /matchMedia\("\(min-width: 981px\)"\)/);
+test("customer close evaluates the live viewport instead of a stale MediaQueryList", () => {
+  assert.match(controller, /function isDesktopViewport\(\)[\s\S]*window\.innerWidth >= 981/);
+  assert.match(controller, /const desktop = isDesktopViewport\(\)/);
+  assert.match(controller, /window\.addEventListener\("resize", requestSync\)/);
+  assert.match(controller, /window\.removeEventListener\("resize", requestSync\)/);
+  assert.doesNotMatch(controller, /matchMedia/);
+  assert.doesNotMatch(controller, /desktop\.matches/);
+});
+
+test("customer close v2 restores inline styles and remains isolated from Photo-True", () => {
   assert.match(controller, /abagsPhotoTrue !== "active"/);
   assert.match(controller, /savedStyles/);
   assert.match(controller, /button\.style\.setProperty\(property, state\.value, state\.priority\)/);
