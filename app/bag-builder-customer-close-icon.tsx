@@ -4,34 +4,96 @@ import { useEffect } from "react";
 
 const DIALOG_SELECTOR = ".abags-vc-dialog.abags-reference-layout-v4";
 const CLOSE_SELECTOR = '.abags-vc-header > button[aria-label="Zamknij"]:not(.abags-v4-header-tool)';
-const MARKED_CLOSE_SELECTOR = 'button[data-abags-customer-close-icon="svg"]';
-const SVG_SELECTOR = "svg[data-abags-customer-close-svg]";
+const MARKED_CLOSE_SELECTOR = 'button[data-abags-customer-close-icon="lines-v2"]';
+const SURFACE_SELECTOR = '[data-abags-customer-close-surface="true"]';
+const BUTTON_PROPERTIES = [
+  "display",
+  "place-items",
+  "font-size",
+  "line-height",
+  "color",
+  "background-color",
+  "background-image",
+  "overflow",
+] as const;
 
-function createCloseSvg() {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("focusable", "false");
-  svg.dataset.abagsCustomerCloseSvg = "true";
+type SavedStyle = Record<(typeof BUTTON_PROPERTIES)[number], { value: string; priority: string }>;
 
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", "M6 6l12 12M18 6L6 18");
-  path.setAttribute("fill", "none");
-  path.setAttribute("stroke", "currentColor");
-  path.setAttribute("stroke-width", "1.8");
-  path.setAttribute("stroke-linecap", "round");
-  svg.appendChild(path);
-  return svg;
+const savedStyles = new WeakMap<HTMLButtonElement, SavedStyle>();
+
+function rememberStyles(button: HTMLButtonElement) {
+  if (savedStyles.has(button)) return;
+  const state = {} as SavedStyle;
+  for (const property of BUTTON_PROPERTIES) {
+    state[property] = {
+      value: button.style.getPropertyValue(property),
+      priority: button.style.getPropertyPriority(property),
+    };
+  }
+  savedStyles.set(button, state);
+}
+
+function setImportant(element: HTMLElement, property: string, value: string) {
+  element.style.setProperty(property, value, "important");
+}
+
+function createStroke(angle: string) {
+  const line = document.createElement("span");
+  line.setAttribute("aria-hidden", "true");
+  setImportant(line, "position", "absolute");
+  setImportant(line, "left", "50%");
+  setImportant(line, "top", "50%");
+  setImportant(line, "width", "17px");
+  setImportant(line, "height", "1.8px");
+  setImportant(line, "border-radius", "999px");
+  setImportant(line, "background", "#674d53");
+  setImportant(line, "transform", `translate(-50%, -50%) rotate(${angle})`);
+  setImportant(line, "transform-origin", "center");
+  setImportant(line, "pointer-events", "none");
+  return line;
+}
+
+function createCloseSurface() {
+  const surface = document.createElement("span");
+  surface.dataset.abagsCustomerCloseSurface = "true";
+  surface.setAttribute("aria-hidden", "true");
+  setImportant(surface, "position", "relative");
+  setImportant(surface, "display", "block");
+  setImportant(surface, "width", "18px");
+  setImportant(surface, "height", "18px");
+  setImportant(surface, "margin", "0");
+  setImportant(surface, "padding", "0");
+  setImportant(surface, "pointer-events", "none");
+  surface.append(createStroke("45deg"), createStroke("-45deg"));
+  return surface;
 }
 
 function restoreClose(button: HTMLButtonElement) {
-  button.querySelector(SVG_SELECTOR)?.remove();
+  button.querySelector(SURFACE_SELECTOR)?.remove();
+  const previous = savedStyles.get(button);
+  if (previous) {
+    for (const property of BUTTON_PROPERTIES) {
+      const state = previous[property];
+      if (state.value) button.style.setProperty(property, state.value, state.priority);
+      else button.style.removeProperty(property);
+    }
+    savedStyles.delete(button);
+  }
   delete button.dataset.abagsCustomerCloseIcon;
 }
 
 function installClose(button: HTMLButtonElement) {
-  if (!button.querySelector(SVG_SELECTOR)) button.appendChild(createCloseSvg());
-  button.dataset.abagsCustomerCloseIcon = "svg";
+  rememberStyles(button);
+  if (!button.querySelector(SURFACE_SELECTOR)) button.appendChild(createCloseSurface());
+  button.dataset.abagsCustomerCloseIcon = "lines-v2";
+  setImportant(button, "display", "grid");
+  setImportant(button, "place-items", "center");
+  setImportant(button, "font-size", "0");
+  setImportant(button, "line-height", "0");
+  setImportant(button, "color", "transparent");
+  setImportant(button, "background-color", "#fff");
+  setImportant(button, "background-image", "none");
+  setImportant(button, "overflow", "hidden");
 }
 
 export default function BagBuilderCustomerCloseIcon() {
