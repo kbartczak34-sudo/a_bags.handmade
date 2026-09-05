@@ -40,4 +40,18 @@ jobs:
         run: npm run build
 
       - name: Regression tests
-        run: node --test tests/*.test.mjs
+        shell: bash
+        run: |
+          set +e
+          status=0
+          for file in tests/*.test.mjs; do
+            echo "::group::$file"
+            node --test "$file"
+            code=$?
+            echo "::endgroup::"
+            if [ "$code" -ne 0 ]; then
+              echo "::error file=$file::Regression test failed"
+              status=1
+            fi
+          done
+          exit "$status"
