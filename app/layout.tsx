@@ -54,7 +54,7 @@ const sans = Manrope({
 
 const siteUrl = "https://abagshandmade.pl";
 const description =
-  "Ręcznie plecione torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
+  "Ręcznie szydełkowane torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
 
 export const viewport: Viewport = {
   width: "device-width",
