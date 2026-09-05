@@ -24,6 +24,9 @@ test("each Fidelity V4 family is locked to a real Agata product reference", () =
 test("family contract owns hardware anchors instead of renderer guesses", () => {
   for (const ringY of ["0.49", "0.46", "0.42"]) assert.ok(spec.includes(`ringY: ${ringY}`));
   assert.match(spec, /ringY: number/);
+  assert.match(renderer, /ringY: spec\.ringY/);
+  assert.match(renderer, /const ringY = metrics\.ringY;/);
+  assert.doesNotMatch(renderer, /config\.family === "mini" \? \.42/);
 });
 
 test("renderer and final verifier share the Agata fidelity version contract", () => {
