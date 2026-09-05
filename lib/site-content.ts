@@ -238,6 +238,30 @@ export function normalizeSiteContent(value: unknown): SiteContent {
 
   // Zastępujemy wyłącznie wcześniejsze teksty szablonowe. Treści zmienione
   // przez właścicielkę w panelu pozostają zawsze bez zmian.
+  if (normalized.hero.title === "Ręcznie plecione") {
+    normalized.hero.title = defaultSiteContent.hero.title;
+  }
+  if (
+    normalized.hero.imageAlt ===
+    "Różowa ręcznie pleciona torebka a_bags.handmade z kwiatową kokardą"
+  ) {
+    normalized.hero.imageAlt = defaultSiteContent.hero.imageAlt;
+  }
+  if (normalized.hero.imageSublabel === "ręcznie pleciona") {
+    normalized.hero.imageSublabel = defaultSiteContent.hero.imageSublabel;
+  }
+  if (
+    normalized.collection.emptyText ===
+    "Nowe ręcznie plecione modele pojawią się tutaj już wkrótce."
+  ) {
+    normalized.collection.emptyText = defaultSiteContent.collection.emptyText;
+  }
+  if (
+    normalized.footer.tagline ===
+    "Ręcznie plecione torebki, tworzone powoli i z uważnością."
+  ) {
+    normalized.footer.tagline = defaultSiteContent.footer.tagline;
+  }
   if (normalized.collection.noteLabel === "Aktualna kolekcja") {
     normalized.collection.noteLabel = defaultSiteContent.collection.noteLabel;
   }
