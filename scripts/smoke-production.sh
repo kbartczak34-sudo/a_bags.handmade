@@ -84,6 +84,18 @@ grep -Eq '"scope"[[:space:]]*:[[:space:]]*"/"' "$TMP_DIR/manifest.body" || fail 
 assert_200 "/api/products" "products"
 grep -Eq '"products"[[:space:]]*:' "$TMP_DIR/products.body" || fail "product API response is malformed"
 
+assert_200 "/api/site-content" "site-content"
+grep -Fq "Ręcznie szydełkowane" "$TMP_DIR/site-content.body" || fail "storefront does not expose crochet-accurate hero terminology"
+if grep -Fq "Ręcznie plecione" "$TMP_DIR/site-content.body"; then
+  fail "legacy woven hero terminology is still exposed"
+fi
+if grep -Fq "ręcznie pleciona" "$TMP_DIR/site-content.body"; then
+  fail "legacy woven image terminology is still exposed"
+fi
+if grep -Fq "ręcznie plecione" "$TMP_DIR/site-content.body"; then
+  fail "legacy woven collection terminology is still exposed"
+fi
+
 assert_200 "/api/legal-status" "legal"
 grep -Eq '"launchReady"[[:space:]]*:' "$TMP_DIR/legal.body" || fail "legal-status API response is malformed"
 
@@ -102,6 +114,7 @@ echo "- storefront: 200"
 echo "- security/cache headers: present"
 echo "- robots/sitemap/manifest: valid"
 echo "- products/legal APIs: 200"
+echo "- crochet-accurate storefront terminology: present"
 echo "- returns/complaints form: 200"
 echo "- admin status API: protected (HTTP $admin_code)"
 echo "- admin customer-cases API: protected (HTTP $cases_admin_code)"
