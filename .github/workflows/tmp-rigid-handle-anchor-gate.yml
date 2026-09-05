@@ -1,0 +1,159 @@
+name: Temporary rigid handle anchor calibration
+
+on:
+  push:
+    branches: [test/builder-rigid-handle-anchor-gate]
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/builder-rigid-handle-anchor-gate
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Add rigid-handle pixel gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          probe_path = Path('scripts/smoke-customizer-anchor-integrity.mjs')
+          probe = probe_path.read_text()
+
+          needle_assert = '''  if (view !== "Bok") {
+          '''
+          replacement_assert = '''  if (view === "Bok") {
+            const handle = evidence?.handle;
+            if (!handle || handle.sampled < 120 || handle.clusterCount < 2 || handle.separationRatio < 0.045) {
+              throw new Error(`${label} ${view}: rigid wooden handle lost front/back depth separation: ${JSON.stringify(handle)}`);
+            }
+            const [primary, secondary] = handle.clusters || [];
+            if (!primary || !secondary || primary.pixels < 45 || secondary.pixels < 45) {
+              throw new Error(`${label} ${view}: rigid wooden handle no longer produces two substantial side-view WebGL clusters: ${JSON.stringify(handle)}`);
+            }
+          }
+          if (view !== "Bok") {
+          '''
+          if probe.count(needle_assert) != 1:
+              raise SystemExit(f'assert insertion point count={probe.count(needle_assert)}')
+          probe = probe.replace(needle_assert, replacement_assert, 1)
+
+          needle_analyze = '''      const analyze=(overlay)=>{
+          '''
+          replacement_analyze = '''      const analyzeRigidHandle=()=>{
+            const columns=new Uint32Array(gw);
+            let sampled=0;
+            for(let y=0;y<gh;y+=1){
+              for(let x=0;x<gw;x+=1){
+                const i=(y*gw+x)*4;
+                const r=glPixels[i],g=glPixels[i+1],b=glPixels[i+2],a=glPixels[i+3];
+                const wood=a>32 && r>110 && g>75 && b<190 && r>g && g>b && r-b>32 && g-b>8;
+                if(!wood)continue;
+                columns[x]+=1;
+                sampled+=1;
+              }
+            }
+            const minColumn=Math.max(2,Math.round(gh*0.003));
+            const gapTolerance=Math.max(2,Math.round(gw*0.006));
+            const groups=[];
+            let current=null,lastX=-1;
+            for(let x=0;x<gw;x+=1){
+              const pixels=columns[x];
+              if(pixels<minColumn)continue;
+              if(!current || x-lastX>gapTolerance){
+                current={minX:x,maxX:x,pixels:0,weightedX:0};
+                groups.push(current);
+              }
+              current.maxX=x;
+              current.pixels+=pixels;
+              current.weightedX+=x*pixels;
+              lastX=x;
+            }
+            const minPixels=Math.max(28,Math.round(gh*0.035));
+            const clusters=groups
+              .filter((group)=>group.pixels>=minPixels)
+              .map((group)=>({
+                minX:group.minX,maxX:group.maxX,pixels:group.pixels,
+                center:group.weightedX/Math.max(1,group.pixels),
+              }))
+              .sort((a,b)=>b.pixels-a.pixels);
+            if(clusters.length<2){
+              return {sampled,clusterCount:clusters.length,clusters:clusters.slice(0,4),separation:0,separationRatio:0};
+            }
+            const separation=Math.abs(clusters[0].center-clusters[1].center);
+            return {
+              sampled,clusterCount:clusters.length,clusters:clusters.slice(0,4),
+              separation,separationRatio:separation/gw,
+            };
+          };
+
+          const analyze=(overlay)=>{
+          '''
+          if probe.count(needle_analyze) != 1:
+              raise SystemExit(f'analyzer insertion point count={probe.count(needle_analyze)}')
+          probe = probe.replace(needle_analyze, replacement_analyze, 1)
+
+          needle_return = '''        webgl:{width:gw,height:gh},
+            back:analyze(back),
+          '''
+          replacement_return = '''        webgl:{width:gw,height:gh},
+            handle:analyzeRigidHandle(),
+            back:analyze(back),
+          '''
+          if probe.count(needle_return) != 1:
+              raise SystemExit(f'return insertion point count={probe.count(needle_return)}')
+          probe = probe.replace(needle_return, replacement_return, 1)
+
+          needle_log = '''    console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
+          '''
+          replacement_log = '''    console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
+            console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
+            console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);
+            console.log("- mobile side handle evidence:", mobile.find((item) => item.view === "Bok")?.handle);
+          '''
+          if probe.count(needle_log) != 1:
+              raise SystemExit(f'log insertion point count={probe.count(needle_log)}')
+          probe = probe.replace(needle_log, replacement_log, 1)
+          probe_path.write_text(probe)
+
+          test_path = Path('tests/builder-view-anchor-integrity.test.mjs')
+          contract = test_path.read_text()
+          needle_test = '''  assert.match(probe, /front\\.rightContact < 20/);
+          '''
+          replacement_test = '''  assert.match(probe, /front\\.rightContact < 20/);
+            assert.match(probe, /analyzeRigidHandle/);
+            assert.match(probe, /handle\\.clusterCount < 2/);
+            assert.match(probe, /handle\\.separationRatio < 0\\.045/);
+            assert.match(probe, /primary\\.pixels < 45/);
+            assert.match(probe, /secondary\\.pixels < 45/);
+            assert.match(probe, /handle:analyzeRigidHandle\\(\\)/);
+          '''
+          if contract.count(needle_test) != 1:
+              raise SystemExit(f'test insertion point count={contract.count(needle_test)}')
+          test_path.write_text(contract.replace(needle_test, replacement_test, 1))
+          PY
+
+      - name: Validate guard against live production
+        env:
+          ABAGS_REALTIME_QA_DIR: /tmp/abags-rigid-handle-gate
+        run: node scripts/smoke-customizer-anchor-integrity.mjs
+
+      - name: Commit only permanent QA changes
+        shell: bash
+        run: |
+          git rm .github/workflows/tmp-rigid-handle-anchor-gate.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/smoke-customizer-anchor-integrity.mjs tests/builder-view-anchor-integrity.test.mjs
+          git commit -m "test(builder): guard rigid handle side-view separation"
+          git push origin HEAD:test/builder-rigid-handle-anchor-gate
