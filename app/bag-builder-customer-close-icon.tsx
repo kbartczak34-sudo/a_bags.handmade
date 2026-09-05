@@ -6,33 +6,16 @@ const DIALOG_SELECTOR = ".abags-vc-dialog.abags-reference-layout-v4";
 const CLOSE_SELECTOR = '.abags-vc-header > button[aria-label="Zamknij"]:not(.abags-v4-header-tool)';
 const MARKED_CLOSE_SELECTOR = 'button[data-abags-customer-close-icon="lines-v2"]';
 const SURFACE_SELECTOR = '[data-abags-customer-close-surface="true"]';
-const BUTTON_PROPERTIES = [
-  "display",
-  "place-items",
-  "font-size",
-  "line-height",
-  "color",
-  "background-color",
-  "background-image",
-  "background-size",
-  "background-position",
-  "background-repeat",
-  "overflow",
-] as const;
+const LABEL_SELECTOR = '[data-abags-customer-close-label="true"]';
+const BUTTON_PROPERTIES = ["display", "place-items", "font-size", "line-height", "color", "background-color", "background-image", "background-size", "background-position", "background-repeat", "overflow"] as const;
 
 type SavedStyle = Record<(typeof BUTTON_PROPERTIES)[number], { value: string; priority: string }>;
-
 const savedStyles = new WeakMap<HTMLButtonElement, SavedStyle>();
 
 function rememberStyles(button: HTMLButtonElement) {
   if (savedStyles.has(button)) return;
   const state = {} as SavedStyle;
-  for (const property of BUTTON_PROPERTIES) {
-    state[property] = {
-      value: button.style.getPropertyValue(property),
-      priority: button.style.getPropertyPriority(property),
-    };
-  }
+  for (const property of BUTTON_PROPERTIES) state[property] = { value: button.style.getPropertyValue(property), priority: button.style.getPropertyPriority(property) };
   savedStyles.set(button, state);
 }
 
@@ -67,12 +50,33 @@ function createCloseSurface() {
   setImportant(surface, "margin", "0");
   setImportant(surface, "padding", "0");
   setImportant(surface, "pointer-events", "none");
+  setImportant(surface, "opacity", "0");
   surface.append(createStroke("45deg"), createStroke("-45deg"));
   return surface;
 }
 
+function createCloseLabel() {
+  const label = document.createElement("span");
+  label.dataset.abagsCustomerCloseLabel = "true";
+  label.setAttribute("aria-hidden", "true");
+  label.textContent = "X";
+  setImportant(label, "position", "absolute");
+  setImportant(label, "left", "50%");
+  setImportant(label, "top", "50%");
+  setImportant(label, "transform", "translate(-50%, -50%)");
+  setImportant(label, "font-family", "Arial, Helvetica, sans-serif");
+  setImportant(label, "font-size", "15px");
+  setImportant(label, "font-weight", "400");
+  setImportant(label, "line-height", "1");
+  setImportant(label, "letter-spacing", "0");
+  setImportant(label, "color", "#674d53");
+  setImportant(label, "pointer-events", "none");
+  return label;
+}
+
 function restoreClose(button: HTMLButtonElement) {
   button.querySelector(SURFACE_SELECTOR)?.remove();
+  button.querySelector(LABEL_SELECTOR)?.remove();
   const previous = savedStyles.get(button);
   if (previous) {
     for (const property of BUTTON_PROPERTIES) {
@@ -88,6 +92,7 @@ function restoreClose(button: HTMLButtonElement) {
 function installClose(button: HTMLButtonElement) {
   rememberStyles(button);
   if (!button.querySelector(SURFACE_SELECTOR)) button.appendChild(createCloseSurface());
+  if (!button.querySelector(LABEL_SELECTOR)) button.appendChild(createCloseLabel());
   button.dataset.abagsCustomerCloseIcon = "lines-v2";
   setImportant(button, "display", "grid");
   setImportant(button, "place-items", "center");
@@ -95,59 +100,36 @@ function installClose(button: HTMLButtonElement) {
   setImportant(button, "line-height", "0");
   setImportant(button, "color", "transparent");
   setImportant(button, "background-color", "#fff");
-  // The two DOM strokes remain the semantic/integrity surface. A matching CSS-gradient X is
-  // painted directly on the button as a compositor-safe visual fallback for Chromium/SwiftShader,
-  // where transformed 1.8px children can collapse into a single horizontal bar in screenshots.
-  setImportant(button, "background-image", "linear-gradient(45deg, transparent 43%, #674d53 43%, #674d53 57%, transparent 57%), linear-gradient(-45deg, transparent 43%, #674d53 43%, #674d53 57%, transparent 57%)");
-  setImportant(button, "background-size", "18px 18px");
-  setImportant(button, "background-position", "center");
-  setImportant(button, "background-repeat", "no-repeat");
+  setImportant(button, "background-image", "none");
   setImportant(button, "overflow", "hidden");
 }
 
-function isDesktopViewport() {
-  return window.innerWidth >= 981;
-}
+function isDesktopViewport() { return window.innerWidth >= 981; }
 
 export default function BagBuilderCustomerCloseIcon() {
   useEffect(() => {
     let frame = 0;
-
     const sync = () => {
       frame = 0;
       const desktop = isDesktopViewport();
       const activeDialogs = new Set<HTMLElement>();
-
       document.querySelectorAll<HTMLElement>(DIALOG_SELECTOR).forEach((dialog) => {
         activeDialogs.add(dialog);
         const button = dialog.querySelector<HTMLButtonElement>(CLOSE_SELECTOR);
         if (!button) return;
         const customerDesktop = desktop && dialog.dataset.abagsPhotoTrue !== "active";
-        if (customerDesktop) installClose(button);
-        else restoreClose(button);
+        if (customerDesktop) installClose(button); else restoreClose(button);
       });
-
       document.querySelectorAll<HTMLButtonElement>(MARKED_CLOSE_SELECTOR).forEach((button) => {
         const dialog = button.closest<HTMLElement>(DIALOG_SELECTOR);
         if (!dialog || !activeDialogs.has(dialog) || !desktop || dialog.dataset.abagsPhotoTrue === "active") restoreClose(button);
       });
     };
-
-    const requestSync = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(sync);
-    };
-
+    const requestSync = () => { if (!frame) frame = window.requestAnimationFrame(sync); };
     requestSync();
     const observer = new MutationObserver(requestSync);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["class", "data-abags-photo-true"],
-    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-photo-true"] });
     window.addEventListener("resize", requestSync);
-
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", requestSync);
@@ -155,6 +137,5 @@ export default function BagBuilderCustomerCloseIcon() {
       document.querySelectorAll<HTMLButtonElement>(MARKED_CLOSE_SELECTOR).forEach(restoreClose);
     };
   }, []);
-
   return null;
 }
