@@ -1,0 +1,36 @@
+name: Apply Fidelity V4 source migration
+
+on:
+  push:
+    branches:
+      - fidelity/v4-abags-family-proportions-20260905
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: ${{ !contains(github.event.head_commit.message, 'Apply Fidelity V4 renderer integration') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fidelity/v4-abags-family-proportions-20260905
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply calibrated family geometry to WebGL renderer
+        run: node scripts/apply-fidelity-v4-source.mjs
+      - name: Verify migration changed renderer
+        run: |
+          grep -q 'ABAGS_FIDELITY_V4_FAMILY_SPECS' app/bag-builder-final-webgl3d.tsx
+          grep -q 'ABAGS_FIDELITY_V4_RENDERER_VERSION' app/bag-builder-final-webgl3d.tsx
+          git diff --check
+      - name: Commit generated source integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/bag-builder-final-webgl3d.tsx
+          git commit -m 'Apply Fidelity V4 renderer integration'
+          git push origin HEAD:fidelity/v4-abags-family-proportions-20260905
