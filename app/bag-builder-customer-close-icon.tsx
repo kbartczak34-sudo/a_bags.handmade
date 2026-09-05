@@ -14,6 +14,9 @@ const BUTTON_PROPERTIES = [
   "color",
   "background-color",
   "background-image",
+  "background-size",
+  "background-position",
+  "background-repeat",
   "overflow",
 ] as const;
 
@@ -92,7 +95,13 @@ function installClose(button: HTMLButtonElement) {
   setImportant(button, "line-height", "0");
   setImportant(button, "color", "transparent");
   setImportant(button, "background-color", "#fff");
-  setImportant(button, "background-image", "none");
+  // The two DOM strokes remain the semantic/integrity surface. A matching CSS-gradient X is
+  // painted directly on the button as a compositor-safe visual fallback for Chromium/SwiftShader,
+  // where transformed 1.8px children can collapse into a single horizontal bar in screenshots.
+  setImportant(button, "background-image", "linear-gradient(45deg, transparent 43%, #674d53 43%, #674d53 57%, transparent 57%), linear-gradient(-45deg, transparent 43%, #674d53 43%, #674d53 57%, transparent 57%)");
+  setImportant(button, "background-size", "18px 18px");
+  setImportant(button, "background-position", "center");
+  setImportant(button, "background-repeat", "no-repeat");
   setImportant(button, "overflow", "hidden");
 }
 
