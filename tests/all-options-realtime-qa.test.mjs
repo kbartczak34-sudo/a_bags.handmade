@@ -36,7 +36,9 @@ test("desktop disables touch emulation without invalid zero touch points", () =>
   assert.doesNotMatch(qa, /maxTouchPoints:\s*0/);
 });
 
-test("mobile Mini keeps incompatible wooden handles unavailable", () => {
-  assert.match(qa, /incompatible: \[\["handles", "wood-light"\], \["handles", "wood-dark"\]\]/);
+test("mobile Mini exercises the real light wooden handle and rejects unsupported alternatives", () => {
+  assert.match(qa, /\["handles", "wood-light"\]/);
+  assert.match(qa, /incompatible: \[\["handles", "wood-dark"\], \["handles", "crochet"\]\]/);
+  assert.match(qa, /real teal Agata reference/);
   assert.match(qa, /incompatible .* incorrectly selectable/);
 });
