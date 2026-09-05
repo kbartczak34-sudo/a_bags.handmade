@@ -3,8 +3,17 @@ import fs from "node:fs";
 import test from "node:test";
 
 const workflow = fs.readFileSync(".github/workflows/deploy-cloudflare.yml", "utf8");
-const photoSmoke = fs.readFileSync("scripts/smoke-customizer-photo-true-v5.mjs", "utf8");
+const photoRunner = fs.readFileSync("scripts/smoke-customizer-photo-true-v5.mjs", "utf8");
+const photoSmoke = fs.readFileSync("scripts/smoke-customizer-photo-true-v5-strict.mjs", "utf8");
 const mobileSmoke = fs.readFileSync("scripts/smoke-photo-true-mobile.mjs", "utf8");
+
+test("Photo-True runner retries the unchanged strict production contract at most once", () => {
+  assert.match(photoRunner, /smoke-customizer-photo-true-v5-strict\.mjs/);
+  assert.match(photoRunner, /const MAX_ATTEMPTS = 2/);
+  assert.match(photoRunner, /attempt <= MAX_ATTEMPTS/);
+  assert.match(photoRunner, /retrying once/);
+  assert.match(photoRunner, /process\.exit\(lastResult\.code \|\| 1\)/);
+});
 
 test("production browser smoke targets Photo-True V5 real product photography", () => {
   assert.match(workflow, /smoke-customizer-photo-true-v5\.mjs/);
