@@ -106,7 +106,7 @@ admin_code="$(assert_protected "/api/admin/status" "admin")"
 cases_admin_code="$(assert_protected "/api/admin/customer-cases" "admin-cases")"
 
 # A successful HTTP storefront is not enough: every customer-facing builder decision
-# must produce a distinct verified WebGL frame in the deployed production build.
+# must produce a distinct verified composited realtime frame in the deployed production build.
 ABAGS_PRODUCTION_URL="$BASE_URL" node scripts/smoke-customizer-all-options.mjs
 
 echo "SMOKE PASS: $BASE_URL"
@@ -118,4 +118,4 @@ echo "- crochet-accurate storefront terminology: present"
 echo "- returns/complaints form: 200"
 echo "- admin status API: protected (HTTP $admin_code)"
 echo "- admin customer-cases API: protected (HTTP $cases_admin_code)"
-echo "- all eight Bag Builder decisions visibly redraw verified WebGL: yes"
+echo "- all eight Bag Builder decisions visibly redraw the verified realtime composition: yes"
