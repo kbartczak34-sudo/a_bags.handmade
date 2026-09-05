@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 import { EXACT_ATELIER_LIBRARY, EXACT_ATELIER_SPRITE_PARTS } from "../lib/exact-customizer-library";
 
 type Preset = {
@@ -20,7 +21,7 @@ type Preset = {
 const STEPS = [
   { label: "Fason", key: "family" },
   { label: "Kolor korpusu", key: "color" },
-  { label: "Splot", key: "stitch" },
+  { label: "Ścieg szydełkowy", key: "stitch" },
   { label: "Klapa / zapięcie", key: "flap" },
   { label: "Uchwyt / pasek", key: "handles" },
   { label: "Dodatki", key: "accent" },
@@ -28,8 +29,8 @@ const STEPS = [
 ] as const;
 
 const LABELS: Record<string, Record<string, string>> = {
-  family: { tote: "Prostokątna", round: "Półokrągła", bucket: "Kubełkowa", mini: "Mini" },
-  stitch: { classic: "Klasyczny", herringbone: "Jodełka", basket: "Koszykowy", shell: "Muszla" },
+  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" },
+  stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
   flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skóra czarna", "leather-cognac": "Skóra koniak", "suede-burgundy": "Zamsz bordo" },
   handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
   strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
@@ -53,17 +54,13 @@ const COLOR_LABELS: Record<string, string> = {
 const PRESETS: Preset[] = [
   { id: "navy", label: "Granat", referenceId: "navy-wood-scarf-chain", family: "tote", color: "#24324D", stitch: "classic", flap: "none", handles: "wood-light", strap: "chain", hardware: "gold", accent: "scarf" },
   { id: "red", label: "Czerwień", referenceId: "red-wood-scarf", family: "tote", color: "#B93A42", stitch: "classic", flap: "none", handles: "wood-dark", strap: "woven", hardware: "gold", accent: "scarf" },
-  { id: "black", label: "Czerń", referenceId: "black-leather-flap", family: "round", color: "#222124", stitch: "herringbone", flap: "leather-black", handles: "none", strap: "leather", hardware: "gold", accent: "tassel" },
-  { id: "brown", label: "Brąz", referenceId: "brown-ombre-wood-scarf", family: "tote", color: "#65493D", stitch: "classic", flap: "none", handles: "wood-light", strap: "none", hardware: "gold", accent: "scarf" },
-  { id: "pink", label: "Pudrowy róż", referenceId: "pink-leather-flap", family: "round", color: "#E4A9B5", stitch: "classic", flap: "crochet", handles: "none", strap: "leather", hardware: "gold", accent: "none" },
+  { id: "black", label: "Czerń", referenceId: "black-leather-flap", family: "bucket", color: "#222124", stitch: "classic", flap: "leather-black", handles: "none", strap: "leather", hardware: "gold", accent: "tassel" },
+  { id: "teal", label: "Turkus", referenceId: "teal-wood-chain-stones", family: "mini", color: "#087E81", stitch: "herringbone", flap: "none", handles: "wood-light", strap: "chain", hardware: "gold", accent: "charm" },
 ];
 
-const FAMILY_REFERENCE: Record<string, string> = {
-  tote: "navy-wood-scarf-chain",
-  round: "mustard-round-navy-flap",
-  bucket: "cream-burgundy-flap",
-  mini: "small-multicolor-chain",
-};
+const FAMILY_REFERENCE: Record<string, string> = Object.fromEntries(
+  Object.entries(ABAGS_FIDELITY_V4_FAMILY_SPECS).map(([family, spec]) => [family, spec.reference]),
+);
 
 function getChoice(key: string, value: string) {
   return [...document.querySelectorAll<HTMLButtonElement>(`button[data-builder-key="${key}"]`)]
@@ -131,7 +128,7 @@ function syncLayers(stage: HTMLElement, panel: HTMLElement) {
   const rows = [
     ["family", "Fason", stage.dataset.family || ""],
     ["color", "Kolor korpusu", stage.dataset.color || ""],
-    ["stitch", "Splot", stage.dataset.stitch || ""],
+    ["stitch", "Ścieg szydełkowy", stage.dataset.stitch || ""],
     ["flap", "Klapa", stage.dataset.flap || "none"],
     ["handles", "Uchwyt", stage.dataset.handles || "none"],
     ["strap", "Pasek", stage.dataset.strap || "none"],
