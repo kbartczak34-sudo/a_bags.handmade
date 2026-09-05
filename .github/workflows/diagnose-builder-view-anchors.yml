@@ -21,6 +21,18 @@ jobs:
         with:
           node-version: 22
 
+      - name: Patch diagnostic preset expression
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/smoke-customizer-view-anchors.mjs')
+          source = path.read_text()
+          source = source.replace('Math.abs(x-${expected[0]})<0.002', 'Math.abs(x-(${expected[0]}))<0.002')
+          source = source.replace('Math.abs(y-${expected[1]})<0.002', 'Math.abs(y-(${expected[1]}))<0.002')
+          path.write_text(source)
+          PY
+
       - name: Probe accessory anchor integrity on production
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
