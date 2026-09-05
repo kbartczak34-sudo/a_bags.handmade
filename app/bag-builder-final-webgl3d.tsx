@@ -591,16 +591,20 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.handles !== "none") {
     const handleColor = config.handles === "wood-dark" ? "#60402f" : config.handles === "wood-light" ? "#d7b985" : bodyColor;
     const handleMaterial = config.handles === "crochet" ? 0 : 1;
-    drawMesh(
-      renderer,
-      meshes.handle,
-      multiply(root, matrix([0, topY - .01, .015], [metrics.handleScale[0], metrics.handleScale[1], 1])),
-      handleColor,
-      stitch,
-      handleMaterial,
-    );
+    const rigidHandle = config.handles === "wood-light" || config.handles === "wood-dark";
+    const handleDepth = depth / 2 + .055;
+    const handlePlanes = rigidHandle ? [-handleDepth, handleDepth] : [.015];
+    for (const handleZ of handlePlanes) {
+      drawMesh(
+        renderer,
+        meshes.handle,
+        multiply(root, matrix([0, topY - .01, handleZ], [metrics.handleScale[0], metrics.handleScale[1], 1])),
+        handleColor,
+        stitch,
+        handleMaterial,
+      );
+    }
   }
-
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#292426" : config.flap === "leather-cognac" ? "#9a6345" : config.flap === "suede-burgundy" ? "#773c4b" : bodyColor;
     const flapMaterial = config.flap === "crochet" ? 0 : 1;
