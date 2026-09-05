@@ -42,6 +42,8 @@ test("legacy template wording migrates by exact match without overwriting owner-
     ["normalized.hero.imageSublabel", "ręcznie pleciona", "defaultSiteContent.hero.imageSublabel"],
     ["normalized.collection.emptyText", "Nowe ręcznie plecione modele pojawią się tutaj już wkrótce.", "defaultSiteContent.collection.emptyText"],
     ["normalized.footer.tagline", "Ręcznie plecione torebki, tworzone powoli i z uważnością.", "defaultSiteContent.footer.tagline"],
+    ["normalized.footer.copyright", "2026 a_bags.handmade     all rights reserved", "defaultSiteContent.footer.copyright"],
+    ["normalized.footer.statusText", "design&code © Klaudia Weronika Bartczak", "defaultSiteContent.footer.statusText"],
   ];
 
   for (const [field, legacy, replacement] of legacyMappings) {
@@ -51,6 +53,7 @@ test("legacy template wording migrates by exact match without overwriting owner-
   }
 
   assert.doesNotMatch(normalizer, /\.replace\([^\n]*plecion/i);
+  assert.doesNotMatch(normalizer, /\.replace\([^\n]*(?:copyright|design&code)/i);
   assert.match(normalizer, /Treści zmienione\s*\n\s*\/\/ przez właścicielkę w panelu pozostają zawsze bez zmian\./);
 });
 
