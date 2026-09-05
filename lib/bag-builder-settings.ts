@@ -1,4 +1,4 @@
-import { AGATA_BUILDER_HANDLE_COMPATIBILITY } from "./abags-builder-fidelity";
+import { AGATA_BUILDER_HANDLE_COMPATIBILITY, isAgataBuilderConstructionSupported } from "./abags-builder-fidelity";
 import { getProductDb } from "./products";
 
 export const BUILDER_FAMILIES = ["tote", "round", "bucket", "mini"] as const;
@@ -199,7 +199,11 @@ export function normalizeBagBuilderProjectConfig(source: unknown): BagBuilderPro
 export function isBagBuilderProjectCompatible(config: BagBuilderProjectConfig, settings: BagBuilderSettings) {
   return settings.compatibility.handles[config.family].includes(config.handles)
     && settings.compatibility.straps[config.family].includes(config.strap)
-    && settings.compatibility.flaps[config.family].includes(config.flap);
+    && settings.compatibility.flaps[config.family].includes(config.flap)
+    && isAgataBuilderConstructionSupported(config.family, "handles", config.handles)
+    && isAgataBuilderConstructionSupported(config.family, "straps", config.strap)
+    && isAgataBuilderConstructionSupported(config.family, "flaps", config.flap)
+    && isAgataBuilderConstructionSupported(config.family, "accents", config.accent);
 }
 
 export function calculateBagBuilderProjectCents(config: BagBuilderProjectConfig, settings: BagBuilderSettings) {
