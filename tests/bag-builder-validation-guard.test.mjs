@@ -31,13 +31,23 @@ test("stale invalid drafts cannot silently reach the workshop flow", () => {
   assert.match(guard, /Niepoprawny draft nie może zostać wysłany do pracowni/);
 });
 
-test("stale handle choices are repaired from the central Agata reference contract", () => {
-  assert.match(guard, /isAgataBuilderHandleSupported/);
-  assert.match(guard, /clickChoice\(controls, "handles", "none"\)/);
-  assert.match(fidelity, /round:\s*\["none"\]/);
-  assert.match(fidelity, /bucket:\s*\["none"\]/);
-  assert.match(fidelity, /mini:\s*\["none", "wood-light"\]/);
-  assert.doesNotMatch(guard, /snapshot\.family === "round" \|\| snapshot\.family === "mini"/);
+test("stale construction choices are repaired from the central Agata reference contract", () => {
+  assert.match(guard, /isAgataBuilderConstructionSupported/);
+  assert.match(guard, /fidelityInvalidKeys/);
+  assert.match(guard, /flap: "flaps"/);
+  assert.match(guard, /handles: "handles"/);
+  assert.match(guard, /strap: "straps"/);
+  assert.match(guard, /accent: "accents"/);
+  assert.match(guard, /clickChoice\(controls, key, "none"\)/);
+  assert.match(fidelity, /AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY/);
+  assert.match(fidelity, /round:\s*\{[\s\S]*?handles:\s*\["none"\]/);
+  assert.match(fidelity, /mini:\s*\{[\s\S]*?handles:\s*\["none", "wood-light"\]/);
+});
+
+test("status reports incompatible saved constructions before repairing them", () => {
+  assert.match(guard, /incompatible = fidelityInvalidKeys\(snapshot\)/);
+  assert.match(guard, /nie ma w zweryfikowanych konstrukcjach tego fasonu A-Bags/);
+  assert.match(guard, /zgodna ze zweryfikowanymi referencjami A-Bags/);
 });
 
 test("status explains missing required decisions and successful validation", () => {
