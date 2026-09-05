@@ -93,9 +93,9 @@ test("accessory overlay follows the authoritative final 3D transform instead of 
   assert.match(overlay, /data-abags-fidelity3d-zoom/);
   assert.doesNotMatch(overlay, /pointerdown/);
   assert.doesNotMatch(overlay, /pointermove/);
-  assert.doesNotMatch(overlay, /abags-pro3d-zoom input\[type=range\]/);
+  assert.equal(overlay.includes("abags-pro3d-zoom input[type=range]"), false);
   assert.match(overlay, /function project\(/);
-  assert.match(overlay, /Math\.PI \/ 5\.15/);
+  assert.equal(overlay.includes("Math.PI / 5.15"), true);
 });
 
 test("refinement is explicitly identified as evidence-calibrated overlay, not photo truth", () => {
