@@ -61,6 +61,18 @@ test("project identity, photo base and material survive Stripe checkout into the
   assert.match(orders, /order\.cartReference/);
 });
 
+test("server order summary uses the same Agata family and crochet-stitch vocabulary as the customer builder", () => {
+  assert.match(settings, /tote: "Kuferek \/ tote"/);
+  assert.match(settings, /round: "Okrągła"/);
+  assert.match(settings, /bucket: "Z klapą"/);
+  assert.match(settings, /mini: "Strukturalna \/ mini"/);
+  assert.match(settings, /classic: "Ażurowy V"/);
+  assert.match(settings, /herringbone: "Pionowy ażurowy"/);
+  assert.match(settings, /basket: "Koszykowy"/);
+  assert.match(settings, /shell: "Promienisty"/);
+  assert.doesNotMatch(settings, /tote: "Prostokątna"|round: "Półokrągła"|bucket: "Kubełkowa"/);
+});
+
 test("active builder mounts secure checkout without replacing the regular cart", () => {
   assert.match(exact, /BagBuilderCheckoutHandoff/);
   assert.match(exact, /<BagBuilderCheckoutHandoff \/>/);
