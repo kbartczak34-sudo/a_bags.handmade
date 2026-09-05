@@ -1,4 +1,5 @@
 import { standardShippingAmount, type CatalogProduct } from "../../../lib/catalog";
+import { inferBagBuilderProductFamily } from "../../../lib/bag-builder-product-family";
 import {
   bagBuilderProjectCode,
   bagBuilderProjectSummary,
@@ -58,6 +59,14 @@ function personalizationCents(config: NonNullable<ReturnType<typeof normalizeBag
     + settings.strapCents[config.strap]
     + settings.hardwareCents[config.hardware]
     + settings.accentCents[config.accent];
+}
+
+function mappedFamilyForProduct(
+  productId: string,
+  settings: Awaited<ReturnType<typeof getBagBuilderSettings>>,
+) {
+  return (Object.entries(settings.familyProductIds) as Array<[keyof typeof settings.familyProductIds, string | null]>)
+    .find(([, mappedProductId]) => mappedProductId === productId)?.[0] ?? null;
 }
 
 function publicStripeErrorMessage(code: string) {
@@ -123,6 +132,25 @@ export async function POST(request: Request) {
   if (!baseProduct) {
     return json({ error: "Wybrany produkt bazowy nie jest obecnie dostępny w sklepie.", code: "builder_product_unavailable" }, 409);
   }
+
+  if (photoBaseProductId) {
+    if (!baseProduct.imageUrl) {
+      return json({ error: "Wybrany produkt nie ma zweryfikowanej fotografii bazowej kreatora.", code: "builder_photo_base_missing" }, 409);
+    }
+
+    const explicitlyMappedFamily = mappedFamilyForProduct(baseProduct.id, settings);
+    const inferredFamily = inferBagBuilderProductFamily(baseProduct);
+    if (
+      (explicitlyMappedFamily && explicitlyMappedFamily !== config.family) ||
+      (!explicitlyMappedFamily && inferredFamily !== config.family)
+    ) {
+      return json({
+        error: "Produkt bazowy nie odpowiada wybranemu fasonowi projektu. Wróć do kreatora i wybierz właściwy rzeczywisty model A-Bags.",
+        code: "builder_product_family_mismatch",
+      }, 409);
+    }
+  }
+
   if (!productComplianceComplete(baseProduct)) {
     return json({
       error: "Sprzedaż tego projektu jest chwilowo wstrzymana do czasu uzupełnienia danych bezpieczeństwa produktu bazowego.",
@@ -142,7 +170,7 @@ export async function POST(request: Request) {
   const summary = bagBuilderProjectSummary(config);
   const material = "Sznurek poliestrowy z Pimiotki";
   const photoMode = Boolean(photoBaseProductId);
-  const cartReference = `Projekt ${projectCode} · ${baseProduct.name}${photoMode ? " · baza fotograficzna 1:1" : ""} · ${material} · ${summary}`.slice(0, 500);
+  const cartReference = `Projekt ${projectCode} · ${baseProduct.name}${photoMode ? " · rzeczywista baza fotograficzna" : ""} · ${material} · ${summary}`.slice(0, 500);
   const configJson = JSON.stringify(config);
   const paymentChoice = readPaymentChoice(request);
   const requestUrl = new URL(request.url);
@@ -178,7 +206,7 @@ export async function POST(request: Request) {
     form.set("line_items[0][price_data][currency]", "pln");
     form.set("line_items[0][price_data][unit_amount]", String(projectAmount));
     form.set("line_items[0][price_data][product_data][name]", `${baseProduct.name} · projekt ${projectCode}`);
-    form.set("line_items[0][price_data][product_data][description]", `${photoMode ? "Baza fotograficzna produktu 1:1. " : ""}${material}. ${summary}`.slice(0, 500));
+    form.set("line_items[0][price_data][product_data][description]", `${photoMode ? "Rzeczywista baza fotograficzna produktu. " : ""}${material}. ${summary}`.slice(0, 500));
     form.set("line_items[0][price_data][product_data][metadata][catalog_id]", baseProduct.id);
     form.set("line_items[0][price_data][product_data][metadata][project_code]", projectCode);
     form.set("line_items[0][price_data][product_data][metadata][personalized]", "true");
@@ -218,52 +246,28 @@ export async function POST(request: Request) {
     form.set("payment_intent_data[metadata][builder_catalog_id]", baseProduct.id);
     form.set("payment_intent_data[metadata][builder_photo_true]", photoMode ? "true" : "false");
 
-    const shippingMessage = orderSettings.pickupEnabled && orderSettings.pickupAddress
-      ? `Dostawa na terenie Polski lub bezpłatny odbiór osobisty: ${orderSettings.pickupAddress}`
-      : "Dostawa jest obecnie dostępna na terenie Polski.";
-    form.set("custom_text[shipping_address][message]", shippingMessage.slice(0, 1200));
-    form.set("custom_text[submit][message]", `Projekt ${projectCode} jest wykonywany według wybranej konfiguracji. Po płatności otrzymasz potwierdzenie e-mail.`);
-
-    let response: Response;
-    try {
-      response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Idempotency-Key": `abags-builder-${projectCode}-${crypto.randomUUID()}`,
-        },
-        body: form.toString(),
-      });
-    } catch {
-      return json({ error: `${publicStripeErrorMessage("stripe_network_error")} [stripe_network_error]`, code: "stripe_network_error" }, 502);
+    const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: form.toString(),
+    });
+    const payload = await response.json() as StripeCheckoutResponse;
+    if (!response.ok || !payload.url) {
+      const code = classifyStripeApiError(response.status, payload.error);
+      console.error("[bag-builder-checkout] Stripe checkout session failed", { status: response.status, code, type: payload.error?.type });
+      return json({ error: publicStripeErrorMessage(code), code }, 503);
     }
 
-    const requestId = response.headers.get("request-id") ?? undefined;
-    let stripeBody: StripeCheckoutResponse;
-    try {
-      stripeBody = (await response.json()) as StripeCheckoutResponse;
-    } catch {
-      stripeBody = {};
-    }
-    if (!response.ok) {
-      const code = classifyStripeApiError(response.status, stripeBody.error);
-      console.error("Bag Builder Stripe Checkout API error", { status: response.status, code, requestId, projectCode });
-      return json({ error: `${publicStripeErrorMessage(code)} [${code}]`, code, requestId }, 502);
-    }
-    if (!stripeBody.url) {
-      return json({ error: "Stripe utworzył sesję bez adresu przekierowania. [stripe_missing_url]", code: "stripe_missing_url", requestId }, 502);
-    }
-
-    return json({ url: stripeBody.url, projectCode, baseProductId: baseProduct.id, photoTrue: photoMode });
+    return json({ url: payload.url, projectCode });
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
-      return json({ error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym." }, 503);
+      console.error("[bag-builder-checkout] Stripe configuration error", { code: error.code });
+      return json({ error: error.message, code: error.code }, 503);
     }
-    console.error("Bag Builder checkout initialization error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      projectCode,
-    });
-    return json({ error: "Płatność projektu jest chwilowo niedostępna. [builder_checkout_initialization_error]", code: "builder_checkout_initialization_error" }, 502);
+    console.error("[bag-builder-checkout] Stripe network error");
+    return json({ error: publicStripeErrorMessage("stripe_network_error"), code: "stripe_network_error" }, 503);
   }
 }
