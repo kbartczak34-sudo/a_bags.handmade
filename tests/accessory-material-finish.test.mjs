@@ -9,22 +9,29 @@ const [stack, finish] = await Promise.all([
 
 test("accessory material finishing stays downstream of calibrated accessory geometry", () => {
   assert.match(stack, /<BagBuilderAccessoryFidelityOverlay\s*\/>[\s\S]*<BagBuilderAccessoryMaterialFinish\s*\/>/);
-  assert.match(finish, /FINISH_VERSION = "accessory-material-finish-v1"/);
+  assert.match(finish, /FINISH_VERSION = "accessory-material-finish-v2"/);
   assert.match(finish, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
   assert.match(finish, /ABAGS_ACCESSORY_VISUAL\.strapDepthBowRatio/);
   assert.match(finish, /stage\.dataset\.abagsFinal3d !== "ready"/);
 });
 
-test("metal, leather and woven accessories use distinct finish cues", () => {
+test("metal, leather and woven accessories use distinct visible material depth", () => {
   assert.match(finish, /function hardwarePalette/);
   assert.match(finish, /function drawChainSpecular/);
   assert.match(finish, /function drawLeatherFinish/);
   assert.match(finish, /function drawWovenFinish/);
   assert.match(finish, /function drawAnchorContact/);
   assert.match(finish, /function drawSnapGlint/);
-  assert.match(finish, /palette\.highlight/);
-  assert.match(finish, /rgba\(35,18,13,\.26\)/);
-  assert.match(finish, /rgba\(255,244,239,\.36\)/);
+  assert.match(finish, /palette\.mid/);
+  assert.match(finish, /rgba\(103,66,51,\.97\)/);
+  assert.match(finish, /rgba\(118,82,91,\.96\)/);
+  assert.match(finish, /rgba\(255,244,239,\.46\)/);
+});
+
+test("chain shoulder section remains leather instead of receiving duplicate metallic links", () => {
+  assert.match(finish, /arcIndex >= 18 && arcIndex <= 31/);
+  assert.match(finish, /drawLeatherFinish\(back\.context, arc\.slice\(18, 31\)/);
+  assert.match(finish, /widthFactor = 1/);
 });
 
 test("finish layer preserves realtime gestures and mobile rendering budget", () => {
