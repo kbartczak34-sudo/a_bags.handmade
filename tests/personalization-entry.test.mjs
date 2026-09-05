@@ -8,6 +8,7 @@ const styles = fs.readFileSync("app/personalization-entry.css", "utf8");
 const polish = fs.readFileSync("app/visual-customizer-polish.css", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const builder = fs.readFileSync("app/bag-builder-engine.tsx", "utf8");
+const fidelity = fs.readFileSync("lib/abags-builder-fidelity.ts", "utf8");
 const builderStyles = fs.readFileSync("app/bag-builder-engine.css", "utf8");
 const checkout = fs.readFileSync("app/api/checkout/route.ts", "utf8");
 const eslint = fs.readFileSync("eslint.config.mjs", "utf8");
@@ -67,10 +68,13 @@ test("builder exposes all requested construction decisions", () => {
   assert.match(builder, /title="Detal \/ ozdoba"/);
 });
 
-test("incompatible wooden handles are removed from round and mini families", () => {
-  assert.match(builder, /family === "round" \|\| family === "mini"/);
-  assert.match(builder, /current\.handles\.startsWith\("wood-"\)/);
-  assert.match(builder, /HANDLES\.filter\(\(item\) => !item\.value\.startsWith\("wood-"\)\)/);
+test("handle choices come from the central Agata reference evidence", () => {
+  assert.match(builder, /isAgataBuilderHandleSupported/);
+  assert.match(builder, /HANDLES\.filter\(\(item\) => isAgataBuilderHandleSupported\(config\.family, item\.value\)\)/);
+  assert.match(fidelity, /round:\s*\["none"\]/);
+  assert.match(fidelity, /mini:\s*\["none", "wood-light"\]/);
+  assert.match(fidelity, /tote:\s*\["none", "wood-light", "wood-dark"\]/);
+  assert.doesNotMatch(builder, /family === "round" \|\| family === "mini"/);
 });
 
 test("preview remains beside controls on desktop and sticky above controls on mobile", () => {
