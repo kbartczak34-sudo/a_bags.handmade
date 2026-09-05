@@ -38,7 +38,7 @@ function addMaterialCard(controls: HTMLElement) {
   const material = document.createElement("p");
   material.textContent = MATERIAL_LABEL;
   const note = document.createElement("small");
-  note.textContent = "Kolor i splot dobierasz w kolejnych krokach kreatora.";
+  note.textContent = "Kolor i ścieg szydełkowy dobierasz w kolejnych krokach kreatora.";
 
   card.append(top, material, note);
   heading.insertAdjacentElement("afterend", card);
