@@ -23,9 +23,9 @@ type Settings = {
 
 type ProductOption = { id: string; name: string; price: number };
 
-const FAMILY_LABELS: Record<Family, string> = { tote: "Prostokątna", round: "Półokrągła", bucket: "Kubełkowa", mini: "Mini" };
+const FAMILY_LABELS: Record<Family, string> = { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" };
 const PRICE_GROUPS = [
-  ["stitchCents", "Splot", { classic: "Klasyczny", herringbone: "Jodełka", basket: "Koszykowy", shell: "Muszla" }],
+  ["stitchCents", "Ścieg szydełkowy", { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" }],
   ["flapCents", "Klapa", { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skórzana czarna", "leather-cognac": "Skórzana koniak", "suede-burgundy": "Zamszowa bordo" }],
   ["handlesCents", "Uchwyty", { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Szydełkowy" }],
   ["strapCents", "Pasek", { none: "Bez paska", leather: "Skórzany", woven: "Tkany", chain: "Łańcuszek" }],
