@@ -14,12 +14,24 @@ test("review covers every Bag Builder decision and the real material", () => {
   assert.match(review, /Sznurek poliestrowy · Pimiotki/);
   assert.match(review, /Fason:/);
   assert.match(review, /Kolor sznurka:/);
-  assert.match(review, /Splot \/ ścieg:/);
+  assert.match(review, /Ścieg szydełkowy:/);
   assert.match(review, /Klapa:/);
   assert.match(review, /Uchwyty:/);
   assert.match(review, /Pasek:/);
   assert.match(review, /Okucia:/);
   assert.match(review, /Detal \/ ozdoba:/);
+});
+
+test("review uses the same Agata family and crochet-stitch language as the live builder", () => {
+  assert.match(review, /tote: "Kuferek \/ tote"/);
+  assert.match(review, /round: "Okrągła"/);
+  assert.match(review, /bucket: "Z klapą"/);
+  assert.match(review, /mini: "Strukturalna \/ mini"/);
+  assert.match(review, /classic: "Ażurowy V"/);
+  assert.match(review, /herringbone: "Pionowy ażurowy"/);
+  assert.match(review, /basket: "Koszykowy"/);
+  assert.match(review, /shell: "Promienisty"/);
+  assert.doesNotMatch(review, /Prostokątna|Półokrągła|Kubełkowa|Jodełka|Muszla/);
 });
 
 test("Photo-True project identity uses the actual photographed A-Bags product", () => {
