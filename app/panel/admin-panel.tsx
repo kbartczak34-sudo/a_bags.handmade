@@ -65,7 +65,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <span>03</span>Produkty
         </button>
         <button type="button" className={activeTab === "stitches" ? "is-active" : ""} onClick={() => setActiveTab("stitches")}>
-          <span>04</span>Sploty / ściegi
+          <span>04</span>Ściegi szydełkowe
         </button>
         <button type="button" className={activeTab === "customizer" ? "is-active" : ""} onClick={() => setActiveTab("customizer")}>
           <span>05</span>Personalizacja
