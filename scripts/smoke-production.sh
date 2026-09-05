@@ -63,6 +63,10 @@ assert_protected() {
 
 assert_200 "/" "home"
 grep -Fq "a_bags.handmade" "$TMP_DIR/home.body" || fail "home page does not contain the A-Bags brand"
+grep -Fq "Ręcznie szydełkowane torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade." "$TMP_DIR/home.body" || fail "home metadata does not expose crochet-accurate brand description"
+if grep -Fq "Ręcznie plecione torebki tworzone w Polsce" "$TMP_DIR/home.body"; then
+  fail "legacy woven SEO description is still exposed"
+fi
 grep -Eqi '^cache-control:.*no-store' "$TMP_DIR/home.headers" || fail "HTML is missing Cache-Control: no-store"
 grep -Eqi '^vary:.*cookie' "$TMP_DIR/home.headers" || fail "HTML is missing Vary: Cookie"
 grep -Eqi '^content-security-policy:' "$TMP_DIR/home.headers" || fail "HTML is missing Content-Security-Policy"
@@ -80,12 +84,22 @@ grep -Fq "<loc>https://abagshandmade.pl/zwroty-i-reklamacje/zgloszenie</loc>" "$
 assert_200 "/manifest.webmanifest" "manifest"
 grep -Eq '"display"[[:space:]]*:[[:space:]]*"standalone"' "$TMP_DIR/manifest.body" || fail "PWA manifest is not standalone"
 grep -Eq '"scope"[[:space:]]*:[[:space:]]*"/"' "$TMP_DIR/manifest.body" || fail "PWA manifest has an unexpected scope"
+grep -Fq '"description": "Ręcznie szydełkowane torebki a_bags.handmade"' "$TMP_DIR/manifest.body" || fail "PWA manifest does not use crochet-accurate brand copy"
+if grep -Fq "Ręcznie plecione" "$TMP_DIR/manifest.body"; then
+  fail "legacy woven PWA description is still exposed"
+fi
+grep -Fq '"src": "/favicon.svg"' "$TMP_DIR/manifest.body" || fail "PWA manifest is missing the standard A-Bags icon"
+grep -Fq '"src": "/icon-maskable.svg"' "$TMP_DIR/manifest.body" || fail "PWA manifest is missing the maskable A-Bags icon"
 
 assert_200 "/api/products" "products"
 grep -Eq '"products"[[:space:]]*:' "$TMP_DIR/products.body" || fail "product API response is malformed"
 
 assert_200 "/api/site-content" "site-content"
 grep -Fq "Ręcznie szydełkowane" "$TMP_DIR/site-content.body" || fail "storefront does not expose crochet-accurate hero terminology"
+grep -Fq "Porozmawiajmy o Twojej nowej torebce" "$TMP_DIR/site-content.body" || fail "storefront does not expose the approved new-bag email CTA"
+grep -Fq "Zostaw swoją opinię" "$TMP_DIR/site-content.body" || fail "storefront does not expose the approved review form title"
+grep -Fq "Copyright 2026 a_bags.handmade All rights reserved" "$TMP_DIR/site-content.body" || fail "storefront does not expose the approved copyright footer"
+grep -Fq "Full-Stack/all-in-one Developer: Klaudia Weronika Bartczak" "$TMP_DIR/site-content.body" || fail "storefront does not expose the approved developer credit"
 if grep -Fq "Ręcznie plecione" "$TMP_DIR/site-content.body"; then
   fail "legacy woven hero terminology is still exposed"
 fi
@@ -113,7 +127,9 @@ echo "SMOKE PASS: $BASE_URL"
 echo "- storefront: 200"
 echo "- security/cache headers: present"
 echo "- robots/sitemap/manifest: valid"
+echo "- PWA/SEO crochet terminology and app icons: valid"
 echo "- products/legal APIs: 200"
+echo "- approved CTA, review form and footer copy: present"
 echo "- crochet-accurate storefront terminology: present"
 echo "- returns/complaints form: 200"
 echo "- admin status API: protected (HTTP $admin_code)"
