@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { ABAGS_FIDELITY_V4_RENDERER_VERSION } from "../lib/abags-fidelity-v4-family-spec";
 
 const MAX_ATTEMPTS = 20;
-const REQUIRED_RENDERER = "abags-fidelity-v4";
+const REQUIRED_RENDERER = ABAGS_FIDELITY_V4_RENDERER_VERSION;
 const PAINT_METADATA = new Set(["data-abags-fidelity3d-frame", "data-abags-fidelity3d-frame-at"]);
 
 type PixelInspection = {
