@@ -136,12 +136,16 @@ async function main() {
       })()`);
       if (!opened) throw new Error("Could not open the realtime customizer.");
       await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage'))", "customer realtime stage");
-      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas'))", "accessory fidelity surface");
+      await waitFor(
+        "document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas').length===2",
+        "two accessory fidelity depth surfaces",
+      );
     };
 
     const state = async () => evaluate(`(() => {
       const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
       if(!stage)return null;
+      const accessoryCanvases=[...stage.querySelectorAll('.abags-accessory-fidelity-canvas')];
       return {
         family:stage.dataset.family||'',
         color:stage.dataset.color||'',
@@ -157,20 +161,21 @@ async function main() {
         final3d:stage.dataset.abagsFinal3d||'',
         rendererError:stage.dataset.abagsFidelity3dError||'',
         photoTrue:stage.dataset.abagsPhotoTrue||'',
-        accessoryVersion:stage.querySelector('.abags-accessory-fidelity-canvas')?.dataset.abagsAccessoryFidelity||'',
+        accessoryVersion:accessoryCanvases[0]?.dataset.abagsAccessoryFidelity||'',
+        accessoryCount:accessoryCanvases.length,
+        accessoryDepths:accessoryCanvases.map((node)=>node.dataset.accessoryDepth||''),
       };
     })()`);
 
     const fingerprint = async () => evaluate(`(() => {
       const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-canvas');
-      const accessory=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas');
-      if(!(canvas instanceof HTMLCanvasElement) || !(accessory instanceof HTMLCanvasElement))return null;
+      const accessories=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas')];
+      if(!(canvas instanceof HTMLCanvasElement) || accessories.length!==2 || accessories.some((node)=>!(node instanceof HTMLCanvasElement)))return null;
       const gl=canvas.getContext('webgl');
-      const overlay=accessory.getContext('2d');
-      if(!gl || gl.isContextLost() || !overlay)return null;
+      if(!gl || gl.isContextLost())return null;
       const width=gl.drawingBufferWidth;
       const height=gl.drawingBufferHeight;
-      if(width<16 || height<16 || accessory.width<16 || accessory.height<16)return null;
+      if(width<16 || height<16)return null;
       const pixels=new Uint8Array(width*height*4);
       gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
       if(gl.getError()!==gl.NO_ERROR)return null;
@@ -179,6 +184,8 @@ async function main() {
       let opaque=0;
       let chromatic=0;
       let overlayOpaque=0;
+      let backOpaque=0;
+      let frontOpaque=0;
       const mix=(r,g,b,a)=>{
         hash^=r; hash=Math.imul(hash,16777619)>>>0;
         hash^=g; hash=Math.imul(hash,16777619)>>>0;
@@ -195,16 +202,27 @@ async function main() {
         if(a>24 && Math.max(r,g,b)-Math.min(r,g,b)>20)chromatic++;
         mix(r,g,b,a);
       }
-      const overlayPixels=overlay.getImageData(0,0,accessory.width,accessory.height).data;
-      const overlayCount=accessory.width*accessory.height;
-      const overlayStep=Math.max(1,Math.floor(overlayCount/18000));
-      for(let pixel=0;pixel<overlayCount;pixel+=overlayStep){
-        const i=pixel*4;
-        const r=overlayPixels[i],g=overlayPixels[i+1],b=overlayPixels[i+2],a=overlayPixels[i+3];
-        if(a>24)overlayOpaque++;
-        mix(r,g,b,a);
+      for(const accessory of accessories){
+        const overlay=accessory.getContext('2d');
+        if(!overlay || accessory.width<16 || accessory.height<16)return null;
+        const overlayPixels=overlay.getImageData(0,0,accessory.width,accessory.height).data;
+        const overlayCount=accessory.width*accessory.height;
+        const overlayStep=Math.max(1,Math.floor(overlayCount/18000));
+        let ownOpaque=0;
+        for(let pixel=0;pixel<overlayCount;pixel+=overlayStep){
+          const i=pixel*4;
+          const r=overlayPixels[i],g=overlayPixels[i+1],b=overlayPixels[i+2],a=overlayPixels[i+3];
+          if(a>24){overlayOpaque++;ownOpaque++;}
+          mix(r,g,b,a);
+        }
+        if(accessory.dataset.accessoryDepth==='back')backOpaque+=ownOpaque;
+        if(accessory.dataset.accessoryDepth==='front')frontOpaque+=ownOpaque;
       }
-      return {hash:hash.toString(16).padStart(8,'0'),width,height,sampled,opaque,chromatic,overlayOpaque,accessoryWidth:accessory.width,accessoryHeight:accessory.height};
+      return {
+        hash:hash.toString(16).padStart(8,'0'),width,height,sampled,opaque,chromatic,
+        overlayOpaque,backOpaque,frontOpaque,accessoryCount:accessories.length,
+        accessoryDepths:accessories.map((node)=>node.dataset.accessoryDepth||''),
+      };
     })()`);
 
     const choose = async (key, value) => {
@@ -225,16 +243,19 @@ async function main() {
     const waitReady = async (label) => {
       await waitFor(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
+        const accessories=stage?.querySelectorAll('.abags-accessory-fidelity-canvas');
         return stage?.dataset.abagsFinal3d==='ready' &&
           stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature &&
           stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature &&
-          Boolean(stage.querySelector('.abags-accessory-fidelity-canvas')) &&
+          accessories?.length===2 &&
           !stage.dataset.abagsFidelity3dError;
       })()`, `${label} verified final realtime composition`, 20_000);
       await sleep(220);
       const current = await state();
       if (!current || current.photoTrue === "active") throw new Error(`${label}: customer realtime mode was replaced by Photo-True.`);
-      if (!current.accessoryVersion) throw new Error(`${label}: accessory fidelity surface is missing its version contract.`);
+      if (!current.accessoryVersion || current.accessoryCount !== 2 || !current.accessoryDepths.includes("back") || !current.accessoryDepths.includes("front")) {
+        throw new Error(`${label}: accessory fidelity depth contract is incomplete: ${JSON.stringify(current)}`);
+      }
       return current;
     };
 
@@ -285,7 +306,11 @@ async function main() {
       const visualResults = [];
       for (const [key, value] of choices) {
         const result = await chooseVisible(key, value, label);
-        visualResults.push({ key, value, hash: result.pixels.hash, overlayOpaque: result.pixels.overlayOpaque, signature: result.state.signature });
+        visualResults.push({
+          key,value,hash:result.pixels.hash,
+          backOpaque:result.pixels.backOpaque,frontOpaque:result.pixels.frontOpaque,
+          signature:result.state.signature,
+        });
       }
       for (const [key, value] of incompatible) await assertUnavailable(key, value, label);
 
@@ -294,8 +319,8 @@ async function main() {
       if (!final || final.final3d !== "ready" || final.signature !== final.frame || final.signature !== final.finalSignature) {
         throw new Error(`${label}: final renderer signatures are inconsistent: ${JSON.stringify(final)}`);
       }
-      if (!finalPixels || finalPixels.overlayOpaque <= 0) {
-        throw new Error(`${label}: selected accessories produced no visible pixels on the calibrated accessory surface: ${JSON.stringify(finalPixels)}`);
+      if (!finalPixels || finalPixels.accessoryCount !== 2 || finalPixels.backOpaque <= 0 || finalPixels.frontOpaque <= 0) {
+        throw new Error(`${label}: front/back accessory depth passes are not both visibly populated: ${JSON.stringify(finalPixels)}`);
       }
       await capture(`accessory-${label.toLowerCase()}-final.png`);
       return { final, finalPixels, visualResults };
@@ -340,15 +365,15 @@ async function main() {
     console.log("ALL REALTIME OPTIONS PASS:", productionUrl);
     console.log("- every builder field changed verified composited pixels on desktop: yes");
     console.log("- every builder field changed verified composited pixels on mobile: yes");
-    console.log("- calibrated accessory surface present and non-empty for final desktop/mobile configurations: yes");
+    console.log("- calibrated accessory back/front surfaces are both present and non-empty in final desktop/mobile configurations: yes");
     console.log("- desktop final: mini / #E4A9B5 / herringbone / crochet / wood-light / woven / silver / tassel");
     console.log("- mobile final: mini / #087E81 / basket / crochet / wood-light / chain / black / charm");
     console.log("- Mini construction options are bounded to real Agata component evidence: yes");
     console.log("- unsupported Mini handles, leather/suede flaps, leather strap and scarf are unavailable: yes");
     console.log("- desktop fingerprints:", desktop.visualResults.map((item) => `${item.key}:${item.hash}`).join(", "));
     console.log("- mobile fingerprints:", mobile.visualResults.map((item) => `${item.key}:${item.hash}`).join(", "));
-    console.log("- desktop accessory pixels:", desktop.finalPixels.overlayOpaque);
-    console.log("- mobile accessory pixels:", mobile.finalPixels.overlayOpaque);
+    console.log("- desktop accessory pixels:", { back: desktop.finalPixels.backOpaque, front: desktop.finalPixels.frontOpaque });
+    console.log("- mobile accessory pixels:", { back: mobile.finalPixels.backOpaque, front: mobile.finalPixels.frontOpaque });
   } finally {
     try { socket?.close(); } catch {}
     chrome.kill("SIGTERM");
