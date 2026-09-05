@@ -16,7 +16,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -40,69 +40,27 @@ jobs:
       - name: Production build and artifact validation
         run: npm run build
 
-  regression-accessory-fidelity:
-    name: Regression — accessory fidelity
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Use Node.js 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Accessory fidelity contract
-        run: node --test tests/bag-builder-accessory-fidelity.test.mjs
-
-  regression-transform-authority:
-    name: Regression — transform authority
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Use Node.js 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Transform authority contract
-        run: node --test tests/builder-transform-authority.test.mjs
-
-  regression-remaining:
-    name: Regression — remaining suite
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Use Node.js 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Remaining regression contracts
+      - name: Regression tests — same production build runner
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
+          status=0
+          test_count=0
+          failed_count=0
+
           for test_file in tests/*.test.mjs; do
-            case "$test_file" in
-              tests/bag-builder-accessory-fidelity.test.mjs|tests/builder-transform-authority.test.mjs)
-                continue
-                ;;
-            esac
+            test_count=$((test_count + 1))
+            echo "::group::$test_file"
             node --test "$test_file"
+            rc=$?
+            echo "::endgroup::"
+
+            if [ "$rc" -ne 0 ]; then
+              failed_count=$((failed_count + 1))
+              status=1
+              echo "::error file=$test_file,title=Regression failed::$test_file exited with status $rc"
+            fi
           done
+
+          echo "Regression files executed: $test_count; failed: $failed_count"
+          exit "$status"
