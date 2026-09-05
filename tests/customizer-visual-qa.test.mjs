@@ -28,6 +28,15 @@ test("Photo-True visual QA captures fresh desktop and real 390 by 844 mobile ren
   assert.match(photoSmoke, /window\.scrollTo\(0,0\)/);
 });
 
+test("viewport reloads wait for a new document before reopening Photo-True", () => {
+  assert.match(photoSmoke, /const reloadAndWait = async/);
+  assert.match(photoSmoke, /__abagsQaReloadToken/);
+  assert.match(photoSmoke, /document replacement/);
+  assert.match(photoSmoke, /Photo-True QA flag/);
+  assert.match(photoSmoke, /await reloadAndWait\("desktop"\)/);
+  assert.match(photoSmoke, /await reloadAndWait\("mobile"\)/);
+});
+
 test("approved screenshots return to Fason and expose real store model cards", () => {
   assert.match(photoSmoke, /dataset\.abagsRefStep='1'/);
   assert.match(photoSmoke, /dataset\.v4Step === '1'/);
