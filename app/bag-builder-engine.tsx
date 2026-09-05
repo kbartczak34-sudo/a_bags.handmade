@@ -39,10 +39,10 @@ const EMPTY: BagBuilderConfig = {
 };
 
 const FAMILIES: Option<Family>[] = [
-  { value: "tote", label: "Prostokątna", description: "Klasyczna forma shopper / tote" },
-  { value: "round", label: "Półokrągła", description: "Miękka forma muszli" },
-  { value: "bucket", label: "Kubełkowa", description: "Wyższy fason z zaokrąglonym dołem" },
-  { value: "mini", label: "Mini", description: "Kompaktowa torebka na ramię" },
+  { value: "tote", label: "Kuferek / tote", description: "Fason kalibrowany do rzeczywistych kuferków Agaty" },
+  { value: "round", label: "Okrągła", description: "Okrągły fason Agaty z promienistym prowadzeniem ściegu" },
+  { value: "bucket", label: "Z klapą", description: "Zwarty fason Agaty przygotowany pod klapę i pasek" },
+  { value: "mini", label: "Strukturalna / mini", description: "Kompaktowy fason Agaty o uporządkowanych proporcjach" },
 ];
 
 const COLORS: Option<string>[] = [
@@ -59,10 +59,10 @@ const COLORS: Option<string>[] = [
 ];
 
 const STITCHES: Option<Stitch>[] = [
-  { value: "classic", label: "Klasyczny", description: "Regularny splot sznurkowy" },
-  { value: "herringbone", label: "Jodełka", description: "Wyraźny rytm V" },
-  { value: "basket", label: "Koszykowy", description: "Gęsta, pleciona struktura" },
-  { value: "shell", label: "Muszla", description: "Dekoracyjny, wachlarzowy rytm" },
+  { value: "classic", label: "Ażurowy V", description: "Szydełkowy rytm V z otwartymi prześwitami" },
+  { value: "herringbone", label: "Pionowy ażurowy", description: "Szydełkowy rytm wydłużonych pionowych kolumn" },
+  { value: "basket", label: "Koszykowy", description: "Gęstsza szydełkowa struktura oczek" },
+  { value: "shell", label: "Promienisty", description: "Szydełkowy rytm wachlarzy prowadzony promieniście" },
 ];
 
 const FLAPS: Option<Flap>[] = [
@@ -207,7 +207,7 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
         <g data-layer="label" className="abags-builder-layer abags-builder-layer-label"><rect x="260" y="452" width="80" height="24" rx="12" fill={metal} opacity=".9" /><text x="300" y="468" textAnchor="middle" fill="#FFF" fontSize="11" fontFamily="serif">a_bags</text></g>
       </g>}
     </svg>
-    <div className="abags-builder-preview-status" aria-live="polite">{!hasShape ? <><strong>Zacznij od fasonu</strong><span>Podgląd pozostanie aktywny przez cały proces.</span></> : !hasColor ? <><strong>{labelFor(FAMILIES, config.family)}</strong><span>Teraz wybierz kolor sznurka.</span></> : <><strong>{labelFor(FAMILIES, config.family)} · {labelFor(COLORS, config.color)}</strong><span>{config.stitch ? labelFor(STITCHES, config.stitch) : "Wybierz splot"} · podgląd aktualizowany na żywo</span></>}</div>
+    <div className="abags-builder-preview-status" aria-live="polite">{!hasShape ? <><strong>Zacznij od fasonu</strong><span>Podgląd pozostanie aktywny przez cały proces.</span></> : !hasColor ? <><strong>{labelFor(FAMILIES, config.family)}</strong><span>Teraz wybierz kolor sznurka.</span></> : <><strong>{labelFor(FAMILIES, config.family)} · {labelFor(COLORS, config.color)}</strong><span>{config.stitch ? labelFor(STITCHES, config.stitch) : "Wybierz ścieg szydełkowy"} · podgląd aktualizowany na żywo</span></>}</div>
   </div>;
 }
 
@@ -276,20 +276,20 @@ export default function BagBuilderEngine() {
 
   if (!mount || !preview) return null;
 
-  const message = config.family ? `Dzień dobry! Chciałabym zamówić torebkę zaprojektowaną w A-Bags Bag Builder. Fason: ${labelFor(FAMILIES, config.family)}. Kolor sznurka: ${labelFor(COLORS, config.color)}. Splot: ${labelFor(STITCHES, config.stitch)}. Klapa: ${labelFor(FLAPS, config.flap)}. Uchwyty: ${labelFor(HANDLES, config.handles)}. Pasek: ${labelFor(STRAPS, config.strap)}. Okucia: ${labelFor(HARDWARE, config.hardware)}. Detal: ${labelFor(ACCENTS, config.accent)}. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym zaprojektować własną torebkę A-Bags.";
+  const message = config.family ? `Dzień dobry! Chciałabym zamówić torebkę zaprojektowaną w A-Bags Bag Builder. Fason: ${labelFor(FAMILIES, config.family)}. Kolor sznurka: ${labelFor(COLORS, config.color)}. Ścieg szydełkowy: ${labelFor(STITCHES, config.stitch)}. Klapa: ${labelFor(FLAPS, config.flap)}. Uchwyty: ${labelFor(HANDLES, config.handles)}. Pasek: ${labelFor(STRAPS, config.strap)}. Okucia: ${labelFor(HARDWARE, config.hardware)}. Detal: ${labelFor(ACCENTS, config.accent)}. Materiał: sznurek poliestrowy z Pimiotki. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym zaprojektować własną torebkę A-Bags.";
 
   return <>
     {createPortal(<section className="abags-exact-live abags-builder-controls" aria-labelledby="abags-builder-title" data-abags-exact-workspace="controls">
-      <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Najpierw wybierz fason. Potem nadaj mu kolor i splot sznurka, a następnie dodawaj klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
+      <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Najpierw wybierz fason. Potem nadaj mu kolor i ścieg szydełkowy, a następnie dodawaj klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
       <ChoiceGroup title="Fason" step={1} options={FAMILIES.filter((item): item is Option<Exclude<Family, "">> => Boolean(item.value))} value={config.family} onChange={(value) => update("family", value)} dataKey="family" />
       <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
-      <ChoiceGroup title="Splot / ścieg" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
+      <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
       <ChoiceGroup title="Klapa" step={4} options={FLAPS} value={config.flap} onChange={(value) => update("flap", value)} disabled={!canCustomize} dataKey="flap" />
       <ChoiceGroup title="Uchwyty" step={5} options={familyHandles} value={config.handles} onChange={(value) => update("handles", value)} disabled={!canCustomize} dataKey="handles" />
       <ChoiceGroup title="Pasek" step={6} options={STRAPS} value={config.strap} onChange={(value) => update("strap", value)} disabled={!canCustomize} dataKey="strap" />
       <ChoiceGroup title="Okucia" step={7} options={HARDWARE} value={config.hardware} onChange={(value) => update("hardware", value)} disabled={!canCustomize} compact dataKey="hardware" />
       <ChoiceGroup title="Detal / ozdoba" step={8} options={ACCENTS} value={config.accent} onChange={(value) => update("accent", value)} disabled={!canCustomize} dataKey="accent" />
-      <div className="abags-builder-summary" aria-live="polite"><div><strong>Twój projekt</strong><span>{saved ? "zapisany lokalnie ✓" : canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i splot"}</span></div><p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p><small>Personalizacja jest wyceniana indywidualnie po potwierdzeniu projektu.</small></div>
+      <div className="abags-builder-summary" aria-live="polite"><div><strong>Twój projekt</strong><span>{saved ? "zapisany lokalnie ✓" : canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i ścieg szydełkowy"}</span></div><p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p><small>Personalizacja jest wyceniana indywidualnie po potwierdzeniu projektu.</small></div>
       <div className="abags-exact-live-actions abags-builder-actions" data-builder-saved={saved ? "true" : "false"}>
         <button type="button" onClick={reset}>Wyczyść</button>
         <button type="button" onClick={save} disabled={!canSave} data-builder-save-state={saved ? "saved" : "ready"}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button>
