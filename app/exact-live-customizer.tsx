@@ -9,6 +9,7 @@ import "./bag-builder-final3d-promotion.css";
 import "./bag-builder-customer-cleanroom.css";
 import "./bag-builder-fidelity3d-controls.css";
 import "./bag-builder-customer-premium-polish.css";
+import "./bag-builder-lifelike-surface.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAutosave from "./bag-builder-autosave";
@@ -24,6 +25,7 @@ import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-composi
 import BagBuilderFidelity3DControlNamespace from "./bag-builder-fidelity3d-control-namespace";
 import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
 import BagBuilderFinal3DController from "./bag-builder-final3d-controller";
+import BagBuilderLifelikeSurface from "./bag-builder-lifelike-surface";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
 import BagBuilderPhotoTrue from "./bag-builder-photo-true";
 import BagBuilderPhotoTrueFlowGuard from "./bag-builder-photo-true-flow-guard";
@@ -46,6 +48,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderEngine />
     <BagBuilderFidelityOptions />
     <BagBuilderFinalWebGL3D />
+    <BagBuilderLifelikeSurface />
     <BagBuilderAccessoryFidelityOverlay />
     <BagBuilderFidelity3DControlNamespace />
     <BagBuilderFidelity3DCompositorSync />
