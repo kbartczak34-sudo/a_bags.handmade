@@ -98,6 +98,10 @@ function assertViewEvidence(label, view, evidence) {
   }
 }
 if (view !== "Bok") {
+    const handle = evidence?.handle;
+    if (!handle || handle.sampled < 1000 || handle.clusterCount !== 1) {
+      throw new Error(`${label} ${view}: rigid wooden handle no longer resolves to one coherent merchandising arch: ${JSON.stringify(handle)}`);
+    }
     if (back.leftContact < 20 || back.rightContact < 20) {
       throw new Error(`${label} ${view}: rear accessory lost one of its two side attachment zones: ${JSON.stringify(back)}`);
     }
@@ -396,6 +400,7 @@ const analyze=(overlay)=>{
     console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
   console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
+  console.log("- rigid wood handle remains one coherent arch in Przód / 3/4 on desktop/mobile: yes");
   console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);
   console.log("- mobile side handle evidence:", mobile.find((item) => item.view === "Bok")?.handle);
     console.log("- desktop evidence:", desktop.map((item) => ({ view:item.view, back:item.back.contactRatio, front:item.front.contactRatio })));
