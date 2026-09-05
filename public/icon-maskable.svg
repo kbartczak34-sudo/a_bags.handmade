@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Logo a_bags.handmade</title>
+  <desc id="description">Maskowalna różowa ikona marki a_bags.handmade</desc>
+  <rect width="512" height="512" fill="#f4dddf"/>
+  <rect x="64" y="64" width="384" height="384" rx="112" fill="#fffaf5"/>
+  <path
+    d="M176 210c0-52 32-86 80-86s80 34 80 86"
+    fill="none"
+    stroke="#4f383b"
+    stroke-width="16"
+    stroke-linecap="round"
+  />
+  <rect x="120" y="194" width="272" height="196" rx="58" fill="#fffaf5" stroke="#4f383b" stroke-width="10"/>
+  <text
+    x="256"
+    y="292"
+    fill="#4f383b"
+    font-family="Cormorant Garamond, Georgia, serif"
+    font-size="70"
+    font-weight="600"
+    letter-spacing="-3"
+    text-anchor="middle"
+  >a_bags</text>
+  <text
+    x="260"
+    y="332"
+    fill="#8f6268"
+    font-family="Manrope, Arial, sans-serif"
+    font-size="16"
+    font-weight="700"
+    letter-spacing="7"
+    text-anchor="middle"
+  >HANDMADE</text>
+  <path d="M220 356h72" stroke="#d9a9ae" stroke-width="6" stroke-linecap="round"/>
+</svg>
