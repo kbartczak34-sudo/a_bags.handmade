@@ -71,9 +71,9 @@ test("builder exposes all requested construction decisions", () => {
 test("handle choices come from the central Agata reference evidence", () => {
   assert.match(builder, /isAgataBuilderHandleSupported/);
   assert.match(builder, /HANDLES\.filter\(\(item\) => isAgataBuilderHandleSupported\(config\.family, item\.value\)\)/);
-  assert.match(fidelity, /round:\s*\["none"\]/);
-  assert.match(fidelity, /mini:\s*\["none", "wood-light"\]/);
-  assert.match(fidelity, /tote:\s*\["none", "wood-light", "wood-dark"\]/);
+  assert.match(fidelity, /round:\s*\{[\s\S]*?handles:\s*\["none"\]/);
+  assert.match(fidelity, /mini:\s*\{[\s\S]*?handles:\s*\["none", "wood-light"\]/);
+  assert.match(fidelity, /tote:\s*\{[\s\S]*?handles:\s*\["none", "wood-light", "wood-dark"\]/);
   assert.doesNotMatch(builder, /family === "round" \|\| family === "mini"/);
 });
 
