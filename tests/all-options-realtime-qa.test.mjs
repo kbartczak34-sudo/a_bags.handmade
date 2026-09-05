@@ -28,15 +28,19 @@ test("option acceptance requires synchronized signatures and changed composited 
   assert.match(qa, /afterState\.signature === beforeState\.signature/);
   assert.match(qa, /afterPixels\.hash === beforePixels\.hash/);
   assert.match(qa, /gl\.readPixels/);
+  assert.match(qa, /accessories=\[\.\.\.document\.querySelectorAll/);
   assert.match(qa, /accessory\.getContext\('2d'\)/);
   assert.match(qa, /overlay\.getImageData/);
-  assert.match(qa, /overlayOpaque/);
+  assert.match(qa, /backOpaque/);
+  assert.match(qa, /frontOpaque/);
 });
 
-test("production QA requires the calibrated accessory canvas and captures final desktop/mobile evidence", () => {
-  assert.match(qa, /abags-accessory-fidelity-canvas/);
-  assert.match(qa, /accessoryVersion/);
-  assert.match(qa, /finalPixels\.overlayOpaque <= 0/);
+test("production QA requires both calibrated accessory depth canvases and captures final evidence", () => {
+  assert.match(qa, /querySelectorAll\('\.abags-vc-dialog\.abags-reference-layout-v4 \.abags-accessory-fidelity-canvas'\)\.length===2/);
+  assert.match(qa, /accessoryCount/);
+  assert.match(qa, /accessoryDepths/);
+  assert.match(qa, /finalPixels\.backOpaque <= 0/);
+  assert.match(qa, /finalPixels\.frontOpaque <= 0/);
   assert.match(qa, /accessory-\$\{label\.toLowerCase\(\)\}-final\.png/);
   assert.match(qa, /Page\.captureScreenshot/);
 });
