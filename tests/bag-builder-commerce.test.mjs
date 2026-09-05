@@ -59,10 +59,19 @@ test("customer price breakdown uses the Agata family and crochet-stitch vocabula
   assert.doesNotMatch(commerce, /Splot ·/);
 });
 
-test("owner can configure Bag Builder pricing without code changes", () => {
+test("owner can configure Bag Builder pricing without code changes using the same Agata terminology", () => {
   assert.match(admin, /Włącz cenę na żywo/);
   assert.match(admin, /Cena bazowa fasonu/);
   assert.match(admin, /Dopłaty do opcji/);
+  assert.match(admin, /tote: "Kuferek \/ tote"/);
+  assert.match(admin, /round: "Okrągła"/);
+  assert.match(admin, /bucket: "Z klapą"/);
+  assert.match(admin, /mini: "Strukturalna \/ mini"/);
+  assert.match(admin, /"Ścieg szydełkowy"/);
+  assert.match(admin, /classic: "Ażurowy V"/);
+  assert.match(admin, /herringbone: "Pionowy ażurowy"/);
+  assert.match(admin, /shell: "Promienisty"/);
+  assert.doesNotMatch(admin, /Prostokątna|Półokrągła|Kubełkowa|Jodełka|Muszla/);
   assert.match(admin, /\/api\/admin\/bag-builder-settings/);
   assert.match(panel, /BagBuilderSettingsManager/);
 });
