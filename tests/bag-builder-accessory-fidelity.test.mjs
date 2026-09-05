@@ -66,6 +66,6 @@ test("refinement is explicitly identified as evidence-calibrated overlay, not ph
   assert.match(fidelity, /ABAGS_ACCESSORY_FIDELITY_VERSION = "agata-accessories-v1"/);
   assert.match(fidelity, /evidence anchors, not claims that procedural rendering is a photo/i);
   assert.match(overlay, /data-abags-accessory-fidelity/);
-  assert.match(overlay, /abagsAccessoryFidelity/);
+  assert.match(overlay, /abags-accessory-fidelity-canvas/);
   assert.doesNotMatch(overlay, /pixel-perfect|photo[- ]true|1:1/i);
 });
