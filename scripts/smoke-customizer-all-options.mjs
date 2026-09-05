@@ -295,20 +295,20 @@ async function main() {
         ["color", "#087E81"],
         ["stitch", "basket"],
         ["flap", "crochet"],
-        ["handles", "crochet"],
+        ["handles", "wood-light"],
         ["strap", "chain"],
         ["hardware", "black"],
         ["accent", "charm"],
       ],
-      incompatible: [["handles", "wood-light"], ["handles", "wood-dark"]],
+      incompatible: [["handles", "wood-dark"], ["handles", "crochet"]],
     });
 
     console.log("ALL REALTIME OPTIONS PASS:", productionUrl);
     console.log("- every builder field changed verified WebGL pixels on desktop: yes");
     console.log("- every builder field changed verified WebGL pixels on mobile: yes");
     console.log("- desktop final: tote / #E4A9B5 / herringbone / leather-cognac / wood-light / leather / silver / tassel");
-    console.log("- mobile final: mini / #087E81 / basket / crochet / crochet / chain / black / charm");
-    console.log("- Mini wooden-handle incompatibility enforced: yes");
+    console.log("- mobile final: mini / #087E81 / basket / crochet / wood-light / chain / black / charm");
+    console.log("- Mini light wooden handle is enabled from the real teal Agata reference; wood-dark and crochet remain unavailable: yes");
     console.log("- desktop fingerprints:", desktop.visualResults.map((item) => `${item.key}:${item.hash}`).join(", "));
     console.log("- mobile fingerprints:", mobile.visualResults.map((item) => `${item.key}:${item.hash}`).join(", "));
   } finally {
