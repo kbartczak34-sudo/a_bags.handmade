@@ -51,6 +51,12 @@ test("chain, tassel, scarf, charm and flap details use dedicated refinement cons
   assert.match(overlay, /wovenDash/);
 });
 
+test("chain cadence remains dense enough to read as linked hardware on the narrow mobile preview", () => {
+  assert.match(fidelity, /chainLinks:\s*26/);
+  assert.match(fidelity, /narrow mobile preview/);
+  assert.match(fidelity, /alternating links/);
+});
+
 test("accessory depth is split around WebGL instead of flattening every detail onto one canvas", () => {
   assert.match(overlay, /backCanvasRef/);
   assert.match(overlay, /frontCanvasRef/);
