@@ -19,9 +19,11 @@ export const ABAGS_ACCESSORY_REFERENCES = {
 /**
  * Screen-space refinement parameters are intentionally conservative. The
  * underlying body geometry remains the Fidelity V4 WebGL source of truth.
+ * Chain cadence is dense enough to read as a continuous linked strap on the
+ * narrow mobile preview while retaining individual alternating links.
  */
 export const ABAGS_ACCESSORY_VISUAL = {
-  chainLinks: 18,
+  chainLinks: 26,
   tasselFringes: 9,
   charmStones: 3,
   scarfTails: 2,
