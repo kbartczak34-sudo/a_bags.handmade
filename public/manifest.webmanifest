@@ -2,7 +2,7 @@
   "id": "/",
   "name": "a_bags.handmade",
   "short_name": "a_bags",
-  "description": "Ręcznie plecione torebki a_bags.handmade",
+  "description": "Ręcznie szydełkowane torebki a_bags.handmade",
   "lang": "pl",
   "dir": "ltr",
   "start_url": "/",
@@ -18,7 +18,13 @@
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
