@@ -537,6 +537,7 @@ function familyMetrics(family: Exclude<Family, "">) {
     depth: spec.depth,
     topY: spec.topY,
     side: spec.sideAnchor,
+    ringY: spec.ringY,
     handleScale: spec.handleScale,
     flapScale: spec.flapScale,
     flapY: spec.flapY,
@@ -619,7 +620,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (config.handles !== "none" || config.strap !== "none") {
-    const ringY = config.family === "mini" ? .42 : config.family === "round" ? .46 : .49;
+    const ringY = metrics.ringY;
     drawMesh(renderer, meshes.ring, multiply(root, matrix([-side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
     drawMesh(renderer, meshes.ring, multiply(root, matrix([side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
   }
