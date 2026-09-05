@@ -165,6 +165,8 @@ async function main() {
           position:s.position,
           background:s.backgroundColor,
           transform:s.transform,
+          width:s.width,
+          height:s.height,
           left:s.left,
           top:s.top,
           pointerEvents:s.pointerEvents,
@@ -239,7 +241,19 @@ async function main() {
     if (close?.computed?.display !== "grid") problems.push(`display=${close?.computed?.display || "missing"}`);
     if (strokes.length !== 2) problems.push(`computed-strokes=${strokes.length}`);
     if (strokes.some((stroke) => !stroke.transform || stroke.transform === "none")) problems.push("stroke transform missing");
-    if (strokes.some((stroke) => stroke.rect?.width < 15 || stroke.rect?.width > 20 || stroke.rect?.height < 1 || stroke.rect?.height > 4)) problems.push("stroke geometry invalid");
+    // A rotated 17px × 1.8px stroke has an axis-aligned bounding box of ~13.3px × 13.3px.
+    // Validate the pre-transform computed dimensions plus the transformed footprint instead of
+    // incorrectly expecting getBoundingClientRect() to retain the unrotated 17:1.8 geometry.
+    if (strokes.some((stroke) => {
+      const width = Number.parseFloat(stroke.width || "");
+      const height = Number.parseFloat(stroke.height || "");
+      const footprintWidth = stroke.rect?.width;
+      const footprintHeight = stroke.rect?.height;
+      return !Number.isFinite(width) || width < 16 || width > 18 ||
+        !Number.isFinite(height) || height < 1.5 || height > 2.2 ||
+        !Number.isFinite(footprintWidth) || footprintWidth < 12 || footprintWidth > 15 ||
+        !Number.isFinite(footprintHeight) || footprintHeight < 12 || footprintHeight > 15;
+    })) problems.push("stroke geometry invalid");
 
     if (problems.length) {
       throw new Error(`Desktop customer close integrity failed: ${problems.join(", ")}. State: ${JSON.stringify(state)}`);
