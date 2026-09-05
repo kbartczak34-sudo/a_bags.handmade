@@ -26,7 +26,7 @@ test("owner panel exposes a dedicated stitch manager", async () => {
     read("app/panel/stitch-manager.tsx"),
   ]);
 
-  assert.match(panel, /Sploty \/ ściegi/);
+  assert.match(panel, /Ściegi szydełkowe/);
   assert.match(panel, /<StitchManager \/>/);
   assert.match(manager, /formData\.set\("stitchType", stitchType\)/);
   assert.match(manager, /Pusta wartość wyłącza produkt z galerii technik/);
