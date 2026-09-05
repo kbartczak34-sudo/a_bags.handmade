@@ -32,6 +32,17 @@ test("selected product photo is the primary exact preview and synthetic renderer
   assert.match(styles, /display:none!important/);
 });
 
+test("Photo-True readiness follows the current reactive portal stage after remount", () => {
+  assert.match(component, /if \(!stage \|\| !selected\?\.imageUrl\) return/);
+  assert.match(component, /const liveStage = document\.querySelector<HTMLElement>/);
+  assert.match(component, /if \(!liveStage \|\| liveStage !== stage\) return/);
+  assert.match(component, /liveStage\.dataset\.photoProductName = selected\.name/);
+  assert.match(component, /liveStage\.removeAttribute\("data-abags-photo-true"\)/);
+  assert.match(component, /liveStage\.removeAttribute\("data-photo-product-id"\)/);
+  assert.match(component, /liveStage\.removeAttribute\("data-photo-product-name"\)/);
+  assert.match(component, /\}, \[selected, stage\]\);/);
+});
+
 test("exact transparent overlays use all seven photo categories including flap", () => {
   assert.match(component, /\["color", "stitch", "flap", "handles", "strap", "hardware", "accent"\]/);
   assert.match(assetStore, /"color", "stitch", "flap", "handles", "hardware", "strap", "accent"/);

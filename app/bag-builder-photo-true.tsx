@@ -199,26 +199,26 @@ export default function BagBuilderPhotoTrue() {
   const selected = useMemo(() => products.find((product) => product.id === selectedId) ?? null, [products, selectedId]);
 
   useEffect(() => {
-    if (!selected?.imageUrl) return;
-    const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage");
-    if (!liveStage) return;
-    const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog");
-    const family = inferLegacyFamily(selected);
-    liveStage.dataset.abagsPhotoTrue = "active";
-    liveStage.dataset.photoProductId = selected.id;
-    liveStage.dataset.photoProductName = selected.name;
-    dialog?.setAttribute("data-abags-photo-true", "active");
-    dialog?.setAttribute("data-photo-product-id", selected.id);
-    try { window.localStorage.setItem(STORAGE_KEY, selected.id); } catch {}
-    if (liveStage.dataset.family !== family) clickLegacyFamily(family);
-    return () => {
-      liveStage.removeAttribute("data-abags-photo-true");
-      liveStage.removeAttribute("data-photo-product-id");
-      liveStage.removeAttribute("data-photo-product-name");
-      dialog?.removeAttribute("data-abags-photo-true");
-      dialog?.removeAttribute("data-photo-product-id");
-    };
-  }, [selected]);
+  if (!stage || !selected?.imageUrl) return;
+  const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage");
+  if (!liveStage || liveStage !== stage) return;
+  const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog");
+  const family = inferLegacyFamily(selected);
+  liveStage.dataset.abagsPhotoTrue = "active";
+  liveStage.dataset.photoProductId = selected.id;
+  liveStage.dataset.photoProductName = selected.name;
+  dialog?.setAttribute("data-abags-photo-true", "active");
+  dialog?.setAttribute("data-photo-product-id", selected.id);
+  try { window.localStorage.setItem(STORAGE_KEY, selected.id); } catch {}
+  if (liveStage.dataset.family !== family) clickLegacyFamily(family);
+  return () => {
+    liveStage.removeAttribute("data-abags-photo-true");
+    liveStage.removeAttribute("data-photo-product-id");
+    liveStage.removeAttribute("data-photo-product-name");
+    dialog?.removeAttribute("data-abags-photo-true");
+    dialog?.removeAttribute("data-photo-product-id");
+  };
+}, [selected, stage]);
 
   useEffect(() => {
     if (!selectedId) return;
