@@ -584,11 +584,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const { depth, topY, side } = metrics;
   const hardware = config.hardware === "silver" ? "#d5d9dd" : config.hardware === "black" ? "#2a292b" : "#c9a354";
 
-  if (config.strap !== "none") {
-    const strapColor = config.strap === "chain" ? hardware : config.strap === "leather" ? "#76503d" : "#9a7580";
-    drawMesh(renderer, meshes.strap, multiply(root, matrix([0, .16, -.25], [.92, .96, 1])), strapColor, stitch, config.strap === "chain" ? 2 : config.strap === "leather" ? 1 : 3);
-  }
-
+  // Accessory fidelity overlay owns strap/chain and accent geometry. Keeping those legacy
+  // approximations here would render a second accessory underneath the calibrated detail pass.
   drawMesh(renderer, meshes[config.family], root, bodyColor, stitch, 0);
 
   if (config.handles !== "none") {
@@ -616,23 +613,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       stitch,
       flapMaterial,
     );
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, flapY - .22, depth / 2 + .145], [.072, .072, .045])), hardware, 0, 2);
+    // Seam and snap details belong to the calibrated accessory overlay to avoid duplicate hardware.
   }
 
   if (config.handles !== "none" || config.strap !== "none") {
     const ringY = metrics.ringY;
     drawMesh(renderer, meshes.ring, multiply(root, matrix([-side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
     drawMesh(renderer, meshes.ring, multiply(root, matrix([side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
-  }
-
-  if (config.accent === "charm") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([side * .86, .04, depth / 2 + .17], [.105, .105, .06])), "#b86f82", 0, 2);
-  } else if (config.accent === "tassel") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([side * .91, .25, depth / 2 + .14], [.07, .07, .05])), hardware, 0, 2);
-    drawMesh(renderer, meshes.strap, multiply(root, matrix([side * .86, -.48, depth / 2 + .16], [.14, .27, .34], [0, 0, -.10])), bodyColor, stitch, 0);
-  } else if (config.accent === "scarf") {
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([-side * .68, .36, depth / 2 + .17], [.22, .37, .16], [0, 0, .42])), "#efb7c5", 0, 3);
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([-side * .49, .19, depth / 2 + .18], [.18, .31, .15], [0, 0, -.34])), "#c66f89", 0, 3);
   }
 
   gl.finish();
