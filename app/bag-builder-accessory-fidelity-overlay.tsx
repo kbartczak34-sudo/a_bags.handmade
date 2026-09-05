@@ -77,10 +77,16 @@ function path3d(ctx: CanvasRenderingContext2D, points: Point3[], width: number, 
 function strapArc(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const archHeight = Math.max(0.78, spec.ry * 1.25);
+  const baseZ = spec.depth / 2 + 0.055;
+  const depthBow = Math.max(ABAGS_ACCESSORY_VISUAL.strapDepthBowMin, spec.depth * ABAGS_ACCESSORY_VISUAL.strapDepthBowRatio);
   return Array.from({ length: 49 }, (_, index) => {
     const t = index / 48;
     const angle = Math.PI - t * Math.PI;
-    return [spec.sideAnchor * Math.cos(angle), spec.ringY + archHeight * Math.sin(angle), spec.depth / 2 + 0.055] as Point3;
+    return [
+      spec.sideAnchor * Math.cos(angle),
+      spec.ringY + archHeight * Math.sin(angle),
+      baseZ + depthBow * Math.sin(angle),
+    ] as Point3;
   });
 }
 
