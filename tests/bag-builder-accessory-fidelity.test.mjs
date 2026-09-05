@@ -81,14 +81,19 @@ test("final WebGL keeps product structure but does not duplicate overlay-owned a
   assert.match(renderer, /meshes\.ring/);
 });
 
-test("accessory overlay follows final 3D rotation and zoom instead of becoming a static sticker", () => {
-  assert.match(overlay, /pointerdown/);
-  assert.match(overlay, /pointermove/);
-  assert.match(overlay, /deltaY \* 0\.0008/);
-  assert.match(overlay, /text === "Przód"/);
-  assert.match(overlay, /text === "3\/4"/);
-  assert.match(overlay, /text === "Bok"/);
-  assert.match(overlay, /abags-pro3d-zoom input\[type=range\]/);
+test("accessory overlay follows the authoritative final 3D transform instead of reconstructing customer gestures", () => {
+  assert.match(renderer, /abags:fidelity3d-transform/);
+  assert.match(renderer, /abagsFidelity3dRotationX/);
+  assert.match(renderer, /abagsFidelity3dRotationY/);
+  assert.match(renderer, /abagsFidelity3dZoom/);
+  assert.match(overlay, /syncTransformFromDataset/);
+  assert.match(overlay, /abags:fidelity3d-transform/);
+  assert.match(overlay, /data-abags-fidelity3d-rotation-x/);
+  assert.match(overlay, /data-abags-fidelity3d-rotation-y/);
+  assert.match(overlay, /data-abags-fidelity3d-zoom/);
+  assert.doesNotMatch(overlay, /pointerdown/);
+  assert.doesNotMatch(overlay, /pointermove/);
+  assert.doesNotMatch(overlay, /abags-pro3d-zoom input\[type=range\]/);
   assert.match(overlay, /function project\(/);
   assert.match(overlay, /Math\.PI \/ 5\.15/);
 });
