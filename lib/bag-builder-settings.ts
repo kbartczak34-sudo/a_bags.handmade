@@ -1,3 +1,4 @@
+import { AGATA_BUILDER_HANDLE_COMPATIBILITY } from "./abags-builder-fidelity";
 import { getProductDb } from "./products";
 
 export const BUILDER_FAMILIES = ["tote", "round", "bucket", "mini"] as const;
@@ -67,10 +68,10 @@ export const DEFAULT_BAG_BUILDER_SETTINGS: BagBuilderSettings = {
   accentCents: { none: 0, tassel: 0, scarf: 0, charm: 0 },
   compatibility: {
     handles: {
-      tote: [...BUILDER_HANDLES],
-      round: ["none", "crochet"],
-      bucket: [...BUILDER_HANDLES],
-      mini: ["none", "crochet"],
+      tote: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.tote],
+      round: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.round],
+      bucket: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.bucket],
+      mini: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.mini],
     },
     straps: {
       tote: [...ALL_STRAPS],
@@ -122,6 +123,14 @@ function allowed<T extends string>(value: unknown, valid: readonly T[], fallback
   return next.length ? Array.from(new Set(next)) : [...fallback];
 }
 
+function agataHandleAllowed(value: unknown, family: BuilderFamily) {
+  const fallback = DEFAULT_BAG_BUILDER_SETTINGS.compatibility.handles[family];
+  const requested = allowed(value, BUILDER_HANDLES, fallback);
+  const evidence = AGATA_BUILDER_HANDLE_COMPATIBILITY[family] as readonly string[];
+  const bounded = requested.filter((handle) => evidence.includes(handle));
+  return bounded.length ? bounded : [...fallback];
+}
+
 function oneOf<T extends string>(value: unknown, valid: readonly T[]) {
   return typeof value === "string" && (valid as readonly string[]).includes(value)
     ? value as T
@@ -164,7 +173,7 @@ export function normalizeBagBuilderSettings(source: unknown): BagBuilderSettings
     hardwareCents: priceRecord(raw.hardwareCents, BUILDER_HARDWARE, DEFAULT_BAG_BUILDER_SETTINGS.hardwareCents),
     accentCents: priceRecord(raw.accentCents, BUILDER_ACCENTS, DEFAULT_BAG_BUILDER_SETTINGS.accentCents),
     compatibility: {
-      handles: Object.fromEntries(BUILDER_FAMILIES.map((family) => [family, allowed(handlesRaw[family], BUILDER_HANDLES, DEFAULT_BAG_BUILDER_SETTINGS.compatibility.handles[family])])) as Compatibility<BuilderHandles>,
+      handles: Object.fromEntries(BUILDER_FAMILIES.map((family) => [family, agataHandleAllowed(handlesRaw[family], family)])) as Compatibility<BuilderHandles>,
       straps: Object.fromEntries(BUILDER_FAMILIES.map((family) => [family, allowed(strapsRaw[family], BUILDER_STRAPS, DEFAULT_BAG_BUILDER_SETTINGS.compatibility.straps[family])])) as Compatibility<BuilderStrap>,
       flaps: Object.fromEntries(BUILDER_FAMILIES.map((family) => [family, allowed(flapsRaw[family], BUILDER_FLAPS, DEFAULT_BAG_BUILDER_SETTINGS.compatibility.flaps[family])])) as Compatibility<BuilderFlap>,
     },
