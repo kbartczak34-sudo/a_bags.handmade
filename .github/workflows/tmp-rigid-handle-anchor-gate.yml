@@ -26,6 +26,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           probe_path = Path('scripts/smoke-customizer-anchor-integrity.mjs')
           probe = probe_path.read_text()
@@ -103,16 +104,10 @@ jobs:
               raise SystemExit(f'analyzer insertion point count={probe.count(needle_analyze)}')
           probe = probe.replace(needle_analyze, replacement_analyze, 1)
 
-          needle_return = '''        webgl:{width:gw,height:gh},
-            back:analyze(back),
-          '''.replace('            back:', '        back:')
-          replacement_return = '''        webgl:{width:gw,height:gh},
-            handle:analyzeRigidHandle(),
-            back:analyze(back),
-          '''.replace('            handle:', '        handle:').replace('            back:', '        back:')
-          if probe.count(needle_return) != 1:
-              raise SystemExit(f'return insertion point count={probe.count(needle_return)}')
-          probe = probe.replace(needle_return, replacement_return, 1)
+          return_pattern = re.compile(r'(\s+webgl:\{width:gw,height:gh\},\n)(\s+back:analyze\(back\),)')
+          probe, return_count = return_pattern.subn(r'\1        handle:analyzeRigidHandle(),\n\2', probe, count=1)
+          if return_count != 1:
+              raise SystemExit(f'return insertion point count={return_count}')
 
           needle_log = '''    console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
           '''
