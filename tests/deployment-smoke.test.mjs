@@ -28,3 +28,14 @@ test("production smoke test covers storefront, security, PWA, APIs and admin pro
     assert.ok(smoke.toLowerCase().includes(fragment.toLowerCase()), `missing smoke assertion: ${fragment}`);
   }
 });
+
+test("post-deploy site-content convergence is bounded and never weakens the approved footer contract", () => {
+  assert.match(smoke, /site_content_contract_ready\(\)/);
+  assert.match(smoke, /wait_for_site_content\(\)/);
+  assert.match(smoke, /for attempt in 1 2 3 4 5 6 7 8/);
+  assert.match(smoke, /Cache-Control: no-cache/);
+  assert.match(smoke, /smoke_attempt=\$\{attempt\}/);
+  assert.match(smoke, /Copyright 2026 a_bags\.handmade All rights reserved/);
+  assert.match(smoke, /Full-Stack\/all-in-one Developer: Klaudia Weronika Bartczak/);
+  assert.match(smoke, /did not converge to approved production contract after post-deploy retries/);
+});
