@@ -17,6 +17,7 @@ import BagBuilderCustomerCloseIcon from "./bag-builder-customer-close-icon";
 import BagBuilderCustomerLegacyChipRetirement from "./bag-builder-customer-legacy-chip-retirement";
 import BagBuilderCustomerPremiumFit from "./bag-builder-customer-premium-fit";
 import BagBuilderEngine from "./bag-builder-engine";
+import BagBuilderFidelityOptions from "./bag-builder-fidelity-options";
 import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
 import BagBuilderFidelity3DControlNamespace from "./bag-builder-fidelity3d-control-namespace";
 import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
@@ -41,6 +42,7 @@ import BagBuilderViewSync from "./bag-builder-view-sync";
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
+    <BagBuilderFidelityOptions />
     <BagBuilderFinalWebGL3D />
     <BagBuilderFidelity3DControlNamespace />
     <BagBuilderFidelity3DCompositorSync />
