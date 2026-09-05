@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const settings = fs.readFileSync("lib/bag-builder-settings.ts", "utf8");
+const fidelity = fs.readFileSync("lib/abags-builder-fidelity.ts", "utf8");
 const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
 const admin = fs.readFileSync("app/panel/bag-builder-settings-manager.tsx", "utf8");
 const panel = fs.readFileSync("app/panel/admin-panel.tsx", "utf8");
@@ -27,9 +28,13 @@ test("Bag Builder settings persist in the existing D1 database", () => {
   assert.match(adminRoute, /saveBagBuilderSettings/);
 });
 
-test("compatibility rules actively disable impossible builder options", () => {
-  assert.match(settings, /round:\s*\["none", "crochet"\]/);
-  assert.match(settings, /mini:\s*\["none", "crochet"\]/);
+test("compatibility rules are bounded by real Agata handle evidence", () => {
+  assert.match(settings, /AGATA_BUILDER_HANDLE_COMPATIBILITY/);
+  assert.match(settings, /agataHandleAllowed/);
+  assert.match(fidelity, /tote:\s*\["none", "wood-light", "wood-dark"\]/);
+  assert.match(fidelity, /round:\s*\["none"\]/);
+  assert.match(fidelity, /bucket:\s*\["none"\]/);
+  assert.match(fidelity, /mini:\s*\["none", "wood-light"\]/);
   assert.match(commerce, /is-incompatible/);
   assert.match(commerce, /button\.disabled = !compatible/);
   assert.match(commerce, /data-builder-value="none"/);
