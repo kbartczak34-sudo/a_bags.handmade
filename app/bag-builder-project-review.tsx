@@ -22,10 +22,10 @@ type PhotoIdentity = {
 const MATERIAL = "Sznurek poliestrowy · Pimiotki";
 
 const FAMILY_LABELS: Record<string, string> = {
-  tote: "Prostokątna",
-  round: "Półokrągła",
-  bucket: "Kubełkowa",
-  mini: "Mini",
+  tote: "Kuferek / tote",
+  round: "Okrągła",
+  bucket: "Z klapą",
+  mini: "Strukturalna / mini",
 };
 
 const COLOR_LABELS: Record<string, string> = {
@@ -42,10 +42,10 @@ const COLOR_LABELS: Record<string, string> = {
 };
 
 const STITCH_LABELS: Record<string, string> = {
-  classic: "Klasyczny",
-  herringbone: "Jodełka",
+  classic: "Ażurowy V",
+  herringbone: "Pionowy ażurowy",
   basket: "Koszykowy",
-  shell: "Muszla",
+  shell: "Promienisty",
 };
 
 const FLAP_LABELS: Record<string, string> = {
@@ -138,7 +138,7 @@ function specification(config: BuilderConfig, photo: PhotoIdentity) {
     `Materiał: ${MATERIAL}`,
     ...modelLines(config, photo),
     `Kolor sznurka: ${label(COLOR_LABELS, config.color)}`,
-    `Splot / ścieg: ${label(STITCH_LABELS, config.stitch)}`,
+    `Ścieg szydełkowy: ${label(STITCH_LABELS, config.stitch)}`,
     `Klapa: ${label(FLAP_LABELS, config.flap)}`,
     `Uchwyty: ${label(HANDLE_LABELS, config.handles)}`,
     `Pasek: ${label(STRAP_LABELS, config.strap)}`,
@@ -203,7 +203,7 @@ function ensureReviewCard(controls: HTMLElement, config: BuilderConfig, photo: P
   const summary = document.createElement("p");
   summary.textContent = complete
     ? `${model} · ${label(COLOR_LABELS, config.color)} · ${label(STITCH_LABELS, config.stitch)} · ${label(FLAP_LABELS, config.flap)} · ${label(HANDLE_LABELS, config.handles)} · ${label(STRAP_LABELS, config.strap)} · ${label(HARDWARE_LABELS, config.hardware)} · ${label(ACCENT_LABELS, config.accent)}`
-    : "Wybierz model bazowy, kolor sznurka i splot, aby otrzymać kompletną specyfikację.";
+    : "Wybierz model bazowy, kolor sznurka i ścieg szydełkowy, aby otrzymać kompletną specyfikację.";
 
   const material = document.createElement("small");
   material.textContent = photo.active
