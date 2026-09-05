@@ -1,0 +1,55 @@
+/* A-Bags lifelike surface pass.
+   This layer never changes calibrated product geometry. It only post-processes the already
+   verified WebGL pixels with neutral depth, polyester micro-fibres and a restrained sheen. */
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-lifelike-surface{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:2!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  transform:none!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  image-rendering:auto!important;
+  transition:opacity .14s ease!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-lifelike="ready"]
+> .abags-fidelity3d-layer > .abags-lifelike-surface{
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+/* Interaction remains owned by the original calibrated WebGL canvas. The photographic pass
+   is intentionally transparent to pointer input, so rotation, pinch and zoom stay unchanged. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-view-controls,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-zoom,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-chip{
+  z-index:4!important;
+}
+
+@media(max-width:620px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-lifelike-surface{
+    image-rendering:auto!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-lifelike-surface{
+    transition:none!important;
+  }
+}
