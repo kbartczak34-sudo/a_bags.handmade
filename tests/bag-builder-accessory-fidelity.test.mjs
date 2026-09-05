@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [overlay, fidelity, exactLibrary, stack] = await Promise.all([
+const [overlay, fidelity, exactLibrary, stack, renderer] = await Promise.all([
   readFile(new URL("../app/bag-builder-accessory-fidelity-overlay.tsx", import.meta.url), "utf8"),
   readFile(new URL("../lib/abags-accessory-fidelity.ts", import.meta.url), "utf8"),
   readFile(new URL("../lib/exact-customizer-library.ts", import.meta.url), "utf8"),
   readFile(new URL("../app/exact-live-customizer.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/bag-builder-final-webgl3d.tsx", import.meta.url), "utf8"),
 ]);
 
 test("customer realtime stack mounts the accessory refinement directly above final WebGL", () => {
@@ -48,6 +49,18 @@ test("chain, tassel, scarf, charm and flap details use dedicated refinement cons
   assert.match(overlay, /flapContour/);
   assert.match(overlay, /leatherSeamDash/);
   assert.match(overlay, /wovenDash/);
+});
+
+test("final WebGL keeps product structure but does not duplicate overlay-owned accessories", () => {
+  assert.match(renderer, /Accessory fidelity overlay owns strap\/chain and accent geometry/);
+  assert.doesNotMatch(renderer, /if \(config\.strap !== "none"\)/);
+  assert.doesNotMatch(renderer, /if \(config\.accent === "charm"\)/);
+  assert.doesNotMatch(renderer, /if \(config\.accent === "tassel"\)/);
+  assert.doesNotMatch(renderer, /if \(config\.accent === "scarf"\)/);
+  assert.doesNotMatch(renderer, /flapY - \.22/);
+  assert.match(renderer, /if \(config\.flap !== "none"\)/);
+  assert.match(renderer, /if \(config\.handles !== "none"\)/);
+  assert.match(renderer, /meshes\.ring/);
 });
 
 test("accessory overlay follows final 3D rotation and zoom instead of becoming a static sticker", () => {
