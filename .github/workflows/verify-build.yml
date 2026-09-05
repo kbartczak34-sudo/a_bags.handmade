@@ -61,15 +61,67 @@ jobs:
           if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
           node --test "${files[@]}"
 
-      - name: Regression — remaining suite
+      - name: Regression — remaining A-F
         if: ${{ always() && steps.production_build.outcome == 'success' }}
         shell: bash
         run: |
-          mapfile -t files < <(find tests -maxdepth 1 -type f -name '*.test.mjs' \
-            ! -name 'bag-builder-*.test.mjs' \
-            ! -name 'builder-transform-authority.test.mjs' \
-            ! -name 'customer-builder-*.test.mjs' \
-            ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining regression files\n' "${#files[@]}"
+          files=()
+          while IFS= read -r file; do
+            base=$(basename "$file")
+            case "$base" in [a-fA-F]*) files+=("$file");; esac
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
+          printf 'Running %s remaining A-F regression files\n' "${#files[@]}"
+          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
+          node --test "${files[@]}"
+
+      - name: Regression — remaining G-M
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        shell: bash
+        run: |
+          files=()
+          while IFS= read -r file; do
+            base=$(basename "$file")
+            case "$base" in [g-mG-M]*) files+=("$file");; esac
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
+          printf 'Running %s remaining G-M regression files\n' "${#files[@]}"
+          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
+          node --test "${files[@]}"
+
+      - name: Regression — remaining N-S
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        shell: bash
+        run: |
+          files=()
+          while IFS= read -r file; do
+            base=$(basename "$file")
+            case "$base" in [n-sN-S]*) files+=("$file");; esac
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
+          printf 'Running %s remaining N-S regression files\n' "${#files[@]}"
+          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
+          node --test "${files[@]}"
+
+      - name: Regression — remaining T-Z
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        shell: bash
+        run: |
+          files=()
+          while IFS= read -r file; do
+            base=$(basename "$file")
+            case "$base" in [t-zT-Z]*) files+=("$file");; esac
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
+          printf 'Running %s remaining T-Z regression files\n' "${#files[@]}"
+          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
+          node --test "${files[@]}"
+
+      - name: Regression — remaining non-letter
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        shell: bash
+        run: |
+          files=()
+          while IFS= read -r file; do
+            base=$(basename "$file")
+            case "$base" in [a-zA-Z]*) ;; *) files+=("$file");; esac
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
+          printf 'Running %s remaining non-letter regression files\n' "${#files[@]}"
           if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
           node --test "${files[@]}"
