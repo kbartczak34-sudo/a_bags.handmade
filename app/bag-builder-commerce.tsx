@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { isAgataBuilderConstructionSupported, type AgataBuilderConstructionKey } from "../lib/abags-builder-fidelity";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -30,8 +31,17 @@ type Settings = {
   };
 };
 
+type ConstructionKey = "handles" | "strap" | "flap" | "accent";
+
 const EMPTY: Config = { family: "", color: "", stitch: "", flap: "none", handles: "none", strap: "none", hardware: "gold", accent: "none" };
 const money = new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" });
+
+const FIDELITY_KEYS: Record<ConstructionKey, AgataBuilderConstructionKey> = {
+  handles: "handles",
+  strap: "straps",
+  flap: "flaps",
+  accent: "accents",
+};
 
 function readConfig(stage: HTMLElement): Config {
   return {
@@ -61,6 +71,18 @@ function label(key: string, value: string) {
     accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka / kokarda", charm: "Zawieszka" },
   };
   return labels[key]?.[value] ?? value;
+}
+
+function adminAllows(settings: Settings, family: Exclude<Family, "">, key: ConstructionKey, value: string) {
+  if (key === "accent") return true;
+  if (key === "handles") return settings.compatibility.handles[family].includes(value as Handles);
+  if (key === "strap") return settings.compatibility.straps[family].includes(value as Strap);
+  return settings.compatibility.flaps[family].includes(value as Flap);
+}
+
+function compatible(settings: Settings, family: Exclude<Family, "">, key: ConstructionKey, value: string) {
+  return adminAllows(settings, family, key, value)
+    && isAgataBuilderConstructionSupported(family, FIDELITY_KEYS[key], value);
 }
 
 export default function BagBuilderCommerce() {
@@ -119,33 +141,31 @@ export default function BagBuilderCommerce() {
   useEffect(() => {
     if (!settings || !config.family) return;
     const family = config.family;
-    const rules: Array<["handles" | "strap" | "flap", string[]]> = [
-      ["handles", settings.compatibility.handles[family]],
-      ["strap", settings.compatibility.straps[family]],
-      ["flap", settings.compatibility.flaps[family]],
-    ];
-    for (const [key, allowed] of rules) {
+    const keys: ConstructionKey[] = ["handles", "strap", "flap", "accent"];
+
+    for (const key of keys) {
       document.querySelectorAll<HTMLButtonElement>(`[data-builder-key="${key}"]`).forEach((button) => {
         const value = button.dataset.builderValue || "";
-        const compatible = allowed.includes(value);
-        button.disabled = !compatible;
-        button.classList.toggle("is-incompatible", !compatible);
-        button.setAttribute("aria-disabled", compatible ? "false" : "true");
-        if (!compatible) button.title = "Ta opcja nie jest dostępna dla wybranego fasonu.";
+        const isCompatible = compatible(settings, family, key, value);
+        button.disabled = !isCompatible;
+        button.classList.toggle("is-incompatible", !isCompatible);
+        button.setAttribute("aria-disabled", isCompatible ? "false" : "true");
+        if (!isCompatible) button.title = "Ta opcja nie występuje w zweryfikowanych konstrukcjach tego fasonu A-Bags.";
         else button.removeAttribute("title");
       });
     }
 
-    const currentSelections: Array<["handles" | "strap" | "flap", string, string[]]> = [
-      ["handles", config.handles, settings.compatibility.handles[family]],
-      ["strap", config.strap, settings.compatibility.straps[family]],
-      ["flap", config.flap, settings.compatibility.flaps[family]],
+    const currentSelections: Array<[ConstructionKey, string]> = [
+      ["handles", config.handles],
+      ["strap", config.strap],
+      ["flap", config.flap],
+      ["accent", config.accent],
     ];
-    for (const [key, value, allowed] of currentSelections) {
-      if (allowed.includes(value)) continue;
+    for (const [key, value] of currentSelections) {
+      if (compatible(settings, family, key, value)) continue;
       document.querySelector<HTMLButtonElement>(`[data-builder-key="${key}"][data-builder-value="none"]`)?.click();
     }
-  }, [config.family, config.handles, config.strap, config.flap, settings]);
+  }, [config.family, config.handles, config.strap, config.flap, config.accent, settings]);
 
   const price = useMemo(() => {
     if (!settings?.pricingEnabled || !config.family) return null;
@@ -169,7 +189,7 @@ export default function BagBuilderCommerce() {
     <section className="abags-builder-commerce" data-builder-live-price={price ? String(price.total) : "quote"} aria-live="polite">
       <div className="abags-builder-commerce-head">
         <div><span>Zgodność projektu</span><strong>{config.family ? "Konfiguracja sprawdzana na żywo" : "Wybierz fason"}</strong></div>
-        <span className="abags-builder-commerce-ok">{config.family ? "✓ zgodna" : "—"}</span>
+        <span className="abags-builder-commerce-ok">{config.family ? "✓ zgodna z konstrukcjami A-Bags" : "—"}</span>
       </div>
       {price ? <>
         <div className="abags-builder-live-price"><span>Cena projektu</span><strong>{money.format(price.total / 100)}</strong></div>
