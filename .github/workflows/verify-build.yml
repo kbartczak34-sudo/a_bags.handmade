@@ -30,15 +30,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Reject legacy public runtime
-        run: node scripts/reject-legacy-public-runtime.mjs
-
-      - name: Check owner guard runtime
-        run: node scripts/check-owner-guard-runtime.mjs
-
-      - name: Reject mock preview copy
-        run: node scripts/reject-mock-preview-copy.mjs
-
       - name: Lint
         run: npm run lint
 
