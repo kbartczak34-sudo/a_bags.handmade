@@ -1,0 +1,55 @@
+/* A-Bags crochet micro-relief pass.
+   It follows the calibrated Fidelity3D body projection and adds only neutral light/shadow
+   separation between crochet cords. Geometry, selected colour and pointer interaction stay untouched. */
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:3!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  transform:none!important;
+  filter:none!important;
+  mix-blend-mode:soft-light!important;
+  image-rendering:auto!important;
+  transition:opacity .12s ease!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-crochet-relief="ready"]
+> .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+  opacity:.62!important;
+  visibility:visible!important;
+}
+
+/* Customer controls remain above every photographic/material pass. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-view-controls,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-zoom,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-chip{
+  z-index:5!important;
+}
+
+@media(max-width:620px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-crochet-relief="ready"]
+  > .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+    opacity:.54!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+    transition:none!important;
+  }
+}

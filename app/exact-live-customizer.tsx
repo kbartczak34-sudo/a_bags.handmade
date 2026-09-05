@@ -10,11 +10,13 @@ import "./bag-builder-customer-cleanroom.css";
 import "./bag-builder-fidelity3d-controls.css";
 import "./bag-builder-customer-premium-polish.css";
 import "./bag-builder-lifelike-surface.css";
+import "./bag-builder-crochet-relief-overlay.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
+import BagBuilderCrochetReliefOverlay from "./bag-builder-crochet-relief-overlay";
 import BagBuilderCrochetTerminologyGuard from "./bag-builder-crochet-terminology-guard";
 import BagBuilderCustomerCloseIcon from "./bag-builder-customer-close-icon";
 import BagBuilderCustomerLegacyChipRetirement from "./bag-builder-customer-legacy-chip-retirement";
@@ -49,6 +51,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderFidelityOptions />
     <BagBuilderFinalWebGL3D />
     <BagBuilderLifelikeSurface />
+    <BagBuilderCrochetReliefOverlay />
     <BagBuilderAccessoryFidelityOverlay />
     <BagBuilderFidelity3DControlNamespace />
     <BagBuilderFidelity3DCompositorSync />
