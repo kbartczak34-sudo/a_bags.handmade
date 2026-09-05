@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const MAX_ATTEMPTS = 20;
-const REQUIRED_RENDERER = "abags-fidelity-v3";
+const REQUIRED_RENDERER = "abags-fidelity-v4";
 const PAINT_METADATA = new Set(["data-abags-fidelity3d-frame", "data-abags-fidelity3d-frame-at"]);
 
 type PixelInspection = {
@@ -157,7 +157,7 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string):
     ? `framebuffer-empty-${opaqueSamples}`
     : !colorOk
       ? `framebuffer-color-mismatch-${hueMatches}-${minimumHueMatches}`
-      : `renderer-frame-v3-pixels-${opaqueSamples}-hue-${hueMatches}`;
+      : `renderer-frame-v4-pixels-${opaqueSamples}-hue-${hueMatches}`;
 
   return {
     ok,
