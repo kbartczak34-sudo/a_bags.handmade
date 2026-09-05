@@ -47,6 +47,18 @@ test("live price composes base price with selected option modifiers", () => {
   assert.match(commerce, /Cena projektu/);
 });
 
+test("customer price breakdown uses the Agata family and crochet-stitch vocabulary", () => {
+  assert.match(commerce, /tote: "Kuferek \/ tote"/);
+  assert.match(commerce, /round: "Okrągła"/);
+  assert.match(commerce, /bucket: "Z klapą"/);
+  assert.match(commerce, /mini: "Strukturalna \/ mini"/);
+  assert.match(commerce, /classic: "Ażurowy V"/);
+  assert.match(commerce, /herringbone: "Pionowy ażurowy"/);
+  assert.match(commerce, /shell: "Promienisty"/);
+  assert.match(commerce, /Ścieg szydełkowy ·/);
+  assert.doesNotMatch(commerce, /Splot ·/);
+});
+
 test("owner can configure Bag Builder pricing without code changes", () => {
   assert.match(admin, /Włącz cenę na żywo/);
   assert.match(admin, /Cena bazowa fasonu/);
