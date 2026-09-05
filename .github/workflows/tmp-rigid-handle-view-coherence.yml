@@ -1,0 +1,78 @@
+name: Temporary rigid handle view coherence gate
+
+on:
+  push:
+    branches: [test/builder-rigid-handle-view-coherence]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/builder-rigid-handle-view-coherence
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Add front and three-quarter rigid-handle coherence guard
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          probe_path = Path('scripts/smoke-customizer-anchor-integrity.mjs')
+          probe = probe_path.read_text()
+          needle = '''if (view !== "Bok") {
+              if (back.leftContact < 20 || back.rightContact < 20) {
+          '''
+          replacement = '''if (view !== "Bok") {
+              const handle = evidence?.handle;
+              if (!handle || handle.sampled < 1000 || handle.clusterCount !== 1) {
+                throw new Error(`${label} ${view}: rigid wooden handle no longer resolves to one coherent merchandising arch: ${JSON.stringify(handle)}`);
+              }
+              if (back.leftContact < 20 || back.rightContact < 20) {
+          '''
+          if probe.count(needle) != 1:
+              raise SystemExit(f'non-side guard insertion count={probe.count(needle)}')
+          probe = probe.replace(needle, replacement, 1)
+
+          log_needle = '  console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");'
+          log_replacement = log_needle + '\n  console.log("- rigid wood handle remains one coherent arch in Przód / 3/4 on desktop/mobile: yes");'
+          if probe.count(log_needle) != 1:
+              raise SystemExit(f'coherence log insertion count={probe.count(log_needle)}')
+          probe = probe.replace(log_needle, log_replacement, 1)
+          probe_path.write_text(probe)
+
+          test_path = Path('tests/builder-view-anchor-integrity.test.mjs')
+          contract = test_path.read_text()
+          test_needle = '  assert.match(probe, /handle\\.separationRatio < 0\\.045/);'
+          test_replacement = test_needle + '\n  assert.match(probe, /handle\\.sampled < 1000/);\n  assert.match(probe, /handle\\.clusterCount !== 1/);'
+          if contract.count(test_needle) != 1:
+              raise SystemExit(f'contract insertion count={contract.count(test_needle)}')
+          test_path.write_text(contract.replace(test_needle, test_replacement, 1))
+          PY
+
+      - name: Focused contract regression
+        run: node --test tests/builder-view-anchor-integrity.test.mjs
+
+      - name: Validate coherence guard against live production
+        env:
+          ABAGS_PRODUCTION_URL: https://abagshandmade.pl
+          ABAGS_REALTIME_QA_DIR: /tmp/abags-rigid-handle-view-coherence
+        run: node scripts/smoke-customizer-anchor-integrity.mjs
+
+      - name: Commit only permanent QA changes
+        shell: bash
+        run: |
+          git rm .github/workflows/tmp-rigid-handle-view-coherence.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/smoke-customizer-anchor-integrity.mjs tests/builder-view-anchor-integrity.test.mjs
+          git commit -m "test(builder): guard rigid handle coherence across views"
+          git push origin HEAD:test/builder-rigid-handle-view-coherence
