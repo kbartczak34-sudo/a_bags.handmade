@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [stack, contract, library] = await Promise.all([
+const [stack, contract, engine, library] = await Promise.all([
   readFile(new URL("../app/exact-live-customizer.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-abags-fidelity-contract.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/bag-builder-engine.tsx", import.meta.url), "utf8"),
   readFile(new URL("../lib/exact-customizer-library.ts", import.meta.url), "utf8"),
 ]);
 
@@ -17,7 +18,8 @@ test("real-product fidelity contract is mounted after the final reference contro
 
 test("customer family copy is calibrated to real A-Bags reference families", () => {
   for (const label of ["Kuferek / tote", "Okrągła", "Z klapą", "Strukturalna / mini"]) {
-    assert.ok(contract.includes(label), `missing customer family label: ${label}`);
+    assert.ok(contract.includes(label), `missing customer family label in contract: ${label}`);
+    assert.ok(engine.includes(label), `builder engine must use the same family label: ${label}`);
   }
   for (const reference of ["pastel-tote-wood-bow", "cream-round-taupe-flap", "cream-burgundy-flap", "small-multicolor-chain"]) {
     assert.ok(contract.includes(reference), `missing real-product family reference: ${reference}`);
@@ -33,9 +35,18 @@ test("customer stitch copy follows stitch structures documented by the real atel
     ["Promienisty", "radial"],
   ]) {
     assert.ok(contract.includes(label), `missing stitch label: ${label}`);
+    assert.ok(engine.includes(label), `builder engine must use stitch label: ${label}`);
     assert.ok(contract.includes(`reference: \"${reference}\"`), `missing stitch reference: ${reference}`);
     assert.ok(library.includes(`stitch:\"${reference}\"`), `atelier library must contain stitch ${reference}`);
   }
+  assert.match(engine, /title="Ścieg szydełkowy"/);
+  assert.match(engine, /Ścieg szydełkowy:/);
+  assert.doesNotMatch(engine, /Gęsta, pleciona struktura/);
+});
+
+test("customer order handoff carries the real cord material and supplier", () => {
+  assert.match(contract, /const MATERIAL = "Sznurek poliestrowy"/);
+  assert.match(engine, /Materiał: sznurek poliestrowy z Pimiotki/);
 });
 
 test("legacy pro3d active class means visible accepted 3D only", () => {
