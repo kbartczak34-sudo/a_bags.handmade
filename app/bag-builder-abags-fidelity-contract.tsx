@@ -12,7 +12,7 @@ const FAMILY_COPY: Record<string, Copy> = {
   },
   round: {
     label: "Okrągła",
-    description: "Okrągły fason Agaty z zachowaniem proporcji korpusu i promienistego prowadzenia splotu.",
+    description: "Okrągły fason Agaty z zachowaniem proporcji korpusu i promienistego prowadzenia ściegu szydełkowego.",
     reference: "cream-round-taupe-flap",
   },
   bucket: {
@@ -30,22 +30,22 @@ const FAMILY_COPY: Record<string, Copy> = {
 const STITCH_COPY: Record<string, Copy> = {
   classic: {
     label: "Ażurowy V",
-    description: "Splot z rzeczywistych modeli Agaty: otwarty rytm V, bez generowania obcego wzoru.",
+    description: "Ścieg szydełkowy z rzeczywistych modeli Agaty: otwarty rytm V, bez generowania obcego wzoru.",
     reference: "open-v",
   },
   herringbone: {
     label: "Pionowy ażurowy",
-    description: "Pionowy splot Agaty z wydłużonymi prześwitami i rytmem kolumnowym.",
+    description: "Pionowy ścieg szydełkowy Agaty z wydłużonymi prześwitami i rytmem kolumnowym.",
     reference: "vertical-open",
   },
   basket: {
     label: "Koszykowy",
-    description: "Gęstszy, przeplatany splot występujący w torebkach Agaty, z zachowanym rytmem oczek.",
+    description: "Gęstszy ścieg szydełkowy występujący w torebkach Agaty, z zachowanym rytmem oczek.",
     reference: "basket",
   },
   shell: {
     label: "Promienisty",
-    description: "Promienisty splot modeli Agaty, prowadzony od środka zgodnie z konstrukcją okrągłych torebek.",
+    description: "Promienisty ścieg szydełkowy modeli Agaty, prowadzony od środka zgodnie z konstrukcją okrągłych torebek.",
     reference: "radial",
   },
 };
