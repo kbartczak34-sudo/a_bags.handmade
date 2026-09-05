@@ -7,22 +7,22 @@ type Copy = { label: string; description: string; reference: string };
 const FAMILY_COPY: Record<string, Copy> = {
   tote: {
     label: "Kuferek / tote",
-    description: "Klasyczny fason A-Bags z szerokim korpusem i możliwością drewnianych uchwytów.",
+    description: "Fason odtwarzany wyłącznie z rzeczywistych torebek Agaty: szeroki, uporządkowany korpus i charakterystyczna linia uchwytów.",
     reference: "pastel-tote-wood-bow",
   },
   round: {
     label: "Okrągła",
-    description: "Okrągły fason A-Bags z promienistym lub ażurowym splotem.",
+    description: "Okrągły fason Agaty z zachowaniem proporcji korpusu i promienistego prowadzenia splotu.",
     reference: "cream-round-taupe-flap",
   },
   bucket: {
     label: "Z klapą",
-    description: "Fason A-Bags z wyraźną klapą i paskiem, kalibrowany do modeli skórzanych i szydełkowych.",
+    description: "Fason Agaty z klapą: zwarty korpus, właściwe osadzenie klapy, paska i okuć bez zmiany charakteru oryginału.",
     reference: "cream-burgundy-flap",
   },
   mini: {
     label: "Strukturalna / mini",
-    description: "Kompaktowy, uporządkowany korpus A-Bags o bardziej prostokątnej geometrii.",
+    description: "Kompaktowy fason Agaty z uporządkowanym, prostokątnym korpusem i zachowanymi proporcjami detali.",
     reference: "small-multicolor-chain",
   },
 };
@@ -30,25 +30,28 @@ const FAMILY_COPY: Record<string, Copy> = {
 const STITCH_COPY: Record<string, Copy> = {
   classic: {
     label: "Ażurowy V",
-    description: "Charakterystyczny otwarty rytm V widoczny w wielu rzeczywistych modelach A-Bags.",
+    description: "Splot z rzeczywistych modeli Agaty: otwarty rytm V, bez generowania obcego wzoru.",
     reference: "open-v",
   },
   herringbone: {
     label: "Pionowy ażurowy",
-    description: "Pionowy, wydłużony splot z wyraźnymi prześwitami i rytmem kolumnowym.",
+    description: "Pionowy splot Agaty z wydłużonymi prześwitami i rytmem kolumnowym.",
     reference: "vertical-open",
   },
   basket: {
     label: "Koszykowy",
-    description: "Gęstszy, przeplatany splot o uporządkowanej strukturze koszykowej.",
+    description: "Gęstszy, przeplatany splot występujący w torebkach Agaty, z zachowanym rytmem oczek.",
     reference: "basket",
   },
   shell: {
     label: "Promienisty",
-    description: "Splot budowany promieniście od środka, charakterystyczny dla okrągłych modeli A-Bags.",
+    description: "Promienisty splot modeli Agaty, prowadzony od środka zgodnie z konstrukcją okrągłych torebek.",
     reference: "radial",
   },
 };
+
+const MATERIAL = "Sznurek poliestrowy";
+const FIDELITY_VERSION = "agata-products-1to1-v2";
 
 function setText(node: Element | null, value: string) {
   if (node && node.textContent !== value) node.textContent = value;
@@ -66,6 +69,7 @@ function syncButtonCopy(dialog: HTMLElement) {
     setText(strong, copy.label);
     if (small) setText(small, copy.description);
     button.dataset.abagsRealReference = copy.reference;
+    button.dataset.abagsReferenceOwner = "Agata";
     button.setAttribute("aria-label", `${copy.label}. ${copy.description}`);
     button.title = copy.description;
   });
@@ -76,6 +80,10 @@ function syncStageTruth(stage: HTMLElement) {
   const stitch = stage.dataset.stitch || "";
   const familyCopy = FAMILY_COPY[family];
   const stitchCopy = STITCH_COPY[stitch];
+
+  stage.dataset.abagsProductOwner = "Agata";
+  stage.dataset.abagsMaterial = MATERIAL;
+  stage.dataset.abagsFidelityVersion = FIDELITY_VERSION;
 
   if (familyCopy) {
     stage.dataset.abagsRealFamily = familyCopy.label;
@@ -97,10 +105,6 @@ function syncStageTruth(stage: HTMLElement) {
 function syncRendererClasses(stage: HTMLElement) {
   const state = stage.dataset.abagsFinal3d || "";
   const ready = state === "ready";
-
-  // `abags-pro3d-active` historically meant two different things: context initialized
-  // and renderer accepted for the customer. Legacy V4 CSS hides the SVG whenever the
-  // class exists, so it must only represent the second meaning from now on.
   stage.classList.toggle("abags-pro3d-active", ready);
   stage.classList.toggle("abags-fidelity3d-active", ready);
   stage.dataset.abagsRendererVisible = ready ? "fidelity3d" : "svg-fallback";
@@ -109,7 +113,8 @@ function syncRendererClasses(stage: HTMLElement) {
 function sync(dialog: HTMLElement) {
   const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
   if (!stage) return;
-  dialog.dataset.abagsFidelityContract = "real-products-v1";
+  dialog.dataset.abagsFidelityContract = FIDELITY_VERSION;
+  dialog.dataset.abagsProductScope = "agata-only";
   syncButtonCopy(dialog);
   syncStageTruth(stage);
   syncRendererClasses(stage);
@@ -134,13 +139,7 @@ export default function BagBuilderAbagsFidelityContract() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: [
-        "data-family",
-        "data-stitch",
-        "data-abags-final3d",
-        "data-abags-fidelity3d-ready",
-        "data-abags-fidelity3d-error",
-      ],
+      attributeFilter: ["data-family", "data-stitch", "data-abags-final3d", "data-abags-fidelity3d-ready", "data-abags-fidelity3d-error"],
     });
 
     return () => {
@@ -148,6 +147,7 @@ export default function BagBuilderAbagsFidelityContract() {
       if (frame) window.cancelAnimationFrame(frame);
       document.querySelectorAll<HTMLElement>(".abags-vc-dialog[data-abags-fidelity-contract]").forEach((dialog) => {
         delete dialog.dataset.abagsFidelityContract;
+        delete dialog.dataset.abagsProductScope;
         const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
         if (!stage) return;
         delete stage.dataset.abagsRealFamily;
@@ -155,6 +155,9 @@ export default function BagBuilderAbagsFidelityContract() {
         delete stage.dataset.abagsRealStitch;
         delete stage.dataset.abagsRealStitchReference;
         delete stage.dataset.abagsRendererVisible;
+        delete stage.dataset.abagsProductOwner;
+        delete stage.dataset.abagsMaterial;
+        delete stage.dataset.abagsFidelityVersion;
       });
     };
   }, []);
