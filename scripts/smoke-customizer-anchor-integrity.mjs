@@ -75,6 +75,28 @@ function valueOf(result) {
   return result?.result?.value;
 }
 
+function assertViewEvidence(label, view, evidence) {
+  if (!evidence?.back || !evidence?.front) throw new Error(`${label} ${view}: missing accessory depth evidence.`);
+  const { webgl, back, front } = evidence;
+  if (back.width !== webgl.width || back.height !== webgl.height || front.width !== webgl.width || front.height !== webgl.height) {
+    throw new Error(`${label} ${view}: accessory canvases do not share the verified WebGL pixel grid: ${JSON.stringify(evidence)}`);
+  }
+  if (back.sampled < 300 || back.contact < 55 || back.contactRatio < 0.08 || back.bottomContact < 50 || back.bottomContactRatio < 0.35) {
+    throw new Error(`${label} ${view}: rear strap/chain no longer meets the WebGL body at its calibrated anchors: ${JSON.stringify(back)}`);
+  }
+  if (front.sampled < 150 || front.contact < 100 || front.contactRatio < 0.45) {
+    throw new Error(`${label} ${view}: front flap/accent layer drifted away from the verified WebGL body: ${JSON.stringify(front)}`);
+  }
+  if (view !== "Bok") {
+    if (back.leftContact < 20 || back.rightContact < 20) {
+      throw new Error(`${label} ${view}: rear accessory lost one of its two side attachment zones: ${JSON.stringify(back)}`);
+    }
+    if (front.leftContact < 20 || front.rightContact < 20) {
+      throw new Error(`${label} ${view}: front accessory no longer spans both calibrated body zones: ${JSON.stringify(front)}`);
+    }
+  }
+}
+
 async function main() {
   const binary = chromeBinary();
   const url = `${productionUrl}${productionUrl.includes("?") ? "&" : "?"}abags-anchor-integrity=${Date.now()}`;
@@ -276,11 +298,15 @@ async function main() {
       for (const view of ["Przód", "3/4", "Bok"]) {
         await clickView(view);
         const evidence = await anchorEvidence();
-        if (!evidence || evidence.back?.sampled <= 0 || evidence.front?.sampled <= 0) {
-          throw new Error(`${label} ${view}: accessory depth layers have no readable pixels: ${JSON.stringify(evidence)}`);
-        }
+        assertViewEvidence(label, view, evidence);
         results.push(evidence);
         await capture(`anchor-${label.toLowerCase()}-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
+      }
+      if (new Set(results.map((item) => item.back.hash)).size !== 3) {
+        throw new Error(`${label}: rear accessory canvas did not redraw uniquely for Przód / 3/4 / Bok: ${JSON.stringify(results.map((item) => item.back.hash))}`);
+      }
+      if (new Set(results.map((item) => item.front.hash)).size !== 3) {
+        throw new Error(`${label}: front accessory canvas did not redraw uniquely for Przód / 3/4 / Bok: ${JSON.stringify(results.map((item) => item.front.hash))}`);
       }
       return results;
     };
@@ -306,8 +332,13 @@ async function main() {
       ],
     });
 
-    console.log("ACCESSORY ANCHOR CALIBRATION:", productionUrl);
-    console.log(JSON.stringify({ desktop, mobile }, null, 2));
+    console.log("ACCESSORY ANCHOR INTEGRITY PASS:", productionUrl);
+    console.log("- Przód / 3/4 / Bok use the authoritative Fidelity3D transform: yes");
+    console.log("- rear strap/chain remains attached to WebGL side hardware on desktop/mobile: yes");
+    console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
+    console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
+    console.log("- desktop evidence:", desktop.map((item) => ({ view:item.view, back:item.back.contactRatio, front:item.front.contactRatio })));
+    console.log("- mobile evidence:", mobile.map((item) => ({ view:item.view, back:item.back.contactRatio, front:item.front.contactRatio })));
   } finally {
     try { socket?.close(); } catch {}
     chrome.kill("SIGTERM");
@@ -317,6 +348,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("Customizer accessory-anchor calibration failed:", error instanceof Error ? error.stack || error.message : String(error));
+  console.error("Customizer accessory-anchor integrity failed:", error instanceof Error ? error.stack || error.message : String(error));
   process.exitCode = 1;
 });
