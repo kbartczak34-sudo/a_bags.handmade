@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { isAgataBuilderHandleSupported } from "../lib/abags-builder-fidelity";
+import { isAgataBuilderConstructionSupported, type AgataBuilderConstructionKey } from "../lib/abags-builder-fidelity";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
@@ -18,6 +18,7 @@ const ALLOWED = {
 
 type BuilderKey = keyof typeof ALLOWED;
 type BuilderSnapshot = Record<BuilderKey, string>;
+type ConstructionBuilderKey = "flap" | "handles" | "strap" | "accent";
 
 const FALLBACKS: Partial<Record<BuilderKey, string>> = {
   flap: "none",
@@ -25,6 +26,13 @@ const FALLBACKS: Partial<Record<BuilderKey, string>> = {
   strap: "none",
   hardware: "gold",
   accent: "none",
+};
+
+const FIDELITY_KEYS: Record<ConstructionBuilderKey, AgataBuilderConstructionKey> = {
+  flap: "flaps",
+  handles: "handles",
+  strap: "straps",
+  accent: "accents",
 };
 
 const REQUIRED_LABELS: Array<[BuilderKey, string]> = [
@@ -48,6 +56,13 @@ function readSnapshot(stage: HTMLElement): BuilderSnapshot {
 
 function invalidKeys(snapshot: BuilderSnapshot) {
   return (Object.keys(ALLOWED) as BuilderKey[]).filter((key) => !ALLOWED[key].has(snapshot[key] as never));
+}
+
+function fidelityInvalidKeys(snapshot: BuilderSnapshot): ConstructionBuilderKey[] {
+  if (!snapshot.family || !ALLOWED.family.has(snapshot.family as never)) return [];
+  return (Object.keys(FIDELITY_KEYS) as ConstructionBuilderKey[]).filter((key) =>
+    !isAgataBuilderConstructionSupported(snapshot.family, FIDELITY_KEYS[key], snapshot[key]),
+  );
 }
 
 function clickChoice(controls: HTMLElement, key: BuilderKey, value: string) {
@@ -87,9 +102,11 @@ function repairSnapshot(controls: HTMLElement, snapshot: BuilderSnapshot) {
 }
 
 function repairKnownCompatibility(controls: HTMLElement, snapshot: BuilderSnapshot) {
-  if (snapshot.family && !isAgataBuilderHandleSupported(snapshot.family, snapshot.handles)) {
-    clearStaleDraft();
-    return clickChoice(controls, "handles", "none");
+  const incompatible = fidelityInvalidKeys(snapshot);
+  if (!incompatible.length) return false;
+  clearStaleDraft();
+  for (const key of incompatible) {
+    if (clickChoice(controls, key, "none")) return true;
   }
   return false;
 }
@@ -114,8 +131,9 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
 
   const missing = requiredMissing(snapshot);
   const invalid = invalidKeys(snapshot);
-  const ready = missing.length === 0 && invalid.length === 0;
-  const signature = `${Object.values(snapshot).join("|")}|${missing.join(",")}|${invalid.join(",")}`;
+  const incompatible = fidelityInvalidKeys(snapshot);
+  const ready = missing.length === 0 && invalid.length === 0 && incompatible.length === 0;
+  const signature = `${Object.values(snapshot).join("|")}|${missing.join(",")}|${invalid.join(",")}|${incompatible.join(",")}`;
   if (card.dataset.validationSignature === signature) return;
   card.dataset.validationSignature = signature;
 
@@ -125,10 +143,12 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
   const copy = document.createElement("p");
   const note = document.createElement("small");
 
-  if (invalid.length) {
+  if (invalid.length || incompatible.length) {
     title.textContent = "Sprawdzam zapisany projekt";
     badge.textContent = "korekta danych";
-    copy.textContent = "Wykryto nieobsługiwaną wartość z wcześniejszej wersji kreatora. Projekt zostanie przywrócony do bezpiecznej konfiguracji.";
+    copy.textContent = incompatible.length
+      ? "Wykryto połączenie, którego nie ma w zweryfikowanych konstrukcjach tego fasonu A-Bags. Projekt zostanie przywrócony do konfiguracji zgodnej z referencjami Agaty."
+      : "Wykryto nieobsługiwaną wartość z wcześniejszej wersji kreatora. Projekt zostanie przywrócony do bezpiecznej konfiguracji.";
     note.textContent = "Niepoprawny draft nie może zostać wysłany do pracowni.";
   } else if (!ready) {
     title.textContent = "Projekt wymaga uzupełnienia";
@@ -138,7 +158,7 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
   } else {
     title.textContent = "Projekt gotowy do konsultacji";
     badge.textContent = "walidacja ✓";
-    copy.textContent = "Fason, kolor sznurka i ścieg szydełkowy są kompletne, a wartości konfiguracji są obsługiwane przez aktualną wersję Bag Buildera.";
+    copy.textContent = "Fason, kolor sznurka i ścieg szydełkowy są kompletne, a konstrukcja jest zgodna ze zweryfikowanymi referencjami A-Bags.";
     note.textContent = "Finalna możliwość wykonania i cena personalizacji są potwierdzane przez pracownię.";
   }
 
