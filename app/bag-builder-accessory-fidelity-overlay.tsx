@@ -8,17 +8,12 @@ import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Config = { family: Family; color: string; stitch: string; flap: string; handles: string; strap: string; hardware: string; accent: string };
 type Rotation = { x: number; y: number };
+type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number; scale: number };
 
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 1.42;
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
 
 function readConfig(stage: HTMLElement): Config {
   return {
@@ -354,11 +349,7 @@ export default function BagBuilderAccessoryFidelityOverlay() {
     const config = { current: readConfig(stage) };
     const rotation = { current: { ...DEFAULT_ROTATION } };
     const zoom = { current: DEFAULT_ZOOM };
-    const pointers = new Map<number, { x: number; y: number }>();
-    let drag: { x: number; y: number; rx: number; ry: number } | null = null;
-    let pinch: { distance: number; zoom: number } | null = null;
     let frame = 0;
-    let boundCanvas: HTMLCanvasElement | null = null;
 
     const schedule = () => {
       if (frame) cancelAnimationFrame(frame);
@@ -369,97 +360,49 @@ export default function BagBuilderAccessoryFidelityOverlay() {
         if (backCanvas && frontCanvas) paint(backCanvas, frontCanvas, stage, config.current, rotation.current, zoom.current);
       });
     };
-    const distance = () => {
-      const values = Array.from(pointers.values());
-      return values.length < 2 ? 0 : Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+
+    const syncTransformFromDataset = () => {
+      const x = Number(stage.dataset.abagsFidelity3dRotationX);
+      const y = Number(stage.dataset.abagsFidelity3dRotationY);
+      const nextZoom = Number(stage.dataset.abagsFidelity3dZoom);
+      if (Number.isFinite(x) && Number.isFinite(y)) rotation.current = { x, y };
+      if (Number.isFinite(nextZoom) && nextZoom > 0) zoom.current = nextZoom;
     };
-    const onPointerDown = (event: PointerEvent) => {
-      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (pointers.size >= 2) { pinch = { distance: distance(), zoom: zoom.current }; drag = null; }
-      else drag = { x: event.clientX, y: event.clientY, rx: rotation.current.x, ry: rotation.current.y };
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      if (!pointers.has(event.pointerId)) return;
-      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (pointers.size >= 2 && pinch) {
-        const next = distance();
-        if (pinch.distance > 0) zoom.current = clamp(pinch.zoom * (next / pinch.distance), MIN_ZOOM, MAX_ZOOM);
-      } else if (drag) {
-        rotation.current = { x: clamp(drag.rx + (event.clientY - drag.y) * 0.008, -0.64, 0.48), y: drag.ry + (event.clientX - drag.x) * 0.012 };
-      }
-      schedule();
-    };
-    const onPointerEnd = (event: PointerEvent) => {
-      pointers.delete(event.pointerId);
-      if (pointers.size < 2) pinch = null;
-      if (!pointers.size) drag = null;
-    };
-    const onWheel = (event: WheelEvent) => {
-      zoom.current = clamp(zoom.current - event.deltaY * 0.0008, MIN_ZOOM, MAX_ZOOM);
+
+    const onTransform = (event: Event) => {
+      const detail = (event as CustomEvent<TransformDetail>).detail;
+      const x = detail?.rotation?.x;
+      const y = detail?.rotation?.y;
+      const nextZoom = detail?.zoom;
+      if (Number.isFinite(x) && Number.isFinite(y)) rotation.current = { x: x as number, y: y as number };
+      if (Number.isFinite(nextZoom) && (nextZoom as number) > 0) zoom.current = nextZoom as number;
       schedule();
     };
 
-    const bindPrimaryCanvas = () => {
-      const next = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
-      if (next === boundCanvas) return;
-      if (boundCanvas) {
-        boundCanvas.removeEventListener("pointerdown", onPointerDown);
-        boundCanvas.removeEventListener("pointermove", onPointerMove);
-        boundCanvas.removeEventListener("pointerup", onPointerEnd);
-        boundCanvas.removeEventListener("pointercancel", onPointerEnd);
-        boundCanvas.removeEventListener("wheel", onWheel);
-      }
-      boundCanvas = next;
-      if (boundCanvas) {
-        boundCanvas.addEventListener("pointerdown", onPointerDown);
-        boundCanvas.addEventListener("pointermove", onPointerMove);
-        boundCanvas.addEventListener("pointerup", onPointerEnd);
-        boundCanvas.addEventListener("pointercancel", onPointerEnd);
-        boundCanvas.addEventListener("wheel", onWheel, { passive: true });
-      }
-    };
-
-    const onClick = (event: MouseEvent) => {
-      const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("button");
-      if (!button || !stage.contains(button)) return;
-      const text = button.textContent?.trim();
-      if (text === "Przód") rotation.current = { x: -0.02, y: 0 };
-      else if (text === "3/4") rotation.current = { ...DEFAULT_ROTATION };
-      else if (text === "Bok") rotation.current = { x: -0.035, y: Math.PI / 2 };
-      else if (text === "−") zoom.current = clamp(zoom.current - 0.08, MIN_ZOOM, MAX_ZOOM);
-      else if (text === "+") zoom.current = clamp(zoom.current + 0.08, MIN_ZOOM, MAX_ZOOM);
-      else if (text === "Reset") { zoom.current = DEFAULT_ZOOM; rotation.current = { ...DEFAULT_ROTATION }; }
-      else return;
+    syncTransformFromDataset();
+    const observer = new MutationObserver(() => {
+      config.current = readConfig(stage);
+      syncTransformFromDataset();
       schedule();
-    };
-    const onInput = (event: Event) => {
-      const input = event.target as HTMLInputElement | null;
-      if (!input?.matches(".abags-pro3d-zoom input[type=range]")) return;
-      zoom.current = clamp(Number(input.value) || DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM);
-      schedule();
-    };
-
-    const observer = new MutationObserver(() => { config.current = readConfig(stage); bindPrimaryCanvas(); schedule(); });
-    observer.observe(stage, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] });
+    });
+    observer.observe(stage, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        "data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent",
+        "data-abags-fidelity3d-rotation-x", "data-abags-fidelity3d-rotation-y", "data-abags-fidelity3d-zoom",
+      ],
+    });
     const resize = new ResizeObserver(schedule);
     resize.observe(stage);
-    stage.addEventListener("click", onClick, true);
-    stage.addEventListener("input", onInput, true);
-    bindPrimaryCanvas();
+    stage.addEventListener("abags:fidelity3d-transform", onTransform);
     schedule();
 
     return () => {
       observer.disconnect();
       resize.disconnect();
-      stage.removeEventListener("click", onClick, true);
-      stage.removeEventListener("input", onInput, true);
-      if (boundCanvas) {
-        boundCanvas.removeEventListener("pointerdown", onPointerDown);
-        boundCanvas.removeEventListener("pointermove", onPointerMove);
-        boundCanvas.removeEventListener("pointerup", onPointerEnd);
-        boundCanvas.removeEventListener("pointercancel", onPointerEnd);
-        boundCanvas.removeEventListener("wheel", onWheel);
-      }
+      stage.removeEventListener("abags:fidelity3d-transform", onTransform);
       if (frame) cancelAnimationFrame(frame);
     };
   }, [stage]);

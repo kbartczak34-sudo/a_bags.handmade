@@ -691,6 +691,9 @@ export default function BagBuilderFinalWebGL3D() {
       target.removeAttribute("data-abags-fidelity3d-model");
       target.removeAttribute("data-abags-fidelity3d-frame");
       target.removeAttribute("data-abags-fidelity3d-frame-at");
+      target.removeAttribute("data-abags-fidelity3d-rotation-x");
+      target.removeAttribute("data-abags-fidelity3d-rotation-y");
+      target.removeAttribute("data-abags-fidelity3d-zoom");
       target.removeAttribute("data-abags-fidelity3d-error");
     };
   }, [portalTarget]);
@@ -704,6 +707,12 @@ export default function BagBuilderFinalWebGL3D() {
     const paint = () => {
       try {
         draw(renderer, canvas, config, rotation, zoom);
+        target.dataset.abagsFidelity3dRotationX = String(rotation.x);
+        target.dataset.abagsFidelity3dRotationY = String(rotation.y);
+        target.dataset.abagsFidelity3dZoom = String(zoom);
+        target.dispatchEvent(new CustomEvent("abags:fidelity3d-transform", {
+          detail: { rotation: { x: rotation.x, y: rotation.y }, zoom },
+        }));
         if (config.family) {
           target.dataset.abagsFidelity3dFrame = configSignature(config);
           target.dataset.abagsFidelity3dFrameAt = String(Date.now());

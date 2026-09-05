@@ -40,5 +40,5 @@ test("renders production storefront metadata and cache/security policy", async (
   assert.match(html, /<meta[^>]+name=["']robots["'][^>]+content=["']index, follow["']/i);
   assert.match(html, /<link[^>]+rel=["']canonical["'][^>]+href=["']https:\/\/abagshandmade\.pl\/["']/i);
   assert.match(html, /<link[^>]+rel=["']manifest["'][^>]+manifest\.webmanifest/i);
-  assert.match(html, /Ręcznie plecione torebki tworzone w Polsce/i);
+  assert.match(html, /Ręcznie szydełkowane torebki tworzone w Polsce/i);
 });
