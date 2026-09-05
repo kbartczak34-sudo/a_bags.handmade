@@ -10,13 +10,12 @@ on:
 permissions:
   contents: read
 
-env:
-  ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    env:
+      ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -31,81 +30,5 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Production build and artifact validation
-        run: npm run build
-
-      - name: Regression 1 — A-Bags contracts
-        id: reg1
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/a*.test.mjs
-
-      - name: Regression 2 — builder accessory to checkout
-        id: reg2
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/bag-builder-{accessory,atelier,autosave,checkout}*.test.mjs
-
-      - name: Regression 3 — builder commerce to material
-        id: reg3
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/bag-builder-{commerce,construction,crochet,fidelity,material}*.test.mjs
-
-      - name: Regression 4 — builder orders to premium
-        id: reg4
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/bag-builder-{order,photo,premium}*.test.mjs
-
-      - name: Regression 5 — builder project to transform
-        id: reg5
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/bag-builder-{project,reference,renderer,share,v4,validation,view}*.test.mjs tests/builder-*.test.mjs
-
-      - name: Regression 6 — checkout to exact library
-        id: reg6
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/{checkout,customer,customizer,deployment,exact}*.test.mjs
-
-      - name: Regression 7 — fidelity to production hardening
-        id: reg7
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/{fidelity,final,legal,mobile,personalization,product,production}*.test.mjs
-
-      - name: Regression 8 — realtime to Stripe
-        id: reg8
-        continue-on-error: true
-        shell: bash
-        run: node --test tests/{realtime,remove,rendered,stitch,store,stripe}*.test.mjs
-
-      - name: Regression gate
-        if: always()
-        shell: bash
-        env:
-          REG1: ${{ steps.reg1.outcome }}
-          REG2: ${{ steps.reg2.outcome }}
-          REG3: ${{ steps.reg3.outcome }}
-          REG4: ${{ steps.reg4.outcome }}
-          REG5: ${{ steps.reg5.outcome }}
-          REG6: ${{ steps.reg6.outcome }}
-          REG7: ${{ steps.reg7.outcome }}
-          REG8: ${{ steps.reg8.outcome }}
-        run: |
-          status=0
-          for n in 1 2 3 4 5 6 7 8; do
-            value_var="REG$n"
-            value="${!value_var}"
-            echo "Regression group $n: $value"
-            if [ "$value" != "success" ]; then status=1; fi
-          done
-          exit "$status"
+      - name: Lint, typecheck, build and regression tests
+        run: npm run check
