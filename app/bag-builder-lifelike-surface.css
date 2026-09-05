@@ -3,6 +3,52 @@
    verified WebGL pixels with neutral depth, polyester micro-fibres and a restrained sheen. */
 
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-fidelity3d-layer{
+  isolation:isolate!important;
+}
+
+/* Studio grounding lives behind the verified model. It is deliberately screen-space only:
+   no mesh scaling, no perspective edits and no product-shape deformation. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:10.5%;
+  width:46%;
+  height:7.8%;
+  z-index:0;
+  transform:translateX(-50%) scaleX(1);
+  transform-origin:50% 50%;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(58,38,43,.24) 0%,rgba(58,38,43,.14) 38%,rgba(58,38,43,.055) 63%,rgba(58,38,43,0) 78%);
+  filter:blur(7px);
+  opacity:.78;
+  pointer-events:none;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-family="round"][data-abags-final3d="ready"] > .abags-fidelity3d-layer::before{
+  width:42%;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-family="mini"][data-abags-final3d="ready"] > .abags-fidelity3d-layer::before{
+  width:37%;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer[data-abags-pro3d-view="side"]::before{
+  width:27%;
+  opacity:.64;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer[data-abags-pro3d-view="three"]::before{
+  transform:translateX(-47%) skewX(-5deg) scaleX(.92);
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-lifelike-surface{
   position:absolute!important;
   inset:0!important;
@@ -44,6 +90,13 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
   .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-lifelike-surface{
     image-rendering:auto!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer::before{
+    bottom:12%;
+    filter:blur(5px);
+    opacity:.7;
   }
 }
 
