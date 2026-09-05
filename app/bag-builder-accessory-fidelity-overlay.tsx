@@ -2,24 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  ABAGS_ACCESSORY_FIDELITY_VERSION,
-  ABAGS_ACCESSORY_VISUAL,
-} from "../lib/abags-accessory-fidelity";
+import { ABAGS_ACCESSORY_FIDELITY_VERSION, ABAGS_ACCESSORY_VISUAL } from "../lib/abags-accessory-fidelity";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
-type Config = {
-  family: Family;
-  color: string;
-  stitch: string;
-  flap: string;
-  handles: string;
-  strap: string;
-  hardware: string;
-  accent: string;
-};
-
+type Config = { family: Family; color: string; stitch: string; flap: string; handles: string; strap: string; hardware: string; accent: string };
 type Rotation = { x: number; y: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number; scale: number };
@@ -59,27 +46,17 @@ function project(point: Point3, width: number, height: number, rotation: Rotatio
   const rootScale = zoom * fit;
   const cameraZ = narrow ? -6.45 : aspect < 1.15 ? -5.85 : -5.25;
   const verticalOffset = narrow ? -0.08 : -0.03;
-
-  let x = point[0] * rootScale;
-  let y = point[1] * rootScale;
-  let z = point[2] * rootScale;
+  let [x, y, z] = point.map((value) => value * rootScale) as Point3;
 
   const cx = Math.cos(rotation.x);
   const sx = Math.sin(rotation.x);
-  const ry = y * cx - z * sx;
-  const rz = y * sx + z * cx;
-  y = ry;
-  z = rz;
-
+  [y, z] = [y * cx - z * sx, y * sx + z * cx];
   const cy = Math.cos(rotation.y);
   const sy = Math.sin(rotation.y);
-  const rx = x * cy + z * sy;
-  const rz2 = -x * sy + z * cy;
-  x = rx;
-  z = rz2 + cameraZ;
+  [x, z] = [x * cy + z * sy, -x * sy + z * cy + cameraZ];
   y += verticalOffset;
-
   if (z >= -0.08) return null;
+
   const f = 1 / Math.tan((Math.PI / 5.15) / 2);
   const ndcX = (x * f / aspect) / -z;
   const ndcY = (y * f) / -z;
@@ -90,23 +67,14 @@ function project(point: Point3, width: number, height: number, rotation: Rotatio
   };
 }
 
-function path3d(
-  ctx: CanvasRenderingContext2D,
-  points: Point3[],
-  width: number,
-  height: number,
-  rotation: Rotation,
-  zoom: number,
-) {
+function path3d(ctx: CanvasRenderingContext2D, points: Point3[], width: number, height: number, rotation: Rotation, zoom: number) {
   let started = false;
   ctx.beginPath();
   for (const point of points) {
-    const projected = project(point, width, height, rotation, zoom);
-    if (!projected) continue;
-    if (!started) {
-      ctx.moveTo(projected.x, projected.y);
-      started = true;
-    } else ctx.lineTo(projected.x, projected.y);
+    const p = project(point, width, height, rotation, zoom);
+    if (!p) continue;
+    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+    else ctx.lineTo(p.x, p.y);
   }
   return started;
 }
@@ -117,11 +85,7 @@ function strapArc(family: Exclude<Family, "">) {
   return Array.from({ length: 49 }, (_, index) => {
     const t = index / 48;
     const angle = Math.PI - t * Math.PI;
-    return [
-      spec.sideAnchor * Math.cos(angle),
-      spec.ringY + archHeight * Math.sin(angle),
-      spec.depth / 2 + 0.055,
-    ] as Point3;
+    return [spec.sideAnchor * Math.cos(angle), spec.ringY + archHeight * Math.sin(angle), spec.depth / 2 + 0.055] as Point3;
   });
 }
 
@@ -130,37 +94,22 @@ function flapContour(family: Exclude<Family, "">) {
   const centerY = spec.flapY ?? 0.29;
   const rx = 0.80 * spec.flapScale[0];
   const ry = 0.36 * spec.flapScale[1];
-  const points: Point3[] = [];
-  for (let index = 0; index <= 36; index += 1) {
+  return Array.from({ length: 37 }, (_, index) => {
     const angle = (index / 36) * Math.PI * 2;
-    points.push([
-      rx * Math.cos(angle),
-      centerY + ry * Math.sin(angle),
-      spec.depth / 2 + 0.142,
-    ]);
-  }
-  return points;
+    return [rx * Math.cos(angle), centerY + ry * Math.sin(angle), spec.depth / 2 + 0.142] as Point3;
+  });
 }
 
-function drawStrap(
-  ctx: CanvasRenderingContext2D,
-  config: Config,
-  width: number,
-  height: number,
-  rotation: Rotation,
-  zoom: number,
-) {
+function drawStrap(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family || config.strap === "none") return;
-  const family = config.family as Exclude<Family, "">;
-  const arc = strapArc(family);
+  const arc = strapArc(config.family as Exclude<Family, "">);
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
 
   if (config.strap === "chain") {
     const hardware = hardwareColor(config.hardware);
     const linkCount = ABAGS_ACCESSORY_VISUAL.chainLinks;
     for (let index = 0; index < linkCount; index += 1) {
-      const t = index / (linkCount - 1);
-      const arcIndex = Math.round(t * (arc.length - 1));
+      const arcIndex = Math.round((index / (linkCount - 1)) * (arc.length - 1));
       const center = project(arc[arcIndex], width, height, rotation, zoom);
       if (!center) continue;
       const next = project(arc[Math.min(arc.length - 1, arcIndex + 1)], width, height, rotation, zoom) ?? center;
@@ -175,13 +124,11 @@ function drawStrap(
       ctx.stroke();
       ctx.restore();
     }
-
     // Real A-Bags chain references use a comfortable leather shoulder section.
-    const shoulder = arc.slice(18, 31);
-    if (path3d(ctx, shoulder, width, height, rotation, zoom)) {
+    if (path3d(ctx, arc.slice(18, 31), width, height, rotation, zoom)) {
       ctx.strokeStyle = "#76503D";
-      ctx.lineWidth = Math.max(4, 6.5 * scale);
       ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(4, 6.5 * scale);
       ctx.stroke();
       ctx.strokeStyle = "rgba(255,255,255,.26)";
       ctx.lineWidth = Math.max(1, 1.2 * scale);
@@ -212,19 +159,12 @@ function drawStrap(
   }
 }
 
-function drawFlapDetail(
-  ctx: CanvasRenderingContext2D,
-  config: Config,
-  width: number,
-  height: number,
-  rotation: Rotation,
-  zoom: number,
-) {
+function drawFlapDetail(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family || config.flap === "none") return;
   const family = config.family as Exclude<Family, "">;
-  const contour = flapContour(family);
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
-  if (path3d(ctx, contour, width, height, rotation, zoom)) {
+  if (path3d(ctx, flapContour(family), width, height, rotation, zoom)) {
     const leather = config.flap.includes("leather") || config.flap.includes("suede");
     ctx.strokeStyle = leather ? "rgba(255,246,236,.70)" : "rgba(65,43,47,.28)";
     ctx.lineWidth = Math.max(1.2, 1.8 * scale);
@@ -232,30 +172,19 @@ function drawFlapDetail(
     ctx.stroke();
     ctx.setLineDash([]);
   }
-
-  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const centerY = (spec.flapY ?? 0.29) - 0.22;
-  const snap = project([0, centerY, spec.depth / 2 + 0.176], width, height, rotation, zoom);
-  if (snap) {
-    ctx.beginPath();
-    ctx.arc(snap.x, snap.y, Math.max(2.2, 3.2 * scale * snap.scale), 0, Math.PI * 2);
-    ctx.fillStyle = hardwareColor(config.hardware);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(snap.x - 0.7 * scale, snap.y - 0.8 * scale, Math.max(0.7, 0.9 * scale), 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,.62)";
-    ctx.fill();
-  }
+  const snap = project([0, (spec.flapY ?? 0.29) - 0.22, spec.depth / 2 + 0.176], width, height, rotation, zoom);
+  if (!snap) return;
+  ctx.beginPath();
+  ctx.arc(snap.x, snap.y, Math.max(2.2, 3.2 * scale * snap.scale), 0, Math.PI * 2);
+  ctx.fillStyle = hardwareColor(config.hardware);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(snap.x - 0.7 * scale, snap.y - 0.8 * scale, Math.max(0.7, 0.9 * scale), 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,.62)";
+  ctx.fill();
 }
 
-function drawTassel(
-  ctx: CanvasRenderingContext2D,
-  config: Config,
-  width: number,
-  height: number,
-  rotation: Rotation,
-  zoom: number,
-) {
+function drawTassel(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family) return;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family as Exclude<Family, "">];
   const anchor: Point3 = [spec.sideAnchor * 0.91, 0.25, spec.depth / 2 + 0.19];
@@ -263,7 +192,6 @@ function drawTassel(
   if (!top) return;
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
   const hardware = hardwareColor(config.hardware);
-
   ctx.beginPath();
   ctx.arc(top.x, top.y, Math.max(3, 4.1 * scale * top.scale), 0, Math.PI * 2);
   ctx.fillStyle = hardware;
@@ -272,26 +200,16 @@ function drawTassel(
   const fringeCount = ABAGS_ACCESSORY_VISUAL.tasselFringes;
   for (let index = 0; index < fringeCount; index += 1) {
     const spread = (index - (fringeCount - 1) / 2) * 0.022;
-    const end = project([
-      anchor[0] + spread,
-      anchor[1] - 0.48 - Math.abs(spread) * 0.7,
-      anchor[2] + (index % 2 ? 0.018 : -0.006),
-    ], width, height, rotation, zoom);
+    const end = project([anchor[0] + spread, anchor[1] - 0.48 - Math.abs(spread) * 0.7, anchor[2] + (index % 2 ? 0.018 : -0.006)], width, height, rotation, zoom);
     if (!end) continue;
     ctx.beginPath();
     ctx.moveTo(top.x + spread * 10 * scale, top.y + 5 * scale);
-    ctx.quadraticCurveTo(
-      (top.x + end.x) / 2 + spread * 34 * scale,
-      (top.y + end.y) / 2,
-      end.x,
-      end.y,
-    );
+    ctx.quadraticCurveTo((top.x + end.x) / 2 + spread * 34 * scale, (top.y + end.y) / 2, end.x, end.y);
     ctx.strokeStyle = config.color || "#E4A9B5";
     ctx.lineWidth = Math.max(1.2, 2.2 * scale * top.scale);
     ctx.lineCap = "round";
     ctx.stroke();
   }
-
   ctx.beginPath();
   ctx.moveTo(top.x - 6 * scale, top.y + 3 * scale);
   ctx.lineTo(top.x + 6 * scale, top.y + 3 * scale);
@@ -302,33 +220,23 @@ function drawTassel(
   ctx.fill();
 }
 
-function drawScarf(
-  ctx: CanvasRenderingContext2D,
-  config: Config,
-  width: number,
-  height: number,
-  rotation: Rotation,
-  zoom: number,
-) {
+function drawScarf(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family) return;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family as Exclude<Family, "">];
   const anchor3: Point3 = [-spec.sideAnchor * 0.68, 0.36, spec.depth / 2 + 0.19];
   const anchor = project(anchor3, width, height, rotation, zoom);
   if (!anchor) return;
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale;
-
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "#D7839A";
   ctx.lineWidth = Math.max(4.5, 7.5 * scale);
-
   ctx.beginPath();
   ctx.moveTo(anchor.x, anchor.y);
   ctx.bezierCurveTo(anchor.x - 22 * scale, anchor.y - 19 * scale, anchor.x - 35 * scale, anchor.y + 4 * scale, anchor.x - 13 * scale, anchor.y + 8 * scale);
   ctx.bezierCurveTo(anchor.x - 4 * scale, anchor.y + 9 * scale, anchor.x - 2 * scale, anchor.y + 2 * scale, anchor.x, anchor.y);
   ctx.stroke();
-
   ctx.beginPath();
   ctx.moveTo(anchor.x, anchor.y);
   ctx.bezierCurveTo(anchor.x + 20 * scale, anchor.y - 16 * scale, anchor.x + 33 * scale, anchor.y + 4 * scale, anchor.x + 12 * scale, anchor.y + 9 * scale);
@@ -353,7 +261,6 @@ function drawScarf(
     ctx.stroke();
     ctx.setLineDash([]);
   });
-
   ctx.beginPath();
   ctx.arc(anchor.x, anchor.y, Math.max(4, 6.6 * scale), 0, Math.PI * 2);
   ctx.fillStyle = "#B96780";
@@ -361,14 +268,7 @@ function drawScarf(
   ctx.restore();
 }
 
-function drawCharm(
-  ctx: CanvasRenderingContext2D,
-  config: Config,
-  width: number,
-  height: number,
-  rotation: Rotation,
-  zoom: number,
-) {
+function drawCharm(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family) return;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family as Exclude<Family, "">];
   const anchor3: Point3 = [spec.sideAnchor * 0.86, 0.12, spec.depth / 2 + 0.19];
@@ -376,7 +276,6 @@ function drawCharm(
   const drop = project([anchor3[0], anchor3[1] - 0.30, anchor3[2] + 0.02], width, height, rotation, zoom);
   if (!anchor || !drop) return;
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale;
-
   ctx.beginPath();
   ctx.moveTo(anchor.x, anchor.y);
   ctx.lineTo(drop.x, drop.y);
@@ -385,9 +284,8 @@ function drawCharm(
   ctx.stroke();
 
   const colors = ["#B86F82", "#8E7DB8", "#4F9B9B"];
-  const stoneCount = ABAGS_ACCESSORY_VISUAL.charmStones;
-  for (let index = 0; index < stoneCount; index += 1) {
-    const angle = (Math.PI * 2 * index) / stoneCount - Math.PI / 2;
+  for (let index = 0; index < ABAGS_ACCESSORY_VISUAL.charmStones; index += 1) {
+    const angle = (Math.PI * 2 * index) / ABAGS_ACCESSORY_VISUAL.charmStones - Math.PI / 2;
     const x = drop.x + Math.cos(angle) * 7 * scale;
     const y = drop.y + Math.sin(angle) * 6 * scale;
     ctx.beginPath();
@@ -401,29 +299,19 @@ function drawCharm(
   }
 }
 
-function paint(
-  canvas: HTMLCanvasElement,
-  stage: HTMLElement,
-  config: Config,
-  rotation: Rotation,
-  zoom: number,
-) {
+function paint(canvas: HTMLCanvasElement, stage: HTMLElement, config: Config, rotation: Rotation, zoom: number) {
   const bounds = stage.getBoundingClientRect();
   const width = Math.max(1, bounds.width);
   const height = Math.max(1, bounds.height);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const pixelWidth = Math.max(2, Math.round(width * dpr));
   const pixelHeight = Math.max(2, Math.round(height * dpr));
-  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-    canvas.width = pixelWidth;
-    canvas.height = pixelHeight;
-  }
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
   if (!config.family) return;
-
   ctx.save();
   drawStrap(ctx, config, width, height, rotation, zoom);
   drawFlapDetail(ctx, config, width, height, rotation, zoom);
@@ -459,8 +347,6 @@ export default function BagBuilderAccessoryFidelityOverlay() {
     let frame = 0;
     let boundCanvas: HTMLCanvasElement | null = null;
 
-    stage.dataset.abagsAccessoryFidelity = ABAGS_ACCESSORY_FIDELITY_VERSION;
-
     const schedule = () => {
       if (frame) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
@@ -469,18 +355,14 @@ export default function BagBuilderAccessoryFidelityOverlay() {
         if (canvas) paint(canvas, stage, config.current, rotation.current, zoom.current);
       });
     };
-
     const distance = () => {
       const values = Array.from(pointers.values());
       return values.length < 2 ? 0 : Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
     };
-
     const onPointerDown = (event: PointerEvent) => {
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (pointers.size >= 2) {
-        pinch = { distance: distance(), zoom: zoom.current };
-        drag = null;
-      } else drag = { x: event.clientX, y: event.clientY, rx: rotation.current.x, ry: rotation.current.y };
+      if (pointers.size >= 2) { pinch = { distance: distance(), zoom: zoom.current }; drag = null; }
+      else drag = { x: event.clientX, y: event.clientY, rx: rotation.current.x, ry: rotation.current.y };
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!pointers.has(event.pointerId)) return;
@@ -488,14 +370,9 @@ export default function BagBuilderAccessoryFidelityOverlay() {
       if (pointers.size >= 2 && pinch) {
         const next = distance();
         if (pinch.distance > 0) zoom.current = clamp(pinch.zoom * (next / pinch.distance), MIN_ZOOM, MAX_ZOOM);
-        schedule();
-        return;
+      } else if (drag) {
+        rotation.current = { x: clamp(drag.rx + (event.clientY - drag.y) * 0.008, -0.64, 0.48), y: drag.ry + (event.clientX - drag.x) * 0.012 };
       }
-      if (!drag) return;
-      rotation.current = {
-        x: clamp(drag.rx + (event.clientY - drag.y) * 0.008, -0.64, 0.48),
-        y: drag.ry + (event.clientX - drag.x) * 0.012,
-      };
       schedule();
     };
     const onPointerEnd = (event: PointerEvent) => {
@@ -529,8 +406,7 @@ export default function BagBuilderAccessoryFidelityOverlay() {
     };
 
     const onClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest<HTMLButtonElement>("button");
+      const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("button");
       if (!button || !stage.contains(button)) return;
       const text = button.textContent?.trim();
       if (text === "Przód") rotation.current = { x: -0.02, y: 0 };
@@ -538,13 +414,10 @@ export default function BagBuilderAccessoryFidelityOverlay() {
       else if (text === "Bok") rotation.current = { x: -0.035, y: Math.PI / 2 };
       else if (text === "−") zoom.current = clamp(zoom.current - 0.08, MIN_ZOOM, MAX_ZOOM);
       else if (text === "+") zoom.current = clamp(zoom.current + 0.08, MIN_ZOOM, MAX_ZOOM);
-      else if (text === "Reset") {
-        zoom.current = DEFAULT_ZOOM;
-        rotation.current = { ...DEFAULT_ROTATION };
-      } else return;
+      else if (text === "Reset") { zoom.current = DEFAULT_ZOOM; rotation.current = { ...DEFAULT_ROTATION }; }
+      else return;
       schedule();
     };
-
     const onInput = (event: Event) => {
       const input = event.target as HTMLInputElement | null;
       if (!input?.matches(".abags-pro3d-zoom input[type=range]")) return;
@@ -552,18 +425,8 @@ export default function BagBuilderAccessoryFidelityOverlay() {
       schedule();
     };
 
-    const observer = new MutationObserver(() => {
-      config.current = readConfig(stage);
-      bindPrimaryCanvas();
-      schedule();
-    });
-    observer.observe(stage, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"],
-    });
-
+    const observer = new MutationObserver(() => { config.current = readConfig(stage); bindPrimaryCanvas(); schedule(); });
+    observer.observe(stage, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] });
     const resize = new ResizeObserver(schedule);
     resize.observe(stage);
     stage.addEventListener("click", onClick, true);
@@ -584,27 +447,16 @@ export default function BagBuilderAccessoryFidelityOverlay() {
         boundCanvas.removeEventListener("wheel", onWheel);
       }
       if (frame) cancelAnimationFrame(frame);
-      delete stage.dataset.abagsAccessoryFidelity;
     };
   }, [stage]);
 
   if (!stage) return null;
   return createPortal(<>
-    <canvas
-      ref={canvasRef}
-      className="abags-accessory-fidelity-canvas"
-      data-abags-accessory-fidelity={ABAGS_ACCESSORY_FIDELITY_VERSION}
-      aria-hidden="true"
-    />
+    <canvas ref={canvasRef} className="abags-accessory-fidelity-canvas" data-abags-accessory-fidelity={ABAGS_ACCESSORY_FIDELITY_VERSION} aria-hidden="true" />
     <style jsx global>{`
       .abags-bag-builder-stage > .abags-accessory-fidelity-canvas {
-        position: absolute !important;
-        inset: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        z-index: 8 !important;
-        pointer-events: none !important;
-        background: transparent !important;
+        position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+        z-index:8!important;pointer-events:none!important;background:transparent!important;
       }
     `}</style>
   </>, stage);
