@@ -52,8 +52,8 @@ function sameConfig(a: Config, b: Config) {
 
 function label(key: string, value: string) {
   const labels: Record<string, Record<string, string>> = {
-    family: { tote: "Prostokątna", round: "Półokrągła", bucket: "Kubełkowa", mini: "Mini" },
-    stitch: { classic: "Klasyczny", herringbone: "Jodełka", basket: "Koszykowy", shell: "Muszla" },
+    family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" },
+    stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
     flap: { none: "Bez klapy", crochet: "Klapa szydełkowa", "leather-black": "Klapa skórzana czarna", "leather-cognac": "Klapa skórzana koniak", "suede-burgundy": "Klapa zamszowa bordo" },
     handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
     strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
@@ -154,7 +154,7 @@ export default function BagBuilderCommerce() {
     let total = base;
     const rows: Array<{ label: string; cents: number }> = [{ label: `Fason · ${label("family", config.family)}`, cents: base }];
     const add = (name: string, cents: number) => { if (cents > 0) rows.push({ label: name, cents }); total += cents; };
-    if (config.stitch) add(`Splot · ${label("stitch", config.stitch)}`, settings.stitchCents[config.stitch]);
+    if (config.stitch) add(`Ścieg szydełkowy · ${label("stitch", config.stitch)}`, settings.stitchCents[config.stitch]);
     add(label("flap", config.flap), settings.flapCents[config.flap]);
     add(label("handles", config.handles), settings.handlesCents[config.handles]);
     add(label("strap", config.strap), settings.strapCents[config.strap]);
