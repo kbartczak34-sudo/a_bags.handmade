@@ -36,9 +36,23 @@ test("desktop disables touch emulation without invalid zero touch points", () =>
   assert.doesNotMatch(qa, /maxTouchPoints:\s*0/);
 });
 
-test("mobile Mini exercises the real light wooden handle and rejects unsupported alternatives", () => {
-  assert.match(qa, /\["handles", "wood-light"\]/);
-  assert.match(qa, /incompatible: \[\["handles", "wood-dark"\], \["handles", "crochet"\]\]/);
-  assert.match(qa, /real teal Agata reference/);
+test("desktop and mobile exercise only Mini construction choices backed by Agata references", () => {
+  assert.ok((qa.match(/\["family", "mini"\]/g) || []).length >= 2);
+  assert.ok((qa.match(/\["handles", "wood-light"\]/g) || []).length >= 2);
+  assert.match(qa, /\["flap", "crochet"\]/);
+  assert.match(qa, /\["strap", "woven"\]/);
+  assert.match(qa, /\["strap", "chain"\]/);
+  assert.match(qa, /\["accent", "tassel"\]/);
+  assert.match(qa, /\["accent", "charm"\]/);
+});
+
+test("production QA rejects Mini construction choices not present in Agata evidence", () => {
+  assert.match(qa, /\["handles", "wood-dark"\]/);
+  assert.match(qa, /\["handles", "crochet"\]/);
+  assert.match(qa, /\["flap", "leather-cognac"\]/);
+  assert.match(qa, /\["flap", "suede-burgundy"\]/);
+  assert.match(qa, /\["strap", "leather"\]/);
+  assert.match(qa, /\["accent", "scarf"\]/);
+  assert.match(qa, /bounded to real Agata component evidence/);
   assert.match(qa, /incompatible .* incorrectly selectable/);
 });
