@@ -299,7 +299,7 @@ function drawCharm(ctx: CanvasRenderingContext2D, config: Config, width: number,
   }
 }
 
-function paint(canvas: HTMLCanvasElement, stage: HTMLElement, config: Config, rotation: Rotation, zoom: number) {
+function prepareCanvas(canvas: HTMLCanvasElement, stage: HTMLElement) {
   const bounds = stage.getBoundingClientRect();
   const width = Math.max(1, bounds.width);
   const height = Math.max(1, bounds.height);
@@ -308,22 +308,35 @@ function paint(canvas: HTMLCanvasElement, stage: HTMLElement, config: Config, ro
   const pixelHeight = Math.max(2, Math.round(height * dpr));
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) return null;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  if (!config.family) return;
-  ctx.save();
-  drawStrap(ctx, config, width, height, rotation, zoom);
-  drawFlapDetail(ctx, config, width, height, rotation, zoom);
-  if (config.accent === "tassel") drawTassel(ctx, config, width, height, rotation, zoom);
-  else if (config.accent === "scarf") drawScarf(ctx, config, width, height, rotation, zoom);
-  else if (config.accent === "charm") drawCharm(ctx, config, width, height, rotation, zoom);
-  ctx.restore();
+  return { ctx, width, height };
+}
+
+function paint(backCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, stage: HTMLElement, config: Config, rotation: Rotation, zoom: number) {
+  const back = prepareCanvas(backCanvas, stage);
+  const front = prepareCanvas(frontCanvas, stage);
+  if (!back || !front || !config.family) return;
+
+  // Depth ownership: straps/chains sit behind the bag body; flap finishing and hanging
+  // accents sit above the WebGL body. This avoids both flat stickers and duplicate geometry.
+  back.ctx.save();
+  drawStrap(back.ctx, config, back.width, back.height, rotation, zoom);
+  back.ctx.restore();
+
+  front.ctx.save();
+  drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
+  if (config.accent === "tassel") drawTassel(front.ctx, config, front.width, front.height, rotation, zoom);
+  else if (config.accent === "scarf") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
+  else if (config.accent === "charm") drawCharm(front.ctx, config, front.width, front.height, rotation, zoom);
+  front.ctx.restore();
 }
 
 export default function BagBuilderAccessoryFidelityOverlay() {
   const [stage, setStage] = useState<HTMLElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const find = () => {
@@ -351,8 +364,9 @@ export default function BagBuilderAccessoryFidelityOverlay() {
       if (frame) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         frame = 0;
-        const canvas = canvasRef.current;
-        if (canvas) paint(canvas, stage, config.current, rotation.current, zoom.current);
+        const backCanvas = backCanvasRef.current;
+        const frontCanvas = frontCanvasRef.current;
+        if (backCanvas && frontCanvas) paint(backCanvas, frontCanvas, stage, config.current, rotation.current, zoom.current);
       });
     };
     const distance = () => {
@@ -452,12 +466,15 @@ export default function BagBuilderAccessoryFidelityOverlay() {
 
   if (!stage) return null;
   return createPortal(<>
-    <canvas ref={canvasRef} className="abags-accessory-fidelity-canvas" data-abags-accessory-fidelity={ABAGS_ACCESSORY_FIDELITY_VERSION} aria-hidden="true" />
+    <canvas ref={backCanvasRef} className="abags-accessory-fidelity-canvas abags-accessory-fidelity-back" data-abags-accessory-fidelity={ABAGS_ACCESSORY_FIDELITY_VERSION} data-accessory-depth="back" aria-hidden="true" />
+    <canvas ref={frontCanvasRef} className="abags-accessory-fidelity-canvas abags-accessory-fidelity-front" data-abags-accessory-fidelity={ABAGS_ACCESSORY_FIDELITY_VERSION} data-accessory-depth="front" aria-hidden="true" />
     <style jsx global>{`
       .abags-bag-builder-stage > .abags-accessory-fidelity-canvas {
         position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
-        z-index:8!important;pointer-events:none!important;background:transparent!important;
+        pointer-events:none!important;background:transparent!important;
       }
+      .abags-bag-builder-stage > .abags-accessory-fidelity-back { z-index:8!important; }
+      .abags-bag-builder-stage > .abags-accessory-fidelity-front { z-index:271!important; }
     `}</style>
   </>, stage);
 }
