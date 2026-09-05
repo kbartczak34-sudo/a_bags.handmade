@@ -19,19 +19,23 @@ replaceExact(
   `function familyContour(family: Exclude<Family, "">): Point[] {\n  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];\n  return superellipseContour(spec.rx, spec.ry, spec.power, family === "round" ? 56 : 60, spec.taper);\n}`,
   "family contour",
 );
-
-const replacements = [
-  ['const bodyDepth = config.family === "round" ? .34 : config.family === "bucket" ? .37 : config.family === "mini" ? .31 : .36;', 'const familySpec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family];\n  const bodyDepth = familySpec.depth;', "body depth"],
-  ['beveledExtrusion(familyContour(config.family), bodyDepth, .052)', 'beveledExtrusion(familyContour(config.family), bodyDepth, familySpec.bevel)', "body bevel"],
-  ['const topY = config.family === "round" ? .86 : config.family === "mini" ? .68 : .82;', 'const topY = familySpec.topY;', "top anchor"],
-  ['const sideX = config.family === "round" ? .78 : config.family === "mini" ? .69 : .86;', 'const sideX = familySpec.sideAnchor;', "side anchor"],
-  ['const flapY = config.family === "round" ? .34 : config.family === "mini" ? .24 : .31;', 'const flapY = familySpec.flapY ?? .31;', "flap y"],
-  ['const flapWidth = config.family === "round" ? .76 : config.family === "mini" ? .72 : .90;', 'const flapWidth = familySpec.flapScale[0];', "flap width"],
-  ['const flapHeight = config.family === "round" ? .70 : config.family === "mini" ? .64 : .76;', 'const flapHeight = familySpec.flapScale[1];', "flap height"],
-  ['const handleWidth = config.family === "round" ? .80 : config.family === "mini" ? .70 : .92;', 'const handleWidth = familySpec.handleScale[0];', "handle width"],
-  ['const handleHeight = config.family === "round" ? .78 : config.family === "mini" ? .62 : .80;', 'const handleHeight = familySpec.handleScale[1];', "handle height"],
-];
-for (const [from, to, label] of replacements) replaceExact(from, to, label);
+replaceExact(
+  `      tote: createMesh(gl, beveledExtrusion(familyContour("tote"), .39, .06)),\n      round: createMesh(gl, beveledExtrusion(familyContour("round"), .34, .055)),\n      bucket: createMesh(gl, beveledExtrusion(familyContour("bucket"), .37, .06)),\n      mini: createMesh(gl, beveledExtrusion(familyContour("mini"), .30, .05)),`,
+  `      tote: createMesh(gl, beveledExtrusion(familyContour("tote"), ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.bevel)),\n      round: createMesh(gl, beveledExtrusion(familyContour("round"), ABAGS_FIDELITY_V4_FAMILY_SPECS.round.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.bevel)),\n      bucket: createMesh(gl, beveledExtrusion(familyContour("bucket"), ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.bevel)),\n      mini: createMesh(gl, beveledExtrusion(familyContour("mini"), ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.bevel)),`,
+  "family body meshes",
+);
+replaceExact(
+  `function familyMetrics(family: Exclude<Family, "">) {\n  if (family === "tote") return { depth: .39, topY: .80, side: .91, handleScale: [.94, .88] as const, flapScale: [.94, .90] as const };\n  if (family === "round") return { depth: .34, topY: .82, side: .80, handleScale: [.82, .80] as const, flapScale: [.79, .72] as const };\n  if (family === "bucket") return { depth: .37, topY: .84, side: .76, handleScale: [.82, .82] as const, flapScale: [.90, .92] as const };\n  return { depth: .30, topY: .66, side: .67, handleScale: [.70, .68] as const, flapScale: [.73, .78] as const };\n}`,
+  `function familyMetrics(family: Exclude<Family, "">) {\n  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];\n  return {\n    depth: spec.depth,\n    topY: spec.topY,\n    side: spec.sideAnchor,\n    handleScale: spec.handleScale,\n    flapScale: spec.flapScale,\n    flapY: spec.flapY,\n  };\n}`,
+  "family metrics",
+);
+replaceExact(
+  'const flapY = config.family === "round" ? .31 : config.family === "mini" ? .24 : .29;',
+  'const flapY = metrics.flapY ?? .29;',
+  "family flap anchor",
+);
+replaceExact('data-abags-final-webgl="v3"', 'data-abags-final-webgl="v4"', "renderer DOM version");
+replaceExact('A-BAGS REALTIME 3D · FIDELITY V3', 'A-BAGS REALTIME 3D · FIDELITY V4', "renderer chip version");
 
 fs.writeFileSync(path, source);
 console.log("Fidelity V4 renderer source migration applied.");
