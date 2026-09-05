@@ -264,8 +264,9 @@ export async function POST(request: Request) {
     return json({ url: payload.url, projectCode });
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
-      console.error("[bag-builder-checkout] Stripe configuration error", { code: error.code });
-      return json({ error: error.message, code: error.code }, 503);
+      const code = "stripe_not_configured";
+      console.error("[bag-builder-checkout] Stripe configuration error", { code });
+      return json({ error: "Płatności Stripe nie mają skonfigurowanego klucza w środowisku produkcyjnym.", code }, 503);
     }
     console.error("[bag-builder-checkout] Stripe network error");
     return json({ error: publicStripeErrorMessage("stripe_network_error"), code: "stripe_network_error" }, 503);
