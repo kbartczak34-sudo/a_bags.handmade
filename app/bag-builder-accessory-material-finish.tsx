@@ -16,7 +16,7 @@ type HardwarePalette = { shadow: string; mid: string; highlight: string };
 
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const FINISH_VERSION = "accessory-material-finish-v1";
+const FINISH_VERSION = "accessory-material-finish-v2";
 
 function readConfig(stage: HTMLElement): Config {
   return {
@@ -29,19 +29,19 @@ function readConfig(stage: HTMLElement): Config {
 
 function hardwarePalette(value: string): HardwarePalette {
   if (value === "silver") return {
-    shadow: "rgba(68,79,88,.55)",
-    mid: "rgba(191,204,214,.72)",
-    highlight: "rgba(255,255,255,.92)",
+    shadow: "rgba(68,79,88,.62)",
+    mid: "rgba(191,204,214,.92)",
+    highlight: "rgba(255,255,255,.96)",
   };
   if (value === "black") return {
-    shadow: "rgba(0,0,0,.72)",
-    mid: "rgba(67,65,70,.78)",
-    highlight: "rgba(224,224,230,.48)",
+    shadow: "rgba(0,0,0,.76)",
+    mid: "rgba(67,65,70,.92)",
+    highlight: "rgba(224,224,230,.56)",
   };
   return {
-    shadow: "rgba(91,62,20,.54)",
-    mid: "rgba(204,163,84,.76)",
-    highlight: "rgba(255,241,190,.92)",
+    shadow: "rgba(91,62,20,.62)",
+    mid: "rgba(204,163,84,.92)",
+    highlight: "rgba(255,241,190,.96)",
   };
 }
 
@@ -125,6 +125,7 @@ function drawChainSpecular(
   const linkCount = ABAGS_ACCESSORY_VISUAL.chainLinks;
   for (let index = 0; index < linkCount; index += 1) {
     const arcIndex = Math.round((index / Math.max(1, linkCount - 1)) * (arc.length - 1));
+    if (arcIndex >= 18 && arcIndex <= 31) continue;
     const center = project(arc[arcIndex], width, height, rotation, zoom);
     if (!center) continue;
     const next = project(arc[Math.min(arc.length - 1, arcIndex + 1)], width, height, rotation, zoom) ?? center;
@@ -137,20 +138,26 @@ function drawChainSpecular(
     context.rotate(angle);
 
     context.beginPath();
-    context.ellipse(0.45 * scale, 0.65 * scale, rx, ry, 0, 0.1 * Math.PI, 1.05 * Math.PI);
-    context.strokeStyle = palette.shadow;
-    context.lineWidth = Math.max(0.7, 1.05 * scale * center.scale);
+    context.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    context.strokeStyle = palette.mid;
+    context.lineWidth = Math.max(1.0, 1.55 * scale * center.scale);
     context.stroke();
 
     context.beginPath();
-    context.ellipse(-0.35 * scale, -0.45 * scale, rx, ry, 0, 1.08 * Math.PI, 1.72 * Math.PI);
+    context.ellipse(0.48 * scale, 0.68 * scale, rx, ry, 0, 0.08 * Math.PI, 1.04 * Math.PI);
+    context.strokeStyle = palette.shadow;
+    context.lineWidth = Math.max(0.72, 1.12 * scale * center.scale);
+    context.stroke();
+
+    context.beginPath();
+    context.ellipse(-0.38 * scale, -0.48 * scale, rx, ry, 0, 1.06 * Math.PI, 1.76 * Math.PI);
     context.strokeStyle = palette.highlight;
-    context.lineWidth = Math.max(0.55, 0.75 * scale * center.scale);
+    context.lineWidth = Math.max(0.58, 0.84 * scale * center.scale);
     context.stroke();
 
     if (index % 4 === 0) {
       context.beginPath();
-      context.arc(-rx * 0.28, -ry * 0.42, Math.max(0.45, 0.72 * scale * center.scale), 0, Math.PI * 2);
+      context.arc(-rx * 0.28, -ry * 0.42, Math.max(0.48, 0.78 * scale * center.scale), 0, Math.PI * 2);
       context.fillStyle = palette.highlight;
       context.fill();
     }
@@ -165,23 +172,32 @@ function drawLeatherFinish(
   height: number,
   rotation: Rotation,
   zoom: number,
+  widthFactor = 1,
 ) {
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
+
   context.save();
-  context.translate(0.8 * scale, 1.05 * scale);
+  context.translate(1.05 * scale, 1.25 * scale);
   if (strokeProjectedPath(context, arc, width, height, rotation, zoom)) {
-    context.strokeStyle = "rgba(35,18,13,.26)";
-    context.lineWidth = Math.max(1.4, 2.8 * scale);
+    context.strokeStyle = "rgba(31,16,12,.34)";
+    context.lineWidth = Math.max(5, 10.8 * scale * widthFactor);
     context.lineCap = "round";
     context.stroke();
   }
   context.restore();
 
-  context.save();
-  context.translate(-0.5 * scale, -0.7 * scale);
   if (strokeProjectedPath(context, arc, width, height, rotation, zoom)) {
-    context.strokeStyle = "rgba(255,246,236,.28)";
-    context.lineWidth = Math.max(0.75, 1.25 * scale);
+    context.strokeStyle = "rgba(103,66,51,.97)";
+    context.lineWidth = Math.max(4, 8.8 * scale * widthFactor);
+    context.lineCap = "round";
+    context.stroke();
+  }
+
+  context.save();
+  context.translate(-0.58 * scale, -0.72 * scale);
+  if (strokeProjectedPath(context, arc, width, height, rotation, zoom)) {
+    context.strokeStyle = "rgba(255,232,214,.30)";
+    context.lineWidth = Math.max(0.82, 1.38 * scale * widthFactor);
     context.lineCap = "round";
     context.stroke();
   }
@@ -197,28 +213,56 @@ function drawWovenFinish(
   zoom: number,
 ) {
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
-  for (let index = 2; index < arc.length - 2; index += 3) {
+
+  context.save();
+  context.translate(1.0 * scale, 1.2 * scale);
+  if (strokeProjectedPath(context, arc, width, height, rotation, zoom)) {
+    context.strokeStyle = "rgba(48,28,33,.30)";
+    context.lineWidth = Math.max(5.5, 11.2 * scale);
+    context.lineCap = "round";
+    context.stroke();
+  }
+  context.restore();
+
+  if (strokeProjectedPath(context, arc, width, height, rotation, zoom)) {
+    context.strokeStyle = "rgba(118,82,91,.96)";
+    context.lineWidth = Math.max(5, 9.3 * scale);
+    context.lineCap = "round";
+    context.stroke();
+  }
+
+  context.save();
+  context.translate(-0.62 * scale, -0.78 * scale);
+  if (strokeProjectedPath(context, arc, width, height, rotation, zoom)) {
+    context.strokeStyle = "rgba(255,235,238,.34)";
+    context.lineWidth = Math.max(0.8, 1.45 * scale);
+    context.lineCap = "round";
+    context.stroke();
+  }
+  context.restore();
+
+  for (let index = 2; index < arc.length - 2; index += 2) {
     const center = project(arc[index], width, height, rotation, zoom);
     const next = project(arc[index + 1], width, height, rotation, zoom);
     if (!center || !next) continue;
     const tangent = Math.atan2(next.y - center.y, next.x - center.x);
-    const cross = tangent + Math.PI / 2 + (index % 2 ? 0.22 : -0.22);
-    const half = 3.1 * scale * center.scale;
+    const cross = tangent + Math.PI / 2 + (index % 4 ? 0.25 : -0.25);
+    const half = 3.45 * scale * center.scale;
     const dx = Math.cos(cross) * half;
     const dy = Math.sin(cross) * half;
 
     context.beginPath();
-    context.moveTo(center.x - dx + 0.7 * scale, center.y - dy + 0.9 * scale);
-    context.lineTo(center.x + dx + 0.7 * scale, center.y + dy + 0.9 * scale);
-    context.strokeStyle = "rgba(47,26,31,.18)";
-    context.lineWidth = Math.max(0.65, 1.05 * scale);
+    context.moveTo(center.x - dx + 0.62 * scale, center.y - dy + 0.82 * scale);
+    context.lineTo(center.x + dx + 0.62 * scale, center.y + dy + 0.82 * scale);
+    context.strokeStyle = "rgba(45,24,29,.26)";
+    context.lineWidth = Math.max(0.72, 1.16 * scale);
     context.stroke();
 
     context.beginPath();
-    context.moveTo(center.x - dx - 0.45 * scale, center.y - dy - 0.55 * scale);
-    context.lineTo(center.x + dx - 0.45 * scale, center.y + dy - 0.55 * scale);
-    context.strokeStyle = "rgba(255,244,239,.36)";
-    context.lineWidth = Math.max(0.55, 0.8 * scale);
+    context.moveTo(center.x - dx - 0.42 * scale, center.y - dy - 0.54 * scale);
+    context.lineTo(center.x + dx - 0.42 * scale, center.y + dy - 0.54 * scale);
+    context.strokeStyle = "rgba(255,244,239,.46)";
+    context.lineWidth = Math.max(0.58, 0.88 * scale);
     context.stroke();
   }
 }
@@ -239,15 +283,21 @@ function drawAnchorContact(
     const radius = Math.max(3.1, 4.8 * scale * point.scale);
 
     context.beginPath();
-    context.arc(point.x + 0.8 * scale, point.y + 1.0 * scale, radius, 0.08 * Math.PI, 0.92 * Math.PI);
-    context.strokeStyle = "rgba(28,19,20,.32)";
-    context.lineWidth = Math.max(0.9, 1.45 * scale);
+    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    context.strokeStyle = palette.mid;
+    context.lineWidth = Math.max(0.75, 1.05 * scale);
     context.stroke();
 
     context.beginPath();
-    context.arc(point.x - 0.45 * scale, point.y - 0.55 * scale, radius, 1.08 * Math.PI, 1.78 * Math.PI);
+    context.arc(point.x + 0.82 * scale, point.y + 1.02 * scale, radius, 0.08 * Math.PI, 0.92 * Math.PI);
+    context.strokeStyle = "rgba(28,19,20,.38)";
+    context.lineWidth = Math.max(0.95, 1.52 * scale);
+    context.stroke();
+
+    context.beginPath();
+    context.arc(point.x - 0.48 * scale, point.y - 0.58 * scale, radius, 1.08 * Math.PI, 1.80 * Math.PI);
     context.strokeStyle = palette.highlight;
-    context.lineWidth = Math.max(0.7, 1.0 * scale);
+    context.lineWidth = Math.max(0.75, 1.08 * scale);
     context.stroke();
   }
 }
@@ -266,8 +316,15 @@ function drawSnapGlint(
   const point = project([0, (spec.flapY ?? 0.29) - 0.22, spec.depth / 2 + 0.176], width, height, rotation, zoom);
   if (!point) return;
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * point.scale;
+
   context.beginPath();
-  context.arc(point.x - 0.9 * scale, point.y - 1.0 * scale, Math.max(0.65, 0.95 * scale), 0, Math.PI * 2);
+  context.arc(point.x + 0.45 * scale, point.y + 0.55 * scale, Math.max(1.8, 2.65 * scale), 0.06 * Math.PI, 0.95 * Math.PI);
+  context.strokeStyle = palette.shadow;
+  context.lineWidth = Math.max(0.6, 0.85 * scale);
+  context.stroke();
+
+  context.beginPath();
+  context.arc(point.x - 0.9 * scale, point.y - 1.0 * scale, Math.max(0.72, 1.05 * scale), 0, Math.PI * 2);
   context.fillStyle = palette.highlight;
   context.fill();
 }
@@ -310,9 +367,14 @@ function paint(
 
   const palette = hardwarePalette(config.hardware);
   const arc = strapArc(config.family as Exclude<Family, "">);
-  if (config.strap === "chain") drawChainSpecular(back.context, arc, palette, back.width, back.height, rotation, zoom);
-  else if (config.strap === "leather") drawLeatherFinish(back.context, arc, back.width, back.height, rotation, zoom);
-  else if (config.strap === "woven") drawWovenFinish(back.context, arc, back.width, back.height, rotation, zoom);
+  if (config.strap === "chain") {
+    drawChainSpecular(back.context, arc, palette, back.width, back.height, rotation, zoom);
+    drawLeatherFinish(back.context, arc.slice(18, 31), back.width, back.height, rotation, zoom, 0.72);
+  } else if (config.strap === "leather") {
+    drawLeatherFinish(back.context, arc, back.width, back.height, rotation, zoom);
+  } else if (config.strap === "woven") {
+    drawWovenFinish(back.context, arc, back.width, back.height, rotation, zoom);
+  }
 
   if (config.strap !== "none") drawAnchorContact(front.context, arc, palette, front.width, front.height, rotation, zoom);
   drawSnapGlint(front.context, config, palette, front.width, front.height, rotation, zoom);
