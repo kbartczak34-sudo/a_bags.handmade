@@ -51,6 +51,18 @@ test("chain, tassel, scarf, charm and flap details use dedicated refinement cons
   assert.match(overlay, /wovenDash/);
 });
 
+test("accessory depth is split around WebGL instead of flattening every detail onto one canvas", () => {
+  assert.match(overlay, /backCanvasRef/);
+  assert.match(overlay, /frontCanvasRef/);
+  assert.match(overlay, /drawStrap\(back\.ctx/);
+  assert.match(overlay, /drawFlapDetail\(front\.ctx/);
+  assert.match(overlay, /drawTassel\(front\.ctx/);
+  assert.match(overlay, /data-accessory-depth="back"/);
+  assert.match(overlay, /data-accessory-depth="front"/);
+  assert.match(overlay, /abags-accessory-fidelity-back \{ z-index:8!important; \}/);
+  assert.match(overlay, /abags-accessory-fidelity-front \{ z-index:271!important; \}/);
+});
+
 test("final WebGL keeps product structure but does not duplicate overlay-owned accessories", () => {
   assert.match(renderer, /Accessory fidelity overlay owns strap\/chain and accent geometry/);
   assert.doesNotMatch(renderer, /if \(config\.strap !== "none"\)/);
