@@ -28,16 +28,20 @@ test("Bag Builder settings persist in the existing D1 database", () => {
   assert.match(adminRoute, /saveBagBuilderSettings/);
 });
 
-test("compatibility rules are bounded by real Agata handle evidence", () => {
+test("settings and live commerce are bounded by real Agata construction evidence", () => {
   assert.match(settings, /AGATA_BUILDER_HANDLE_COMPATIBILITY/);
   assert.match(settings, /agataHandleAllowed/);
-  assert.match(fidelity, /tote:\s*\["none", "wood-light", "wood-dark"\]/);
-  assert.match(fidelity, /round:\s*\["none"\]/);
-  assert.match(fidelity, /bucket:\s*\["none"\]/);
-  assert.match(fidelity, /mini:\s*\["none", "wood-light"\]/);
+  assert.match(fidelity, /AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY/);
+  assert.match(fidelity, /tote:\s*\{[\s\S]*?handles:\s*\["none", "wood-light", "wood-dark"\][\s\S]*?flaps:\s*\["none"\][\s\S]*?straps:\s*\["none", "woven", "chain"\][\s\S]*?accents:\s*\["none", "scarf"\]/);
+  assert.match(fidelity, /round:\s*\{[\s\S]*?handles:\s*\["none"\][\s\S]*?flaps:\s*\["none", "crochet"\]/);
+  assert.match(fidelity, /bucket:\s*\{[\s\S]*?flaps:\s*\["none", "leather-black", "suede-burgundy"\][\s\S]*?straps:\s*\["none", "leather"\]/);
+  assert.match(fidelity, /mini:\s*\{[\s\S]*?handles:\s*\["none", "wood-light"\][\s\S]*?accents:\s*\["none", "tassel", "charm"\]/);
+  assert.match(commerce, /isAgataBuilderConstructionSupported/);
+  assert.match(commerce, /const keys: ConstructionKey\[\] = \["handles", "strap", "flap", "accent"\]/);
+  assert.match(commerce, /button\.disabled = !isCompatible/);
   assert.match(commerce, /is-incompatible/);
-  assert.match(commerce, /button\.disabled = !compatible/);
   assert.match(commerce, /data-builder-value="none"/);
+  assert.match(commerce, /zgodna z konstrukcjami A-Bags/);
 });
 
 test("live price composes base price with selected option modifiers", () => {
