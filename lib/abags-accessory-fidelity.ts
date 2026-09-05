@@ -21,6 +21,11 @@ export const ABAGS_ACCESSORY_REFERENCES = {
  * underlying body geometry remains the Fidelity V4 WebGL source of truth.
  * Chain cadence is dense enough to read as a continuous linked strap on the
  * narrow mobile preview while retaining individual alternating links.
+ *
+ * Flexible straps are not perfectly coplanar with the front panel in the real
+ * atelier references. A small depth bow keeps both attachment points fixed at
+ * the calibrated side hardware while preserving visible physical depth in a
+ * true side view instead of collapsing the whole strap into one vertical line.
  */
 export const ABAGS_ACCESSORY_VISUAL = {
   chainLinks: 26,
@@ -29,4 +34,6 @@ export const ABAGS_ACCESSORY_VISUAL = {
   scarfTails: 2,
   leatherSeamDash: [5, 4] as const,
   wovenDash: [9, 5] as const,
+  strapDepthBowRatio: 0.78,
+  strapDepthBowMin: 0.20,
 } as const;
