@@ -105,11 +105,11 @@ jobs:
 
           needle_return = '''        webgl:{width:gw,height:gh},
             back:analyze(back),
-          '''
+          '''.replace('            back:', '        back:')
           replacement_return = '''        webgl:{width:gw,height:gh},
             handle:analyzeRigidHandle(),
             back:analyze(back),
-          '''
+          '''.replace('            handle:', '        handle:').replace('            back:', '        back:')
           if probe.count(needle_return) != 1:
               raise SystemExit(f'return insertion point count={probe.count(needle_return)}')
           probe = probe.replace(needle_return, replacement_return, 1)
