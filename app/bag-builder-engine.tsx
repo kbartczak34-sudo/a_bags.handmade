@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { isAgataBuilderHandleSupported } from "../lib/abags-builder-fidelity";
 import { usePublicContact, whatsappHref } from "./public-contact";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
@@ -255,7 +256,7 @@ export default function BagBuilderEngine() {
       const next = { ...current, [key]: value };
       if (key === "family") {
         const family = value as Family;
-        if ((family === "round" || family === "mini") && current.handles.startsWith("wood-")) next.handles = "none";
+        if (family && !isAgataBuilderHandleSupported(family, current.handles)) next.handles = "none";
       }
       return next;
     });
@@ -265,7 +266,7 @@ export default function BagBuilderEngine() {
   const completed = useMemo(() => [config.family, config.color, config.stitch].filter(Boolean).length + [config.flap, config.handles, config.strap, config.hardware, config.accent].filter((value) => value && value !== "none").length, [config]);
   const canCustomize = Boolean(config.family && config.color);
   const canSave = Boolean(config.family && config.color && config.stitch);
-  const familyHandles = useMemo(() => config.family === "round" || config.family === "mini" ? HANDLES.filter((item) => !item.value.startsWith("wood-")) : HANDLES, [config.family]);
+  const familyHandles = useMemo(() => config.family ? HANDLES.filter((item) => isAgataBuilderHandleSupported(config.family, item.value)) : HANDLES, [config.family]);
 
   const reset = () => { setConfig(EMPTY); window.localStorage.removeItem(DRAFT_KEY); setSaved(false); };
   const save = () => {
