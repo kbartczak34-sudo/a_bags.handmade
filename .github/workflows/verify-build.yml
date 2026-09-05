@@ -49,7 +49,6 @@ jobs:
         shell: bash
         run: |
           mapfile -t files < <(find tests -maxdepth 1 -type f -name 'bag-builder-*.test.mjs' ! -name 'bag-builder-accessory-fidelity.test.mjs' | sort)
-          printf 'Running %s bag-builder regression files\n' "${#files[@]}"
           node --test "${files[@]}"
 
       - name: Regression — customer and fidelity contracts
@@ -57,95 +56,70 @@ jobs:
         shell: bash
         run: |
           mapfile -t files < <(find tests -maxdepth 1 -type f \( -name 'customer-builder-*.test.mjs' -o -name 'fidelity3d-*.test.mjs' \) | sort)
-          printf 'Running %s customer/fidelity regression files\n' "${#files[@]}"
           if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
           node --test "${files[@]}"
 
-      - name: Regression — remaining A-F
+      - name: Regression — remaining A-Q excluding isolated families
         if: ${{ always() && steps.production_build.outcome == 'success' }}
         shell: bash
         run: |
           files=()
           while IFS= read -r file; do
             base=$(basename "$file")
-            case "$base" in [a-fA-F]*) files+=("$file");; esac
-          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining A-F regression files\n' "${#files[@]}"
+            case "$base" in
+              [a-qA-Q]*) files+=("$file");;
+            esac
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' \
+            ! -name 'bag-builder-*.test.mjs' \
+            ! -name 'builder-transform-authority.test.mjs' \
+            ! -name 'customer-builder-*.test.mjs' \
+            ! -name 'fidelity3d-*.test.mjs' | sort)
           if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
           node --test "${files[@]}"
 
-      - name: Regression — remaining G-M
+      - name: Regression — realtime-builder-default
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do
-            base=$(basename "$file")
-            case "$base" in [g-mG-M]*) files+=("$file");; esac
-          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining G-M regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/realtime-builder-default.test.mjs
 
-      - name: Regression — remaining N
+      - name: Regression — realtime-render-integrity
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do base=$(basename "$file"); case "$base" in [nN]*) files+=("$file");; esac; done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining N regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/realtime-render-integrity.test.mjs
 
-      - name: Regression — remaining O
+      - name: Regression — remove-free-shipping
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do base=$(basename "$file"); case "$base" in [oO]*) files+=("$file");; esac; done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining O regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/remove-free-shipping.test.mjs
 
-      - name: Regression — remaining P
+      - name: Regression — rendered-html
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do base=$(basename "$file"); case "$base" in [pP]*) files+=("$file");; esac; done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining P regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/rendered-html.test.mjs
 
-      - name: Regression — remaining Q
+      - name: Regression — stitch-gallery
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do base=$(basename "$file"); case "$base" in [qQ]*) files+=("$file");; esac; done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining Q regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/stitch-gallery.test.mjs
 
-      - name: Regression — remaining R
+      - name: Regression — store-readiness-dashboard
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do base=$(basename "$file"); case "$base" in [rR]*) files+=("$file");; esac; done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining R regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/store-readiness-dashboard.test.mjs
 
-      - name: Regression — remaining S
+      - name: Regression — storefront-crochet-terminology
         if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do base=$(basename "$file"); case "$base" in [sS]*) files+=("$file");; esac; done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining S regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+        run: node --test tests/storefront-crochet-terminology.test.mjs
+
+      - name: Regression — storefront-experience
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        run: node --test tests/storefront-experience.test.mjs
+
+      - name: Regression — stripe-live-gate
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        run: node --test tests/stripe-live-gate.test.mjs
+
+      - name: Regression — stripe-live-webhook-gate
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        run: node --test tests/stripe-live-webhook-gate.test.mjs
+
+      - name: Regression — stripe-refund-sync
+        if: ${{ always() && steps.production_build.outcome == 'success' }}
+        run: node --test tests/stripe-refund-sync.test.mjs
 
       - name: Regression — remaining T-Z
         if: ${{ always() && steps.production_build.outcome == 'success' }}
@@ -155,20 +129,10 @@ jobs:
           while IFS= read -r file; do
             base=$(basename "$file")
             case "$base" in [t-zT-Z]*) files+=("$file");; esac
-          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining T-Z regression files\n' "${#files[@]}"
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
-
-      - name: Regression — remaining non-letter
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do
-            base=$(basename "$file")
-            case "$base" in [a-zA-Z]*) ;; *) files+=("$file");; esac
-          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' ! -name 'bag-builder-*.test.mjs' ! -name 'builder-transform-authority.test.mjs' ! -name 'customer-builder-*.test.mjs' ! -name 'fidelity3d-*.test.mjs' | sort)
-          printf 'Running %s remaining non-letter regression files\n' "${#files[@]}"
+          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' \
+            ! -name 'bag-builder-*.test.mjs' \
+            ! -name 'builder-transform-authority.test.mjs' \
+            ! -name 'customer-builder-*.test.mjs' \
+            ! -name 'fidelity3d-*.test.mjs' | sort)
           if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
           node --test "${files[@]}"
