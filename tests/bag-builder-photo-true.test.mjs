@@ -21,15 +21,27 @@ test("model picker is driven by current real store products rather than four syn
   assert.doesNotMatch(component, /const FAMILIES/);
 });
 
-test("selected product photo is the primary exact preview and synthetic renderers are hidden", () => {
+test("selected product photo and readiness metadata are owned by the same live portal stage", () => {
   assert.match(component, /abags-photo-true-base/);
   assert.match(component, /src=\{selected\.imageUrl\}/);
-  assert.match(component, /liveStage\.dataset\.abagsPhotoTrue = "active"/);
-  assert.match(component, /liveStage\.dataset\.photoProductId = selected\.id/);
+  assert.match(component, /if \(!stage \|\| !selected\?\.imageUrl\) return/);
+  assert.match(component, /stage\.dataset\.abagsPhotoTrue = "active"/);
+  assert.match(component, /stage\.dataset\.photoProductId = selected\.id/);
+  assert.match(component, /stage\.dataset\.photoProductName = selected\.name/);
+  assert.match(component, /\}, \[selected, stage\]\)/);
+  assert.doesNotMatch(component, /const liveStage = document\.querySelector<HTMLElement>/);
   assert.match(styles, /data-abags-photo-true="active"[\s\S]*?> svg/);
   assert.match(styles, /\.abags-pro3d-layer/);
   assert.match(styles, /\.abags-canvas3d-layer/);
   assert.match(styles, /display:none!important/);
+});
+
+test("Photo-True state cleanup follows stage replacement instead of leaving readiness on stale DOM", () => {
+  assert.match(component, /stage\.removeAttribute\("data-abags-photo-true"\)/);
+  assert.match(component, /stage\.removeAttribute\("data-photo-product-id"\)/);
+  assert.match(component, /stage\.removeAttribute\("data-photo-product-name"\)/);
+  assert.match(component, /dialog\?\.removeAttribute\("data-abags-photo-true"\)/);
+  assert.match(component, /dialog\?\.removeAttribute\("data-photo-product-id"\)/);
 });
 
 test("exact transparent overlays use all seven photo categories including flap", () => {
