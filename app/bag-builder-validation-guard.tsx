@@ -29,7 +29,7 @@ const FALLBACKS: Partial<Record<BuilderKey, string>> = {
 const REQUIRED_LABELS: Array<[BuilderKey, string]> = [
   ["family", "fason"],
   ["color", "kolor sznurka"],
-  ["stitch", "splot / ścieg"],
+  ["stitch", "ścieg szydełkowy"],
 ];
 
 function readSnapshot(stage: HTMLElement): BuilderSnapshot {
@@ -134,11 +134,11 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
     title.textContent = "Projekt wymaga uzupełnienia";
     badge.textContent = `${3 - missing.length}/3 podstawy`;
     copy.textContent = `Brakuje: ${missing.join(", ")}.`;
-    note.textContent = "Po wyborze fasonu, koloru sznurka i splotu zapis oraz wysyłka projektu zostaną odblokowane.";
+    note.textContent = "Po wyborze fasonu, koloru sznurka i ściegu szydełkowego zapis oraz wysyłka projektu zostaną odblokowane.";
   } else {
     title.textContent = "Projekt gotowy do konsultacji";
     badge.textContent = "walidacja ✓";
-    copy.textContent = "Fason, kolor sznurka i splot są kompletne, a wartości konfiguracji są obsługiwane przez aktualną wersję Bag Buildera.";
+    copy.textContent = "Fason, kolor sznurka i ścieg szydełkowy są kompletne, a wartości konfiguracji są obsługiwane przez aktualną wersję Bag Buildera.";
     note.textContent = "Finalna możliwość wykonania i cena personalizacji są potwierdzane przez pracownię.";
   }
 
