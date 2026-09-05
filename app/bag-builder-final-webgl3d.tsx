@@ -163,25 +163,45 @@ void main(){
   float detail=1.0;
   float rough=.9;
   float metallic=0.0;
+  float specularStrength=.11;
+  float fibreSheen=0.0;
 
   if(uMaterial<.5){
+    // Polyester cord: visible crochet relief plus a restrained synthetic-fibre sheen.
     detail=stitchPattern(vUv,uStitch);
-    rough=.94;
+    rough=.86;
+    specularStrength=.19;
+    fibreSheen=pow(max(dot(n,h),0.0),18.0)*.045 + pow(1.0-max(dot(n,v),0.0),3.0)*.018;
   }else if(uMaterial<1.5){
-    detail=(.88+.08*sin(vUv.y*75.0))*yarnFibres(vUv*.45);
-    rough=.48;
+    // Leather: fine grain with a broader soft highlight, without the yarn fibre pattern.
+    float leatherGrain=.018*sin(vUv.x*180.0)+.012*sin((vUv.x+vUv.y)*260.0);
+    detail=.94+leatherGrain;
+    rough=.46;
+    specularStrength=.16;
   }else if(uMaterial<2.5){
+    // Metal hardware: tight, high-energy highlight.
     detail=1.0;
     rough=.14;
     metallic=.9;
+    specularStrength=.88;
+  }else if(uMaterial<3.5){
+    // Wooden handles: directional grain and a satin finish distinct from leather.
+    float grain=sin(vUv.x*54.0+sin(vUv.y*7.0)*3.0);
+    float pores=sin((vUv.x+vUv.y)*170.0);
+    detail=.94+.045*grain+.012*pores;
+    rough=.34;
+    specularStrength=.18;
   }else{
-    detail=.91+.07*sin(vUv.x*33.0)*sin(vUv.y*29.0);
-    rough=.75;
+    // Suede: soft nap, low gloss and a very broad response.
+    float nap=sin(vUv.x*91.0)*sin(vUv.y*87.0);
+    detail=.95+.025*nap;
+    rough=.92;
+    specularStrength=.055;
   }
 
-  float specular=pow(max(dot(n,h),0.0),mix(76.0,11.0,rough))*mix(.11,.88,metallic);
+  float specular=pow(max(dot(n,h),0.0),mix(82.0,9.0,rough))*mix(specularStrength,.88,metallic);
   vec3 base=uColor*detail;
-  vec3 lit=base*(.38+.65*diffuse+.16*fill)+vec3(specular)+base*.07*rim;
+  vec3 lit=base*(.38+.65*diffuse+.16*fill)+vec3(specular+fibreSheen)+base*.07*rim;
   gl_FragColor=vec4(pow(max(lit,vec3(0.0)),vec3(.96)),1.0);
 }`;
 
@@ -590,7 +610,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   if (config.handles !== "none") {
     const handleColor = config.handles === "wood-dark" ? "#60402f" : config.handles === "wood-light" ? "#d7b985" : bodyColor;
-    const handleMaterial = config.handles === "crochet" ? 0 : 1;
+    const handleMaterial = config.handles === "crochet" ? 0 : 3;
     const rigidHandle = config.handles === "wood-light" || config.handles === "wood-dark";
     const handleDepth = depth / 2 + .055;
     const handlePlanes = rigidHandle ? [-handleDepth, handleDepth] : [.015];
@@ -607,7 +627,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#292426" : config.flap === "leather-cognac" ? "#9a6345" : config.flap === "suede-burgundy" ? "#773c4b" : bodyColor;
-    const flapMaterial = config.flap === "crochet" ? 0 : 1;
+    const flapMaterial = config.flap === "crochet" ? 0 : config.flap === "suede-burgundy" ? 4 : 1;
     const flapY = metrics.flapY ?? .29;
     drawMesh(
       renderer,
@@ -758,7 +778,14 @@ export default function BagBuilderFinalWebGL3D() {
   if (!portalTarget) return null;
 
   return createPortal(
-    <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d data-abags-final-webgl="v4">
+    <div
+      className="abags-pro3d-layer abags-fidelity3d-layer"
+      data-abags-pro3d
+      data-abags-fidelity3d
+      data-abags-final-webgl="v4"
+      data-abags-pro3d-view={view}
+      data-abags-material-model="polyester-leather-metal-wood-suede-v1"
+    >
       <canvas
         ref={canvasRef}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
