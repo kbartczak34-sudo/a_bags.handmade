@@ -13,6 +13,7 @@ import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contra
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
+import BagBuilderCrochetTerminologyGuard from "./bag-builder-crochet-terminology-guard";
 import BagBuilderCustomerCloseIcon from "./bag-builder-customer-close-icon";
 import BagBuilderCustomerLegacyChipRetirement from "./bag-builder-customer-legacy-chip-retirement";
 import BagBuilderCustomerPremiumFit from "./bag-builder-customer-premium-fit";
@@ -57,6 +58,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderReferenceLayoutV3 />
     <BagBuilderReferenceHeaderGuard />
     <BagBuilderReferenceV4 />
+    <BagBuilderCrochetTerminologyGuard />
     <BagBuilderCustomerCloseIcon />
     <BagBuilderCustomerLegacyChipRetirement />
     <BagBuilderAbagsFidelityContract />
