@@ -30,7 +30,7 @@ export const defaultSiteContent: SiteContent = {
   navigation: { collection: "Bestsellery", story: "O marce", reviews: "Opinie", contact: "Kontakt", cart: "Koszyk" },
   hero: {
     badge: "✦ Rękodzieło w kobiecym wydaniu",
-    title: "Ręcznie plecione",
+    title: "Ręcznie szydełkowane",
     accent: "torebki premium.",
     lead: "Tworzone z pasją dla kobiet, które kochają wyjątkowy styl, subtelność i jakość. Każdy model powstaje ręcznie, oczko po oczku.",
     primaryCta: "Zobacz bestsellery",
@@ -38,9 +38,9 @@ export const defaultSiteContent: SiteContent = {
     noteOne: "Polskie rękodzieło",
     noteTwo: "Limitowane modele",
     noteThree: "Bezpieczna płatność",
-    imageAlt: "Różowa ręcznie pleciona torebka a_bags.handmade z kwiatową kokardą",
+    imageAlt: "Różowa ręcznie szydełkowana torebka a_bags.handmade z kwiatową kokardą",
     imageLabel: "Limitowana kolekcja",
-    imageSublabel: "ręcznie pleciona",
+    imageSublabel: "ręcznie szydełkowana",
     imageCaption: "handmade · made with care",
   },
   collection: {
@@ -49,7 +49,7 @@ export const defaultSiteContent: SiteContent = {
     noteLabel: "Małe serie",
     noteText: "Każdy model powstaje ręcznie w ograniczonej liczbie egzemplarzy. Wybierz torebkę, która najlepiej pasuje do Ciebie.",
     emptyTitle: "Kolekcja jest w przygotowaniu",
-    emptyText: "Nowe ręcznie plecione modele pojawią się tutaj już wkrótce.",
+    emptyText: "Nowe ręcznie szydełkowane modele pojawią się tutaj już wkrótce.",
   },
   story: {
     visible: true,
@@ -93,7 +93,7 @@ export const defaultSiteContent: SiteContent = {
     facebookUrl: "https://www.facebook.com/share/1EjHy8cmKG/",
   },
   footer: {
-    tagline: "Ręcznie plecione torebki, tworzone powoli i z uważnością.",
+    tagline: "Ręcznie szydełkowane torebki, tworzone powoli i z uważnością.",
     shopLabel: "Sklep",
     socialLabel: "Znajdź nas",
     collectionLink: "Bestsellery",
