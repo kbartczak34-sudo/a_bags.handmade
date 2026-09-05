@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const settings = fs.readFileSync("lib/bag-builder-settings.ts", "utf8");
+const familyInference = fs.readFileSync("lib/bag-builder-product-family.ts", "utf8");
 const manager = fs.readFileSync("app/panel/bag-builder-settings-manager.tsx", "utf8");
 const endpoint = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
 const handoff = fs.readFileSync("app/bag-builder-checkout-handoff.tsx", "utf8");
@@ -33,6 +34,20 @@ test("server validates project options, Agata fidelity, settings compatibility a
   assert.match(endpoint, /productComplianceComplete\(baseProduct\)/);
 });
 
+test("client-supplied photographed base cannot be substituted across builder families", () => {
+  assert.match(endpoint, /inferBagBuilderProductFamily/);
+  assert.match(endpoint, /mappedFamilyForProduct/);
+  assert.match(endpoint, /explicitlyMappedFamily && explicitlyMappedFamily !== config\.family/);
+  assert.match(endpoint, /!explicitlyMappedFamily && inferredFamily !== config\.family/);
+  assert.match(endpoint, /builder_product_family_mismatch/);
+  assert.match(endpoint, /builder_photo_base_missing/);
+  assert.match(familyInference, /return "mini"/);
+  assert.match(familyInference, /return "bucket"/);
+  assert.match(familyInference, /return "round"/);
+  assert.match(familyInference, /return "tote"/);
+  assert.match(familyInference, /return null/);
+});
+
 test("photo-true price uses the actual catalog base and server-side configured extras", () => {
   assert.match(endpoint, /baseProduct\.unitAmount \+ personalizationCents\(config, settings\)/);
   assert.match(endpoint, /calculateBagBuilderProjectCents\(config, settings\)/);
@@ -52,11 +67,12 @@ test("checkout preserves existing Stripe live and webhook safeguards", () => {
   assert.match(endpoint, /abags-payment-method=\(blik\|card\|wallet\)/);
 });
 
-test("project identity, photo base and material survive Stripe checkout into the order record", () => {
+test("project identity, verified photo base and material survive Stripe checkout into the order record", () => {
   assert.match(endpoint, /bagBuilderProjectCode/);
   assert.match(endpoint, /bagBuilderProjectSummary/);
   assert.match(endpoint, /Sznurek poliestrowy z Pimiotki/);
-  assert.match(endpoint, /baza fotograficzna 1:1/);
+  assert.match(endpoint, /rzeczywista baza fotograficzna/);
+  assert.doesNotMatch(endpoint, /baza fotograficzna 1:1/);
   assert.match(endpoint, /metadata\[cart\]/);
   assert.match(endpoint, /metadata\[builder_project_code\]/);
   assert.match(endpoint, /metadata\[builder_project_config\]/);
