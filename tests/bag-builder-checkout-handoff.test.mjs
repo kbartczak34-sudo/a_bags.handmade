@@ -44,8 +44,8 @@ test("client-supplied photographed base cannot be substituted across builder fam
   assert.match(familyInference, /return "mini"/);
   assert.match(familyInference, /return "bucket"/);
   assert.match(familyInference, /return "round"/);
+  assert.match(familyInference, /otherwise unclassified photographed model as the classic tote family/);
   assert.match(familyInference, /return "tote"/);
-  assert.match(familyInference, /return null/);
 });
 
 test("photo-true price uses the actual catalog base and server-side configured extras", () => {
