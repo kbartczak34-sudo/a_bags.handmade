@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [spec, renderer, contract] = await Promise.all([
+const [spec, renderer, controller, contract] = await Promise.all([
   readFile(new URL("../lib/abags-fidelity-v4-family-spec.ts", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-final-webgl3d.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/bag-builder-final3d-controller.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-abags-fidelity-contract.tsx", import.meta.url), "utf8"),
 ]);
 
@@ -25,7 +26,10 @@ test("family contract owns hardware anchors instead of renderer guesses", () => 
   assert.match(spec, /ringY: number/);
 });
 
-test("renderer version explicitly identifies the Agata 1:1 fidelity contract", () => {
+test("renderer and final verifier share the Agata fidelity version contract", () => {
   assert.match(spec, /ABAGS_FIDELITY_V4_RENDERER_VERSION = \"abags-fidelity-v4-agata-1to1\"/);
   assert.match(renderer, /ABAGS_FIDELITY_V4_RENDERER_VERSION/);
+  assert.match(controller, /import \{ ABAGS_FIDELITY_V4_RENDERER_VERSION \}/);
+  assert.match(controller, /const REQUIRED_RENDERER = ABAGS_FIDELITY_V4_RENDERER_VERSION;/);
+  assert.doesNotMatch(controller, /const REQUIRED_RENDERER = \"abags-fidelity-v4\"/);
 });
