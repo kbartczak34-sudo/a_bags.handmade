@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const guard = fs.readFileSync("app/bag-builder-validation-guard.tsx", "utf8");
+const fidelity = fs.readFileSync("lib/abags-builder-fidelity.ts", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 
 test("validation guard is mounted with the active Bag Builder", () => {
@@ -30,10 +31,13 @@ test("stale invalid drafts cannot silently reach the workshop flow", () => {
   assert.match(guard, /Niepoprawny draft nie może zostać wysłany do pracowni/);
 });
 
-test("known wooden-handle incompatibility remains repaired for round and mini families", () => {
-  assert.match(guard, /snapshot\.family === "round" \|\| snapshot\.family === "mini"/);
-  assert.match(guard, /snapshot\.handles === "wood-light" \|\| snapshot\.handles === "wood-dark"/);
+test("stale handle choices are repaired from the central Agata reference contract", () => {
+  assert.match(guard, /isAgataBuilderHandleSupported/);
   assert.match(guard, /clickChoice\(controls, "handles", "none"\)/);
+  assert.match(fidelity, /round:\s*\["none"\]/);
+  assert.match(fidelity, /bucket:\s*\["none"\]/);
+  assert.match(fidelity, /mini:\s*\["none", "wood-light"\]/);
+  assert.doesNotMatch(guard, /snapshot\.family === "round" \|\| snapshot\.family === "mini"/);
 });
 
 test("status explains missing required decisions and successful validation", () => {
