@@ -288,6 +288,17 @@ export function normalizeSiteContent(value: unknown): SiteContent {
     normalized.instagram.eyebrow = defaultSiteContent.instagram.eyebrow;
   }
   if (
+    normalized.footer.copyright ===
+    "2026 a_bags.handmade     all rights reserved"
+  ) {
+    normalized.footer.copyright = defaultSiteContent.footer.copyright;
+  }
+  if (
+    normalized.footer.statusText === "design&code © Klaudia Weronika Bartczak"
+  ) {
+    normalized.footer.statusText = defaultSiteContent.footer.statusText;
+  }
+  if (
     normalized.footer.statusText === "Projekt w trakcie uzupełniania treści"
   ) {
     normalized.footer.statusText = defaultSiteContent.footer.statusText;
