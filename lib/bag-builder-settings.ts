@@ -218,9 +218,9 @@ export function bagBuilderProjectCode(config: BagBuilderProjectConfig) {
 
 export function bagBuilderProjectSummary(config: BagBuilderProjectConfig) {
   const labels = {
-    family: { tote: "Prostokątna", round: "Półokrągła", bucket: "Kubełkowa", mini: "Mini" },
+    family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" },
     color: { "#E8DDCC": "Naturalny beż", "#E4A9B5": "Pudrowy róż", "#24324D": "Głęboki granat", "#65493D": "Czekoladowy brąz", "#C7962F": "Musztardowy", "#222124": "Czarny", "#B93A42": "Czerwony", "#275C4A": "Butelkowa zieleń", "#087E81": "Turkus", "#A88AE0": "Lawendowy" },
-    stitch: { classic: "Klasyczny", herringbone: "Jodełka", basket: "Koszykowy", shell: "Muszla" },
+    stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
     flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skórzana czarna", "leather-cognac": "Skórzana koniak", "suede-burgundy": "Zamszowa bordo" },
     handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
     strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
