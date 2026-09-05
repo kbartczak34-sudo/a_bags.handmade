@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isAgataBuilderHandleSupported } from "../lib/abags-builder-fidelity";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
@@ -86,8 +87,7 @@ function repairSnapshot(controls: HTMLElement, snapshot: BuilderSnapshot) {
 }
 
 function repairKnownCompatibility(controls: HTMLElement, snapshot: BuilderSnapshot) {
-  const woodenHandles = snapshot.handles === "wood-light" || snapshot.handles === "wood-dark";
-  if ((snapshot.family === "round" || snapshot.family === "mini") && woodenHandles) {
+  if (snapshot.family && !isAgataBuilderHandleSupported(snapshot.family, snapshot.handles)) {
     clearStaleDraft();
     return clickChoice(controls, "handles", "none");
   }
