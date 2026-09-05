@@ -42,6 +42,7 @@ import BagBuilderReferenceHeaderGuard from "./bag-builder-reference-header-guard
 import BagBuilderReferenceLayoutV3 from "./bag-builder-reference-layout-v3";
 import BagBuilderReferenceV4 from "./bag-builder-reference-v4";
 import BagBuilderRendererFallback from "./bag-builder-renderer-fallback";
+import BagBuilderRigidMaterialFinish from "./bag-builder-rigid-material-finish";
 import BagBuilderShareLink from "./bag-builder-share-link";
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
@@ -55,6 +56,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderCrochetReliefOverlay />
     <BagBuilderAccessoryFidelityOverlay />
     <BagBuilderAccessoryMaterialFinish />
+    <BagBuilderRigidMaterialFinish />
     <BagBuilderFidelity3DControlNamespace />
     <BagBuilderFidelity3DCompositorSync />
     <BagBuilderFinal3DController />
