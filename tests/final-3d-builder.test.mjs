@@ -41,8 +41,10 @@ test("four product stitches have independent yarn constructions", () => {
   assert.match(renderer, /float cord/);
 });
 
-test("final verifier accepts only current v4 frames with real framebuffer product pixels", () => {
-  assert.match(controller, /REQUIRED_RENDERER = "abags-fidelity-v4"/);
+test("final verifier accepts only the shared Agata renderer contract with real framebuffer product pixels", () => {
+  assert.match(controller, /import \{ ABAGS_FIDELITY_V4_RENDERER_VERSION \}/);
+  assert.match(controller, /const REQUIRED_RENDERER = ABAGS_FIDELITY_V4_RENDERER_VERSION;/);
+  assert.doesNotMatch(controller, /REQUIRED_RENDERER = "abags-fidelity-v4"/);
   assert.match(controller, /CURRENT_PROGRAM/);
   assert.match(controller, /gl\.isContextLost\(\)/);
   assert.match(controller, /drawingBufferWidth < 16/);
