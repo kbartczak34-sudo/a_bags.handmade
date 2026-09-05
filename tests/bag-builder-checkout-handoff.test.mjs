@@ -17,10 +17,16 @@ test("legacy builder families can still map to real catalog products as fallback
   assert.match(manager, /\/api\/products/);
 });
 
-test("server validates project options, compatibility and the photographed base product", () => {
+test("server validates project options, Agata fidelity, settings compatibility and the photographed base product", () => {
   assert.match(endpoint, /normalizeBagBuilderProjectConfig/);
   assert.match(endpoint, /getBagBuilderSettings/);
   assert.match(endpoint, /isBagBuilderProjectCompatible/);
+  assert.match(settings, /isAgataBuilderConstructionSupported/);
+  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "handles", config\.handles\)/);
+  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "straps", config\.strap\)/);
+  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "flaps", config\.flap\)/);
+  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "accents", config\.accent\)/);
+  assert.match(endpoint, /builder_incompatible/);
   assert.match(endpoint, /requestedBaseProductId/);
   assert.match(endpoint, /photoBaseProductId \|\| settings\.familyProductIds\[config\.family\]/);
   assert.match(endpoint, /findVisibleProductsByIds\(\[productId\]\)/);
