@@ -10,6 +10,7 @@ import "./bag-builder-customer-cleanroom.css";
 import "./bag-builder-fidelity3d-controls.css";
 import "./bag-builder-customer-premium-polish.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
+import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
@@ -45,6 +46,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderEngine />
     <BagBuilderFidelityOptions />
     <BagBuilderFinalWebGL3D />
+    <BagBuilderAccessoryFidelityOverlay />
     <BagBuilderFidelity3DControlNamespace />
     <BagBuilderFidelity3DCompositorSync />
     <BagBuilderFinal3DController />
