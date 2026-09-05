@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ABAGS_FIDELITY_V4_FAMILY_SPECS, ABAGS_FIDELITY_V4_RENDERER_VERSION } from "../lib/abags-fidelity-v4-family-spec";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -62,7 +63,7 @@ const DEFAULT_ROTATION = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.42;
-const RENDERER_VERSION = "abags-fidelity-v3";
+const RENDERER_VERSION = ABAGS_FIDELITY_V4_RENDERER_VERSION;
 
 const VERTEX = `
 attribute vec3 aPosition;
@@ -311,10 +312,8 @@ function superellipseContour(rx: number, ry: number, power: number, count = 48, 
 }
 
 function familyContour(family: Exclude<Family, "">): Point[] {
-  if (family === "tote") return superellipseContour(1.02, .79, 4.6, 52, -.055);
-  if (family === "round") return superellipseContour(.88, .89, 2.08, 56, 0);
-  if (family === "bucket") return superellipseContour(.84, .83, 4.4, 52, -.045);
-  return superellipseContour(.76, .64, 5.4, 52, -.025);
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  return superellipseContour(spec.rx, spec.ry, spec.power, family === "round" ? 56 : 60, spec.taper);
 }
 
 function scaledContour(contour: Point[], factor: number): Point[] {
@@ -497,10 +496,10 @@ function init(canvas: HTMLCanvasElement): Renderer {
       light: uniform("uLight"),
     },
     meshes: {
-      tote: createMesh(gl, beveledExtrusion(familyContour("tote"), .39, .06)),
-      round: createMesh(gl, beveledExtrusion(familyContour("round"), .34, .055)),
-      bucket: createMesh(gl, beveledExtrusion(familyContour("bucket"), .37, .06)),
-      mini: createMesh(gl, beveledExtrusion(familyContour("mini"), .30, .05)),
+      tote: createMesh(gl, beveledExtrusion(familyContour("tote"), ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.bevel)),
+      round: createMesh(gl, beveledExtrusion(familyContour("round"), ABAGS_FIDELITY_V4_FAMILY_SPECS.round.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.bevel)),
+      bucket: createMesh(gl, beveledExtrusion(familyContour("bucket"), ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.bevel)),
+      mini: createMesh(gl, beveledExtrusion(familyContour("mini"), ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.bevel)),
       flap: createMesh(gl, beveledExtrusion(superellipseContour(.80, .36, 4.2, 44, -.04), .075, .022)),
       handle: createMesh(gl, tubeArc(.67, .50, .058)),
       strap: createMesh(gl, tubeArc(1.10, 1.40, .038)),
@@ -533,10 +532,15 @@ function stitchId(stitch: Stitch) {
 }
 
 function familyMetrics(family: Exclude<Family, "">) {
-  if (family === "tote") return { depth: .39, topY: .80, side: .91, handleScale: [.94, .88] as const, flapScale: [.94, .90] as const };
-  if (family === "round") return { depth: .34, topY: .82, side: .80, handleScale: [.82, .80] as const, flapScale: [.79, .72] as const };
-  if (family === "bucket") return { depth: .37, topY: .84, side: .76, handleScale: [.82, .82] as const, flapScale: [.90, .92] as const };
-  return { depth: .30, topY: .66, side: .67, handleScale: [.70, .68] as const, flapScale: [.73, .78] as const };
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  return {
+    depth: spec.depth,
+    topY: spec.topY,
+    side: spec.sideAnchor,
+    handleScale: spec.handleScale,
+    flapScale: spec.flapScale,
+    flapY: spec.flapY,
+  };
 }
 
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
@@ -602,7 +606,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#292426" : config.flap === "leather-cognac" ? "#9a6345" : config.flap === "suede-burgundy" ? "#773c4b" : bodyColor;
     const flapMaterial = config.flap === "crochet" ? 0 : 1;
-    const flapY = config.family === "round" ? .31 : config.family === "mini" ? .24 : .29;
+    const flapY = metrics.flapY ?? .29;
     drawMesh(
       renderer,
       meshes.flap,
@@ -753,7 +757,7 @@ export default function BagBuilderFinalWebGL3D() {
   if (!portalTarget) return null;
 
   return createPortal(
-    <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d data-abags-final-webgl="v3">
+    <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d data-abags-final-webgl="v4">
       <canvas
         ref={canvasRef}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
@@ -800,7 +804,7 @@ export default function BagBuilderFinalWebGL3D() {
           setZoom((value) => clamp(value - event.deltaY * .0008, MIN_ZOOM, MAX_ZOOM));
         }}
       />
-      <div className="abags-pro3d-chip">A-BAGS REALTIME 3D · FIDELITY V3</div>
+      <div className="abags-pro3d-chip">A-BAGS REALTIME 3D · FIDELITY V4</div>
       <div className="abags-pro3d-view-controls" aria-label="Widok modelu 3D">
         <button type="button" aria-pressed={view === "front"} onClick={() => setView("front")}>Przód</button>
         <button type="button" aria-pressed={view === "three"} onClick={() => setView("three")}>3/4</button>
