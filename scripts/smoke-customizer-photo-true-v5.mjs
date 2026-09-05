@@ -83,12 +83,19 @@ async function main() {
     const waitFor = async (expression, label, deadlineMs = timeoutMs) => {
       const deadline = Date.now() + deadlineMs;
       let value;
+      let lastError;
       while (Date.now() < deadline) {
-        value = await evaluate(expression);
-        if (value) return value;
+        try {
+          value = await evaluate(expression);
+          if (value) return value;
+          lastError = undefined;
+        } catch (error) {
+          lastError = error;
+        }
         await sleep(150);
       }
-      throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}`);
+      const suffix = lastError instanceof Error ? ` Last evaluation error: ${lastError.message}` : "";
+      throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}.${suffix}`);
     };
     const capture = async (name) => {
       const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
@@ -97,6 +104,14 @@ async function main() {
         writeFileSync(join(outputDir, name), Buffer.from(shot.data, "base64"));
       }
       return shot.data.length;
+    };
+    const reloadAndWait = async (label) => {
+      const token = `abags-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      await evaluate(`window.__abagsQaReloadToken=${JSON.stringify(token)}; true`);
+      await send("Page.reload", { ignoreCache: true });
+      await waitFor(`window.__abagsQaReloadToken !== ${JSON.stringify(token)}`, `${label} document replacement`);
+      await waitFor("document.readyState === 'complete'", `${label} document load`);
+      await waitFor("new URLSearchParams(window.location.search).has('abags-photo-true-v5')", `${label} Photo-True QA flag`);
     };
 
     const openPhotoTrue = async () => {
@@ -188,8 +203,7 @@ async function main() {
 
     // Desktop: actual store photo, real model cards, no visible synthetic/legacy model UI.
     await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-    await send("Page.reload", { ignoreCache: true });
-    await waitFor("document.readyState === 'complete'", "desktop document load");
+    await reloadAndWait("desktop");
     await openPhotoTrue();
     await selectStepOne();
     const desktopBefore = await contract();
@@ -203,8 +217,7 @@ async function main() {
     // a 50px app bar and a compact ~260px photographic preview before the real-model grid.
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
-    await send("Page.reload", { ignoreCache: true });
-    await waitFor("document.readyState === 'complete'", "mobile document load");
+    await reloadAndWait("mobile");
     await evaluate("window.scrollTo(0,0); true");
     await openPhotoTrue();
     await selectStepOne();
