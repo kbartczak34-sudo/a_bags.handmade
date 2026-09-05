@@ -13,7 +13,7 @@ test("all-options production browser gate has valid Node syntax", () => {
 
 test("production smoke blocks on the all-options realtime browser gate", () => {
   assert.match(smoke, /node scripts\/smoke-customizer-all-options\.mjs/);
-  assert.match(smoke, /all eight Bag Builder decisions visibly redraw verified WebGL/);
+  assert.match(smoke, /all eight Bag Builder decisions visibly redraw the verified realtime composition/);
 });
 
 test("desktop and mobile scenarios exercise all eight builder decisions", () => {
@@ -23,11 +23,22 @@ test("desktop and mobile scenarios exercise all eight builder decisions", () => 
   }
 });
 
-test("option acceptance requires both synchronized signatures and changed WebGL pixels", () => {
+test("option acceptance requires synchronized signatures and changed composited pixels", () => {
   assert.match(qa, /stage\.dataset\.abagsFidelity3dFrame===stage\.dataset\.builderSignature/);
   assert.match(qa, /afterState\.signature === beforeState\.signature/);
   assert.match(qa, /afterPixels\.hash === beforePixels\.hash/);
   assert.match(qa, /gl\.readPixels/);
+  assert.match(qa, /accessory\.getContext\('2d'\)/);
+  assert.match(qa, /overlay\.getImageData/);
+  assert.match(qa, /overlayOpaque/);
+});
+
+test("production QA requires the calibrated accessory canvas and captures final desktop/mobile evidence", () => {
+  assert.match(qa, /abags-accessory-fidelity-canvas/);
+  assert.match(qa, /accessoryVersion/);
+  assert.match(qa, /finalPixels\.overlayOpaque <= 0/);
+  assert.match(qa, /accessory-\$\{label\.toLowerCase\(\)\}-final\.png/);
+  assert.match(qa, /Page\.captureScreenshot/);
 });
 
 test("desktop disables touch emulation without invalid zero touch points", () => {
