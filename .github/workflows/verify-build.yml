@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     env:
       ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:
@@ -30,109 +30,5 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Production build
-        id: production_build
-        run: npm run build
-
-      - name: Regression — transform authority
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/bag-builder-accessory-fidelity.test.mjs tests/builder-transform-authority.test.mjs
-
-      - name: Regression — remaining bag builder contracts
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          mapfile -t files < <(find tests -maxdepth 1 -type f -name 'bag-builder-*.test.mjs' ! -name 'bag-builder-accessory-fidelity.test.mjs' | sort)
-          node --test "${files[@]}"
-
-      - name: Regression — customer and fidelity contracts
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          mapfile -t files < <(find tests -maxdepth 1 -type f \( -name 'customer-builder-*.test.mjs' -o -name 'fidelity3d-*.test.mjs' \) | sort)
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
-
-      - name: Regression — remaining A-Q excluding isolated families
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do
-            base=$(basename "$file")
-            case "$base" in
-              [a-qA-Q]*) files+=("$file");;
-            esac
-          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' \
-            ! -name 'bag-builder-*.test.mjs' \
-            ! -name 'builder-transform-authority.test.mjs' \
-            ! -name 'customer-builder-*.test.mjs' \
-            ! -name 'fidelity3d-*.test.mjs' | sort)
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
-
-      - name: Regression — realtime-builder-default
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/realtime-builder-default.test.mjs
-
-      - name: Regression — realtime-render-integrity
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/realtime-render-integrity.test.mjs
-
-      - name: Regression — remove-free-shipping
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/remove-free-shipping.test.mjs
-
-      - name: Regression — rendered-html
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/rendered-html.test.mjs
-
-      - name: Regression — stitch-gallery
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/stitch-gallery.test.mjs
-
-      - name: Regression — store-readiness-dashboard
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/store-readiness-dashboard.test.mjs
-
-      - name: Regression — storefront-crochet-terminology
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/storefront-crochet-terminology.test.mjs
-
-      - name: Regression — storefront-experience
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/storefront-experience.test.mjs
-
-      - name: Regression — stripe-live-gate
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/stripe-live-gate.test.mjs
-
-      - name: Regression — stripe-live-webhook-gate
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/stripe-live-webhook-gate.test.mjs
-
-      - name: Regression — stripe-refund-sync
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        run: node --test tests/stripe-refund-sync.test.mjs
-
-      - name: Regression — remaining T-Z
-        if: ${{ always() && steps.production_build.outcome == 'success' }}
-        shell: bash
-        run: |
-          files=()
-          while IFS= read -r file; do
-            base=$(basename "$file")
-            case "$base" in [t-zT-Z]*) files+=("$file");; esac
-          done < <(find tests -maxdepth 1 -type f -name '*.test.mjs' \
-            ! -name 'bag-builder-*.test.mjs' \
-            ! -name 'builder-transform-authority.test.mjs' \
-            ! -name 'customer-builder-*.test.mjs' \
-            ! -name 'fidelity3d-*.test.mjs' | sort)
-          if [ "${#files[@]}" -eq 0 ]; then exit 0; fi
-          node --test "${files[@]}"
+      - name: Lint, typecheck, build and regression tests
+        run: npm run check
