@@ -5,6 +5,8 @@ import { useEffect } from "react";
 const EYEBROW = "A-BAGS VISUAL CUSTOMIZER";
 const TITLE = "Zbuduj swoją torebkę od podstaw";
 const SUBTITLE = "Podgląd na żywo  •  Buduj warstwa po warstwie";
+const OWNER_MARK_SRC = "/abags-owner-mark.svg";
+const OWNER_MARK_ALT = "a_bags Handmade";
 
 function ownEyebrow(header: HTMLElement) {
   const legacy = header.querySelector<HTMLElement>(".eyebrow");
@@ -48,6 +50,33 @@ function ownTitle(header: HTMLElement) {
   return true;
 }
 
+function ownWordmark(header: HTMLElement) {
+  const current = header.querySelector<HTMLElement>(".abags-v3-wordmark");
+
+  if (current instanceof HTMLImageElement) {
+    if (current.getAttribute("src") !== OWNER_MARK_SRC) current.src = OWNER_MARK_SRC;
+    if (current.alt !== OWNER_MARK_ALT) current.alt = OWNER_MARK_ALT;
+    if (current.width !== 104) current.width = 104;
+    if (current.height !== 43) current.height = 43;
+    current.decoding = "async";
+    current.draggable = false;
+    return true;
+  }
+
+  const mark = document.createElement("img");
+  mark.className = "abags-v3-wordmark";
+  mark.src = OWNER_MARK_SRC;
+  mark.alt = OWNER_MARK_ALT;
+  mark.width = 104;
+  mark.height = 43;
+  mark.decoding = "async";
+  mark.draggable = false;
+
+  if (current) current.replaceWith(mark);
+  else header.appendChild(mark);
+  return true;
+}
+
 function syncHeader() {
   const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v3");
   if (!dialog) return false;
@@ -56,6 +85,7 @@ function syncHeader() {
 
   const eyebrowOwned = ownEyebrow(header);
   const titleOwned = ownTitle(header);
+  const wordmarkOwned = ownWordmark(header);
 
   const copy = header.querySelector<HTMLElement>(":scope > div");
   if (copy) {
@@ -68,8 +98,10 @@ function syncHeader() {
     if (subtitle.textContent !== SUBTITLE) subtitle.textContent = SUBTITLE;
   }
 
-  if (eyebrowOwned && titleOwned) dialog.dataset.abagsV3HeaderLocked = "true";
-  return eyebrowOwned && titleOwned;
+  if (eyebrowOwned && titleOwned && wordmarkOwned) {
+    dialog.dataset.abagsV3HeaderLocked = "true";
+  }
+  return eyebrowOwned && titleOwned && wordmarkOwned;
 }
 
 export default function BagBuilderReferenceHeaderGuard() {
