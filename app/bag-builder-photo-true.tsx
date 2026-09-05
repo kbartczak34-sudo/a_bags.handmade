@@ -200,19 +200,21 @@ export default function BagBuilderPhotoTrue() {
 
   useEffect(() => {
     if (!stage || !selected?.imageUrl) return;
-    const dialog = stage.closest<HTMLElement>(".abags-vc-dialog");
+    const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage");
+    if (!liveStage || liveStage !== stage) return;
+    const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog");
     const family = inferLegacyFamily(selected);
-    stage.dataset.abagsPhotoTrue = "active";
-    stage.dataset.photoProductId = selected.id;
-    stage.dataset.photoProductName = selected.name;
+    liveStage.dataset.abagsPhotoTrue = "active";
+    liveStage.dataset.photoProductId = selected.id;
+    liveStage.dataset.photoProductName = selected.name;
     dialog?.setAttribute("data-abags-photo-true", "active");
     dialog?.setAttribute("data-photo-product-id", selected.id);
     try { window.localStorage.setItem(STORAGE_KEY, selected.id); } catch {}
-    if (stage.dataset.family !== family) clickLegacyFamily(family);
+    if (liveStage.dataset.family !== family) clickLegacyFamily(family);
     return () => {
-      stage.removeAttribute("data-abags-photo-true");
-      stage.removeAttribute("data-photo-product-id");
-      stage.removeAttribute("data-photo-product-name");
+      liveStage.removeAttribute("data-abags-photo-true");
+      liveStage.removeAttribute("data-photo-product-id");
+      liveStage.removeAttribute("data-photo-product-name");
       dialog?.removeAttribute("data-abags-photo-true");
       dialog?.removeAttribute("data-photo-product-id");
     };
