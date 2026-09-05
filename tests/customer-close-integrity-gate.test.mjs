@@ -9,7 +9,7 @@ const workflow = readFileSync(".github/workflows/deploy-cloudflare.yml", "utf8")
 test("customer close production probe is valid JavaScript and inspects actual rendered state", () => {
   const check = spawnSync(process.execPath, ["--check", "scripts/smoke-customizer-close-integrity.mjs"], { encoding: "utf8" });
   assert.equal(check.status, 0, check.stderr || check.stdout);
-  assert.match(probe, /data-abags-customer-close-icon/);
+  assert.match(probe, /abagsCustomerCloseIcon/);
   assert.match(probe, /data-abags-customer-close-surface/);
   assert.match(probe, /getComputedStyle\(close,'::before'\)/);
   assert.match(probe, /getComputedStyle\(close,'::after'\)/);
