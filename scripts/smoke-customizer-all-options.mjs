@@ -276,15 +276,16 @@ async function main() {
       label: "Desktop",
       viewport: { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
       choices: [
-        ["family", "tote"],
+        ["family", "mini"],
         ["color", "#E4A9B5"],
         ["stitch", "herringbone"],
-        ["flap", "leather-cognac"],
+        ["flap", "crochet"],
         ["handles", "wood-light"],
-        ["strap", "leather"],
+        ["strap", "woven"],
         ["hardware", "silver"],
         ["accent", "tassel"],
       ],
+      incompatible: [["handles", "wood-dark"], ["handles", "crochet"], ["flap", "leather-cognac"], ["flap", "suede-burgundy"], ["strap", "leather"], ["accent", "scarf"]],
     });
 
     const mobile = await runScenario({
@@ -300,15 +301,16 @@ async function main() {
         ["hardware", "black"],
         ["accent", "charm"],
       ],
-      incompatible: [["handles", "wood-dark"], ["handles", "crochet"]],
+      incompatible: [["handles", "wood-dark"], ["handles", "crochet"], ["flap", "leather-cognac"], ["flap", "suede-burgundy"], ["strap", "leather"], ["accent", "scarf"]],
     });
 
     console.log("ALL REALTIME OPTIONS PASS:", productionUrl);
     console.log("- every builder field changed verified WebGL pixels on desktop: yes");
     console.log("- every builder field changed verified WebGL pixels on mobile: yes");
-    console.log("- desktop final: tote / #E4A9B5 / herringbone / leather-cognac / wood-light / leather / silver / tassel");
+    console.log("- desktop final: mini / #E4A9B5 / herringbone / crochet / wood-light / woven / silver / tassel");
     console.log("- mobile final: mini / #087E81 / basket / crochet / wood-light / chain / black / charm");
-    console.log("- Mini light wooden handle is enabled from the real teal Agata reference; wood-dark and crochet remain unavailable: yes");
+    console.log("- Mini construction options are bounded to real Agata component evidence: yes");
+    console.log("- unsupported Mini handles, leather/suede flaps, leather strap and scarf are unavailable: yes");
     console.log("- desktop fingerprints:", desktop.visualResults.map((item) => `${item.key}:${item.hash}`).join(", "));
     console.log("- mobile fingerprints:", mobile.visualResults.map((item) => `${item.key}:${item.hash}`).join(", "));
   } finally {
