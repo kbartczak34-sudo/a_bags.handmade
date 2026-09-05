@@ -61,6 +61,52 @@ assert_protected() {
   echo "$code"
 }
 
+site_content_contract_ready() {
+  local body="$TMP_DIR/site-content.body"
+
+  grep -Fq "Ręcznie szydełkowane" "$body" || return 1
+  grep -Fq "Porozmawiajmy o Twojej nowej torebce" "$body" || return 1
+  grep -Fq "Zostaw swoją opinię" "$body" || return 1
+  grep -Fq "Copyright 2026 a_bags.handmade All rights reserved" "$body" || return 1
+  grep -Fq "Full-Stack/all-in-one Developer: Klaudia Weronika Bartczak" "$body" || return 1
+
+  if grep -Fq "Ręcznie plecione" "$body"; then return 1; fi
+  if grep -Fq "ręcznie pleciona" "$body"; then return 1; fi
+  if grep -Fq "ręcznie plecione" "$body"; then return 1; fi
+
+  return 0
+}
+
+wait_for_site_content() {
+  local attempt code cache_bust
+
+  # Wrangler can report a successful deploy before every edge request observes
+  # the newly activated Worker. Retry only the semantic site-content contract;
+  # a persistently stale or invalid payload still fails the deployment.
+  for attempt in 1 2 3 4 5 6 7 8; do
+    cache_bust="smoke_attempt=${attempt}&ts=$(date +%s%N)"
+    code="$(curl "${CURL_COMMON[@]}" --location \
+      --header 'Cache-Control: no-cache' \
+      --header 'Pragma: no-cache' \
+      --dump-header "$TMP_DIR/site-content.headers" \
+      --output "$TMP_DIR/site-content.body" \
+      --write-out '%{http_code}' \
+      "$BASE_URL/api/site-content?$cache_bust")"
+
+    if [[ "$code" == "200" ]] && site_content_contract_ready; then
+      return 0
+    fi
+
+    if [[ "$attempt" -lt 8 ]]; then
+      echo "SMOKE INFO: /api/site-content not converged yet (attempt $attempt/8); retrying in 3s" >&2
+      sleep 3
+    fi
+  done
+
+  [[ "$code" == "200" ]] || fail "/api/site-content returned HTTP $code after post-deploy convergence window"
+  fail "storefront site-content did not converge to approved production contract after post-deploy retries"
+}
+
 assert_200 "/" "home"
 grep -Fq "a_bags.handmade" "$TMP_DIR/home.body" || fail "home page does not contain the A-Bags brand"
 grep -Fq "Ręcznie szydełkowane torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade." "$TMP_DIR/home.body" || fail "home metadata does not expose crochet-accurate brand description"
@@ -94,7 +140,7 @@ grep -Fq '"src": "/icon-maskable.svg"' "$TMP_DIR/manifest.body" || fail "PWA man
 assert_200 "/api/products" "products"
 grep -Eq '"products"[[:space:]]*:' "$TMP_DIR/products.body" || fail "product API response is malformed"
 
-assert_200 "/api/site-content" "site-content"
+wait_for_site_content
 grep -Fq "Ręcznie szydełkowane" "$TMP_DIR/site-content.body" || fail "storefront does not expose crochet-accurate hero terminology"
 grep -Fq "Porozmawiajmy o Twojej nowej torebce" "$TMP_DIR/site-content.body" || fail "storefront does not expose the approved new-bag email CTA"
 grep -Fq "Zostaw swoją opinię" "$TMP_DIR/site-content.body" || fail "storefront does not expose the approved review form title"
