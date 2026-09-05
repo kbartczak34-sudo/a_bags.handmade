@@ -199,9 +199,9 @@ export default function BagBuilderPhotoTrue() {
   const selected = useMemo(() => products.find((product) => product.id === selectedId) ?? null, [products, selectedId]);
 
   useEffect(() => {
-    if (!selected?.imageUrl) return;
+    if (!stage || !selected?.imageUrl) return;
     const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage");
-    if (!liveStage) return;
+    if (!liveStage || liveStage !== stage) return;
     const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog");
     const family = inferLegacyFamily(selected);
     liveStage.dataset.abagsPhotoTrue = "active";
@@ -218,7 +218,7 @@ export default function BagBuilderPhotoTrue() {
       dialog?.removeAttribute("data-abags-photo-true");
       dialog?.removeAttribute("data-photo-product-id");
     };
-  }, [selected]);
+  }, [selected, stage]);
 
   useEffect(() => {
     if (!selectedId) return;
