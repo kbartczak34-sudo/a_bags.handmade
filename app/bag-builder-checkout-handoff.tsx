@@ -166,7 +166,7 @@ export default function BagBuilderCheckoutHandoff() {
 
   let title = "Zakup projektu online";
   let status = "konsultacja";
-  let copy = "Dokończ model, kolor sznurka i splot. Projekt możesz nadal zapisać, udostępnić albo wysłać do pracowni.";
+  let copy = "Dokończ model, kolor sznurka i ścieg szydełkowy. Projekt możesz nadal zapisać, udostępnić albo wysłać do pracowni.";
   if (complete && settings && !settings.pricingEnabled) {
     copy = "Pracownia nie włączyła jeszcze bezpośredniej sprzedaży personalizacji. Wyślij projekt do konsultacji i potwierdzenia ceny.";
   } else if (complete && settings?.pricingEnabled && !mapped) {
