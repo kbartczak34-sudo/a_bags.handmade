@@ -87,7 +87,17 @@ function assertViewEvidence(label, view, evidence) {
   if (front.sampled < 150 || front.contact < 100 || front.contactRatio < 0.45) {
     throw new Error(`${label} ${view}: front flap/accent layer drifted away from the verified WebGL body: ${JSON.stringify(front)}`);
   }
-  if (view !== "Bok") {
+  if (view === "Bok") {
+  const handle = evidence?.handle;
+  if (!handle || handle.sampled < 120 || handle.clusterCount < 2 || handle.separationRatio < 0.045) {
+    throw new Error(`${label} ${view}: rigid wooden handle lost front/back depth separation: ${JSON.stringify(handle)}`);
+  }
+  const [primary, secondary] = handle.clusters || [];
+  if (!primary || !secondary || primary.pixels < 45 || secondary.pixels < 45) {
+    throw new Error(`${label} ${view}: rigid wooden handle no longer produces two substantial side-view WebGL clusters: ${JSON.stringify(handle)}`);
+  }
+}
+if (view !== "Bok") {
     if (back.leftContact < 20 || back.rightContact < 20) {
       throw new Error(`${label} ${view}: rear accessory lost one of its two side attachment zones: ${JSON.stringify(back)}`);
     }
@@ -218,7 +228,54 @@ async function main() {
       gl.readPixels(0,0,gw,gh,gl.RGBA,gl.UNSIGNED_BYTE,glPixels);
       if(gl.getError()!==gl.NO_ERROR)return null;
 
-      const analyze=(overlay)=>{
+      const analyzeRigidHandle=()=>{
+  const columns=new Uint32Array(gw);
+  let sampled=0;
+  for(let y=0;y<gh;y+=1){
+    for(let x=0;x<gw;x+=1){
+      const i=(y*gw+x)*4;
+      const r=glPixels[i],g=glPixels[i+1],b=glPixels[i+2],a=glPixels[i+3];
+      const wood=a>32 && r>110 && g>75 && b<190 && r>g && g>b && r-b>32 && g-b>8;
+      if(!wood)continue;
+      columns[x]+=1;
+      sampled+=1;
+    }
+  }
+  const minColumn=Math.max(2,Math.round(gh*0.003));
+  const gapTolerance=Math.max(2,Math.round(gw*0.006));
+  const groups=[];
+  let current=null,lastX=-1;
+  for(let x=0;x<gw;x+=1){
+    const pixels=columns[x];
+    if(pixels<minColumn)continue;
+    if(!current || x-lastX>gapTolerance){
+      current={minX:x,maxX:x,pixels:0,weightedX:0};
+      groups.push(current);
+    }
+    current.maxX=x;
+    current.pixels+=pixels;
+    current.weightedX+=x*pixels;
+    lastX=x;
+  }
+  const minPixels=Math.max(28,Math.round(gh*0.035));
+  const clusters=groups
+    .filter((group)=>group.pixels>=minPixels)
+    .map((group)=>({
+      minX:group.minX,maxX:group.maxX,pixels:group.pixels,
+      center:group.weightedX/Math.max(1,group.pixels),
+    }))
+    .sort((a,b)=>b.pixels-a.pixels);
+  if(clusters.length<2){
+    return {sampled,clusterCount:clusters.length,clusters:clusters.slice(0,4),separation:0,separationRatio:0};
+  }
+  const separation=Math.abs(clusters[0].center-clusters[1].center);
+  return {
+    sampled,clusterCount:clusters.length,clusters:clusters.slice(0,4),
+    separation,separationRatio:separation/gw,
+  };
+};
+
+const analyze=(overlay)=>{
         const ctx=overlay.getContext('2d');
         if(!ctx || overlay.width<16 || overlay.height<16)return null;
         const ow=overlay.width, oh=overlay.height;
@@ -279,6 +336,7 @@ async function main() {
         rotationY:Number(stage.dataset.abagsFidelity3dRotationY),
         zoom:Number(stage.dataset.abagsFidelity3dZoom),
         webgl:{width:gw,height:gh},
+        handle:analyzeRigidHandle(),
         back:analyze(back),
         front:analyze(front),
       };
@@ -337,6 +395,9 @@ async function main() {
     console.log("- rear strap/chain remains attached to WebGL side hardware on desktop/mobile: yes");
     console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
+  console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
+  console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);
+  console.log("- mobile side handle evidence:", mobile.find((item) => item.view === "Bok")?.handle);
     console.log("- desktop evidence:", desktop.map((item) => ({ view:item.view, back:item.back.contactRatio, front:item.front.contactRatio })));
     console.log("- mobile evidence:", mobile.map((item) => ({ view:item.view, back:item.back.contactRatio, front:item.front.contactRatio })));
   } finally {

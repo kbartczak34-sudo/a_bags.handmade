@@ -18,6 +18,12 @@ test("production anchor probe verifies both accessory depth layers across all cu
   assert.match(probe, /back\.rightContact < 20/);
   assert.match(probe, /front\.leftContact < 20/);
   assert.match(probe, /front\.rightContact < 20/);
+  assert.match(probe, /analyzeRigidHandle/);
+  assert.match(probe, /handle\.clusterCount < 2/);
+  assert.match(probe, /handle\.separationRatio < 0\.045/);
+  assert.match(probe, /primary\.pixels < 45/);
+  assert.match(probe, /secondary\.pixels < 45/);
+  assert.match(probe, /handle:analyzeRigidHandle\(\)/);
   assert.match(probe, /new Set\(results\.map\(\(item\) => item\.back\.hash\)\)\.size !== 3/);
   assert.match(probe, /new Set\(results\.map\(\(item\) => item\.front\.hash\)\)\.size !== 3/);
 });
