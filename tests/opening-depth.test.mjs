@@ -9,12 +9,20 @@ const [stack, opening, css, rim] = await Promise.all([
   readFile(new URL("../app/bag-builder-agata-top-rim.tsx", import.meta.url), "utf8"),
 ]);
 
-test("Opening Depth V2 runs below AgataTopRim and before accessory overlays", () => {
+test("Opening Depth V2 runs below photographed AgataTopRim V2 and before accessory overlays", () => {
   assert.match(stack, /<BagBuilderHandmadeEdgeFinish\s*\/>[\s\S]*<BagBuilderOpeningDepth\s*\/>[\s\S]*<BagBuilderAgataTopRim\s*\/>[\s\S]*<BagBuilderAccessoryFidelityOverlay\s*\/>/);
   assert.match(stack, /import "\.\/bag-builder-opening-depth\.css"/);
   assert.match(opening, /OPENING_VERSION = "calibrated-opening-depth-v2-deep-mouth-rim-aware"/);
   assert.match(css, /z-index:6!important/);
-  assert.match(rim, /rowY = spec\.ry \* \(row === 0 \? 0\.855 : 0\.790\)/);
+
+  // Preserve the exact photographed row heights while allowing Top Rim V2 to add only
+  // deterministic handmade seating and corner depth around those locked Fidelity anchors.
+  assert.match(rim, /RIM_VERSION = "agata-handmade-top-rim-v2-corner-depth-seated"/);
+  assert.match(rim, /const baseY = spec\.ry \* \(row === 0 \? 0\.855 : 0\.790\)/);
+  assert.match(rim, /const handmadeY = deterministicJitter\(index, row, 31\) \* spec\.ry \* 0\.0032/);
+  assert.match(rim, /const rowY = baseY \+ handmadeY/);
+  assert.match(rim, /const edgeTurn = Math\.pow\(Math\.min\(1, Math\.abs\(normalizedX\)\), 1\.65\)/);
+  assert.match(rim, /const rowZ = baseZ - edgeTurn \* spec\.depth \* 0\.055 \+ handmadeZ/);
   assert.match(opening, /family === "round" \? 0\.765 : 0\.755/);
 });
 
