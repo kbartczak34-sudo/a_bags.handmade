@@ -9,7 +9,7 @@ const [stack, finish] = await Promise.all([
 
 test("natural material finish stays downstream of calibrated body and accessory layers", () => {
   assert.match(stack, /<BagBuilderAccessoryMaterialFinish\s*\/>[\s\S]*<BagBuilderRigidMaterialFinish\s*\/>/);
-  assert.match(finish, /FINISH_VERSION = "rigid-natural-material-v1"/);
+  assert.match(finish, /FINISH_VERSION = "rigid-natural-material-v2-flap-depth"/);
   assert.match(finish, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
   assert.match(finish, /stage\.dataset\.abagsFinal3d !== "ready"/);
 });
@@ -22,8 +22,29 @@ test("wood handle finish mirrors calibrated tubeArc centreline without changing 
   assert.match(finish, /rgba\(111,75,36,\.22\)/);
 });
 
-test("leather and suede flaps get distinct deterministic surface cues", () => {
-  assert.match(finish, /function drawFlapMaterial/);
+test("crochet flap receives neutral contact depth without recolouring the verified WebGL material", () => {
+  assert.match(finish, /if \(flap === "none"\) return/);
+  assert.match(finish, /const crochet = flap === "crochet"/);
+  assert.match(finish, /function drawFlapContactDepth/);
+  assert.match(finish, /function drawCrochetFlapCrown/);
+  assert.match(finish, /createRadialGradient/);
+  assert.match(finish, /rgba\(30,22,25,\.22\)/);
+  assert.match(finish, /rgba\(255,255,255,\.17\)/);
+  assert.match(finish, /rgba\(28,19,23,\.14\)/);
+  assert.match(finish, /selected cord colour and stitch[\s\S]*verified WebGL material/);
+  assert.doesNotMatch(finish, /crochet[\s\S]{0,240}fillStyle\s*=\s*["']#/);
+});
+
+test("all flap materials keep the same calibrated contour and only add surface lighting", () => {
+  assert.match(finish, /const centerY = spec\.flapY \?\? 0\.29/);
+  assert.match(finish, /const rx = 0\.80 \* spec\.flapScale\[0\]/);
+  assert.match(finish, /const ry = 0\.36 \* spec\.flapScale\[1\]/);
+  assert.match(finish, /spec\.depth \/ 2 \+ 0\.145/);
+  assert.match(finish, /drawFlapContactDepth\(context, path, unit, crochet, suede\)/);
+  assert.doesNotMatch(finish, /scale\([^\n]*flap/);
+});
+
+test("leather and suede flaps keep distinct deterministic surface cues", () => {
   assert.match(finish, /flap === "suede-burgundy"/);
   assert.match(finish, /createLinearGradient/);
   assert.match(finish, /rgba\(255,247,238,\.18\)/);
