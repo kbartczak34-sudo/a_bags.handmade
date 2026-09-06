@@ -6,15 +6,17 @@ const source = await readFile(new URL("../app/bag-builder-photo-true.tsx", impor
 
 test("Photo-True readiness follows the currently mounted builder stage", () => {
   assert.match(source, /if \(!stage \|\| !selected\?\.imageUrl\) return;/);
-  assert.match(source, /const liveStage = stage;/);
+  assert.match(source, /const liveStage = document\.querySelector<HTMLElement>\("\.abags-vc-dialog\.abags-reference-layout-v4 \.abags-bag-builder-stage"\);/);
+  assert.match(source, /if \(!liveStage \|\| liveStage !== stage\) return;/);
   assert.match(source, /liveStage\.dataset\.abagsPhotoTrue = "active"/);
   assert.match(source, /liveStage\.dataset\.photoProductId = selected\.id/);
   assert.match(source, /dialog\.dataset\.photoProductId = selected\.id/);
   assert.match(source, /\}, \[selected, stage\]\);/);
 });
 
-test("Photo-True no longer binds readiness to a stale global stage lookup", () => {
+test("Photo-True validates the active DOM node before writing readiness markers", () => {
   const readinessEffect = source.slice(source.indexOf("const selected = useMemo"), source.indexOf("if (!selectedId) return;"));
-  assert.doesNotMatch(readinessEffect, /document\.querySelector<HTMLElement>\("\.abags-vc-dialog\.abags-reference-layout-v4 \.abags-bag-builder-stage"\)/);
+  assert.match(readinessEffect, /liveStage !== stage/);
   assert.match(readinessEffect, /if \(dialog\.dataset\.photoProductId === selected\.id\)/);
+  assert.doesNotMatch(readinessEffect, /const liveStage = stage;/);
 });
