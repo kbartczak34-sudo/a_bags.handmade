@@ -1,0 +1,34 @@
+.abags-fidelity3d-layer > .abags-agata-top-rim {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:8!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  opacity:.96;
+}
+
+.abags-bag-builder-stage[data-abags-photo-true="active"] .abags-agata-top-rim {
+  opacity:0!important;
+}
+
+/* The photo-calibrated WebGL pass owns body-stitch normals. Keeping the old
+   generic relief fully visible would double the pattern and create fake stripes. */
+.abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+  > .abags-fidelity3d-layer > .abags-crochet-relief-surface {
+  opacity:.06!important;
+  mix-blend-mode:soft-light!important;
+}
+
+@media (max-width:620px) {
+  .abags-fidelity3d-layer > .abags-agata-top-rim {
+    opacity:.90;
+  }
+  .abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+    > .abags-fidelity3d-layer > .abags-crochet-relief-surface {
+    opacity:.04!important;
+  }
+}
