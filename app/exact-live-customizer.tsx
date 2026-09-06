@@ -15,6 +15,7 @@ import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contra
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAccessoryMaterialFinish from "./bag-builder-accessory-material-finish";
 import BagBuilderAutosave from "./bag-builder-autosave";
+import BagBuilderBasketWeaveFinish from "./bag-builder-basket-weave-finish";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
 import BagBuilderCrochetReliefOverlay from "./bag-builder-crochet-relief-overlay";
@@ -54,6 +55,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderFinalWebGL3D />
     <BagBuilderLifelikeSurface />
     <BagBuilderCrochetReliefOverlay />
+    <BagBuilderBasketWeaveFinish />
     <BagBuilderAccessoryFidelityOverlay />
     <BagBuilderAccessoryMaterialFinish />
     <BagBuilderRigidMaterialFinish />
