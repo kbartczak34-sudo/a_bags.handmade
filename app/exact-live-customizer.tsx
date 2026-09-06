@@ -12,6 +12,7 @@ import "./bag-builder-customer-premium-polish.css";
 import "./bag-builder-lifelike-surface.css";
 import "./bag-builder-crochet-relief-overlay.css";
 import "./bag-builder-flap-realism-tuning.css";
+import "./bag-builder-crochet-flap-density.css";
 import "./bag-builder-handmade-edge-finish.css";
 import "./bag-builder-opening-depth.css";
 import "./bag-builder-sidewall-crochet-depth.css";
@@ -23,6 +24,7 @@ import BagBuilderBasketWeaveFinish from "./bag-builder-basket-weave-finish";
 import BagBuilderChainRealism from "./bag-builder-chain-realism";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
 import BagBuilderCommerce from "./bag-builder-commerce";
+import BagBuilderCrochetFlapDensity from "./bag-builder-crochet-flap-density";
 import BagBuilderCrochetFlapRelief from "./bag-builder-crochet-flap-relief";
 import BagBuilderCrochetReliefOverlay from "./bag-builder-crochet-relief-overlay";
 import BagBuilderCrochetTerminologyGuard from "./bag-builder-crochet-terminology-guard";
@@ -73,6 +75,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderAccessoryMaterialFinish />
     <BagBuilderChainRealism />
     <BagBuilderRigidMaterialFinish />
+    <BagBuilderCrochetFlapDensity />
     <BagBuilderFlapRealism />
     <BagBuilderCrochetFlapRelief />
     <BagBuilderFidelity3DControlNamespace />

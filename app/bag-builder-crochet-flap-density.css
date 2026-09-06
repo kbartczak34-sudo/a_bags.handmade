@@ -1,0 +1,22 @@
+.abags-bag-builder-stage > .abags-crochet-flap-density {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:273!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  opacity:.98;
+}
+
+.abags-bag-builder-stage[data-abags-photo-true="active"] > .abags-crochet-flap-density {
+  opacity:0!important;
+}
+
+@media (max-width:620px) {
+  .abags-bag-builder-stage > .abags-crochet-flap-density {
+    opacity:.95;
+  }
+}
