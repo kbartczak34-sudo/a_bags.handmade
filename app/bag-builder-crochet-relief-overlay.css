@@ -29,6 +29,15 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   visibility:visible!important;
 }
 
+/* The photo-calibrated Agata WebGL pass already carries the primary stitch height field.
+   Keep the legacy relief only as a faint micro-light pass so two independent patterns do not
+   add into artificial vertical stripes. This changes surface shading only, never geometry. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-crochet-relief="ready"][data-abags-agata-cord-webgl^="agata-cord-webgl-"]
+> .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+  opacity:.18!important;
+}
+
 /* Customer controls remain above every photographic/material pass. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer .abags-pro3d-view-controls,
@@ -44,6 +53,12 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   .abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-crochet-relief="ready"]
   > .abags-fidelity3d-layer > .abags-crochet-relief-surface{
     opacity:.54!important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-crochet-relief="ready"][data-abags-agata-cord-webgl^="agata-cord-webgl-"]
+  > .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+    opacity:.14!important;
   }
 }
 
