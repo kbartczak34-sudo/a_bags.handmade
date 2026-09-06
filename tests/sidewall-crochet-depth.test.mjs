@@ -11,7 +11,7 @@ const [stack, sidewall, css] = await Promise.all([
 test("sidewall crochet depth runs after opening depth and before accessory overlays", () => {
   assert.match(stack, /<BagBuilderOpeningDepth\s*\/>[\s\S]*<BagBuilderSidewallCrochetDepth\s*\/>[\s\S]*<BagBuilderAccessoryFidelityOverlay\s*\/>/);
   assert.match(stack, /import "\.\/bag-builder-sidewall-crochet-depth\.css"/);
-  assert.match(sidewall, /SIDE_VERSION = "sidewall-crochet-depth-v1-calibrated"/);
+  assert.match(sidewall, /SIDE_VERSION = "sidewall-crochet-depth-v2-basket-over-under"/);
 });
 
 test("sidewall relief derives from calibrated Fidelity V4 extrusion geometry and cannot expand the silhouette", () => {
@@ -36,6 +36,14 @@ test("sidewall relief is view-aware and supports all customer crochet stitches",
   assert.match(sidewall, /function drawShell/);
   assert.match(sidewall, /surface\.rearZ \+ \(surface\.frontZ - surface\.rearZ\)/);
   assert.doesNotMatch(sidewall, /Math\.random/);
+});
+
+test("basket sidewall uses alternating over-under bundles rather than continuous plaid columns", () => {
+  assert.match(sidewall, /Basket stitch must read as interlaced cord bundles, not a continuous plaid grid/);
+  assert.match(sidewall, /const fractions = \[0\.32, 0\.68\]/);
+  assert.match(sidewall, /if \(\(row \+ column\) % 2 !== 0\) continue/);
+  assert.match(sidewall, /step \* 1\.16/);
+  assert.doesNotMatch(sidewall, /Array\.from\(\{ length: 18 \}/);
 });
 
 test("sidewall pass is event driven, Photo-True safe and non-interactive on mobile", () => {

@@ -26,7 +26,7 @@ const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const SIDE_VERSION = "sidewall-crochet-depth-v1-calibrated";
+const SIDE_VERSION = "sidewall-crochet-depth-v2-basket-over-under";
 const MIN_SIDE_VISIBILITY = 0.22;
 
 function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
@@ -266,15 +266,28 @@ function drawBasket(
   zoom: number,
   unit: number,
   strength: number,
+  rows: number,
+  step: number,
 ) {
-  for (const fraction of [0.25, 0.50, 0.75]) {
-    const z = surface.rearZ + (surface.frontZ - surface.rearZ) * fraction;
-    const points = Array.from({ length: 18 }, (_, index) => ({
-      y: surface.yMin + ((surface.yMax - surface.yMin) * index) / 17,
-      z,
-    }));
-    const path = connectorPath(spec, surface, width, height, rotation, zoom, points);
-    if (path) raisedStroke(context, path, Math.max(0.90, 2.20 * unit), unit * 0.76, strength * 0.88);
+  // Basket stitch must read as interlaced cord bundles, not a continuous plaid grid.
+  // The horizontal rows remain the wrapping cords; only alternating short vertical
+  // bundles are raised above them at each crossing, producing a real over/under rhythm.
+  const fractions = [0.32, 0.68];
+  for (let row = 0; row < rows; row += 1) {
+    const y0 = surface.yMin + row * step - step * 0.08;
+    const y1 = Math.min(surface.yMax, y0 + step * 1.16);
+    for (let column = 0; column < fractions.length; column += 1) {
+      if ((row + column) % 2 !== 0) continue;
+      const fraction = fractions[column];
+      const centerZ = surface.rearZ + (surface.frontZ - surface.rearZ) * fraction;
+      const bow = spec.depth * (row % 2 === 0 ? 0.018 : -0.018);
+      const path = connectorPath(spec, surface, width, height, rotation, zoom, [
+        { y: y0, z: centerZ - bow },
+        { y: (y0 + y1) * 0.5, z: centerZ + bow },
+        { y: y1, z: centerZ - bow },
+      ]);
+      if (path) raisedStroke(context, path, Math.max(0.90, 2.12 * unit), unit * 0.78, strength * 0.90);
+    }
   }
 }
 
@@ -346,7 +359,7 @@ function paint(
 
   const { rows, step } = drawRows(context, spec, surface, width, height, rotation, zoom, unit, strength);
   if (stitch === "basket") {
-    drawBasket(context, spec, surface, width, height, rotation, zoom, unit, strength);
+    drawBasket(context, spec, surface, width, height, rotation, zoom, unit, strength, rows, step);
   } else if (stitch === "herringbone") {
     drawHerringbone(context, spec, surface, width, height, rotation, zoom, unit, strength, rows, step);
   } else if (stitch === "shell") {
