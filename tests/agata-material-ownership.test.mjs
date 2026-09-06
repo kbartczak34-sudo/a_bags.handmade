@@ -25,9 +25,9 @@ const AGATA_READY_MARKER =
 const ACTIVE_BASKET_MARKER =
   '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
 const PAINTED_BASKET_MARKER =
-  '[data-abags-basket-weave-finish="basket-cord-weave-v5-packed-over-under"]';
+  '[data-abags-basket-weave-finish="basket-cord-weave-v6-segmented-relief"]';
 const ACTIVE_PAINTED_BASKET_MARKER =
-  '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"][data-abags-basket-weave-finish="basket-cord-weave-v5-packed-over-under"]';
+  '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"][data-abags-basket-weave-finish="basket-cord-weave-v6-segmented-relief"]';
 
 test("Agata WebGL becomes the customer-visible stitch material after the verified frame", () => {
   const agataRule = ruleBodyAfter(ACTIVE_AGATA_MARKER, "> .abags-fidelity3d-layer > .abags-agata-cord-webgl");
@@ -51,14 +51,14 @@ test("legacy crochet topology is mounted but no longer double-composited over Ag
   assert.match(reliefRule, /visibility:visible!important/);
 });
 
-test("basket canvas stays hidden until the packed V5 material has actually painted", () => {
-  assert.match(css, /Basket V5 has a dedicated packed body-material pass/);
+test("basket canvas stays hidden until the segmented V6 material has actually painted", () => {
+  assert.match(css, /Basket V6 rebuilds the body from short physical cord segments/);
   const basketFallback = ruleBodyAfter(ACTIVE_BASKET_MARKER, "> .abags-fidelity3d-layer > .abags-basket-weave-surface");
   assert.match(basketFallback, /opacity:0!important/);
   assert.match(basketFallback, /visibility:visible!important/);
 });
 
-test("painted Basket V5 is promoted only when readiness is on the same active stage", () => {
+test("painted Basket V6 is promoted only when readiness is on the same active stage", () => {
   assert.ok(css.includes(ACTIVE_PAINTED_BASKET_MARKER));
   assert.doesNotMatch(
     css,
@@ -72,5 +72,5 @@ test("painted Basket V5 is promoted only when readiness is on the same active st
 
 test("material ownership handoff remains excluded from Photo-True", () => {
   const exclusions = css.match(/not\(\[data-abags-photo-true="active"\]\)/g) ?? [];
-  assert.ok(exclusions.length >= 6, "all Agata and Basket V5 ownership selectors must exclude Photo-True");
+  assert.ok(exclusions.length >= 6, "all Agata and Basket V6 ownership selectors must exclude Photo-True");
 });
