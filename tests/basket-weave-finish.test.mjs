@@ -9,10 +9,10 @@ const [stack, finish] = await Promise.all([
 
 test("segmented basket finish follows the calibrated crochet relief pass", () => {
   assert.match(stack, /<BagBuilderCrochetReliefOverlay\s*\/>[\s\S]*<BagBuilderBasketWeaveFinish\s*\/>/);
-  assert.match(finish, /FINISH_VERSION = "basket-cord-weave-v1"/);
+  assert.match(finish, /FINISH_VERSION\s*=\s*"basket-cord-weave-v1"/);
   assert.match(finish, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
-  assert.match(finish, /stage\.dataset\.abagsFinal3d !== "ready"/);
-  assert.match(finish, /stitch !== "basket"/);
+  assert.match(finish, /stage\.dataset\.abagsFinal3d\s*!==\s*"ready"/);
+  assert.match(finish, /stitch\s*!==\s*"basket"/);
 });
 
 test("basket construction reads as alternating rounded cord bundles rather than a continuous grid", () => {
@@ -23,14 +23,14 @@ test("basket construction reads as alternating rounded cord bundles rather than 
   assert.match(finish, /quadraticCurveTo/);
   assert.match(finish, /shadowWidth/);
   assert.match(finish, /highlightWidth/);
-  assert.match(finish, /rgba\(stage\.dataset\.color \|\| "#E8DDCC", 0\.075\)/);
+  assert.match(finish, /rgba\(stage\.dataset\.color \|\| "#E8DDCC",\s*0\.075\)/);
 });
 
 test("basket pass preserves product fidelity and excludes rigid flap surfaces", () => {
-  assert.match(finish, /flap !== "none" && flap !== "crochet"/);
-  assert.match(finish, /context\.clip\(clipPath, excludesRigidFlap \? "evenodd" : "nonzero"\)/);
-  assert.match(finish, /stage\.dataset\.abagsPhotoTrue === "active"/);
-  assert.match(finish, /contour3d\(family, 0\.020\)/);
+  assert.match(finish, /flap\s*!==\s*"none"\s*&&\s*flap\s*!==\s*"crochet"/);
+  assert.match(finish, /context\.clip\(clipPath,\s*excludesRigidFlap\s*\?\s*"evenodd"\s*:\s*"nonzero"\)/);
+  assert.match(finish, /stage\.dataset\.abagsPhotoTrue\s*===\s*"active"/);
+  assert.match(finish, /contour3d\(family,\s*0\.020\)/);
   assert.doesNotMatch(finish, /Math\.random/);
 });
 
