@@ -29,6 +29,25 @@ test("real A-Bags stitch vocabulary is represented by independent analytical GLS
   assert.match(renderer, /roundedCord/);
 });
 
+test("basket stitch uses one softly bowed cord per direction with a local over-under dip", () => {
+  const basket = renderer.match(/vec2\s+agataBasket\s*\(vec2 uv\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.match(basket, /Basket V4|grid=uv\*vec2\(6\.65,7\.65\)/);
+  assert.match(basket, /hLeft=sdSegment/);
+  assert.match(basket, /hJoin=sdSegment/);
+  assert.match(basket, /hRight=sdSegment/);
+  assert.match(basket, /vBottom=sdSegment/);
+  assert.match(basket, /vJoin=sdSegment/);
+  assert.match(basket, /vTop=sdSegment/);
+  assert.match(basket, /crossingWindow/);
+  assert.match(basket, /underDip/);
+  assert.match(basket, /driftX/);
+  assert.match(basket, /driftY/);
+  assert.doesNotMatch(basket, /float h1=/);
+  assert.doesNotMatch(basket, /float h2=/);
+  assert.doesNotMatch(basket, /float v1=/);
+  assert.doesNotMatch(basket, /float v2=/);
+});
+
 test("polyester cord has analytical height normals, cavity occlusion and deterministic fibre response", () => {
   assert.match(renderer, /finite-height gradient/i);
   assert.match(renderer, /stitchSurface\(vUv\+vec2\(epsilon,0\.0\)/);
