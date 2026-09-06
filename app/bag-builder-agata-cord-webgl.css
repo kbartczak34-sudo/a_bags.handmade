@@ -1,0 +1,42 @@
+/* Photo-calibrated A-Bags cord renderer.
+   The canvas replaces only the verified Fidelity3D material surface. Existing controls,
+   accessory anchors and Fidelity V4 silhouette remain authoritative. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-agata-cord-webgl{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:2!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  image-rendering:auto!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+> .abags-fidelity3d-layer > .abags-agata-cord-webgl{
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+/* Keep the older relief pass subtle: the new WebGL normal field now owns cord depth. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+> .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+  opacity:.28!important;
+  mix-blend-mode:soft-light!important;
+}
+
+@media(max-width:620px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+  > .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+    opacity:.22!important;
+  }
+}

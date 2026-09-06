@@ -11,6 +11,7 @@ import "./bag-builder-fidelity3d-controls.css";
 import "./bag-builder-customer-premium-polish.css";
 import "./bag-builder-lifelike-surface.css";
 import "./bag-builder-crochet-relief-overlay.css";
+import "./bag-builder-agata-cord-webgl.css";
 import "./bag-builder-flap-realism-tuning.css";
 import "./bag-builder-crochet-flap-density.css";
 import "./bag-builder-handmade-edge-finish.css";
@@ -19,6 +20,7 @@ import "./bag-builder-sidewall-crochet-depth.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAccessoryMaterialFinish from "./bag-builder-accessory-material-finish";
+import BagBuilderAgataCordWebGL from "./bag-builder-agata-cord-webgl";
 import BagBuilderAutosave from "./bag-builder-autosave";
 import BagBuilderBasketWeaveFinish from "./bag-builder-basket-weave-finish";
 import BagBuilderChainRealism from "./bag-builder-chain-realism";
@@ -65,6 +67,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderEngine />
     <BagBuilderFidelityOptions />
     <BagBuilderFinalWebGL3D />
+    <BagBuilderAgataCordWebGL />
     <BagBuilderLifelikeSurface />
     <BagBuilderCrochetReliefOverlay />
     <BagBuilderBasketWeaveFinish />
