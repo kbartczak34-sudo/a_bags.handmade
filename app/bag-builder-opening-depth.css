@@ -8,7 +8,7 @@
   touch-action:none!important;
   user-select:none!important;
   background:transparent!important;
-  opacity:.90;
+  opacity:1;
 }
 
 .abags-bag-builder-stage[data-abags-photo-true="active"] .abags-opening-depth-surface {
@@ -17,6 +17,6 @@
 
 @media (max-width:620px) {
   .abags-fidelity3d-layer > .abags-opening-depth-surface {
-    opacity:.82;
+    opacity:.96;
   }
 }
