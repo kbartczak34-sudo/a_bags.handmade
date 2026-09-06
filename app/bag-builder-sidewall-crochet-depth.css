@@ -1,0 +1,22 @@
+.abags-fidelity3d-layer > .abags-sidewall-crochet-depth {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:7!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  opacity:.96;
+}
+
+.abags-bag-builder-stage[data-abags-photo-true="active"] .abags-sidewall-crochet-depth {
+  opacity:0!important;
+}
+
+@media (max-width:620px) {
+  .abags-fidelity3d-layer > .abags-sidewall-crochet-depth {
+    opacity:.88;
+  }
+}
