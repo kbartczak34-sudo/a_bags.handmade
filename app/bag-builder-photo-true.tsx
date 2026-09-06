@@ -200,7 +200,8 @@ export default function BagBuilderPhotoTrue() {
 
   useEffect(() => {
     if (!stage || !selected?.imageUrl) return;
-    const liveStage = stage;
+    const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage");
+    if (!liveStage || liveStage !== stage) return;
     const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4");
     if (!dialog) return;
     const family = inferLegacyFamily(selected);
