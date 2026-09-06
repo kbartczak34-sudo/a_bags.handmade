@@ -7,15 +7,17 @@ const css = await readFile(
   "utf8",
 );
 
-test("Agata WebGL becomes the sole visible stitch material after the verified frame", () => {
+test("Agata WebGL becomes the customer-visible stitch material after the verified frame", () => {
   assert.match(css, /data-abags-final3d="ready"/);
   assert.match(css, /data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"/);
-  assert.match(css, /> \.abags-fidelity3d-layer > \.abags-agata-cord-webgl\{[\s\S]*opacity:1!important;[\s\S]*visibility:visible!important;/);
+  assert.match(css, /> \.abags-fidelity3d-layer > \.abags-agata-cord-webgl\{[\s\S]*z-index:2!important;[\s\S]*opacity:1!important;[\s\S]*visibility:visible!important;/);
 });
 
-test("base Fidelity canvas stays alive for geometry and interaction but is not visually composited", () => {
-  assert.match(css, /> \.abags-fidelity3d-layer > \.abags-fidelity3d-canvas\{[\s\S]*display:block!important;[\s\S]*opacity:0!important;[\s\S]*visibility:visible!important;/);
+test("base Fidelity canvas stays live at the strict production verification floor beneath Agata", () => {
+  assert.match(css, /Verification floor/);
+  assert.match(css, /> \.abags-fidelity3d-layer > \.abags-fidelity3d-canvas\{[\s\S]*display:block!important;[\s\S]*opacity:\.06!important;[\s\S]*visibility:visible!important;/);
   assert.doesNotMatch(css, /> \.abags-fidelity3d-layer > \.abags-fidelity3d-canvas\{[\s\S]*display:none!important;/);
+  assert.doesNotMatch(css, /> \.abags-fidelity3d-layer > \.abags-fidelity3d-canvas\{[\s\S]*opacity:0!important;/);
 });
 
 test("legacy crochet topology is mounted but no longer double-composited over Agata WebGL", () => {
