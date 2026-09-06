@@ -51,3 +51,16 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   visibility:visible!important;
   mix-blend-mode:soft-light!important;
 }
+
+/* Basket ownership handoff.
+   BasketWeaveFinish v3 is useful only as a deterministic fallback before Agata WebGL has painted.
+   Its nearly opaque continuous horizontal/vertical bundle canvas was still being composited over
+   the analytical basket shader and made the cord read like rigid plaid strips. Keep the fallback
+   mounted, but once the Agata basket frame is ready only the WebGL material may be customer-visible. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+> .abags-fidelity3d-layer > .abags-basket-weave-surface{
+  opacity:0!important;
+  visibility:visible!important;
+  mix-blend-mode:normal!important;
+}
