@@ -10,12 +10,14 @@ type Rotation = { x: number; y: number };
 type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number; scale: number };
+type ProjectedArc = { points: Point2[]; cumulative: number[]; total: number };
 type HardwarePalette = { shadow: string; mid: string; highlight: string; glint: string };
 
 const STAGE_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const CHAIN_VERSION = "chain-metal-v1-calibrated";
+const CHAIN_VERSION = "chain-metal-v2-continuous";
+const REALISTIC_LINK_COUNT = 38;
 const SHOULDER_START = 17;
 const SHOULDER_END = 32;
 
@@ -27,10 +29,10 @@ function hardwarePalette(value: string): HardwarePalette {
     glint: "rgba(255,255,255,.98)",
   };
   if (value === "black") return {
-    shadow: "rgba(3,3,4,.74)",
-    mid: "rgba(83,82,88,.96)",
-    highlight: "rgba(226,227,234,.78)",
-    glint: "rgba(255,255,255,.88)",
+    shadow: "rgba(4,4,5,.84)",
+    mid: "rgba(54,54,60,.98)",
+    highlight: "rgba(151,153,164,.72)",
+    glint: "rgba(218,220,228,.80)",
   };
   return {
     shadow: "rgba(91,60,16,.68)",
@@ -107,6 +109,47 @@ function strokeProjectedPath(
   return started;
 }
 
+function projectArcByDistance(
+  arc: Point3[],
+  width: number,
+  height: number,
+  rotation: Rotation,
+  zoom: number,
+): ProjectedArc | null {
+  const points = arc
+    .map((point) => project(point, width, height, rotation, zoom))
+    .filter((point): point is Point2 => Boolean(point));
+  if (points.length < 2) return null;
+
+  const cumulative = [0];
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    cumulative.push(cumulative[index - 1] + Math.hypot(current.x - previous.x, current.y - previous.y));
+  }
+  const total = cumulative[cumulative.length - 1];
+  return total > 1 ? { points, cumulative, total } : null;
+}
+
+function sampleProjectedArc(projected: ProjectedArc, distance: number): Point2 {
+  const target = Math.max(0, Math.min(projected.total, distance));
+  let segment = 1;
+  while (segment < projected.cumulative.length && projected.cumulative[segment] < target) segment += 1;
+  if (segment >= projected.points.length) return projected.points[projected.points.length - 1];
+
+  const startDistance = projected.cumulative[segment - 1];
+  const endDistance = projected.cumulative[segment];
+  const span = Math.max(0.0001, endDistance - startDistance);
+  const mix = (target - startDistance) / span;
+  const start = projected.points[segment - 1];
+  const end = projected.points[segment];
+  return {
+    x: start.x + (end.x - start.x) * mix,
+    y: start.y + (end.y - start.y) * mix,
+    scale: start.scale + (end.scale - start.scale) * mix,
+  };
+}
+
 function drawMetalLinks(
   context: CanvasRenderingContext2D,
   arc: Point3[],
@@ -117,19 +160,24 @@ function drawMetalLinks(
   zoom: number,
 ) {
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
-  const linkCount = ABAGS_ACCESSORY_VISUAL.chainLinks;
+  const projected = projectArcByDistance(arc, width, height, rotation, zoom);
+  if (!projected) return;
+  const shoulderStart = SHOULDER_START / (arc.length - 1);
+  const shoulderEnd = SHOULDER_END / (arc.length - 1);
 
-  for (let index = 0; index < linkCount; index += 1) {
-    const arcIndex = Math.round((index / Math.max(1, linkCount - 1)) * (arc.length - 1));
-    if (arcIndex >= SHOULDER_START && arcIndex <= SHOULDER_END) continue;
-    const center = project(arc[arcIndex], width, height, rotation, zoom);
-    if (!center) continue;
-    const previous = project(arc[Math.max(0, arcIndex - 1)], width, height, rotation, zoom) ?? center;
-    const next = project(arc[Math.min(arc.length - 1, arcIndex + 1)], width, height, rotation, zoom) ?? center;
+  for (let index = 0; index < REALISTIC_LINK_COUNT; index += 1) {
+    const fraction = index / Math.max(1, REALISTIC_LINK_COUNT - 1);
+    if (fraction >= shoulderStart && fraction <= shoulderEnd) continue;
+
+    const distance = fraction * projected.total;
+    const center = sampleProjectedArc(projected, distance);
+    const tangentDistance = Math.max(1.8, projected.total / (REALISTIC_LINK_COUNT * 2.4));
+    const previous = sampleProjectedArc(projected, distance - tangentDistance);
+    const next = sampleProjectedArc(projected, distance + tangentDistance);
     const tangent = Math.atan2(next.y - previous.y, next.x - previous.x);
-    const linkAngle = tangent + (index % 2 ? Math.PI / 2 : 0) + (index % 3 - 1) * 0.035;
-    const rx = 4.05 * scale * center.scale;
-    const ry = 2.28 * scale * center.scale;
+    const linkAngle = tangent + (index % 2 ? Math.PI / 2 : 0) + (index % 3 - 1) * 0.028;
+    const rx = 3.72 * scale * center.scale;
+    const ry = 2.10 * scale * center.scale;
 
     context.save();
     context.translate(center.x, center.y);
@@ -145,24 +193,24 @@ function drawMetalLinks(
     context.beginPath();
     context.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
     context.strokeStyle = metal;
-    context.lineWidth = Math.max(0.82, 1.18 * scale * center.scale);
+    context.lineWidth = Math.max(0.78, 1.10 * scale * center.scale);
     context.stroke();
 
     context.beginPath();
-    context.ellipse(0.34 * scale, 0.42 * scale, rx, ry, 0, 0.12 * Math.PI, 0.96 * Math.PI);
+    context.ellipse(0.30 * scale, 0.36 * scale, rx, ry, 0, 0.12 * Math.PI, 0.96 * Math.PI);
     context.strokeStyle = palette.shadow;
-    context.lineWidth = Math.max(0.52, 0.72 * scale * center.scale);
+    context.lineWidth = Math.max(0.48, 0.66 * scale * center.scale);
     context.stroke();
 
     context.beginPath();
-    context.ellipse(-0.26 * scale, -0.30 * scale, rx, ry, 0, 1.08 * Math.PI, 1.72 * Math.PI);
+    context.ellipse(-0.22 * scale, -0.27 * scale, rx, ry, 0, 1.08 * Math.PI, 1.72 * Math.PI);
     context.strokeStyle = palette.highlight;
-    context.lineWidth = Math.max(0.42, 0.58 * scale * center.scale);
+    context.lineWidth = Math.max(0.40, 0.54 * scale * center.scale);
     context.stroke();
 
-    if (index % 5 === 0) {
+    if (index % 6 === 0) {
       context.beginPath();
-      context.arc(-rx * 0.30, -ry * 0.38, Math.max(0.34, 0.52 * scale * center.scale), 0, Math.PI * 2);
+      context.arc(-rx * 0.30, -ry * 0.38, Math.max(0.30, 0.44 * scale * center.scale), 0, Math.PI * 2);
       context.fillStyle = palette.glint;
       context.fill();
     }
