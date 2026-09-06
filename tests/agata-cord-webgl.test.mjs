@@ -16,15 +16,15 @@ test("Agata photo-calibrated WebGL material layer is mounted above the verified 
   assert.match(css, /data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"/);
 });
 
-test("real A-Bags stitch vocabulary is represented by independent analytical cord constructions", () => {
+test("real A-Bags stitch vocabulary is represented by independent analytical GLSL cord constructions", () => {
   assert.match(library, /stitch:"open-v"/);
   assert.match(library, /stitch:"vertical-open"/);
   assert.match(library, /stitch:"basket"/);
   assert.match(library, /stitch:"radial"/);
-  assert.match(renderer, /function agataOpenV/);
-  assert.match(renderer, /function agataVerticalOpen/);
-  assert.match(renderer, /function agataBasket/);
-  assert.match(renderer, /function agataRadial/);
+  assert.match(renderer, /vec2\s+agataOpenV\s*\(/);
+  assert.match(renderer, /vec2\s+agataVerticalOpen\s*\(/);
+  assert.match(renderer, /vec2\s+agataBasket\s*\(/);
+  assert.match(renderer, /vec2\s+agataRadial\s*\(/);
   assert.match(renderer, /sdSegment/);
   assert.match(renderer, /roundedCord/);
 });
