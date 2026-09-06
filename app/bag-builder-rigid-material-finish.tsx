@@ -13,7 +13,7 @@ type Config = { family: Family; handles: string; flap: string };
 
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const FINISH_VERSION = "rigid-natural-material-v1";
+const FINISH_VERSION = "rigid-natural-material-v2-flap-depth";
 
 function readConfig(stage: HTMLElement): Config {
   return {
@@ -148,6 +148,70 @@ function drawWoodHandle(
   }
 }
 
+function drawFlapContactDepth(
+  context: CanvasRenderingContext2D,
+  path: Path2D,
+  unit: number,
+  crochet: boolean,
+  suede: boolean,
+) {
+  context.save();
+  context.translate(1.15 * unit, 1.65 * unit);
+  context.strokeStyle = crochet
+    ? "rgba(30,22,25,.22)"
+    : suede
+      ? "rgba(32,11,19,.24)"
+      : "rgba(29,18,14,.20)";
+  context.lineWidth = Math.max(1.8, (crochet ? 4.0 : 3.4) * unit);
+  context.shadowColor = crochet ? "rgba(27,18,22,.16)" : "rgba(20,12,12,.13)";
+  context.shadowBlur = 3.6 * unit;
+  context.stroke(path);
+  context.restore();
+}
+
+function drawCrochetFlapCrown(
+  context: CanvasRenderingContext2D,
+  path: Path2D,
+  left: number,
+  right: number,
+  top: number,
+  bottom: number,
+  unit: number,
+) {
+  context.save();
+  context.clip(path);
+
+  const crown = context.createRadialGradient(
+    left + (right - left) * 0.34,
+    top + (bottom - top) * 0.24,
+    0,
+    left + (right - left) * 0.48,
+    top + (bottom - top) * 0.43,
+    Math.max(8, (right - left) * 0.72),
+  );
+  crown.addColorStop(0, "rgba(255,255,255,.17)");
+  crown.addColorStop(0.42, "rgba(255,255,255,.055)");
+  crown.addColorStop(0.72, "rgba(34,24,28,.035)");
+  crown.addColorStop(1, "rgba(28,19,23,.14)");
+  context.fillStyle = crown;
+  context.fillRect(left - 2, top - 2, right - left + 4, bottom - top + 4);
+
+  const lowerDepth = context.createLinearGradient(left, top, left, bottom);
+  lowerDepth.addColorStop(0, "rgba(255,255,255,.035)");
+  lowerDepth.addColorStop(0.58, "rgba(255,255,255,0)");
+  lowerDepth.addColorStop(1, "rgba(24,17,20,.13)");
+  context.fillStyle = lowerDepth;
+  context.fillRect(left - 2, top - 2, right - left + 4, bottom - top + 4);
+  context.restore();
+
+  context.save();
+  context.translate(-0.42 * unit, -0.48 * unit);
+  context.strokeStyle = "rgba(255,255,255,.19)";
+  context.lineWidth = Math.max(0.62, 1.02 * unit);
+  context.stroke(path);
+  context.restore();
+}
+
 function drawFlapMaterial(
   context: CanvasRenderingContext2D,
   family: Exclude<Family, "">,
@@ -157,7 +221,7 @@ function drawFlapMaterial(
   rotation: Rotation,
   zoom: number,
 ) {
-  if (flap === "none" || flap === "crochet") return;
+  if (flap === "none") return;
   const contour = flapContour(family);
   const { path, projected, started } = projectedPath(contour, width, height, rotation, zoom);
   if (!started || projected.length < 8) return;
@@ -169,7 +233,18 @@ function drawFlapMaterial(
   const top = Math.min(...ys);
   const bottom = Math.max(...ys);
   const unit = Math.max(0.8, Math.min(width, height) / 720) * zoom;
+  const crochet = flap === "crochet";
   const suede = flap === "suede-burgundy";
+
+  // Surface-only contact depth: the calibrated WebGL mesh remains the sole flap geometry.
+  drawFlapContactDepth(context, path, unit, crochet, suede);
+
+  if (crochet) {
+    // Crochet uses neutral light/occlusion only. The selected cord colour and stitch
+    // stay owned by the verified WebGL material, avoiding any recolouring of the bag.
+    drawCrochetFlapCrown(context, path, left, right, top, bottom, unit);
+    return;
+  }
 
   context.save();
   context.clip(path);
