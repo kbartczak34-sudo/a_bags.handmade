@@ -1,0 +1,9 @@
+.abags-bag-builder-stage[data-flap="crochet"] > .abags-flap-realism {
+  opacity:.62!important;
+}
+
+@media (max-width:620px) {
+  .abags-bag-builder-stage[data-flap="crochet"] > .abags-flap-realism {
+    opacity:.54!important;
+  }
+}
