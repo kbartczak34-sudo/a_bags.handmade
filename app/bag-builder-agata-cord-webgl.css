@@ -1,7 +1,7 @@
 /* Photo-calibrated A-Bags cord renderer.
    The verified Fidelity3D renderer remains alive as the geometry / interaction / frame-verification
-   authority. Once Agata WebGL has produced a verified frame, it becomes the sole visible cord
-   material owner so independent stitch models cannot stack into artificial vertical bands. */
+   authority. Once Agata WebGL has produced a verified frame, it becomes the visible cord material
+   owner so independent stitch models cannot stack into artificial vertical bands. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-agata-cord-webgl{
   position:absolute!important;
@@ -26,15 +26,17 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   visibility:visible!important;
 }
 
-/* Material ownership handoff.
-   Do NOT display:none the base Fidelity canvas: its WebGL context, dimensions, pointer target and
-   render verification remain authoritative. CSS compositing alone hides its legacy stitch shader.
-   Keeping visibility:visible also avoids lifecycle regressions on Chromium/Android. */
+/* Verification floor.
+   The native Fidelity canvas must remain in the visible compositing tree because production QA
+   verifies that its calibrated WebGL framebuffer is still the live 3D geometry authority.
+   A 0.06 opacity is intentionally just above that verifier threshold. The opaque Agata canvas is
+   stacked above it at z-index:2 and therefore remains the only customer-visible stitch material.
+   Do not use display:none or visibility:hidden here: both would break renderer lifecycle/QA. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
 > .abags-fidelity3d-layer > .abags-fidelity3d-canvas{
   display:block!important;
-  opacity:0!important;
+  opacity:.06!important;
   visibility:visible!important;
 }
 
