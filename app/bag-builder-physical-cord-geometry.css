@@ -1,0 +1,43 @@
+/* True volumetric crochet cords rendered inside the locked Fidelity V4 silhouette.
+   This pass contains geometry only: transparent background, no layout ownership and no gestures. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-physical-cord-geometry {
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:6!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  image-rendering:auto!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-physical-cord-geometry="physical-cord-geometry-v1-volumetric-loops"]
+> .abags-fidelity3d-layer > .abags-physical-cord-geometry {
+  opacity:.94!important;
+  visibility:visible!important;
+}
+
+@media (max-width:620px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage[data-abags-physical-cord-geometry="physical-cord-geometry-v1-volumetric-loops"]
+  > .abags-fidelity3d-layer > .abags-physical-cord-geometry {
+    opacity:.90!important;
+  }
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"]
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-physical-cord-geometry {
+  opacity:0!important;
+  visibility:hidden!important;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .abags-fidelity3d-layer > .abags-physical-cord-geometry { transition:none!important; }
+}
