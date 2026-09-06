@@ -22,6 +22,8 @@ const ACTIVE_AGATA_MARKER =
   '.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
 const AGATA_READY_MARKER =
   '.abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
+const ACTIVE_BASKET_MARKER =
+  '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
 
 test("Agata WebGL becomes the customer-visible stitch material after the verified frame", () => {
   const agataRule = ruleBodyAfter(ACTIVE_AGATA_MARKER, "> .abags-fidelity3d-layer > .abags-agata-cord-webgl");
@@ -45,7 +47,15 @@ test("legacy crochet topology is mounted but no longer double-composited over Ag
   assert.match(reliefRule, /visibility:visible!important/);
 });
 
+test("legacy basket canvas remains fallback-only after Agata owns the basket material", () => {
+  assert.match(css, /Basket ownership handoff/);
+  const basketRule = ruleBodyAfter(ACTIVE_BASKET_MARKER, "> .abags-fidelity3d-layer > .abags-basket-weave-surface");
+  assert.match(basketRule, /opacity:0!important/);
+  assert.match(basketRule, /visibility:visible!important/);
+  assert.match(basketRule, /mix-blend-mode:normal!important/);
+});
+
 test("material ownership handoff remains excluded from Photo-True", () => {
   const exclusions = css.match(/not\(\[data-abags-photo-true="active"\]\)/g) ?? [];
-  assert.ok(exclusions.length >= 4, "all Agata material ownership selectors must exclude Photo-True");
+  assert.ok(exclusions.length >= 5, "all Agata material ownership selectors must exclude Photo-True");
 });
