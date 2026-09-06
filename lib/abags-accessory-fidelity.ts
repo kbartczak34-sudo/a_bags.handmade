@@ -20,7 +20,9 @@ export const ABAGS_ACCESSORY_REFERENCES = {
  * Screen-space refinement parameters are intentionally conservative. The
  * underlying body geometry remains the Fidelity V4 WebGL source of truth.
  * Chain cadence is dense enough to read as a continuous linked strap on the
- * narrow mobile preview while retaining individual alternating links.
+ * narrow mobile preview while retaining individual alternating links. Smaller,
+ * denser links better match the real A-Bags chain references without changing
+ * either calibrated attachment point or the physical strap depth bow.
  *
  * Flexible straps are not perfectly coplanar with the front panel in the real
  * atelier references. A small depth bow keeps both attachment points fixed at
@@ -28,7 +30,7 @@ export const ABAGS_ACCESSORY_REFERENCES = {
  * true side view instead of collapsing the whole strap into one vertical line.
  */
 export const ABAGS_ACCESSORY_VISUAL = {
-  chainLinks: 26,
+  chainLinks: 30,
   tasselFringes: 9,
   charmStones: 3,
   scarfTails: 2,
