@@ -10,13 +10,14 @@ type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number };
 type Bounds = { left: number; top: number; right: number; bottom: number; width: number; height: number };
+type BundleLayer = "under" | "over";
 
 const STAGE_SELECTOR = ".abags-bag-builder-stage";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const FINISH_VERSION = "basket-cord-weave-v1";
+const FINISH_VERSION = "basket-cord-weave-v2-over-under";
 
 function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
   const aspect = width / Math.max(1, height);
@@ -100,6 +101,14 @@ function rgba(hex: string, alpha: number) {
   return `rgba(${red},${green},${blue},${alpha})`;
 }
 
+function deterministicJitter(row: number, column: number, salt: number) {
+  let value = Math.imul(row + 37, 73856093) ^ Math.imul(column + 61, 19349663) ^ Math.imul(salt + 11, 83492791);
+  value ^= value >>> 13;
+  value = Math.imul(value, 1274126177);
+  value ^= value >>> 16;
+  return ((value >>> 0) / 4294967295) * 2 - 1;
+}
+
 function cordPath(
   context: CanvasRenderingContext2D,
   centerX: number,
@@ -128,48 +137,79 @@ function drawCordBundle(
   horizontal: boolean,
   row: number,
   column: number,
+  selectedColor: string,
+  layer: BundleLayer,
 ) {
-  const halfLength = cell * 0.37;
-  const spacing = 5.2 * unit;
-  const shadowWidth = Math.max(1.4, 5.9 * unit);
-  const bodyWidth = Math.max(1.2, 4.35 * unit);
-  const highlightWidth = Math.max(0.7, 1.05 * unit);
-  const bow = ((row + column) % 3 - 1) * 0.72 * unit;
+  const over = layer === "over";
+  const halfLength = cell * (over ? 0.34 : 0.305);
+  const spacing = 5.45 * unit;
+  const shadowWidth = Math.max(1.4, (over ? 6.8 : 5.45) * unit);
+  const bodyWidth = Math.max(1.2, (over ? 4.75 : 3.85) * unit);
+  const highlightWidth = Math.max(0.65, (over ? 1.22 : 0.82) * unit);
+  const bundleBow = deterministicJitter(row, column, 2) * (over ? 1.05 : 0.72) * unit;
 
   for (let strand = -1; strand <= 1; strand += 1) {
-    const offset = strand * spacing;
+    const strandDrift = deterministicJitter(row, column, 7 + strand) * 0.38 * unit;
+    const offset = strand * spacing + strandDrift;
+    const bow = bundleBow + deterministicJitter(row, column, 13 + strand) * 0.22 * unit;
 
     context.save();
-    context.translate(1.05 * unit, 1.35 * unit);
+    context.translate((over ? 1.15 : 0.72) * unit, (over ? 1.5 : 0.88) * unit);
     cordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
-    context.strokeStyle = "rgba(31,22,25,.31)";
+    context.strokeStyle = over ? "rgba(30,21,24,.29)" : "rgba(30,21,24,.14)";
     context.lineWidth = shadowWidth;
     context.stroke();
     context.restore();
 
     cordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
-    context.strokeStyle = "rgba(76,54,61,.13)";
+    context.strokeStyle = rgba(selectedColor, over ? 0.34 : 0.20);
     context.lineWidth = bodyWidth;
     context.stroke();
 
     context.save();
-    context.translate(-0.72 * unit, -0.78 * unit);
+    context.translate(-(over ? 0.74 : 0.46) * unit, -(over ? 0.84 : 0.52) * unit);
     cordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
-    context.strokeStyle = "rgba(255,255,255,.34)";
+    context.strokeStyle = over ? "rgba(255,255,255,.32)" : "rgba(255,255,255,.13)";
     context.lineWidth = highlightWidth;
     context.stroke();
     context.restore();
   }
 }
 
-function drawBasketWeave(context: CanvasRenderingContext2D, bounds: Bounds, unit: number) {
-  const cell = 43 * unit;
+function drawCrossingOcclusion(
+  context: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  unit: number,
+  overHorizontal: boolean,
+) {
+  context.save();
+  context.translate(centerX, centerY);
+  context.rotate(overHorizontal ? Math.PI / 2 : 0);
+  const gradient = context.createRadialGradient(0, 0, 0, 0, 0, 8.6 * unit);
+  gradient.addColorStop(0, "rgba(26,18,21,.24)");
+  gradient.addColorStop(0.55, "rgba(26,18,21,.10)");
+  gradient.addColorStop(1, "rgba(26,18,21,0)");
+  context.fillStyle = gradient;
+  context.beginPath();
+  context.ellipse(0, 0, 8.6 * unit, 3.55 * unit, 0, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function drawBasketWeave(context: CanvasRenderingContext2D, bounds: Bounds, unit: number, selectedColor: string) {
+  const cell = 48 * unit;
   let row = 0;
   for (let y = bounds.top - cell * 0.5; y < bounds.bottom + cell * 0.5; y += cell, row += 1) {
     let column = 0;
     for (let x = bounds.left - cell * 0.5; x < bounds.right + cell * 0.5; x += cell, column += 1) {
-      const horizontal = (row + column) % 2 === 0;
-      drawCordBundle(context, x + cell * 0.5, y + cell * 0.5, cell, unit, horizontal, row, column);
+      const centerX = x + cell * 0.5 + deterministicJitter(row, column, 19) * 0.7 * unit;
+      const centerY = y + cell * 0.5 + deterministicJitter(row, column, 23) * 0.7 * unit;
+      const overHorizontal = (row + column) % 2 === 0;
+
+      drawCordBundle(context, centerX, centerY, cell, unit, !overHorizontal, row, column, selectedColor, "under");
+      drawCrossingOcclusion(context, centerX, centerY, unit, overHorizontal);
+      drawCordBundle(context, centerX, centerY, cell, unit, overHorizontal, row, column, selectedColor, "over");
     }
   }
 }
@@ -209,13 +249,14 @@ function paint(
   context.save();
   context.clip(clipPath, excludesRigidFlap ? "evenodd" : "nonzero");
 
-  // A very light same-hue wash suppresses the old continuous grid contrast without
-  // flattening the calibrated WebGL lighting or shifting the customer's selected colour.
-  context.fillStyle = rgba(stage.dataset.color || "#E8DDCC", 0.075);
+  const selectedColor = stage.dataset.color || "#E8DDCC";
+  // Same-hue veil lowers the old shader-grid contrast while keeping the selected cord hue.
+  // It is intentionally translucent so calibrated WebGL volume and edge lighting remain visible.
+  context.fillStyle = rgba(selectedColor, 0.16);
   context.fill(body.path);
 
   const unit = Math.max(0.72, Math.min(2.7, Math.min(width, height) / 720));
-  drawBasketWeave(context, body.bounds, unit);
+  drawBasketWeave(context, body.bounds, unit, selectedColor);
   context.restore();
   return true;
 }
@@ -334,15 +375,15 @@ export default function BagBuilderBasketWeaveFinish() {
       .abags-fidelity3d-layer > .abags-basket-weave-surface {
         position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
         z-index:4!important;pointer-events:none!important;touch-action:none!important;
-        background:transparent!important;opacity:.82;mix-blend-mode:normal!important;
+        background:transparent!important;opacity:.92;mix-blend-mode:normal!important;
       }
       .abags-bag-builder-stage[data-abags-basket-weave-finish="${FINISH_VERSION}"] .abags-crochet-relief-surface {
-        opacity:.20!important;
+        opacity:.10!important;
       }
       @media (max-width:620px) {
-        .abags-fidelity3d-layer > .abags-basket-weave-surface { opacity:.74; }
+        .abags-fidelity3d-layer > .abags-basket-weave-surface { opacity:.86; }
         .abags-bag-builder-stage[data-abags-basket-weave-finish="${FINISH_VERSION}"] .abags-crochet-relief-surface {
-          opacity:.16!important;
+          opacity:.07!important;
         }
       }
       @media (prefers-reduced-motion:reduce) {
