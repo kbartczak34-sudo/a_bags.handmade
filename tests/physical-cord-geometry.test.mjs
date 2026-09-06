@@ -12,7 +12,7 @@ test("Physical Cord V1 is mounted above the flat basket material and below edge/
   assert.match(stack, /bag-builder-physical-cord-geometry\.css/);
   assert.match(stack, /<BagBuilderBasketWeaveFinish\s*\/>[\s\S]*<BagBuilderPhysicalCordGeometry\s*\/>[\s\S]*<BagBuilderHandmadeEdgeFinish\s*\/>/);
   assert.match(geometry, /SURFACE_VERSION = "physical-cord-geometry-v1-volumetric-loops"/);
-  assert.match(css, /z-index:6!important/);
+  assert.match(css, /z-index:4!important/);
 });
 
 test("cords are actual cylindrical WebGL geometry with 3D normals rather than painted relief", () => {
