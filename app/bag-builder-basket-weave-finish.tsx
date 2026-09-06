@@ -10,14 +10,13 @@ type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number };
 type Bounds = { left: number; top: number; right: number; bottom: number; width: number; height: number };
-type BundleLayer = "under" | "over";
 
 const STAGE_SELECTOR = ".abags-bag-builder-stage";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
-const FINISH_VERSION = "basket-cord-weave-v2-over-under";
+const FINISH_VERSION = "basket-cord-weave-v3-continuous-bundles";
 
 function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
   const aspect = width / Math.max(1, height);
@@ -109,7 +108,87 @@ function deterministicJitter(row: number, column: number, salt: number) {
   return ((value >>> 0) / 4294967295) * 2 - 1;
 }
 
-function cordPath(
+function continuousCordPath(
+  context: CanvasRenderingContext2D,
+  bounds: Bounds,
+  center: number,
+  horizontal: boolean,
+  wave: number,
+  phase: number,
+  unit: number,
+) {
+  context.beginPath();
+  if (horizontal) {
+    const start = bounds.left - 12 * unit;
+    const end = bounds.right + 12 * unit;
+    const span = end - start;
+    context.moveTo(start, center);
+    context.bezierCurveTo(
+      start + span * 0.28,
+      center + wave,
+      start + span * 0.60,
+      center - wave * 0.72,
+      start + span * 0.78,
+      center + wave * 0.32,
+    );
+    context.quadraticCurveTo(start + span * 0.91, center - wave * 0.24 + phase, end, center + phase * 0.34);
+  } else {
+    const start = bounds.top - 12 * unit;
+    const end = bounds.bottom + 12 * unit;
+    const span = end - start;
+    context.moveTo(center, start);
+    context.bezierCurveTo(
+      center + wave,
+      start + span * 0.28,
+      center - wave * 0.72,
+      start + span * 0.60,
+      center + wave * 0.32,
+      start + span * 0.78,
+    );
+    context.quadraticCurveTo(center - wave * 0.24 + phase, start + span * 0.91, center + phase * 0.34, end);
+  }
+}
+
+function drawContinuousBundle(
+  context: CanvasRenderingContext2D,
+  bounds: Bounds,
+  center: number,
+  horizontal: boolean,
+  lane: number,
+  unit: number,
+  selectedColor: string,
+) {
+  const spacing = 5.1 * unit;
+  for (let strand = -1; strand <= 1; strand += 1) {
+    const drift = deterministicJitter(lane, strand, horizontal ? 31 : 37) * 0.42 * unit;
+    const strandCenter = center + strand * spacing + drift;
+    const wave = deterministicJitter(lane, strand, horizontal ? 41 : 43) * 1.05 * unit;
+    const phase = deterministicJitter(lane, strand, horizontal ? 47 : 53) * 0.65 * unit;
+
+    context.save();
+    context.translate(0.72 * unit, 0.88 * unit);
+    continuousCordPath(context, bounds, strandCenter, horizontal, wave, phase, unit);
+    context.strokeStyle = "rgba(29,21,24,.10)";
+    context.lineWidth = Math.max(1.2, 4.9 * unit);
+    context.stroke();
+    context.restore();
+
+    continuousCordPath(context, bounds, strandCenter, horizontal, wave, phase, unit);
+    context.strokeStyle = rgba(selectedColor, 0.15);
+    context.lineWidth = Math.max(1.05, 3.55 * unit);
+    context.stroke();
+
+    context.save();
+    context.translate(-0.38 * unit, -0.44 * unit);
+    continuousCordPath(context, bounds, strandCenter, horizontal, wave, phase, unit);
+    context.strokeStyle = "rgba(255,255,255,.10)";
+    context.lineWidth = Math.max(0.55, 0.72 * unit);
+    context.stroke();
+    context.restore();
+  }
+}
+
+function patchCordPath(
   context: CanvasRenderingContext2D,
   centerX: number,
   centerY: number,
@@ -128,7 +207,34 @@ function cordPath(
   }
 }
 
-function drawCordBundle(
+function drawCrossingOcclusion(
+  context: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  unit: number,
+  overHorizontal: boolean,
+  selectedColor: string,
+) {
+  context.save();
+  context.translate(centerX, centerY);
+  context.rotate(overHorizontal ? 0 : Math.PI / 2);
+  context.fillStyle = rgba(selectedColor, 0.32);
+  context.beginPath();
+  context.ellipse(0, 0, 14.5 * unit, 8.1 * unit, 0, 0, Math.PI * 2);
+  context.fill();
+
+  const gradient = context.createRadialGradient(0, 2.1 * unit, 0, 0, 2.1 * unit, 10.8 * unit);
+  gradient.addColorStop(0, "rgba(24,17,20,.24)");
+  gradient.addColorStop(0.48, "rgba(24,17,20,.09)");
+  gradient.addColorStop(1, "rgba(24,17,20,0)");
+  context.fillStyle = gradient;
+  context.beginPath();
+  context.ellipse(0, 2.1 * unit, 11.8 * unit, 4.4 * unit, 0, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function drawTopBundlePatch(
   context: CanvasRenderingContext2D,
   centerX: number,
   centerY: number,
@@ -138,80 +244,76 @@ function drawCordBundle(
   row: number,
   column: number,
   selectedColor: string,
-  layer: BundleLayer,
 ) {
-  const over = layer === "over";
-  const halfLength = cell * (over ? 0.34 : 0.305);
-  const spacing = 5.45 * unit;
-  const shadowWidth = Math.max(1.4, (over ? 6.8 : 5.45) * unit);
-  const bodyWidth = Math.max(1.2, (over ? 4.75 : 3.85) * unit);
-  const highlightWidth = Math.max(0.65, (over ? 1.22 : 0.82) * unit);
-  const bundleBow = deterministicJitter(row, column, 2) * (over ? 1.05 : 0.72) * unit;
+  const spacing = 5.1 * unit;
+  const halfLength = cell * 0.43;
+  const baseBow = deterministicJitter(row, column, 61) * 1.15 * unit;
 
   for (let strand = -1; strand <= 1; strand += 1) {
-    const strandDrift = deterministicJitter(row, column, 7 + strand) * 0.38 * unit;
-    const offset = strand * spacing + strandDrift;
-    const bow = bundleBow + deterministicJitter(row, column, 13 + strand) * 0.22 * unit;
+    const offset = strand * spacing + deterministicJitter(row, column, 67 + strand) * 0.38 * unit;
+    const bow = baseBow + deterministicJitter(row, column, 71 + strand) * 0.26 * unit;
 
     context.save();
-    context.translate((over ? 1.15 : 0.72) * unit, (over ? 1.5 : 0.88) * unit);
-    cordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
-    context.strokeStyle = over ? "rgba(30,21,24,.29)" : "rgba(30,21,24,.14)";
-    context.lineWidth = shadowWidth;
+    context.translate(1.02 * unit, 1.34 * unit);
+    patchCordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
+    context.strokeStyle = "rgba(27,19,22,.28)";
+    context.lineWidth = Math.max(1.4, 6.2 * unit);
     context.stroke();
     context.restore();
 
-    cordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
-    context.strokeStyle = rgba(selectedColor, over ? 0.34 : 0.20);
-    context.lineWidth = bodyWidth;
+    patchCordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
+    context.strokeStyle = rgba(selectedColor, 0.40);
+    context.lineWidth = Math.max(1.15, 4.45 * unit);
     context.stroke();
 
     context.save();
-    context.translate(-(over ? 0.74 : 0.46) * unit, -(over ? 0.84 : 0.52) * unit);
-    cordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
-    context.strokeStyle = over ? "rgba(255,255,255,.32)" : "rgba(255,255,255,.13)";
-    context.lineWidth = highlightWidth;
+    context.translate(-0.66 * unit, -0.76 * unit);
+    patchCordPath(context, centerX, centerY, halfLength, offset, horizontal, bow);
+    context.strokeStyle = "rgba(255,255,255,.30)";
+    context.lineWidth = Math.max(0.65, 1.05 * unit);
     context.stroke();
     context.restore();
   }
-}
-
-function drawCrossingOcclusion(
-  context: CanvasRenderingContext2D,
-  centerX: number,
-  centerY: number,
-  unit: number,
-  overHorizontal: boolean,
-) {
-  context.save();
-  context.translate(centerX, centerY);
-  context.rotate(overHorizontal ? Math.PI / 2 : 0);
-  const gradient = context.createRadialGradient(0, 0, 0, 0, 0, 8.6 * unit);
-  gradient.addColorStop(0, "rgba(26,18,21,.24)");
-  gradient.addColorStop(0.55, "rgba(26,18,21,.10)");
-  gradient.addColorStop(1, "rgba(26,18,21,0)");
-  context.fillStyle = gradient;
-  context.beginPath();
-  context.ellipse(0, 0, 8.6 * unit, 3.55 * unit, 0, 0, Math.PI * 2);
-  context.fill();
-  context.restore();
 }
 
 function drawBasketWeave(context: CanvasRenderingContext2D, bounds: Bounds, unit: number, selectedColor: string) {
-  const cell = 48 * unit;
-  let row = 0;
-  for (let y = bounds.top - cell * 0.5; y < bounds.bottom + cell * 0.5; y += cell, row += 1) {
-    let column = 0;
-    for (let x = bounds.left - cell * 0.5; x < bounds.right + cell * 0.5; x += cell, column += 1) {
-      const centerX = x + cell * 0.5 + deterministicJitter(row, column, 19) * 0.7 * unit;
-      const centerY = y + cell * 0.5 + deterministicJitter(row, column, 23) * 0.7 * unit;
-      const overHorizontal = (row + column) % 2 === 0;
+  const cell = 52 * unit;
+  const rows: number[] = [];
+  const columns: number[] = [];
 
-      drawCordBundle(context, centerX, centerY, cell, unit, !overHorizontal, row, column, selectedColor, "under");
-      drawCrossingOcclusion(context, centerX, centerY, unit, overHorizontal);
-      drawCordBundle(context, centerX, centerY, cell, unit, overHorizontal, row, column, selectedColor, "over");
-    }
+  let row = 0;
+  for (let y = bounds.top - cell * 0.35; y <= bounds.bottom + cell * 0.35; y += cell, row += 1) {
+    const centerY = y + deterministicJitter(row, 0, 79) * 0.8 * unit;
+    rows.push(centerY);
+    drawContinuousBundle(context, bounds, centerY, true, row, unit, selectedColor);
   }
+
+  let column = 0;
+  for (let x = bounds.left - cell * 0.35; x <= bounds.right + cell * 0.35; x += cell, column += 1) {
+    const centerX = x + deterministicJitter(0, column, 83) * 0.8 * unit;
+    columns.push(centerX);
+    drawContinuousBundle(context, bounds, centerX, false, column, unit, selectedColor);
+  }
+
+  rows.forEach((centerY, rowIndex) => {
+    columns.forEach((centerX, columnIndex) => {
+      const overHorizontal = (rowIndex + columnIndex) % 2 === 0;
+      const shiftedX = centerX + deterministicJitter(rowIndex, columnIndex, 89) * 0.6 * unit;
+      const shiftedY = centerY + deterministicJitter(rowIndex, columnIndex, 97) * 0.6 * unit;
+      drawCrossingOcclusion(context, shiftedX, shiftedY, unit, overHorizontal, selectedColor);
+      drawTopBundlePatch(
+        context,
+        shiftedX,
+        shiftedY,
+        cell,
+        unit,
+        overHorizontal,
+        rowIndex,
+        columnIndex,
+        selectedColor,
+      );
+    });
+  });
 }
 
 function paint(
@@ -250,9 +352,9 @@ function paint(
   context.clip(clipPath, excludesRigidFlap ? "evenodd" : "nonzero");
 
   const selectedColor = stage.dataset.color || "#E8DDCC";
-  // Same-hue veil lowers the old shader-grid contrast while keeping the selected cord hue.
-  // It is intentionally translucent so calibrated WebGL volume and edge lighting remain visible.
-  context.fillStyle = rgba(selectedColor, 0.16);
+  // The calibrated same-hue veil suppresses the old shader grid without moving the product contour.
+  // WebGL edge light and the lifelike surface remain visible underneath this translucent pass.
+  context.fillStyle = rgba(selectedColor, 0.22);
   context.fill(body.path);
 
   const unit = Math.max(0.72, Math.min(2.7, Math.min(width, height) / 720));
@@ -375,15 +477,15 @@ export default function BagBuilderBasketWeaveFinish() {
       .abags-fidelity3d-layer > .abags-basket-weave-surface {
         position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
         z-index:4!important;pointer-events:none!important;touch-action:none!important;
-        background:transparent!important;opacity:.92;mix-blend-mode:normal!important;
+        background:transparent!important;opacity:.94;mix-blend-mode:normal!important;
       }
       .abags-bag-builder-stage[data-abags-basket-weave-finish="${FINISH_VERSION}"] .abags-crochet-relief-surface {
-        opacity:.10!important;
+        opacity:.04!important;
       }
       @media (max-width:620px) {
-        .abags-fidelity3d-layer > .abags-basket-weave-surface { opacity:.86; }
+        .abags-fidelity3d-layer > .abags-basket-weave-surface { opacity:.90; }
         .abags-bag-builder-stage[data-abags-basket-weave-finish="${FINISH_VERSION}"] .abags-crochet-relief-surface {
-          opacity:.07!important;
+          opacity:.03!important;
         }
       }
       @media (prefers-reduced-motion:reduce) {
