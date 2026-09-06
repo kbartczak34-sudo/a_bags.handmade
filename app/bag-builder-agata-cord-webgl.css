@@ -50,9 +50,9 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   mix-blend-mode:soft-light!important;
 }
 
-/* Basket V5 has a dedicated packed body-material pass. Keep its canvas hidden while it is empty;
-   only promote it after the component has painted and published its exact version marker. This
-   lets the Agata WebGL frame remain a deterministic fallback without double-compositing materials. */
+/* Basket V6 rebuilds the body from short physical cord segments with alternating under-cord gaps.
+   Keep its canvas hidden while empty and promote it only after the exact V6 readiness marker is
+   published on the same active stage. Agata WebGL remains the deterministic fallback underneath. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
 > .abags-fidelity3d-layer > .abags-basket-weave-surface{
@@ -62,7 +62,7 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 }
 
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"][data-abags-basket-weave-finish="basket-cord-weave-v5-packed-over-under"]
+.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"][data-abags-basket-weave-finish="basket-cord-weave-v6-segmented-relief"]
 > .abags-fidelity3d-layer > .abags-basket-weave-surface{
   opacity:1!important;
   visibility:visible!important;
