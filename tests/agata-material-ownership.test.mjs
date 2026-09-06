@@ -26,6 +26,8 @@ const ACTIVE_BASKET_MARKER =
   '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
 const PAINTED_BASKET_MARKER =
   '[data-abags-basket-weave-finish="basket-cord-weave-v5-packed-over-under"]';
+const ACTIVE_PAINTED_BASKET_MARKER =
+  '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"][data-abags-basket-weave-finish="basket-cord-weave-v5-packed-over-under"]';
 
 test("Agata WebGL becomes the customer-visible stitch material after the verified frame", () => {
   const agataRule = ruleBodyAfter(ACTIVE_AGATA_MARKER, "> .abags-fidelity3d-layer > .abags-agata-cord-webgl");
@@ -56,7 +58,12 @@ test("basket canvas stays hidden until the packed V5 material has actually paint
   assert.match(basketFallback, /visibility:visible!important/);
 });
 
-test("painted Basket V5 becomes the visible body material without replacing Agata or Fidelity lifecycle", () => {
+test("painted Basket V5 is promoted only when readiness is on the same active stage", () => {
+  assert.ok(css.includes(ACTIVE_PAINTED_BASKET_MARKER));
+  assert.doesNotMatch(
+    css,
+    /data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"\]\s+\[data-abags-basket-weave-finish=/,
+  );
   const basketPainted = ruleBodyAfter(PAINTED_BASKET_MARKER, "> .abags-fidelity3d-layer > .abags-basket-weave-surface");
   assert.match(basketPainted, /opacity:1!important/);
   assert.match(basketPainted, /visibility:visible!important/);
