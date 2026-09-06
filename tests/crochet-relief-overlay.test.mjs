@@ -17,7 +17,8 @@ test("relief follows the calibrated Fidelity v4 silhouette without changing bag 
   assert.match(relief, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
   assert.match(relief, /function contour3d/);
   assert.match(relief, /function project/);
-  assert.match(relief, /data-abags-crochet-relief-surface="stitch-depth-v1"/);
+  assert.match(relief, /const RELIEF_VERSION = "stitch-depth-v2-handmade"/);
+  assert.match(relief, /data-abags-crochet-relief-surface=\{RELIEF_VERSION\}/);
   assert.match(relief, /source\.width/);
   assert.match(relief, /source\.height/);
   assert.match(relief, /abags:fidelity3d-transform/);
@@ -30,9 +31,12 @@ test("each crochet stitch gets a distinct deterministic raised-light constructio
   assert.match(relief, /function drawHerringbone/);
   assert.match(relief, /function drawBasket/);
   assert.match(relief, /function drawShell/);
+  assert.match(relief, /function deterministicVariation/);
+  assert.match(relief, /function handmadeOffset/);
+  assert.match(relief, /function fibreGlint/);
   assert.match(relief, /raisedStroke/);
-  assert.match(relief, /rgba\(35,24,27,\.30\)/);
-  assert.match(relief, /rgba\(255,255,255,\.27\)/);
+  assert.match(relief, /rgba\(35,24,27,\.27\)/);
+  assert.match(relief, /rgba\(255,255,255,\.24\)/);
 });
 
 test("leather and suede flaps are cut out so crochet relief cannot contaminate non-yarn material", () => {
