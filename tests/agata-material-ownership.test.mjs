@@ -24,6 +24,8 @@ const AGATA_READY_MARKER =
   '.abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
 const ACTIVE_BASKET_MARKER =
   '.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]';
+const PAINTED_BASKET_MARKER =
+  '[data-abags-basket-weave-finish="basket-cord-weave-v5-packed-over-under"]';
 
 test("Agata WebGL becomes the customer-visible stitch material after the verified frame", () => {
   const agataRule = ruleBodyAfter(ACTIVE_AGATA_MARKER, "> .abags-fidelity3d-layer > .abags-agata-cord-webgl");
@@ -47,15 +49,21 @@ test("legacy crochet topology is mounted but no longer double-composited over Ag
   assert.match(reliefRule, /visibility:visible!important/);
 });
 
-test("legacy basket canvas remains fallback-only after Agata owns the basket material", () => {
-  assert.match(css, /Basket ownership handoff/);
-  const basketRule = ruleBodyAfter(ACTIVE_BASKET_MARKER, "> .abags-fidelity3d-layer > .abags-basket-weave-surface");
-  assert.match(basketRule, /opacity:0!important/);
-  assert.match(basketRule, /visibility:visible!important/);
-  assert.match(basketRule, /mix-blend-mode:normal!important/);
+test("basket canvas stays hidden until the packed V5 material has actually painted", () => {
+  assert.match(css, /Basket V5 has a dedicated packed body-material pass/);
+  const basketFallback = ruleBodyAfter(ACTIVE_BASKET_MARKER, "> .abags-fidelity3d-layer > .abags-basket-weave-surface");
+  assert.match(basketFallback, /opacity:0!important/);
+  assert.match(basketFallback, /visibility:visible!important/);
+});
+
+test("painted Basket V5 becomes the visible body material without replacing Agata or Fidelity lifecycle", () => {
+  const basketPainted = ruleBodyAfter(PAINTED_BASKET_MARKER, "> .abags-fidelity3d-layer > .abags-basket-weave-surface");
+  assert.match(basketPainted, /opacity:1!important/);
+  assert.match(basketPainted, /visibility:visible!important/);
+  assert.match(basketPainted, /mix-blend-mode:normal!important/);
 });
 
 test("material ownership handoff remains excluded from Photo-True", () => {
   const exclusions = css.match(/not\(\[data-abags-photo-true="active"\]\)/g) ?? [];
-  assert.ok(exclusions.length >= 5, "all Agata material ownership selectors must exclude Photo-True");
+  assert.ok(exclusions.length >= 6, "all Agata and Basket V5 ownership selectors must exclude Photo-True");
 });
