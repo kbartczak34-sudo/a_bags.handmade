@@ -1,0 +1,24 @@
+.abags-fidelity3d-layer > .abags-handmade-edge-surface {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:5!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  opacity:.88;
+}
+
+@media (max-width:620px) {
+  .abags-fidelity3d-layer > .abags-handmade-edge-surface {
+    opacity:.78;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .abags-fidelity3d-layer > .abags-handmade-edge-surface {
+    transition:none!important;
+  }
+}
