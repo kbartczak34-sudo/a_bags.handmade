@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 
 const STAGE_SELECTOR = ".abags-bag-builder-stage";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
-const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
+const BASE_SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
+const AGATA_SOURCE_SELECTOR = ".abags-agata-cord-webgl";
+const AGATA_SURFACE_VERSION = "agata-cord-webgl-v1-photo-calibrated";
 
 function createFibrePattern() {
   const canvas = document.createElement("canvas");
@@ -124,6 +126,17 @@ function paintLifelikeSurface(
   return true;
 }
 
+function selectMaterialSource(layer: HTMLElement, stage: HTMLElement) {
+  const agataReady = stage.dataset.abagsAgataCordWebgl === AGATA_SURFACE_VERSION;
+  if (agataReady) {
+    const agata = layer.querySelector<HTMLCanvasElement>(AGATA_SOURCE_SELECTOR);
+    if (agata && agata.width >= 2 && agata.height >= 2) return { canvas: agata, name: "agata-webgl-photo-calibrated" };
+  }
+
+  const base = layer.querySelector<HTMLCanvasElement>(BASE_SOURCE_SELECTOR);
+  return base ? { canvas: base, name: "calibrated-webgl-v4" } : null;
+}
+
 export default function BagBuilderLifelikeSurface() {
   const [layer, setLayer] = useState<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -145,24 +158,34 @@ export default function BagBuilderLifelikeSurface() {
   useEffect(() => {
     if (!layer) return;
     const stage = layer.closest<HTMLElement>(STAGE_SELECTOR);
-    const source = layer.querySelector<HTMLCanvasElement>(SOURCE_SELECTOR);
     const output = canvasRef.current;
-    if (!stage || !source || !output) return;
+    if (!stage || !output) return;
 
     if (!patternRef.current) patternRef.current = createFibrePattern();
 
+    const clear = () => {
+      output.getContext("2d")?.clearRect(0, 0, output.width, output.height);
+      stage.removeAttribute("data-abags-lifelike");
+      stage.removeAttribute("data-abags-lifelike-source");
+    };
+
     const paint = () => {
       frameRef.current = null;
-      if (stage.dataset.abagsFinal3d !== "ready") {
-        output.getContext("2d")?.clearRect(0, 0, output.width, output.height);
-        stage.removeAttribute("data-abags-lifelike");
+      if (stage.dataset.abagsFinal3d !== "ready" || stage.dataset.abagsPhotoTrue === "active") {
+        clear();
         return;
       }
 
-      const painted = paintLifelikeSurface(output, source, patternRef.current!);
+      const selected = selectMaterialSource(layer, stage);
+      if (!selected) {
+        clear();
+        return;
+      }
+
+      const painted = paintLifelikeSurface(output, selected.canvas, patternRef.current!);
       if (painted) {
         stage.dataset.abagsLifelike = "ready";
-        stage.dataset.abagsLifelikeSource = "calibrated-webgl-v4";
+        stage.dataset.abagsLifelikeSource = selected.name;
       }
     };
 
@@ -177,6 +200,8 @@ export default function BagBuilderLifelikeSurface() {
       attributeFilter: [
         "data-abags-final3d",
         "data-abags-fidelity3d-frame-at",
+        "data-abags-agata-cord-webgl",
+        "data-abags-photo-true",
         "data-builder-signature",
         "data-color",
         "data-stitch",
