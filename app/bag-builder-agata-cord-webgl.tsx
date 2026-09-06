@@ -116,22 +116,39 @@ vec2 agataOpenV(vec2 uv){
   return vec2(cord,cavity);
 }
 
+/* Real vertical-open A-Bags crochet is made from short interlocked cord sections,
+   never one uninterrupted printed-looking post. Rows are staggered and each cell
+   receives tiny deterministic handmade drift while preserving the exact silhouette. */
 vec2 agataVerticalOpen(vec2 uv){
-  vec2 grid=uv*vec2(9.45,10.15);
-  float row=floor(grid.y);
-  grid.x+=mod(row,2.0)*.08;
+  vec2 grid=uv*vec2(9.05,10.30);
+  vec2 cell=floor(grid);
+  float row=cell.y;
+  grid.x+=mod(row,2.0)*.48;
+  cell=floor(grid);
   vec2 q=fract(grid)-.5;
 
-  float post=roundedCord(abs(q.x),.105);
-  float l=sdSegment(q,vec2(-.43,-.34),vec2(0.0,.16));
-  float r=sdSegment(q,vec2(.43,-.34),vec2(0.0,.16));
-  float lowerL=sdSegment(q,vec2(0.0,.16),vec2(-.30,.43));
-  float lowerR=sdSegment(q,vec2(0.0,.16),vec2(.30,.43));
-  float bridge=max(max(roundedCord(l,.086),roundedCord(r,.086)),
-                   max(roundedCord(lowerL,.078),roundedCord(lowerR,.078)));
-  float cord=max(post*.90,bridge);
-  float window=smoothstep(.12,.31,abs(q.x))*smoothstep(-.24,.26,q.y);
-  return vec2(cord,(1.0-cord)*(.56+.44*window));
+  float cellJitter=.018*sin(cell.x*12.9898+cell.y*78.233);
+  float rowJitter=.012*sin(cell.x*39.346+cell.y*11.135);
+  q+=vec2(cellJitter,rowJitter);
+  float radius=.088+.006*sin(cell.x*21.73+cell.y*17.19);
+
+  float leftEntry=sdSegment(q,vec2(-.45,-.40),vec2(-.10,-.08));
+  float rightEntry=sdSegment(q,vec2(.45,-.40),vec2(.10,-.08));
+  float crossingLeft=sdSegment(q,vec2(-.10,-.08),vec2(.09,.10));
+  float crossingRight=sdSegment(q,vec2(.10,-.08),vec2(-.09,.10));
+  float leftReturn=sdSegment(q,vec2(-.09,.10),vec2(-.34,.42));
+  float rightReturn=sdSegment(q,vec2(.09,.10),vec2(.34,.42));
+
+  float entries=max(roundedCord(leftEntry,radius),roundedCord(rightEntry,radius));
+  float crossing=max(roundedCord(crossingLeft,radius*.92),roundedCord(crossingRight,radius*.92));
+  float returns=max(roundedCord(leftReturn,radius*.88),roundedCord(rightReturn,radius*.88));
+  float join=roundedCord(length(q-vec2(0.0,.10)),radius*.94);
+  float cord=max(max(entries,crossing),max(returns,join));
+
+  float negativeSpace=smoothstep(.115,.285,abs(q.x))*smoothstep(-.29,.28,q.y);
+  float lowerWindow=smoothstep(.16,.36,abs(q.x))*smoothstep(-.43,-.10,q.y);
+  float cavity=(1.0-cord)*(.61+.25*negativeSpace+.14*lowerWindow);
+  return vec2(cord,cavity);
 }
 
 vec2 agataBasket(vec2 uv){
