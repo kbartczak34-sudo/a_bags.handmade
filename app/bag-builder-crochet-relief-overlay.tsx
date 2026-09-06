@@ -17,6 +17,7 @@ const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
+const RELIEF_VERSION = "stitch-depth-v2-handmade";
 
 function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
   const aspect = width / Math.max(1, height);
@@ -94,92 +95,163 @@ function projectedPath(points: Point3[], width: number, height: number, rotation
   };
 }
 
-function raisedStroke(context: CanvasRenderingContext2D, path: Path2D, lineWidth: number, unit: number) {
+function deterministicVariation(row: number, column: number, salt = 0) {
+  let value = Math.imul(row + 101, 374761393) ^ Math.imul(column + 211, 668265263) ^ Math.imul(salt + 17, 1442695041);
+  value = Math.imul(value ^ (value >>> 13), 1274126177);
+  value ^= value >>> 16;
+  return ((value >>> 0) / 4294967295) * 2 - 1;
+}
+
+function handmadeOffset(row: number, column: number, unit: number) {
+  return {
+    x: deterministicVariation(row, column, 1) * 1.35 * unit,
+    y: deterministicVariation(row, column, 2) * 1.05 * unit,
+    width: 1 + deterministicVariation(row, column, 3) * 0.075,
+    lift: 1 + deterministicVariation(row, column, 4) * 0.065,
+  };
+}
+
+function raisedStroke(context: CanvasRenderingContext2D, path: Path2D, lineWidth: number, unit: number, lift = 1) {
   context.save();
-  context.translate(unit * 0.9, unit * 1.25);
-  context.strokeStyle = "rgba(35,24,27,.30)";
-  context.lineWidth = lineWidth * 1.16;
+  context.translate(unit * 0.82 * lift, unit * 1.10 * lift);
+  context.strokeStyle = "rgba(35,24,27,.27)";
+  context.lineWidth = lineWidth * 1.12;
   context.stroke(path);
   context.restore();
 
   context.save();
-  context.translate(-unit * 0.58, -unit * 0.62);
-  context.strokeStyle = "rgba(255,255,255,.27)";
-  context.lineWidth = lineWidth * 0.72;
+  context.translate(-unit * 0.50 * lift, -unit * 0.54 * lift);
+  context.strokeStyle = "rgba(255,255,255,.24)";
+  context.lineWidth = lineWidth * 0.68;
   context.stroke(path);
   context.restore();
 }
 
+function fibreGlint(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  unit: number,
+  row: number,
+  column: number,
+) {
+  if (((row * 3 + column) & 3) !== 0) return;
+  const length = (2.4 + (deterministicVariation(row, column, 8) + 1) * 0.9) * unit;
+  const drift = deterministicVariation(row, column, 9) * 0.8 * unit;
+  const normalX = -Math.sin(angle);
+  const normalY = Math.cos(angle);
+  const tangentX = Math.cos(angle);
+  const tangentY = Math.sin(angle);
+  context.beginPath();
+  context.moveTo(x + normalX * drift - tangentX * length * 0.5, y + normalY * drift - tangentY * length * 0.5);
+  context.lineTo(x + normalX * drift + tangentX * length * 0.5, y + normalY * drift + tangentY * length * 0.5);
+  context.strokeStyle = "rgba(255,255,255,.17)";
+  context.lineWidth = Math.max(0.45, 0.62 * unit);
+  context.stroke();
+}
+
 function drawClassic(context: CanvasRenderingContext2D, bounds: Bounds, unit: number) {
-  const stepX = 31 * unit;
-  const stepY = 26 * unit;
-  for (let y = bounds.top - stepY; y < bounds.bottom + stepY; y += stepY) {
-    for (let x = bounds.left - stepX; x < bounds.right + stepX; x += stepX) {
+  const stepX = 25 * unit;
+  const stepY = 21 * unit;
+  let row = -1;
+  for (let y = bounds.top - stepY; y < bounds.bottom + stepY; y += stepY, row += 1) {
+    let column = -1;
+    for (let x = bounds.left - stepX; x < bounds.right + stepX; x += stepX, column += 1) {
+      const variation = handmadeOffset(row, column, unit);
+      const peak = 0.73 + deterministicVariation(row, column, 5) * 0.045;
+      const left = x + variation.x;
+      const top = y + variation.y;
       const path = new Path2D();
-      path.moveTo(x, y);
-      path.lineTo(x + stepX * 0.5, y + stepY * 0.78);
-      path.lineTo(x + stepX, y);
-      raisedStroke(context, path, Math.max(1.2, 4.6 * unit), unit);
+      path.moveTo(left, top);
+      path.lineTo(left + stepX * 0.5, top + stepY * peak);
+      path.lineTo(left + stepX, top + deterministicVariation(row, column, 6) * 0.7 * unit);
+      raisedStroke(context, path, Math.max(1.1, 4.05 * unit * variation.width), unit, variation.lift);
+      fibreGlint(context, left + stepX * 0.50, top + stepY * peak * 0.70, Math.PI * 0.23, unit, row, column);
     }
   }
 }
 
 function drawHerringbone(context: CanvasRenderingContext2D, bounds: Bounds, unit: number) {
-  const stepX = 27 * unit;
-  const stepY = 26 * unit;
-  for (let x = bounds.left - stepX; x < bounds.right + stepX; x += stepX) {
+  const stepX = 23 * unit;
+  const stepY = 22 * unit;
+  let column = -1;
+  for (let x = bounds.left - stepX; x < bounds.right + stepX; x += stepX, column += 1) {
+    const drift = deterministicVariation(0, column, 11) * 1.2 * unit;
     const post = new Path2D();
-    post.moveTo(x, bounds.top - stepY);
-    post.bezierCurveTo(x - 2.2 * unit, bounds.top + bounds.height * 0.33, x + 2.2 * unit, bounds.top + bounds.height * 0.66, x, bounds.bottom + stepY);
-    raisedStroke(context, post, Math.max(1.2, 4.4 * unit), unit);
+    post.moveTo(x + drift, bounds.top - stepY);
+    post.bezierCurveTo(
+      x - 1.8 * unit + drift,
+      bounds.top + bounds.height * 0.33,
+      x + 1.8 * unit + drift,
+      bounds.top + bounds.height * 0.66,
+      x + drift * 0.7,
+      bounds.bottom + stepY,
+    );
+    raisedStroke(context, post, Math.max(1.1, 3.85 * unit * (1 + deterministicVariation(0, column, 12) * 0.06)), unit, 0.94);
   }
-  for (let y = bounds.top; y < bounds.bottom + stepY; y += stepY) {
-    for (let x = bounds.left - stepX; x < bounds.right + stepX; x += stepX) {
+  let row = 0;
+  for (let y = bounds.top; y < bounds.bottom + stepY; y += stepY, row += 1) {
+    column = -1;
+    for (let x = bounds.left - stepX; x < bounds.right + stepX; x += stepX, column += 1) {
+      const variation = handmadeOffset(row, column, unit);
       const bridge = new Path2D();
-      bridge.moveTo(x - stepX * 0.44, y - stepY * 0.30);
-      bridge.lineTo(x, y + stepY * 0.22);
-      bridge.lineTo(x + stepX * 0.44, y - stepY * 0.30);
-      raisedStroke(context, bridge, Math.max(1, 3.3 * unit), unit * 0.82);
+      bridge.moveTo(x - stepX * 0.44 + variation.x, y - stepY * 0.30 + variation.y);
+      bridge.lineTo(x + variation.x * 0.55, y + stepY * (0.20 + deterministicVariation(row, column, 13) * 0.035) + variation.y);
+      bridge.lineTo(x + stepX * 0.44 + variation.x, y - stepY * 0.30 + variation.y * 0.65);
+      raisedStroke(context, bridge, Math.max(1, 2.95 * unit * variation.width), unit * 0.82, variation.lift);
+      fibreGlint(context, x + variation.x, y + stepY * 0.06 + variation.y, -Math.PI * 0.22, unit, row, column);
     }
   }
 }
 
 function drawBasket(context: CanvasRenderingContext2D, bounds: Bounds, unit: number) {
-  const cell = 38 * unit;
+  const cell = 32 * unit;
   for (let row = -1, y = bounds.top - cell; y < bounds.bottom + cell; y += cell, row += 1) {
     for (let column = -1, x = bounds.left - cell; x < bounds.right + cell; x += cell, column += 1) {
+      const variation = handmadeOffset(row, column, unit);
+      const inset = (3.4 + deterministicVariation(row, column, 15) * 0.55) * unit;
+      const splitA = 0.34 + deterministicVariation(row, column, 16) * 0.018;
+      const splitB = 0.66 + deterministicVariation(row, column, 17) * 0.018;
       const horizontalFirst = (row + column) % 2 === 0;
       const horizontal = new Path2D();
-      horizontal.moveTo(x + 4 * unit, y + cell * 0.34);
-      horizontal.lineTo(x + cell - 4 * unit, y + cell * 0.34);
-      horizontal.moveTo(x + 4 * unit, y + cell * 0.66);
-      horizontal.lineTo(x + cell - 4 * unit, y + cell * 0.66);
+      horizontal.moveTo(x + inset + variation.x, y + cell * splitA + variation.y);
+      horizontal.lineTo(x + cell - inset + variation.x, y + cell * splitA + variation.y * 0.7);
+      horizontal.moveTo(x + inset + variation.x, y + cell * splitB + variation.y * 0.65);
+      horizontal.lineTo(x + cell - inset + variation.x, y + cell * splitB + variation.y);
       const vertical = new Path2D();
-      vertical.moveTo(x + cell * 0.34, y + 4 * unit);
-      vertical.lineTo(x + cell * 0.34, y + cell - 4 * unit);
-      vertical.moveTo(x + cell * 0.66, y + 4 * unit);
-      vertical.lineTo(x + cell * 0.66, y + cell - 4 * unit);
-      raisedStroke(context, horizontalFirst ? vertical : horizontal, Math.max(1.1, 4.2 * unit), unit * 0.72);
-      raisedStroke(context, horizontalFirst ? horizontal : vertical, Math.max(1.2, 5.0 * unit), unit);
+      vertical.moveTo(x + cell * splitA + variation.x, y + inset + variation.y);
+      vertical.lineTo(x + cell * splitA + variation.x * 0.7, y + cell - inset + variation.y);
+      vertical.moveTo(x + cell * splitB + variation.x * 0.65, y + inset + variation.y);
+      vertical.lineTo(x + cell * splitB + variation.x, y + cell - inset + variation.y);
+      raisedStroke(context, horizontalFirst ? vertical : horizontal, Math.max(1.0, 3.7 * unit * variation.width), unit * 0.72, variation.lift);
+      raisedStroke(context, horizontalFirst ? horizontal : vertical, Math.max(1.1, 4.45 * unit * variation.width), unit, variation.lift);
+      fibreGlint(context, x + cell * 0.50 + variation.x, y + cell * 0.34 + variation.y, horizontalFirst ? 0 : Math.PI / 2, unit, row, column);
     }
   }
 }
 
 function drawShell(context: CanvasRenderingContext2D, bounds: Bounds, unit: number) {
-  const stepX = 42 * unit;
-  const stepY = 31 * unit;
+  const stepX = 35 * unit;
+  const stepY = 27 * unit;
   for (let row = -1, y = bounds.top - stepY; y < bounds.bottom + stepY; y += stepY, row += 1) {
     const offset = row % 2 ? stepX * 0.5 : 0;
-    for (let x = bounds.left - stepX + offset; x < bounds.right + stepX; x += stepX) {
+    let column = -1;
+    for (let x = bounds.left - stepX + offset; x < bounds.right + stepX; x += stepX, column += 1) {
+      const variation = handmadeOffset(row, column, unit);
+      const radiusScale = 0.34 + deterministicVariation(row, column, 19) * 0.018;
+      const centerX = x + variation.x;
+      const centerY = y + variation.y;
       const path = new Path2D();
-      path.arc(x, y + stepY * 0.46, stepX * 0.36, Math.PI * 1.08, Math.PI * 1.92);
-      path.moveTo(x, y + stepY * 0.06);
-      path.lineTo(x, y + stepY * 0.70);
-      path.moveTo(x - stepX * 0.20, y + stepY * 0.14);
-      path.lineTo(x, y + stepY * 0.70);
-      path.moveTo(x + stepX * 0.20, y + stepY * 0.14);
-      path.lineTo(x, y + stepY * 0.70);
-      raisedStroke(context, path, Math.max(1.1, 3.7 * unit), unit * 0.82);
+      path.arc(centerX, centerY + stepY * 0.46, stepX * radiusScale, Math.PI * 1.08, Math.PI * 1.92);
+      path.moveTo(centerX, centerY + stepY * 0.06);
+      path.lineTo(centerX, centerY + stepY * 0.70);
+      path.moveTo(centerX - stepX * 0.20, centerY + stepY * 0.14);
+      path.lineTo(centerX, centerY + stepY * 0.70);
+      path.moveTo(centerX + stepX * 0.20, centerY + stepY * 0.14);
+      path.lineTo(centerX, centerY + stepY * 0.70);
+      raisedStroke(context, path, Math.max(1.0, 3.25 * unit * variation.width), unit * 0.82, variation.lift);
+      fibreGlint(context, centerX, centerY + stepY * 0.33, Math.PI / 2, unit, row, column);
     }
   }
 }
@@ -275,6 +347,7 @@ export default function BagBuilderCrochetReliefOverlay() {
       if (painted) {
         stage.dataset.abagsCrochetRelief = "ready";
         stage.dataset.abagsCrochetReliefMode = stitch || "classic";
+        stage.dataset.abagsCrochetReliefVersion = RELIEF_VERSION;
       }
     };
 
@@ -318,6 +391,7 @@ export default function BagBuilderCrochetReliefOverlay() {
       frameRef.current = null;
       stage.removeAttribute("data-abags-crochet-relief");
       stage.removeAttribute("data-abags-crochet-relief-mode");
+      stage.removeAttribute("data-abags-crochet-relief-version");
     };
   }, [layer]);
 
@@ -327,7 +401,7 @@ export default function BagBuilderCrochetReliefOverlay() {
     <canvas
       ref={canvasRef}
       className="abags-crochet-relief-surface"
-      data-abags-crochet-relief-surface="stitch-depth-v1"
+      data-abags-crochet-relief-surface={RELIEF_VERSION}
       aria-hidden="true"
     />,
     layer,
