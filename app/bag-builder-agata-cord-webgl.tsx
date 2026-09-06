@@ -151,25 +151,42 @@ vec2 agataVerticalOpen(vec2 uv){
   return vec2(cord,cavity);
 }
 
+/* Basket V4: one rounded cord per direction, gently bowed through each cell.
+   Alternating crossings dip only the under-cord in a compact centre window, so the
+   weave reads as soft polyester passing over/under instead of a rigid plaid ladder. */
 vec2 agataBasket(vec2 uv){
-  vec2 grid=uv*vec2(7.20,8.10);
+  vec2 grid=uv*vec2(6.65,7.65);
   vec2 cell=floor(grid);
   vec2 q=fract(grid)-.5;
   float parity=mod(cell.x+cell.y,2.0);
 
-  float h1=roundedCord(abs(q.y-.13),.145);
-  float h2=roundedCord(abs(q.y+.13),.145);
-  float v1=roundedCord(abs(q.x-.13),.145);
-  float v2=roundedCord(abs(q.x+.13),.145);
-  float horizontal=max(h1,h2);
-  float vertical=max(v1,v2);
+  float driftX=.018*sin(cell.x*17.17+cell.y*43.31);
+  float driftY=.016*sin(cell.x*37.11+cell.y*13.73);
+  q+=vec2(driftX,driftY);
+  float bow=.052+.014*sin(cell.x*23.91+cell.y*31.17);
+  float radius=.112+.007*sin(cell.x*19.37+cell.y*29.41);
+
+  float hLeft=sdSegment(q,vec2(-.52,-bow),vec2(-.08,bow));
+  float hJoin=sdSegment(q,vec2(-.09,bow),vec2(.09,bow*.82));
+  float hRight=sdSegment(q,vec2(.08,bow*.82),vec2(.52,-bow));
+  float horizontal=roundedCord(min(min(hLeft,hJoin),hRight),radius);
+
+  float vBottom=sdSegment(q,vec2(bow,-.52),vec2(-bow,-.08));
+  float vJoin=sdSegment(q,vec2(-bow,-.09),vec2(-bow*.82,.09));
+  float vTop=sdSegment(q,vec2(-bow*.82,.08),vec2(bow,.52));
+  float vertical=roundedCord(min(min(vBottom,vJoin),vTop),radius);
 
   float over=mix(horizontal,vertical,parity);
-  float under=mix(vertical,horizontal,parity)*.64;
-  float crossing=max(over,under);
-  float crossingShadow=min(horizontal,vertical)*(1.0-over)*.44;
-  float cord=saturate(crossing-crossingShadow);
-  return vec2(cord,(1.0-cord)*.72+crossingShadow*.28);
+  float under=mix(vertical,horizontal,parity);
+  float crossingWindow=1.0-smoothstep(.11,.285,length(q));
+  float underDip=1.0-.62*crossingWindow*over;
+  float underHeight=under*underDip*.88;
+  float cord=max(over,underHeight);
+
+  float crossingShadow=min(over,under)*crossingWindow*.36;
+  float openSeam=(1.0-cord)*(.70+.12*smoothstep(.18,.42,length(q)));
+  float cavity=saturate(openSeam+crossingShadow);
+  return vec2(cord,cavity);
 }
 
 vec2 agataRadial(vec2 uv){
