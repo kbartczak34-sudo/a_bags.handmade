@@ -26,7 +26,7 @@ test("model picker is driven by current real store products and restricted to ca
 
 test("selected product photo is the primary exact preview and synthetic renderers are not used as the base", () => {
   assert.match(component, /abags-photo-true-base/);
-  assert.match(component, /src=\{selected\.imageUrl\}/);
+  assert.match(component, /src=\{selected\.imageUrl \|\| \"\"\}/);
   assert.match(component, /const base = selected\?\.imageUrl \|\| \"\"/);
   assert.match(component, /liveStage\.dataset\.abagsPhotoTrue = \"active\"/);
   assert.match(component, /liveStage\.dataset\.photoProductId = selected\.id/);
