@@ -3,8 +3,8 @@ import {
   createCordMaterial,
   createGaugeProfile,
   createGoldenMaster,
-  getCraftCalibrationSnapshot,
 } from "../../../../lib/craft-calibration";
+import { getCraftEvidenceDashboard } from "../../../../lib/craft-evidence";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ function json(data: unknown, status = 200) {
 export async function GET(request: Request) {
   if (!isAdminRequest(request)) return json({ error: "Brak dostępu do laboratorium rzemiosła." }, 403);
   try {
-    return json({ calibration: await getCraftCalibrationSnapshot() });
+    return json({ calibration: await getCraftEvidenceDashboard() });
   } catch (error) {
     console.error("Craft calibration load failed", { message: error instanceof Error ? error.message : "Unknown error" });
     return json({ error: "Nie udało się wczytać danych kalibracyjnych." }, 500);
