@@ -21,6 +21,8 @@ type AdminOrder = {
   amountTotal: number | null;
   currency: string | null;
   cartReference: string | null;
+  productionSnapshotId: string | null;
+  productionPackageHash: string | null;
   lastEventId: string;
   lastEventType: string;
   createdAt: string;
@@ -31,6 +33,13 @@ type OrdersPayload = {
   settings?: OrderSettings;
   error?: string;
 };
+type ProductionSnapshot = {
+  id: string;
+  packageHash: string;
+  package: unknown;
+  createdAt: string;
+};
+type SnapshotPayload = { snapshot?: ProductionSnapshot; error?: string };
 
 const paymentLabels: Record<string, string> = {
   paid: "Opłacone",
@@ -81,6 +90,9 @@ export default function OrdersManager() {
   const [refreshing, setRefreshing] = useState(false);
   const [workingId, setWorkingId] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
+  const [snapshotLoadingId, setSnapshotLoadingId] = useState("");
+  const [snapshotError, setSnapshotError] = useState("");
+  const [selectedSnapshot, setSelectedSnapshot] = useState<ProductionSnapshot | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -105,8 +117,7 @@ export default function OrdersManager() {
       const response = await fetch("/api/admin/orders", { cache: "no-store" });
       const data = (await response.json()) as OrdersPayload;
       if (!response.ok) throw new Error(data.error ?? "Nie udało się wczytać zamówień.");
-      if (data.orders) setOrders(data.orders);
-      if (data.settings) setSettings(data.settings);
+      applyPayload(data);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Nie udało się wczytać zamówień.");
     } finally {
@@ -134,6 +145,31 @@ export default function OrdersManager() {
     const data = (await response.json()) as OrdersPayload;
     if (!response.ok) throw new Error(data.error ?? "Nie udało się zapisać zmian.");
     applyPayload(data);
+  }
+
+  async function openProductionSnapshot(order: AdminOrder) {
+    if (!order.productionSnapshotId) return;
+    setSnapshotLoadingId(order.sessionId);
+    setSnapshotError("");
+    setSelectedSnapshot(null);
+    try {
+      const response = await fetch(
+        `/api/admin/orders/production-snapshot?snapshotId=${encodeURIComponent(order.productionSnapshotId)}`,
+        { cache: "no-store" },
+      );
+      const data = (await response.json()) as SnapshotPayload;
+      if (!response.ok || !data.snapshot) {
+        throw new Error(data.error ?? "Nie udało się wczytać Production Snapshot.");
+      }
+      if (order.productionPackageHash && data.snapshot.packageHash !== order.productionPackageHash) {
+        throw new Error("Niezgodność hashy Production Package. Dostęp do pakietu został zablokowany.");
+      }
+      setSelectedSnapshot(data.snapshot);
+    } catch (reason) {
+      setSnapshotError(reason instanceof Error ? reason.message : "Nie udało się wczytać Production Snapshot.");
+    } finally {
+      setSnapshotLoadingId("");
+    }
   }
 
   async function changeFulfillment(order: AdminOrder, status: FulfillmentStatus) {
@@ -278,6 +314,30 @@ export default function OrdersManager() {
                 </p>
               )}
 
+              {order.productionSnapshotId && (
+                <article className="admin-review-card" style={{ marginTop: "1rem" }}>
+                  <div className="admin-review-meta">
+                    <div>
+                      <strong>Production Snapshot V2</strong>
+                      <small>ID: {shortId(order.productionSnapshotId)}</small>
+                    </div>
+                    <span className="review-status is-approved">IMMUTABLE</span>
+                  </div>
+                  <p>
+                    <strong>Package hash:</strong> {shortId(order.productionPackageHash ?? "brak")}
+                  </p>
+                  <div className="admin-review-actions">
+                    <button
+                      type="button"
+                      disabled={snapshotLoadingId === order.sessionId}
+                      onClick={() => void openProductionSnapshot(order)}
+                    >
+                      {snapshotLoadingId === order.sessionId ? "Wczytywanie…" : "Pokaż pakiet produkcyjny"}
+                    </button>
+                  </div>
+                </article>
+              )}
+
               {order.refundStatus !== "none" && (
                 <p>
                   Zwrot: <strong>{refundLabels[order.refundStatus]}</strong>
@@ -353,6 +413,44 @@ export default function OrdersManager() {
               {order.checkoutStatus && <p>Status Checkout: <strong>{order.checkoutStatus}</strong></p>}
             </article>
           ))}
+        </div>
+      )}
+
+      {snapshotError && (
+        <p className="admin-message is-error" role="alert">
+          {snapshotError}
+        </p>
+      )}
+
+      {selectedSnapshot && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="production-snapshot-dialog-title"
+          style={{ position: "fixed", inset: 0, zIndex: 1000, overflow: "auto", padding: "2rem", background: "rgba(0,0,0,.58)" }}
+          onClick={() => setSelectedSnapshot(null)}
+        >
+          <article
+            className="admin-review-card"
+            style={{ maxWidth: "1100px", margin: "0 auto", background: "var(--background, #fff)" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="admin-review-meta">
+              <div>
+                <p className="eyebrow">Immutable production evidence</p>
+                <h3 id="production-snapshot-dialog-title">Pakiet produkcyjny V2</h3>
+                <small>Snapshot: {selectedSnapshot.id}</small>
+              </div>
+              <button type="button" className="is-secondary" onClick={() => setSelectedSnapshot(null)}>
+                Zamknij
+              </button>
+            </div>
+            <p><strong>SHA-256:</strong> {selectedSnapshot.packageHash}</p>
+            <p><strong>Utworzono:</strong> {formatDate(selectedSnapshot.createdAt)}</p>
+            <pre style={{ maxHeight: "60vh", overflow: "auto", padding: "1rem", borderRadius: "12px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              {JSON.stringify(selectedSnapshot.package, null, 2)}
+            </pre>
+          </article>
         </div>
       )}
     </section>
