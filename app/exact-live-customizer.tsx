@@ -13,6 +13,7 @@ import "./bag-builder-lifelike-surface.css";
 import "./bag-builder-crochet-relief-overlay.css";
 import "./bag-builder-agata-cord-webgl.css";
 import "./bag-builder-physical-cord-geometry.css";
+import "./bag-builder-basket-physical-cord-v2.css";
 import "./bag-builder-agata-top-rim.css";
 import "./bag-builder-flap-realism-tuning.css";
 import "./bag-builder-crochet-flap-density.css";
@@ -25,6 +26,7 @@ import BagBuilderAccessoryMaterialFinish from "./bag-builder-accessory-material-
 import BagBuilderAgataCordWebGL from "./bag-builder-agata-cord-webgl";
 import BagBuilderAgataTopRim from "./bag-builder-agata-top-rim";
 import BagBuilderAutosave from "./bag-builder-autosave";
+import BagBuilderBasketPhysicalCordV2 from "./bag-builder-basket-physical-cord-v2";
 import BagBuilderBasketWeaveFinish from "./bag-builder-basket-weave-finish";
 import BagBuilderChainRealism from "./bag-builder-chain-realism";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
@@ -76,6 +78,7 @@ export default function ExactLiveCustomizer() {
     <BagBuilderCrochetReliefOverlay />
     <BagBuilderBasketWeaveFinish />
     <BagBuilderPhysicalCordGeometry />
+    <BagBuilderBasketPhysicalCordV2 />
     <BagBuilderHandmadeEdgeFinish />
     <BagBuilderOpeningDepth />
     <BagBuilderSidewallCrochetDepth />

@@ -1,0 +1,52 @@
+/* Basket Physical Cord V2 replaces only the basket variant of the generic V1 pass.
+   It owns no layout or gestures and remains beneath handmade edge/rim/accessory finishing. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="basket"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
+> .abags-fidelity3d-layer > .abags-physical-cord-geometry {
+  opacity:0!important;
+  visibility:hidden!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:4!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  touch-action:none!important;
+  user-select:none!important;
+  background:transparent!important;
+  image-rendering:auto!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="basket"][data-abags-final3d="ready"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
+> .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
+  opacity:.84!important;
+  visibility:visible!important;
+}
+
+@media (max-width:620px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+  .abags-bag-builder-stage[data-stitch="basket"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
+  > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
+    opacity:.76!important;
+  }
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"]
+.abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage:not([data-stitch="basket"]) > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
+  opacity:0!important;
+  visibility:hidden!important;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 { transition:none!important; }
+}
