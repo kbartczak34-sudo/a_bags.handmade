@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { processFirstTenGift } from "../../../../lib/gift-rewards";
 import { sendOrderConfirmationEmail } from "../../../../lib/order-email";
+import { recordPaidOrderConfigurationSnapshot } from "../../../../lib/order-configuration-snapshots";
 import {
   recordStripeOrderEvent,
   recordStripeRefundEvent,
@@ -48,6 +49,20 @@ export async function POST(request: Request) {
           session.payment_status === "no_payment_required";
 
         if (isSuccessfulPaymentEvent && isPaid) {
+          const configurationSnapshot = await recordPaidOrderConfigurationSnapshot(session);
+          console.info("Order configuration snapshot processed", {
+            sessionId: session.id,
+            created: configurationSnapshot.created,
+            configurationHash:
+              "configurationHash" in configurationSnapshot
+                ? configurationSnapshot.configurationHash
+                : undefined,
+            reason:
+              "reason" in configurationSnapshot
+                ? configurationSnapshot.reason
+                : undefined,
+          });
+
           const gift = await processFirstTenGift(session);
           if (gift) {
             console.info("First-ten order gift processed", {
