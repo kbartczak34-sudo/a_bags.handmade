@@ -109,11 +109,13 @@ test("deployment keeps Photo-True as an explicit internal reference check after 
   assert.match(workflow, /customizer-visual-qa-\$\{\{ github\.run_number \}\}/);
   assert.match(workflow, /artifacts\/customizer-v5\/\*\.png/);
   assert.match(workflow, /retention-days: 7/);
-  assert.match(workflow, /steps\.realtime\.outcome == 'success'/);
-  assert.match(workflow, /steps\.customizer\.outcome == 'success'/);
+  assert.match(workflow, /steps\.realtime\.conclusion == 'success'/);
+  assert.match(workflow, /steps\.customizer\.conclusion == 'success'/);
   assert.match(workflow, /smoke-photo-true-mobile\.mjs/);
   assert.match(workflow, /internal Photo-True reference acceptance failed/);
   assert.match(mobileSmoke, /visibleSynthetic/);
   assert.match(mobileSmoke, /touch-selected real product/);
   assert.match(mobileSmoke, /screenshot hash|screenshotHash/);
 });
+
+console.log("customizer-visual-qa: PASS");
