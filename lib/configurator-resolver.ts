@@ -89,11 +89,11 @@ export function toProductConfigurationV1(source: unknown): ProductConfigurationV
   };
 }
 
-export async function createConfigurationHash(configuration: ProductConfigurationV1) {
+export async function createConfigurationHash(configuration: unknown) {
   return sha256Hex(JSON.stringify(canonicalize(configuration)));
 }
 
-function resolvePricing(selection: BagBuilderProjectConfig, settings: BagBuilderSettings): ConfiguratorPricingResult {
+export function resolveConfiguratorPricing(selection: BagBuilderProjectConfig, settings: BagBuilderSettings): ConfiguratorPricingResult {
   if (!settings.pricingEnabled) {
     return { currency: "PLN", status: "DISABLED", grossCents: null };
   }
@@ -157,6 +157,6 @@ export async function resolveBagBuilderConfiguration(
     configuration,
     validation,
     physicalValidation: resolveLegacyPhysicalValidation(),
-    pricing: resolvePricing(selection, settings),
+    pricing: resolveConfiguratorPricing(selection, settings),
   };
 }
