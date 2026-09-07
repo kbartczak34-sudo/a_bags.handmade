@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type Status = "DRAFT" | "MEASURED" | "VALIDATED";
 type Cord = { id: string; supplier: string; supplierSku: string; name: string; nominalDiameterMm: number; measuredDiameterMm: number | null; status: Status };
@@ -35,6 +35,13 @@ function str(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
 }
 
+async function fetchCalibration() {
+  const response = await fetch("/api/admin/craft-calibration", { cache: "no-store" });
+  const payload = await response.json() as { calibration?: Calibration; error?: string };
+  if (!response.ok || !payload.calibration) throw new Error(payload.error || "Nie udało się wczytać laboratorium.");
+  return payload.calibration;
+}
+
 async function postRecord(kind: string, data: Record<string, unknown>) {
   const response = await fetch("/api/admin/craft-calibration", {
     method: "POST",
@@ -50,16 +57,13 @@ export default function CraftCalibrationManager() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    const response = await fetch("/api/admin/craft-calibration", { cache: "no-store" });
-    const payload = await response.json() as { calibration?: Calibration; error?: string };
-    if (!response.ok || !payload.calibration) throw new Error(payload.error || "Nie udało się wczytać laboratorium.");
-    setCalibration(payload.calibration);
-  }, []);
-
   useEffect(() => {
-    void load().catch((error) => setMessage(error instanceof Error ? error.message : "Nie udało się wczytać laboratorium."));
-  }, [load]);
+    let cancelled = false;
+    void fetchCalibration()
+      .then((next) => { if (!cancelled) setCalibration(next); })
+      .catch((error) => { if (!cancelled) setMessage(error instanceof Error ? error.message : "Nie udało się wczytać laboratorium."); });
+    return () => { cancelled = true; };
+  }, []);
 
   const submit = async (kind: string, data: Record<string, unknown>, form: HTMLFormElement) => {
     setBusy(true);
@@ -67,7 +71,7 @@ export default function CraftCalibrationManager() {
     try {
       await postRecord(kind, data);
       form.reset();
-      await load();
+      setCalibration(await fetchCalibration());
       setMessage("Pomiar zapisany ✓");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Nie udało się zapisać pomiaru.");
