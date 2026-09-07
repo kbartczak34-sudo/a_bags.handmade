@@ -14,6 +14,8 @@ export type BagBuilderClientConfig = {
   baseProductId: string;
 };
 
+export type BagBuilderDraftConfig = Omit<BagBuilderClientConfig, "baseProductId">;
+
 export const EMPTY_BAG_BUILDER_CLIENT_CONFIG: BagBuilderClientConfig = {
   family: "",
   color: "",
@@ -25,6 +27,14 @@ export const EMPTY_BAG_BUILDER_CLIENT_CONFIG: BagBuilderClientConfig = {
   accent: "none",
   baseProductId: "",
 };
+
+const FAMILIES = new Set<BagBuilderClientConfig["family"]>(["", "tote", "round", "bucket", "mini"]);
+const STITCHES = new Set<BagBuilderClientConfig["stitch"]>(["", "classic", "herringbone", "basket", "shell"]);
+const FLAPS = new Set<BagBuilderClientConfig["flap"]>(["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"]);
+const HANDLES = new Set<BagBuilderClientConfig["handles"]>(["none", "wood-light", "wood-dark", "crochet"]);
+const STRAPS = new Set<BagBuilderClientConfig["strap"]>(["none", "leather", "woven", "chain"]);
+const HARDWARE = new Set<BagBuilderClientConfig["hardware"]>(["gold", "silver", "black"]);
+const ACCENTS = new Set<BagBuilderClientConfig["accent"]>(["none", "tassel", "scarf", "charm"]);
 
 const STAGE_SELECTOR = ".abags-bag-builder-stage";
 const OBSERVED_ATTRIBUTES = [
@@ -44,18 +54,37 @@ let signature = JSON.stringify(snapshot);
 let observer: MutationObserver | null = null;
 const listeners = new Set<() => void>();
 
+function allowed<T extends string>(value: string | undefined, values: ReadonlySet<T>, fallback: T): T {
+  return value && values.has(value as T) ? value as T : fallback;
+}
+
+function normalizedColor(value: string | undefined) {
+  const color = value?.trim() ?? "";
+  return !color || /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "";
+}
+
+function normalizedBaseProductId(value: string | undefined) {
+  const id = value?.trim() ?? "";
+  return !id || /^[a-zA-Z0-9-]{1,80}$/.test(id) ? id : "";
+}
+
 export function readBagBuilderClientConfig(stage: HTMLElement): BagBuilderClientConfig {
   return {
-    family: (stage.dataset.family || "") as BagBuilderClientConfig["family"],
-    color: stage.dataset.color || "",
-    stitch: (stage.dataset.stitch || "") as BagBuilderClientConfig["stitch"],
-    flap: (stage.dataset.flap || "none") as BagBuilderClientConfig["flap"],
-    handles: (stage.dataset.handles || "none") as BagBuilderClientConfig["handles"],
-    strap: (stage.dataset.strap || "none") as BagBuilderClientConfig["strap"],
-    hardware: (stage.dataset.hardware || "gold") as BagBuilderClientConfig["hardware"],
-    accent: (stage.dataset.accent || "none") as BagBuilderClientConfig["accent"],
-    baseProductId: stage.dataset.photoProductId || "",
+    family: allowed(stage.dataset.family, FAMILIES, ""),
+    color: normalizedColor(stage.dataset.color),
+    stitch: allowed(stage.dataset.stitch, STITCHES, ""),
+    flap: allowed(stage.dataset.flap, FLAPS, "none"),
+    handles: allowed(stage.dataset.handles, HANDLES, "none"),
+    strap: allowed(stage.dataset.strap, STRAPS, "none"),
+    hardware: allowed(stage.dataset.hardware, HARDWARE, "gold"),
+    accent: allowed(stage.dataset.accent, ACCENTS, "none"),
+    baseProductId: normalizedBaseProductId(stage.dataset.photoProductId),
   };
+}
+
+export function toBagBuilderDraftConfig(config: BagBuilderClientConfig): BagBuilderDraftConfig {
+  const { baseProductId: _baseProductId, ...draft } = config;
+  return draft;
 }
 
 function synchronize() {
