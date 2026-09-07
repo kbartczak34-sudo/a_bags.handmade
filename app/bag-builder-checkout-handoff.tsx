@@ -35,7 +35,7 @@ function extras(config: Config, settings: Settings) {
     + (settings.handlesCents[config.handles] ?? 0)
     + (settings.strapCents[config.strap] ?? 0)
     + (settings.hardwareCents[config.hardware] ?? 0)
-    + (settings.acentCents?.[config.accent] ?? settings.accentCents[config.accent] ?? 0);
+    + (settings.accentCents[config.accent] ?? 0);
 }
 
 function calculateTotal(config: Config, settings: Settings, photographedBase: CatalogBase | null) {
