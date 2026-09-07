@@ -1,8 +1,13 @@
 import { getBagBuilderSettings } from "../../../../lib/bag-builder-settings";
+import { getCraftCalibrationSnapshot } from "../../../../lib/craft-calibration";
 import {
   ConfiguratorInputError,
   resolveBagBuilderConfiguration,
 } from "../../../../lib/configurator-resolver";
+import {
+  isProductConfigurationV2Source,
+  resolveProductConfigurationV2,
+} from "../../../../lib/product-configuration-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +45,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resolved = await resolveBagBuilderConfiguration(source, settings);
-    return json(resolved);
+    if (isProductConfigurationV2Source(source)) {
+      let calibration: Awaited<ReturnType<typeof getCraftCalibrationSnapshot>>;
+      try {
+        calibration = await getCraftCalibrationSnapshot();
+      } catch (error) {
+        console.error("[configurator-resolve] calibration load failed", {
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+        return json(
+          { error: "Nie udało się sprawdzić fizycznej kalibracji projektu.", code: "CALIBRATION_UNAVAILABLE" },
+          503,
+        );
+      }
+      return json(await resolveProductConfigurationV2(source, settings, calibration));
+    }
+
+    return json(await resolveBagBuilderConfiguration(source, settings));
   } catch (error) {
     if (error instanceof ConfiguratorInputError) {
       return json({ error: error.message, code: error.code }, 400);
