@@ -4,6 +4,11 @@ import { getRuntimeBindings } from "./runtime-env";
 export type FulfillmentStatus = "new" | "preparing" | "shipped" | "completed";
 export type RefundStatus = "none" | "partial" | "full";
 
+export type OrderSettings = {
+  pickupEnabled: boolean;
+  pickupAddress: string;
+};
+
 export type AdminOrder = {
   sessionId: string;
   paymentIntentId: string | null;
