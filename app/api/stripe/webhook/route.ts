@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { processFirstTenGift } from "../../../../lib/gift-rewards";
 import { sendOrderConfirmationEmail } from "../../../../lib/order-email";
 import { recordPaidOrderConfigurationSnapshot } from "../../../../lib/order-configuration-snapshots";
+import { verifyConfiguratorPaymentBinding } from "../../../../lib/configurator-payment-binding";
 import {
   recordStripeOrderEvent,
   recordStripeRefundEvent,
@@ -39,14 +40,21 @@ export async function POST(request: Request) {
     if (supportedEvents.has(event.type)) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.store === "a_bags.handmade") {
-        await recordStripeOrderEvent(event, session);
-
         const isSuccessfulPaymentEvent =
           event.type === "checkout.session.completed" ||
           event.type === "checkout.session.async_payment_succeeded";
         const isPaid =
           session.payment_status === "paid" ||
           session.payment_status === "no_payment_required";
+
+        if (session.metadata.checkout_type === "CONFIGURATOR_V2") {
+          const binding = await verifyConfiguratorPaymentBinding(session);
+          if (isSuccessfulPaymentEvent && isPaid && !binding) {
+            throw new Error("Brak zweryfikowanego powiązania konfiguratora z Production Snapshot.");
+          }
+        }
+
+        await recordStripeOrderEvent(event, session);
 
         if (isSuccessfulPaymentEvent && isPaid) {
           const configurationSnapshot = await recordPaidOrderConfigurationSnapshot(session);
