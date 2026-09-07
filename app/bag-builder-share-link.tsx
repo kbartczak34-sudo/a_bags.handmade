@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   BAG_BUILDER_CONFIG_ORDER,
   isBagBuilderDraftConfigComplete,
@@ -213,98 +213,103 @@ export default function BagBuilderShareLink() {
   const { config, invalidKeys, photoTrueActive } = useBagBuilderClientState();
   const draft = useMemo(() => toBagBuilderDraftConfig(config), [config]);
   const latest = useRef({ draft, invalidKeys, photoTrueActive, baseProductId: config.baseProductId });
-  latest.current = { draft, invalidKeys, photoTrueActive, baseProductId: config.baseProductId };
-
-  const [stage, setStage] = useState<HTMLElement | null>(null);
-  const [controls, setControls] = useState<HTMLElement | null>(null);
-  const importStarted = useRef(false);
 
   useEffect(() => {
-    const attach = () => {
-      const nextStage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
-      const nextControls = document.querySelector<HTMLElement>(".abags-builder-controls");
-      setStage((current) => current === nextStage ? current : nextStage);
-      setControls((current) => current === nextControls ? current : nextControls);
-    };
+    latest.current = { draft, invalidKeys, photoTrueActive, baseProductId: config.baseProductId };
 
-    attach();
-    const observer = new MutationObserver(attach);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      observer.disconnect();
-      document.querySelector("[data-builder-share-project]")?.remove();
-      document.querySelector("[data-builder-share-notice]")?.remove();
-    };
-  }, []);
+    const button = document.querySelector<HTMLButtonElement>("[data-builder-share-project]");
+    if (!button) return;
+    const photoReady = !photoTrueActive || Boolean(config.baseProductId);
+    button.disabled = invalidKeys.length > 0 || !isBagBuilderDraftConfigComplete(draft) || !photoReady;
+    button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+  }, [config.baseProductId, draft, invalidKeys, photoTrueActive]);
 
   useEffect(() => {
-    if (!controls) return;
-    const actions = controls.querySelector<HTMLElement>(".abags-builder-actions");
-    if (!actions) return;
-
-    let button = actions.querySelector<HTMLButtonElement>("[data-builder-share-project]");
-    if (!button) {
-      button = document.createElement("button");
-      button.type = "button";
-      button.dataset.builderShareProject = "true";
-      button.textContent = "Udostępnij projekt";
-      const send = actions.querySelector("a");
-      if (send) actions.insertBefore(button, send);
-      else actions.appendChild(button);
-    }
+    let cancelled = false;
+    let importStarted = false;
+    let attachedButton: HTMLButtonElement | null = null;
 
     const handleClick = async () => {
       const current = latest.current;
       const photoReady = !current.photoTrueActive || Boolean(current.baseProductId);
       const ready = current.invalidKeys.length === 0 && isBagBuilderDraftConfigComplete(current.draft) && photoReady;
-      if (!ready) return;
+      if (!ready || !attachedButton) return;
 
       const original = "Udostępnij projekt";
       try {
         const copied = await copyText(projectUrl(current.draft, current.photoTrueActive, current.baseProductId));
-        button!.textContent = copied ? "Link skopiowany ✓" : "Nie udało się skopiować";
+        attachedButton.textContent = copied ? "Link skopiowany ✓" : "Nie udało się skopiować";
       } catch {
-        button!.textContent = "Nie udało się skopiować";
+        attachedButton.textContent = "Nie udało się skopiować";
       }
-      window.setTimeout(() => { if (button) button.textContent = original; }, 1800);
+      window.setTimeout(() => {
+        if (attachedButton) attachedButton.textContent = original;
+      }, 1800);
     };
 
-    button.addEventListener("click", handleClick);
-    return () => button?.removeEventListener("click", handleClick);
-  }, [controls]);
+    const synchronize = () => {
+      const stage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
+      const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
+      if (!stage || !controls || cancelled) return;
 
-  useEffect(() => {
-    if (!controls) return;
-    const button = controls.querySelector<HTMLButtonElement>("[data-builder-share-project]");
-    if (!button) return;
-    const photoReady = !photoTrueActive || Boolean(config.baseProductId);
-    button.disabled = invalidKeys.length > 0 || !isBagBuilderDraftConfigComplete(draft) || !photoReady;
-    button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
-  }, [config.baseProductId, controls, draft, invalidKeys, photoTrueActive]);
+      const actions = controls.querySelector<HTMLElement>(".abags-builder-actions");
+      if (!actions) return;
 
-  useEffect(() => {
-    if (!stage || !controls || importStarted.current) return;
-    const url = new URL(window.location.href);
-    const encoded = url.searchParams.get(PARAM);
-    const rawModelId = url.searchParams.get(MODEL_PARAM) || "";
-    if (!encoded) return;
+      let button = actions.querySelector<HTMLButtonElement>("[data-builder-share-project]");
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.dataset.builderShareProject = "true";
+        button.textContent = "Udostępnij projekt";
+        const send = actions.querySelector("a");
+        if (send) actions.insertBefore(button, send);
+        else actions.appendChild(button);
+      }
 
-    importStarted.current = true;
-    const sharedConfig = decodeProject(encoded);
-    const modelId = rawModelId && validBagBuilderBaseProductId(rawModelId) ? rawModelId : "";
-    if (!sharedConfig || (rawModelId && !modelId)) {
-      controls.dataset.builderSharedImport = "error";
-      ensureImportNotice(controls, "error");
-      return;
-    }
+      if (attachedButton !== button) {
+        attachedButton?.removeEventListener("click", handleClick);
+        attachedButton = button;
+        attachedButton.addEventListener("click", handleClick);
+      }
 
-    let cancelled = false;
-    ensureImportNotice(controls, "loading");
-    void importSharedProject(stage, controls, sharedConfig, modelId).then((applied) => {
-      if (!cancelled) ensureImportNotice(controls, applied ? "ready" : "error");
-    });
-    return () => { cancelled = true; };
-  }, [controls, stage]);
+      const current = latest.current;
+      const photoReady = !current.photoTrueActive || Boolean(current.baseProductId);
+      button.disabled = current.invalidKeys.length > 0 || !isBagBuilderDraftConfigComplete(current.draft) || !photoReady;
+      button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+
+      if (importStarted) return;
+      const url = new URL(window.location.href);
+      const encoded = url.searchParams.get(PARAM);
+      const rawModelId = url.searchParams.get(MODEL_PARAM) || "";
+      if (!encoded) return;
+
+      importStarted = true;
+      const sharedConfig = decodeProject(encoded);
+      const modelId = rawModelId && validBagBuilderBaseProductId(rawModelId) ? rawModelId : "";
+      if (!sharedConfig || (rawModelId && !modelId)) {
+        controls.dataset.builderSharedImport = "error";
+        ensureImportNotice(controls, "error");
+        return;
+      }
+
+      ensureImportNotice(controls, "loading");
+      void importSharedProject(stage, controls, sharedConfig, modelId).then((applied) => {
+        if (!cancelled) ensureImportNotice(controls, applied ? "ready" : "error");
+      });
+    };
+
+    synchronize();
+    const observer = new MutationObserver(synchronize);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      attachedButton?.removeEventListener("click", handleClick);
+      document.querySelector("[data-builder-share-project]")?.remove();
+      document.querySelector("[data-builder-share-notice]")?.remove();
+    };
+  }, []);
 
   return null;
 }
