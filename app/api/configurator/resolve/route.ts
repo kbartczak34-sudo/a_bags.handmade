@@ -1,13 +1,14 @@
 import { getBagBuilderSettings } from "../../../../lib/bag-builder-settings";
 import { getCraftCalibrationSnapshot } from "../../../../lib/craft-calibration";
+import { getCraftCordColorBindings } from "../../../../lib/craft-color-bindings";
 import {
   ConfiguratorInputError,
   resolveBagBuilderConfiguration,
 } from "../../../../lib/configurator-resolver";
 import {
   isProductConfigurationV2Source,
-  resolveProductConfigurationV2,
 } from "../../../../lib/product-configuration-v2";
+import { resolveColorBoundProductConfigurationV2 } from "../../../../lib/product-configuration-v2-color-binding";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +48,12 @@ export async function POST(request: Request) {
   try {
     if (isProductConfigurationV2Source(source)) {
       let calibration: Awaited<ReturnType<typeof getCraftCalibrationSnapshot>>;
+      let colorBindings: Awaited<ReturnType<typeof getCraftCordColorBindings>>;
       try {
-        calibration = await getCraftCalibrationSnapshot();
+        [calibration, colorBindings] = await Promise.all([
+          getCraftCalibrationSnapshot(),
+          getCraftCordColorBindings(),
+        ]);
       } catch (error) {
         console.error("[configurator-resolve] calibration load failed", {
           message: error instanceof Error ? error.message : "Unknown error",
@@ -58,7 +63,7 @@ export async function POST(request: Request) {
           503,
         );
       }
-      return json(await resolveProductConfigurationV2(source, settings, calibration));
+      return json(await resolveColorBoundProductConfigurationV2(source, settings, calibration, colorBindings));
     }
 
     return json(await resolveBagBuilderConfiguration(source, settings));
