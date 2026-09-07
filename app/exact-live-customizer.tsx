@@ -50,6 +50,7 @@ import BagBuilderLifelikeSurface from "./bag-builder-lifelike-surface";
 import BagBuilderMaterialInfo from "./bag-builder-material-info";
 import BagBuilderOpeningDepth from "./bag-builder-opening-depth";
 import BagBuilderPhotoTrue from "./bag-builder-photo-true";
+import BagBuilderPhotoTrueExactOnly from "./bag-builder-photo-true-exact-only";
 import BagBuilderPhotoTrueFlowGuard from "./bag-builder-photo-true-flow-guard";
 import BagBuilderPhotoTrueGate from "./bag-builder-photo-true-gate";
 import BagBuilderPhotoTrueOptionTruth from "./bag-builder-photo-true-option-truth";
@@ -112,6 +113,7 @@ export default function ExactLiveCustomizer() {
       <BagBuilderPhotoTrue />
       <BagBuilderPhotoTrueFlowGuard />
       <BagBuilderPhotoTrueOptionTruth />
+      <BagBuilderPhotoTrueExactOnly />
     </BagBuilderPhotoTrueGate>
     <BagBuilderMaterialInfo />
     <BagBuilderValidationGuard />
