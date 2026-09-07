@@ -38,10 +38,12 @@ test("public resolve endpoint accepts the current checkout config envelope and n
   assert.doesNotMatch(route, /unitAmount|unit_amount|priceCents|grossCents\s*=\s*.*raw/);
 });
 
-test("V1 remains the default path while schemaVersion 2 dispatches to the physical resolver", () => {
+test("V1 remains the default path while schemaVersion 2 dispatches through color-bound physical validation", () => {
   assert.match(route, /isProductConfigurationV2Source\(source\)/);
   assert.match(route, /getCraftCalibrationSnapshot/);
-  assert.match(route, /resolveProductConfigurationV2\(source, settings, calibration\)/);
+  assert.match(route, /getCraftCordColorBindings/);
+  assert.match(route, /resolveColorBoundProductConfigurationV2\(source, settings, calibration, colorBindings\)/);
+  assert.doesNotMatch(route, /return json\(await resolveProductConfigurationV2\(/);
   assert.match(route, /return json\(await resolveBagBuilderConfiguration\(source, settings\)\)/);
   assert.match(route, /CALIBRATION_UNAVAILABLE/);
 });
