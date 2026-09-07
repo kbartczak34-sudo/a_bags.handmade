@@ -6,26 +6,30 @@ const component = fs.readFileSync("app/bag-builder-photo-true.tsx", "utf8");
 const styles = fs.readFileSync("app/bag-builder-photo-true.css", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const assetStore = fs.readFileSync("lib/customizer-assets.ts", "utf8");
+const exactLibrary = fs.readFileSync("lib/exact-customizer-library.ts", "utf8");
 
 test("Photo-True V5 is mounted after the reference layout and imported last", () => {
   assert.match(exact, /bag-builder-reference-v4-product-stage\.css[\s\S]*?bag-builder-photo-true\.css/);
   assert.match(exact, /<BagBuilderReferenceV4 \/>[\s\S]*?<BagBuilderPhotoTrue \/>/);
 });
 
-test("model picker is driven by current real store products rather than four synthetic silhouettes", () => {
+test("model picker is driven by current real store products and restricted to canonical Exact Live references", () => {
   assert.match(component, /fetch\("\/api\/products"/);
-  assert.match(component, /filter\(\(product\) => Boolean\(product\.imageUrl\)\)/);
+  assert.match(component, /filter\(\(product\) => Boolean\(product\.imageUrl\) && Boolean\(exactReferenceForImage\(product\.imageUrl\)\)\)/);
+  assert.match(component, /EXACT_ATELIER_LIBRARY/);
+  assert.match(component, /exactReferenceForImage/);
   assert.match(component, /data-photo-product-choice/);
-  assert.match(component, /Rzeczywiste modele A‑Bags/);
   assert.match(component, /products\.map/);
   assert.doesNotMatch(component, /const FAMILIES/);
 });
 
 test("selected product photo is the primary exact preview and synthetic renderers are hidden", () => {
   assert.match(component, /abags-photo-true-base/);
-  assert.match(component, /src=\{selected\.imageUrl\}/);
+  assert.match(component, /src=\{rendered\.base\}/);
   assert.match(component, /liveStage\.dataset\.abagsPhotoTrue = "active"/);
   assert.match(component, /liveStage\.dataset\.photoProductId = selected\.id/);
+  assert.match(component, /photoTrueReferenceId/);
+  assert.match(component, /photoTrueReferenceSource/);
   assert.match(styles, /data-abags-photo-true="active"[\s\S]*?> svg/);
   assert.match(styles, /\.abags-pro3d-layer/);
   assert.match(styles, /\.abags-canvas3d-layer/);
@@ -43,9 +47,16 @@ test("exact transparent overlays use all seven photo categories including flap",
 test("photo variants are fetched per selected product and never synthesized when missing", () => {
   assert.match(component, /\/api\/customizer-assets\?productId=/);
   assert.match(component, /matchAsset/);
-  assert.match(component, /Brak warstwy 1:1/);
-  assert.match(component, /zdjęcie nie jest fałszowane/);
+  assert.match(component, /warstw 1:1/);
+  assert.match(component, /kanonicznej biblioteki Exact Live/);
   assert.doesNotMatch(component, /canvas\.getContext|WebGL|filter:\s*hue-rotate|mix-blend-mode/);
+});
+
+test("canonical Exact Live library is the source of photographic 1:1 eligibility", () => {
+  assert.match(component, /exactReferenceForImage/);
+  assert.match(component, /sourceFile\.toLowerCase\(\) === filename/);
+  assert.match(exactLibrary, /EXACT_ATELIER_LIBRARY/);
+  assert.equal((exactLibrary.match(/\{ id:/g) || []).length, 19);
 });
 
 test("legacy family is only an internal compatibility bridge, not the visible model source", () => {
