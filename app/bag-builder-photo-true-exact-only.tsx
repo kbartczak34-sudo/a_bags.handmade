@@ -47,6 +47,9 @@ export default function BagBuilderPhotoTrueExactOnly() {
       const isKnownReference = EXACT_ATELIER_LIBRARY.some((item) => item.id === selectedProduct);
       if (!selectedProduct || !isKnownReference) {
         stage.removeAttribute("data-abags-photo-true");
+        stage.removeAttribute("data-abags-photo-true-reference");
+        stage.removeAttribute("data-abags-photo-true-reference-id");
+        stage.dataset.abagsPhotoTrueState = "custom-realtime";
         return;
       }
 
@@ -60,8 +63,8 @@ export default function BagBuilderPhotoTrueExactOnly() {
           );
           if (!currentStage || currentStage.dataset.photoProductId !== productId) return;
           baseline = readConfig(currentStage);
-          currentStage.dataset.abagsPhotoTrueReference = "exact-live-v4";
-          currentStage.dataset.abagsPhotoTrueReferenceId = productId;
+          currentStage.setAttribute("data-abags-photo-true-reference", "exact-live-v4");
+          currentStage.setAttribute("data-abags-photo-true-reference-id", productId);
           currentStage.dataset.abagsPhotoTrueState = "exact";
           requestSync();
         }));
@@ -75,7 +78,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
         disabledForProduct = productId;
         stage.removeAttribute("data-abags-photo-true");
         stage.dataset.abagsPhotoTrueState = "custom-realtime";
-        stage.dataset.abagsPhotoTrueReferenceId = productId;
+        stage.setAttribute("data-abags-photo-true-reference-id", productId);
         stage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.setProperty("display", "none", "important");
         return;
       }
@@ -86,9 +89,9 @@ export default function BagBuilderPhotoTrueExactOnly() {
       }
 
       stage.dataset.abagsPhotoTrueState = "exact";
-      stage.dataset.abagsPhotoTrueReference = "exact-live-v4";
-      stage.dataset.abagsPhotoTrueReferenceId = productId;
-      stage.dataset.abagsPhotoTrue = "active";
+      stage.setAttribute("data-abags-photo-true-reference", "exact-live-v4");
+      stage.setAttribute("data-abags-photo-true-reference-id", productId);
+      stage.setAttribute("data-abags-photo-true", "active");
       const photoStage = stage.querySelector<HTMLElement>(".abags-photo-true-stage");
       photoStage?.style.removeProperty("display");
     };
