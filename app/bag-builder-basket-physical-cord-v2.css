@@ -1,10 +1,15 @@
 /* Basket Physical Cord V2 replaces only the basket variant of the generic V1 pass.
-   It owns no layout or gestures and remains beneath handmade edge/rim/accessory finishing. */
+   It owns no layout or gestures and remains beneath handmade edge/rim/accessory finishing.
+   Once V2 is ready it also retires the painted Basket V6 surface: structural basket topology
+   must have exactly one visible owner, otherwise the real cords stack over a flat plaid mask. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-stitch="basket"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
-> .abags-fidelity3d-layer > .abags-physical-cord-geometry {
+> .abags-fidelity3d-layer > .abags-physical-cord-geometry,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="basket"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
+> .abags-fidelity3d-layer > .abags-basket-weave-surface {
   opacity:0!important;
-  visibility:hidden!important;
+  visibility:visible!important;
 }
 
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
@@ -27,7 +32,7 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-stitch="basket"][data-abags-final3d="ready"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
 > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
-  opacity:.84!important;
+  opacity:.94!important;
   visibility:visible!important;
 }
 
@@ -35,7 +40,7 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
   .abags-bag-builder-stage[data-stitch="basket"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
   > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
-    opacity:.76!important;
+    opacity:.88!important;
   }
 }
 

@@ -17,6 +17,16 @@ test("Basket Physical Cord V2 replaces only the basket V1 pass and stays below e
   assert.match(css, /data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"[\s\S]*abags-physical-cord-geometry/);
 });
 
+test("V2 takes exclusive structural basket ownership only after its ready marker", () => {
+  const readyMarker = /data-stitch="basket"\]\[data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"\]/;
+  assert.match(css, readyMarker);
+  assert.match(css, /abags-basket-weave-surface\s*\{[\s\S]*opacity:0!important;[\s\S]*visibility:visible!important;/);
+  assert.match(css, /abags-physical-cord-geometry,[\s\S]*abags-basket-weave-surface/);
+  assert.match(css, /structural basket topology[\s\S]*exactly one visible owner/);
+  assert.match(css, /opacity:\.94!important/);
+  assert.match(css, /@media \(max-width:620px\)[\s\S]*opacity:\.88!important/);
+});
+
 test("V2 uses continuous sampled tubes instead of isolated cell-by-cell basket bars", () => {
   assert.match(basket, /function addPolylineTube/);
   assert.match(basket, /const PATH_SAMPLES = 52/);
