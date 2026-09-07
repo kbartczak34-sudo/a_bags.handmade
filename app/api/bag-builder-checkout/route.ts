@@ -1,13 +1,11 @@
 import { standardShippingAmount, type CatalogProduct } from "../../../lib/catalog";
 import { inferBagBuilderProductFamily } from "../../../lib/bag-builder-product-family";
 import {
-  bagBuilderProjectCode,
   bagBuilderProjectSummary,
-  calculateBagBuilderProjectCents,
   getBagBuilderSettings,
-  isBagBuilderProjectCompatible,
   normalizeBagBuilderProjectConfig,
 } from "../../../lib/bag-builder-settings";
+import { resolveBagBuilderConfiguration } from "../../../lib/configurator-resolver";
 import { getOrderSettings } from "../../../lib/orders";
 import { findVisibleProductsByIds } from "../../../lib/products";
 import {
@@ -111,10 +109,11 @@ export async function POST(request: Request) {
     return json({ error: "Nie udało się sprawdzić ustawień personalizacji." }, 503);
   }
 
-  if (!settings.pricingEnabled) {
+  const resolved = await resolveBagBuilderConfiguration(config, settings);
+  if (resolved.pricing.status === "DISABLED") {
     return json({ error: "Zakup online tego projektu nie jest jeszcze aktywny. Wyślij projekt do pracowni w celu wyceny.", code: "builder_pricing_disabled" }, 409);
   }
-  if (!isBagBuilderProjectCompatible(config, settings)) {
+  if (resolved.status !== "VALID") {
     return json({ error: "Wybrana konfiguracja nie jest możliwa dla tego fasonu. Wróć do kreatora i wybierz inną opcję.", code: "builder_incompatible" }, 409);
   }
 
@@ -158,7 +157,9 @@ export async function POST(request: Request) {
     }, 503);
   }
 
-  const legacyProjectAmount = calculateBagBuilderProjectCents(config, settings);
+  const legacyProjectAmount = resolved.pricing.status === "AVAILABLE"
+    ? resolved.pricing.grossCents
+    : null;
   const projectAmount = photoBaseProductId
     ? baseProduct.unitAmount + personalizationCents(config, settings)
     : legacyProjectAmount;
@@ -166,7 +167,8 @@ export async function POST(request: Request) {
     return json({ error: "Cena projektu nie została jeszcze skonfigurowana przez pracownię.", code: "builder_price_unavailable" }, 409);
   }
 
-  const projectCode = bagBuilderProjectCode(config);
+  const projectCode = resolved.legacyProjectCode;
+  const configurationHash = resolved.configurationHash;
   const summary = bagBuilderProjectSummary(config);
   const material = "Sznurek poliestrowy z Pimiotki";
   const photoMode = Boolean(photoBaseProductId);
@@ -209,6 +211,7 @@ export async function POST(request: Request) {
     form.set("line_items[0][price_data][product_data][description]", `${photoMode ? "Rzeczywista baza fotograficzna produktu. " : ""}${material}. ${summary}`.slice(0, 500));
     form.set("line_items[0][price_data][product_data][metadata][catalog_id]", baseProduct.id);
     form.set("line_items[0][price_data][product_data][metadata][project_code]", projectCode);
+    form.set("line_items[0][price_data][product_data][metadata][configuration_hash]", configurationHash);
     form.set("line_items[0][price_data][product_data][metadata][personalized]", "true");
     form.set("line_items[0][price_data][product_data][metadata][photo_true]", photoMode ? "true" : "false");
 
@@ -235,6 +238,7 @@ export async function POST(request: Request) {
     form.set("metadata[cart]", cartReference);
     form.set("metadata[payment_choice]", paymentChoice);
     form.set("metadata[builder_project_code]", projectCode);
+    form.set("metadata[builder_configuration_hash]", configurationHash);
     form.set("metadata[builder_project_config]", configJson);
     form.set("metadata[builder_catalog_id]", baseProduct.id);
     form.set("metadata[builder_photo_true]", photoMode ? "true" : "false");
@@ -242,6 +246,7 @@ export async function POST(request: Request) {
     form.set("payment_intent_data[metadata][cart]", cartReference);
     form.set("payment_intent_data[metadata][payment_choice]", paymentChoice);
     form.set("payment_intent_data[metadata][builder_project_code]", projectCode);
+    form.set("payment_intent_data[metadata][builder_configuration_hash]", configurationHash);
     form.set("payment_intent_data[metadata][builder_project_config]", configJson);
     form.set("payment_intent_data[metadata][builder_catalog_id]", baseProduct.id);
     form.set("payment_intent_data[metadata][builder_photo_true]", photoMode ? "true" : "false");
@@ -261,7 +266,7 @@ export async function POST(request: Request) {
       return json({ error: publicStripeErrorMessage(code), code }, 503);
     }
 
-    return json({ url: payload.url, projectCode });
+    return json({ url: payload.url, projectCode, configurationHash });
   } catch (error) {
     if (error instanceof StripeConfigurationError) {
       const code = "stripe_not_configured";
