@@ -15,6 +15,7 @@ import ContactSocialManager from "./contact-social-manager";
 import CustomizerAssetsManager from "./customizer-assets-manager";
 import BagBuilderSettingsManager from "./bag-builder-settings-manager";
 import CraftCalibrationManager from "./craft-calibration-manager";
+import CraftEvidenceCoverage from "./craft-evidence-coverage";
 
 type AdminTab =
   | "status"
@@ -99,7 +100,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
         {activeTab === "customizer" && <><BagBuilderSettingsManager /><CustomizerAssetsManager /></>}
-        {activeTab === "craft" && <CraftCalibrationManager />}
+        {activeTab === "craft" && <><CraftEvidenceCoverage /><CraftCalibrationManager /></>}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
