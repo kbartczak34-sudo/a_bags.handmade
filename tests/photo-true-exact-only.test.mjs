@@ -6,8 +6,12 @@ const guard = fs.readFileSync("app/bag-builder-photo-true-exact-only.tsx", "utf8
 const customizer = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const library = fs.readFileSync("lib/exact-customizer-library.ts", "utf8");
 
-assert.match(gate, /return <>{children}<\/\>;?/);
-assert.doesNotMatch(gate, /photoTrueQa|abags-photo-true-v5|abags-photo-mobile/);
+// Photo-True remains an internal reference/QA surface; the customer builder
+// continues to default to the realtime construction renderer.
+assert.match(gate, /photoTrueQa/);
+assert.match(gate, /abags-photo-true-v5/);
+assert.match(gate, /abags-photo-mobile/);
+assert.match(gate, /if \(!enabled\) return null/);
 assert.match(guard, /EXACT_ATELIER_LIBRARY/);
 assert.match(guard, /isKnownReference/);
 assert.match(guard, /baseline = readConfig/);
