@@ -103,7 +103,7 @@ export default function BagBuilderPhotoTrue() {
   return createPortal(
     <div className="abags-photo-true-panel" data-photo-true-panel="true">
       <div className="abags-photo-true-stage" aria-label="Rzeczywiste zdjęcie produktu 1:1">
-        <img className="abags-photo-true-base" src={selected.imageUrl} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
+        <img className="abags-photo-true-base" src={selected.imageUrl || ""} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
         {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-layer abags-photo-true-layer-${layer.category}`} src={layer.imageUrl} alt="" aria-hidden="true" />)}
         <span className="abags-photo-true-badge">PHOTO-TRUE 1:1</span>
       </div>
