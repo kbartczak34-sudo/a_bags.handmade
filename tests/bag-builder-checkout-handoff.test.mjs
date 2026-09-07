@@ -7,6 +7,7 @@ const familyInference = fs.readFileSync("lib/bag-builder-product-family.ts", "ut
 const manager = fs.readFileSync("app/panel/bag-builder-settings-manager.tsx", "utf8");
 const endpoint = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
 const handoff = fs.readFileSync("app/bag-builder-checkout-handoff.tsx", "utf8");
+const store = fs.readFileSync("app/bag-builder-config-store.ts", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const orders = fs.readFileSync("app/panel/orders-manager.tsx", "utf8");
 
@@ -58,9 +59,16 @@ test("photo-true price still uses the actual catalog base and server-side config
   assert.match(endpoint, /resolved\.pricing\.grossCents/);
   assert.match(endpoint, /unit_amount.*String\(projectAmount\)/);
   assert.doesNotMatch(endpoint, /raw\.price|source\.price|config\.price|clientPrice|requestedPrice/);
-  assert.match(handoff, /baseProductId: stage\.dataset\.photoProductId/);
+  assert.match(handoff, /useBagBuilderClientConfig/);
+  assert.match(store, /baseProductId: normalizedBaseProductId\(stage\.dataset\.photoProductId\)/);
+  assert.match(handoff, /const \{ baseProductId, \.\.\.projectConfig \} = config/);
   assert.match(handoff, /body: JSON\.stringify\(\{ config: projectConfig, baseProductId: baseProductId \|\| undefined \}\)/);
   assert.doesNotMatch(handoff, /body: JSON\.stringify\(\{[^}]*price/);
+});
+
+test("checkout handoff uses the same normalized client snapshot as commerce and does not re-read stage attributes", () => {
+  assert.match(handoff, /useBagBuilderClientConfig/);
+  assert.doesNotMatch(handoff, /function readConfig|dataset\.family|dataset\.stitch|attributeFilter/);
 });
 
 test("checkout preserves existing Stripe live and webhook safeguards", () => {
