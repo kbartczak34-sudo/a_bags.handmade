@@ -14,6 +14,7 @@ import BusinessDashboard from "./business-dashboard";
 import ContactSocialManager from "./contact-social-manager";
 import CustomizerAssetsManager from "./customizer-assets-manager";
 import BagBuilderSettingsManager from "./bag-builder-settings-manager";
+import CraftCalibrationManager from "./craft-calibration-manager";
 
 type AdminTab =
   | "status"
@@ -21,6 +22,7 @@ type AdminTab =
   | "products"
   | "stitches"
   | "customizer"
+  | "craft"
   | "compliance"
   | "reviews"
   | "orders"
@@ -49,7 +51,8 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
           <h1>Zarządzaj sklepem</h1>
           <p>
             Kontroluj wyniki, gotowość produkcyjną, treści, produkty, techniki wykonania,
-            personalizację, dane bezpieczeństwa, opinie, zamówienia, kontakt oraz sprawy posprzedażowe w jednym miejscu.
+            personalizację, kalibrację fizyczną, dane bezpieczeństwa, opinie, zamówienia,
+            kontakt oraz sprawy posprzedażowe w jednym miejscu.
           </p>
         </div>
       </section>
@@ -70,20 +73,23 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         <button type="button" className={activeTab === "customizer" ? "is-active" : ""} onClick={() => setActiveTab("customizer")}>
           <span>05</span>Personalizacja
         </button>
+        <button type="button" className={activeTab === "craft" ? "is-active" : ""} onClick={() => setActiveTab("craft")}>
+          <span>06</span>Laboratorium rzemiosła
+        </button>
         <button type="button" className={activeTab === "compliance" ? "is-active" : ""} onClick={() => setActiveTab("compliance")}>
-          <span>06</span>GPSR produktów
+          <span>07</span>GPSR produktów
         </button>
         <button type="button" className={activeTab === "reviews" ? "is-active" : ""} onClick={() => setActiveTab("reviews")}>
-          <span>07</span>Opinie
+          <span>08</span>Opinie
         </button>
         <button type="button" className={activeTab === "orders" ? "is-active" : ""} onClick={() => setActiveTab("orders")}>
-          <span>08</span>Zamówienia
+          <span>09</span>Zamówienia
         </button>
         <button type="button" className={activeTab === "cases" ? "is-active" : ""} onClick={() => setActiveTab("cases")}>
-          <span>09</span>Zwroty / reklamacje
+          <span>10</span>Zwroty / reklamacje
         </button>
         <button type="button" className={activeTab === "contact" ? "is-active" : ""} onClick={() => setActiveTab("contact")}>
-          <span>10</span>Kontakt i social media
+          <span>11</span>Kontakt i social media
         </button>
       </nav>
 
@@ -93,6 +99,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
         {activeTab === "customizer" && <><BagBuilderSettingsManager /><CustomizerAssetsManager /></>}
+        {activeTab === "craft" && <CraftCalibrationManager />}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
