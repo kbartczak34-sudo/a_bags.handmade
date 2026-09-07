@@ -38,21 +38,24 @@ test("public resolve endpoint accepts the current checkout config envelope and n
   assert.doesNotMatch(route, /unitAmount|unit_amount|priceCents|grossCents\s*=\s*.*raw/);
 });
 
-test("V1 remains the default path while schemaVersion 2 dispatches through color-bound physical validation", () => {
+test("V1 remains default while schemaVersion 2 dispatches through full physical evidence resolution", () => {
   assert.match(route, /isProductConfigurationV2Source\(source\)/);
   assert.match(route, /getCraftCalibrationSnapshot/);
   assert.match(route, /getCraftCordColorBindings/);
-  assert.match(route, /resolveColorBoundProductConfigurationV2\(source, settings, calibration, colorBindings\)/);
+  assert.match(route, /getCraftAccessorySnapshot/);
+  assert.match(route, /getCraftBuilderAccessoryBindings/);
+  assert.match(route, /resolveAccessoryBoundProductConfigurationV2/);
   assert.doesNotMatch(route, /return json\(await resolveProductConfigurationV2\(/);
+  assert.doesNotMatch(route, /return json\(await resolveColorBoundProductConfigurationV2\(/);
   assert.match(route, /return json\(await resolveBagBuilderConfiguration\(source, settings\)\)/);
-  assert.match(route, /CALIBRATION_UNAVAILABLE/);
+  assert.match(route, /PHYSICAL_EVIDENCE_UNAVAILABLE/);
 });
 
 test("invalid input is a 400 business boundary while infrastructure failures remain explicit", () => {
   assert.match(route, /ConfiguratorInputError/);
   assert.match(route, /INVALID_JSON/);
   assert.match(route, /SETTINGS_UNAVAILABLE/);
-  assert.match(route, /CALIBRATION_UNAVAILABLE/);
+  assert.match(route, /PHYSICAL_EVIDENCE_UNAVAILABLE/);
   assert.match(route, /RESOLVE_FAILED/);
   assert.match(route, /Cache-Control/);
   assert.match(route, /no-store/);
