@@ -4,6 +4,7 @@ import test from "node:test";
 
 const helper = fs.readFileSync("lib/configurator-payment-binding.ts", "utf8");
 const webhook = fs.readFileSync("app/api/stripe/webhook/route.ts", "utf8");
+const orders = fs.readFileSync("lib/orders.ts", "utf8");
 
 test("configurator payment binding validates the server-side snapshot identity", () => {
   assert.match(helper, /CONFIGURATOR_V2/);
@@ -50,6 +51,17 @@ test("webhook performs binding verification before paid order side effects", () 
   assert.ok(verification >= 0);
   assert.ok(orderRecord > verification);
   assert.ok(paidSnapshot > verification);
+});
+
+test("paid duplicate Stripe events cannot repeat order side effects", () => {
+  assert.match(orders, /INSERT OR IGNORE INTO stripe_events/);
+  assert.match(orders, /return \{ created: \(eventInsert\.meta\?\.changes \?\? 0\) > 0 \}/);
+  const orderRecord = webhook.indexOf("const orderEvent = await recordStripeOrderEvent(event, session)");
+  const duplicateGuard = webhook.indexOf("if (!orderEvent.created)");
+  const paidSnapshot = webhook.indexOf("recordPaidOrderConfigurationSnapshot(session)");
+  assert.ok(orderRecord >= 0);
+  assert.ok(duplicateGuard > orderRecord);
+  assert.ok(paidSnapshot > duplicateGuard);
 });
 
 test("failed and expired Stripe events do not require a Production Snapshot binding", () => {
