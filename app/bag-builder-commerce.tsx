@@ -31,6 +31,16 @@ type Settings = {
   };
 };
 
+type ResolverShadowResponse = {
+  resolverVersion: string;
+  configurationHash: string;
+  status: "VALID" | "BLOCKED";
+  pricing: {
+    status: "AVAILABLE" | "DISABLED" | "UNAVAILABLE";
+    grossCents: number | null;
+  };
+};
+
 type ConstructionKey = "handles" | "strap" | "flap" | "accent";
 
 const EMPTY: Config = { family: "", color: "", stitch: "", flap: "none", handles: "none", strap: "none", hardware: "gold", accent: "none" };
@@ -182,6 +192,76 @@ export default function BagBuilderCommerce() {
     add(label("accent", config.accent), settings.accentCents[config.accent]);
     return { total, rows };
   }, [config, settings]);
+
+  const localValid = useMemo(() => {
+    if (!settings || !config.family) return false;
+    const family = config.family;
+    return compatible(settings, family, "handles", config.handles)
+      && compatible(settings, family, "strap", config.strap)
+      && compatible(settings, family, "flap", config.flap)
+      && compatible(settings, family, "accent", config.accent);
+  }, [config.accent, config.family, config.flap, config.handles, config.strap, settings]);
+
+  useEffect(() => {
+    if (!stage || !settings || !config.family || !config.color || !config.stitch) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch("/api/configurator/resolve", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(String(response.status));
+          return response.json() as Promise<ResolverShadowResponse>;
+        })
+        .then((resolved) => {
+          const serverValid = resolved.status === "VALID";
+          const serverPrice = resolved.pricing.status === "AVAILABLE" ? resolved.pricing.grossCents : null;
+          const localPrice = price?.total ?? null;
+          const validationMatch = serverValid === localValid;
+          const priceMatch = serverPrice === localPrice;
+          const parity = validationMatch && priceMatch ? "match" : "mismatch";
+
+          stage.dataset.resolverVersion = resolved.resolverVersion;
+          stage.dataset.configurationHash = resolved.configurationHash;
+          stage.dataset.resolverStatus = resolved.status.toLowerCase();
+          stage.dataset.resolverParity = parity;
+
+          window.dispatchEvent(new CustomEvent("abags:configurator-resolver-shadow", {
+            detail: {
+              configurationHash: resolved.configurationHash,
+              resolverVersion: resolved.resolverVersion,
+              parity,
+              validationMatch,
+              priceMatch,
+              localPrice,
+              serverPrice,
+            },
+          }));
+
+          if (parity === "mismatch") {
+            console.warn("[configurator-shadow] resolver parity mismatch", {
+              configurationHash: resolved.configurationHash,
+              validationMatch,
+              priceMatch,
+            });
+          }
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          stage.dataset.resolverParity = "unavailable";
+        });
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [config, localValid, price, settings, stage]);
 
   if (!mount) return null;
 
