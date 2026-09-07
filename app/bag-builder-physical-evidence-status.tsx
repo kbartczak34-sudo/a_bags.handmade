@@ -111,7 +111,7 @@ export default function BagBuilderPhysicalEvidenceStatus() {
             card,
             "Digital Craft Twin · NOT_VALIDATED",
             "Dla tego dokładnego połączenia fasonu, ściegu i koloru nie ma jeszcze kompletnego zatwierdzonego wzorca korpusu.",
-            "To nie jest ocena wyglądu podglądu. Brakuje pełnego łańcucha fizyczznych danych materiał → Gauge → Golden Master → kolor SKU.",
+            "To nie jest ocena wyglądu podglądu. Brakuje pełnego łańcucha fizycznych danych materiał → Gauge → Golden Master → kolor SKU.",
           );
           return;
         }
