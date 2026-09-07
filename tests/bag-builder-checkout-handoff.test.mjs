@@ -18,15 +18,20 @@ test("legacy builder families can still map to real catalog products as fallback
   assert.match(manager, /\/api\/products/);
 });
 
-test("server validates project options, Agata fidelity, settings compatibility and the photographed base product", () => {
+test("checkout delegates builder compatibility and legacy pricing to the authoritative resolver", () => {
   assert.match(endpoint, /normalizeBagBuilderProjectConfig/);
   assert.match(endpoint, /getBagBuilderSettings/);
-  assert.match(endpoint, /isBagBuilderProjectCompatible/);
+  assert.match(endpoint, /resolveBagBuilderConfiguration/);
+  assert.match(endpoint, /resolved\.status !== "VALID"/);
+  assert.match(endpoint, /resolved\.pricing\.status === "DISABLED"/);
+  assert.match(endpoint, /resolved\.pricing\.status === "AVAILABLE"/);
   assert.match(settings, /isAgataBuilderConstructionSupported/);
   assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "handles", config\.handles\)/);
   assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "straps", config\.strap\)/);
   assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "flaps", config\.flap\)/);
   assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "accents", config\.accent\)/);
+  assert.doesNotMatch(endpoint, /isBagBuilderProjectCompatible\(config, settings\)/);
+  assert.doesNotMatch(endpoint, /calculateBagBuilderProjectCents\(config, settings\)/);
   assert.match(endpoint, /builder_incompatible/);
   assert.match(endpoint, /requestedBaseProductId/);
   assert.match(endpoint, /photoBaseProductId \|\| settings\.familyProductIds\[config\.family\]/);
@@ -48,9 +53,9 @@ test("client-supplied photographed base cannot be substituted across builder fam
   assert.match(familyInference, /return "tote"/);
 });
 
-test("photo-true price uses the actual catalog base and server-side configured extras", () => {
+test("photo-true price still uses the actual catalog base and server-side configured extras", () => {
   assert.match(endpoint, /baseProduct\.unitAmount \+ personalizationCents\(config, settings\)/);
-  assert.match(endpoint, /calculateBagBuilderProjectCents\(config, settings\)/);
+  assert.match(endpoint, /resolved\.pricing\.grossCents/);
   assert.match(endpoint, /unit_amount.*String\(projectAmount\)/);
   assert.doesNotMatch(endpoint, /raw\.price|source\.price|config\.price|clientPrice|requestedPrice/);
   assert.match(handoff, /baseProductId: stage\.dataset\.photoProductId/);
@@ -67,8 +72,17 @@ test("checkout preserves existing Stripe live and webhook safeguards", () => {
   assert.match(endpoint, /abags-payment-method=\(blik\|card\|wallet\)/);
 });
 
+test("server-created configuration hash survives Stripe checkout metadata", () => {
+  assert.match(endpoint, /const configurationHash = resolved\.configurationHash/);
+  assert.match(endpoint, /metadata\[builder_configuration_hash\]/);
+  assert.match(endpoint, /payment_intent_data\[metadata\]\[builder_configuration_hash\]/);
+  assert.match(endpoint, /product_data\]\[metadata\]\[configuration_hash\]/);
+  assert.match(endpoint, /return json\(\{ url: payload\.url, projectCode, configurationHash \}\)/);
+  assert.doesNotMatch(endpoint, /raw\.configurationHash|source\.configurationHash|clientConfigurationHash/);
+});
+
 test("project identity, verified photo base and material survive Stripe checkout into the order record", () => {
-  assert.match(endpoint, /bagBuilderProjectCode/);
+  assert.match(endpoint, /resolved\.legacyProjectCode/);
   assert.match(endpoint, /bagBuilderProjectSummary/);
   assert.match(endpoint, /Sznurek poliestrowy z Pimiotki/);
   assert.match(endpoint, /rzeczywista baza fotograficzna/);
