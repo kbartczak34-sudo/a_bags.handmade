@@ -21,12 +21,13 @@ test("configuration identity uses canonical SHA-256 and keeps the legacy project
   assert.match(resolver, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(resolver, /configurationHash/);
   assert.match(resolver, /legacyProjectCode/);
+  assert.match(resolver, /createConfigurationHash\(configuration: unknown\)/);
 });
 
 test("resolver separates production compatibility from price availability", () => {
   assert.match(resolver, /status:\s*"AVAILABLE"\s*\|\s*"DISABLED"\s*\|\s*"UNAVAILABLE"/);
   assert.match(resolver, /status:\s*validation\.valid\s*\?\s*"VALID"\s*:\s*"BLOCKED"/);
-  assert.match(resolver, /pricing:\s*resolvePricing/);
+  assert.match(resolver, /pricing:\s*resolveConfiguratorPricing/);
   assert.match(resolver, /BUILDER_INCOMPATIBLE/);
 });
 
@@ -37,10 +38,19 @@ test("public resolve endpoint accepts the current checkout config envelope and n
   assert.doesNotMatch(route, /unitAmount|unit_amount|priceCents|grossCents\s*=\s*.*raw/);
 });
 
+test("V1 remains the default path while schemaVersion 2 dispatches to the physical resolver", () => {
+  assert.match(route, /isProductConfigurationV2Source\(source\)/);
+  assert.match(route, /getCraftCalibrationSnapshot/);
+  assert.match(route, /resolveProductConfigurationV2\(source, settings, calibration\)/);
+  assert.match(route, /return json\(await resolveBagBuilderConfiguration\(source, settings\)\)/);
+  assert.match(route, /CALIBRATION_UNAVAILABLE/);
+});
+
 test("invalid input is a 400 business boundary while infrastructure failures remain explicit", () => {
   assert.match(route, /ConfiguratorInputError/);
   assert.match(route, /INVALID_JSON/);
   assert.match(route, /SETTINGS_UNAVAILABLE/);
+  assert.match(route, /CALIBRATION_UNAVAILABLE/);
   assert.match(route, /RESOLVE_FAILED/);
   assert.match(route, /Cache-Control/);
   assert.match(route, /no-store/);
