@@ -205,12 +205,16 @@ export async function recordStripeOrderEvent(
   const now = new Date().toISOString();
   const configurator = configuratorSnapshotMetadata(session);
 
-  await db.batch([
-    db.prepare(
+  const eventInsert = await db
+    .prepare(
       `INSERT OR IGNORE INTO stripe_events (event_id, event_type, session_id, received_at)
        VALUES (?, ?, ?, ?)`,
-    ).bind(event.id, event.type, session.id, now),
-    db.prepare(
+    )
+    .bind(event.id, event.type, session.id, now)
+    .run();
+
+  await db
+    .prepare(
       `INSERT INTO orders (
          session_id, payment_intent_id, customer_email, payment_status,
          checkout_status, amount_total, currency, cart_reference,
@@ -230,7 +234,8 @@ export async function recordStripeOrderEvent(
          last_event_id = excluded.last_event_id,
          last_event_type = excluded.last_event_type,
          updated_at = excluded.updated_at`,
-    ).bind(
+    )
+    .bind(
       session.id,
       paymentIntentId(session),
       session.customer_details?.email ?? session.customer_email ?? null,
@@ -245,8 +250,10 @@ export async function recordStripeOrderEvent(
       event.type,
       now,
       now,
-    ),
-  ]);
+    )
+    .run();
+
+  return { created: (eventInsert.meta?.changes ?? 0) > 0 };
 }
 
 function chargePaymentIntentId(charge: Stripe.Charge) {
