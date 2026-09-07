@@ -15,6 +15,16 @@ function validSnapshotId(value: unknown): value is string {
   return typeof value === "string" && /^ps_[0-9a-f-]{36}$/.test(value.trim());
 }
 
+function snapshotGrossCents(snapshotPackage: unknown) {
+  if (typeof snapshotPackage !== "object" || snapshotPackage === null || Array.isArray(snapshotPackage)) return null;
+  const pricing = (snapshotPackage as Record<string, unknown>).pricing;
+  if (typeof pricing !== "object" || pricing === null || Array.isArray(pricing)) return null;
+  const grossCents = (pricing as Record<string, unknown>).grossCents;
+  const currency = (pricing as Record<string, unknown>).currency;
+  if (currency !== "PLN" || !Number.isInteger(grossCents) || (grossCents as number) < 1) return null;
+  return grossCents as number;
+}
+
 export async function verifyConfiguratorPaymentBinding(session: Stripe.Checkout.Session) {
   const metadata = session.metadata ?? {};
   if (metadata.checkout_type !== "CONFIGURATOR_V2") return null;
@@ -36,6 +46,15 @@ export async function verifyConfiguratorPaymentBinding(session: Stripe.Checkout.
     throw new Error("Integralność Production Snapshot została naruszona.");
   }
 
+  const snapshotGross = snapshotGrossCents(snapshot.package);
+  if (snapshotGross === null) throw new Error("Production Snapshot nie zawiera prawidłowej ceny PLN.");
+
+  const sessionShipping = session.shipping_cost?.amount_total ?? 0;
+  const expectedSessionTotal = snapshotGross + sessionShipping;
+  if (session.currency?.toLowerCase() !== "pln" || session.amount_total !== expectedSessionTotal) {
+    throw new Error("Kwota lub waluta płatności nie odpowiada Production Snapshot.");
+  }
+
   const paymentIntentMetadata = await readPaymentIntentMetadata(session);
   if (paymentIntentMetadata) {
     if (paymentIntentMetadata.checkout_type !== "CONFIGURATOR_V2"
@@ -55,5 +74,17 @@ async function readPaymentIntentMetadata(session: Stripe.Checkout.Session) {
   const stripe = await import("./stripe").then((module) => module.getStripe());
   const paymentIntentId = typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
   const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  const snapshotId = session.metadata?.snapshot_id?.trim();
+  const packageHash = session.metadata?.production_package_hash?.trim().toLowerCase();
+  if (intent.amount !== session.amount_total || intent.currency?.toLowerCase() !== "pln") {
+    throw new Error("PaymentIntent nie ma kwoty zgodnej z Checkout Session.");
+  }
+  if (snapshotId && packageHash && (
+    intent.metadata?.checkout_type !== "CONFIGURATOR_V2"
+    || intent.metadata?.snapshot_id !== snapshotId
+    || intent.metadata?.production_package_hash?.trim().toLowerCase() !== packageHash
+  )) {
+    throw new Error("PaymentIntent nie jest zgodny z Production Snapshot.");
+  }
   return intent.metadata ?? null;
 }
