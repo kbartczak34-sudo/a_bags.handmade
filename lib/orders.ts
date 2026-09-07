@@ -20,15 +20,12 @@ export type AdminOrder = {
   amountTotal: number | null;
   currency: string | null;
   cartReference: string | null;
+  productionSnapshotId: string | null;
+  productionPackageHash: string | null;
   lastEventId: string;
   lastEventType: string;
   createdAt: string;
   updatedAt: string;
-};
-
-export type OrderSettings = {
-  pickupEnabled: boolean;
-  pickupAddress: string;
 };
 
 type OrderRow = {
@@ -47,6 +44,8 @@ type OrderRow = {
   amount_total: number | null;
   currency: string | null;
   cart_reference: string | null;
+  production_snapshot_id: string | null;
+  production_package_hash: string | null;
   last_event_id: string;
   last_event_type: string;
   created_at: string;
@@ -70,6 +69,8 @@ const createOrdersSql = `
     amount_total INTEGER,
     currency TEXT,
     cart_reference TEXT,
+    production_snapshot_id TEXT,
+    production_package_hash TEXT,
     last_event_id TEXT NOT NULL,
     last_event_type TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -131,6 +132,8 @@ async function initializeOrders() {
   await addColumn("ALTER TABLE orders ADD COLUMN refund_status TEXT NOT NULL DEFAULT 'none'");
   await addColumn("ALTER TABLE orders ADD COLUMN amount_refunded INTEGER NOT NULL DEFAULT 0");
   await addColumn("ALTER TABLE orders ADD COLUMN refunded_at TEXT");
+  await addColumn("ALTER TABLE orders ADD COLUMN production_snapshot_id TEXT");
+  await addColumn("ALTER TABLE orders ADD COLUMN production_package_hash TEXT");
 
   await db
     .prepare("INSERT OR IGNORE INTO order_settings (id, pickup_enabled, pickup_address) VALUES (1, 0, '')")
@@ -152,6 +155,16 @@ function paymentIntentId(session: Stripe.Checkout.Session) {
   return session.payment_intent?.id ?? null;
 }
 
+function configuratorSnapshotMetadata(session: Stripe.Checkout.Session) {
+  if (session.metadata?.checkout_type !== "CONFIGURATOR_V2") {
+    return { snapshotId: null, packageHash: null };
+  }
+  return {
+    snapshotId: session.metadata.snapshot_id ?? null,
+    packageHash: session.metadata.production_package_hash ?? null,
+  };
+}
+
 function toAdminOrder(row: OrderRow): AdminOrder {
   return {
     sessionId: row.session_id,
@@ -169,6 +182,8 @@ function toAdminOrder(row: OrderRow): AdminOrder {
     amountTotal: row.amount_total,
     currency: row.currency,
     cartReference: row.cart_reference,
+    productionSnapshotId: row.production_snapshot_id,
+    productionPackageHash: row.production_package_hash,
     lastEventId: row.last_event_id,
     lastEventType: row.last_event_type,
     createdAt: row.created_at,
@@ -183,6 +198,7 @@ export async function recordStripeOrderEvent(
   await ensureOrdersReady();
   const db = getOrderDb();
   const now = new Date().toISOString();
+  const configurator = configuratorSnapshotMetadata(session);
 
   await db.batch([
     db.prepare(
@@ -193,8 +209,9 @@ export async function recordStripeOrderEvent(
       `INSERT INTO orders (
          session_id, payment_intent_id, customer_email, payment_status,
          checkout_status, amount_total, currency, cart_reference,
+         production_snapshot_id, production_package_hash,
          last_event_id, last_event_type, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(session_id) DO UPDATE SET
          payment_intent_id = excluded.payment_intent_id,
          customer_email = excluded.customer_email,
@@ -203,6 +220,8 @@ export async function recordStripeOrderEvent(
          amount_total = excluded.amount_total,
          currency = excluded.currency,
          cart_reference = excluded.cart_reference,
+         production_snapshot_id = excluded.production_snapshot_id,
+         production_package_hash = excluded.production_package_hash,
          last_event_id = excluded.last_event_id,
          last_event_type = excluded.last_event_type,
          updated_at = excluded.updated_at`,
@@ -215,6 +234,8 @@ export async function recordStripeOrderEvent(
       session.amount_total ?? null,
       session.currency ?? null,
       session.metadata?.cart ?? null,
+      configurator.snapshotId,
+      configurator.packageHash,
       event.id,
       event.type,
       now,
@@ -323,8 +344,9 @@ export async function listAdminOrders(limit = 100) {
       `SELECT session_id, payment_intent_id, customer_email, payment_status,
               refund_status, amount_refunded, refunded_at,
               checkout_status, fulfillment_status, carrier, tracking_number,
-              shipped_at, amount_total, currency, cart_reference, last_event_id,
-              last_event_type, created_at, updated_at
+              shipped_at, amount_total, currency, cart_reference,
+              production_snapshot_id, production_package_hash,
+              last_event_id, last_event_type, created_at, updated_at
        FROM orders
        ORDER BY updated_at DESC
        LIMIT ?`,
