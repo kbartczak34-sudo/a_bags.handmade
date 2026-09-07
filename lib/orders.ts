@@ -211,7 +211,7 @@ export async function recordStripeOrderEvent(
        VALUES (?, ?, ?, ?)`,
     )
     .bind(event.id, event.type, session.id, now)
-    .run();
+    .run() as { meta?: { changes?: number } };
 
   await db
     .prepare(
