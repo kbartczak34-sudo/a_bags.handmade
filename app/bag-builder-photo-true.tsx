@@ -97,16 +97,17 @@ export default function BagBuilderPhotoTrue() {
 
   const exactReference = useMemo(() => exactReferenceForImage(selected?.imageUrl ?? null), [selected]);
   const rendered = useMemo(() => { const base = selected?.imageUrl || ""; const layers = LAYER_ORDER.map((category) => matchAsset(assets, category, config[category])).filter((asset): asset is Asset => Boolean(asset)); return { base, layers }; }, [assets, config, selected]);
+  const missingLayers = useMemo(() => LAYER_ORDER.filter((category) => config[category] !== "none" && !matchAsset(assets, category, config[category])), [assets, config]);
   if (!mount || !selected || !exactReference) return null;
 
   return createPortal(
     <div className="abags-photo-true-panel" data-photo-true-panel="true">
       <div className="abags-photo-true-stage" aria-label="Rzeczywiste zdjęcie produktu 1:1">
-        <img className="abags-photo-true-base" src={rendered.base} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
+        <img className="abags-photo-true-base" src={selected.imageUrl} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
         {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-layer abags-photo-true-layer-${layer.category}`} src={layer.imageUrl} alt="" aria-hidden="true" />)}
         <span className="abags-photo-true-badge">PHOTO-TRUE 1:1</span>
       </div>
-      <div className="abags-photo-true-note">Rzeczywiste zdjęcie referencyjne: {exactReference.sourceFile}. Tryb fotograficzny pokazuje wyłącznie produkty z kanonicznej biblioteki Exact Live.{assetError ? ` ${assetError}` : ""}</div>
+      <div className="abags-photo-true-note">Rzeczywiste zdjęcie referencyjne: {exactReference.sourceFile}. Tryb fotograficzny pokazuje wyłącznie produkty z kanonicznej biblioteki Exact Live. Zdjęcie nie jest fałszowane ani zastępowane syntetycznym renderem.{missingLayers.length ? ` Brak warstwy 1:1: ${missingLayers.join(", ")}.` : ""}{assetError ? ` ${assetError}` : ""}</div>
       <div className="abags-photo-models-grid" role="list">
         {products.map((product) => { const reference = exactReferenceForImage(product.imageUrl); if (!reference) return null; return (
           <button key={product.id} type="button" data-photo-product-choice={product.id} aria-pressed={product.id === selectedId} onClick={() => setSelectedId(product.id)} title={reference.label}>
