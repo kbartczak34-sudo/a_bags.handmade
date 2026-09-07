@@ -62,7 +62,7 @@ test("legacy resolver reports missing physical evidence without changing the cur
   assert.match(resolver, /GAUGE_PROFILE_NOT_BOUND/);
   assert.match(resolver, /GOLDEN_MASTER_NOT_BOUND/);
   assert.match(resolver, /status: validation\.valid \? "VALID" : "BLOCKED"/);
-  assert.match(resolver, /pricing: resolvePricing/);
+  assert.match(resolver, /pricing: resolveConfiguratorPricing\(selection, settings\)/);
   assert.doesNotMatch(resolver, /status:\s*resolveLegacyPhysicalValidation/);
 });
 
