@@ -14,12 +14,24 @@ test("coverage spans every supported family and stitch instead of a hand-picked 
 });
 
 test("BODY_VALIDATED requires a validated golden master, gauge and cord with matching references", () => {
+  assert.match(evidence, /resolveValidatedBodyEvidenceChain/);
   assert.match(evidence, /master\.status !== "VALIDATED"/);
   assert.match(evidence, /gauge\.status !== "VALIDATED"/);
   assert.match(evidence, /gauge\.cordMaterialId !== master\.cordMaterialId/);
   assert.match(evidence, /gauge\.stitchPatternId !== master\.stitchPatternId/);
-  assert.match(evidence, /cord && cord\.status === "VALIDATED"/);
+  assert.match(evidence, /cord\.status !== "VALIDATED"/);
   assert.match(evidence, /masters\.length \? "BODY_VALIDATED"/);
+});
+
+test("BODY_VALIDATED also requires complete positive production measurements", () => {
+  assert.match(evidence, /positive\(master\.widthMm\)/);
+  assert.match(evidence, /positive\(master\.actualCordUsedMm\)/);
+  assert.match(evidence, /positive\(gauge\.stitchPitchXmm\)/);
+  assert.match(evidence, /positive\(gauge\.rowPitchYmm\)/);
+  assert.match(evidence, /positive\(gauge\.metersPerStitch\)/);
+  assert.match(evidence, /positive\(cord\.measuredDiameterMm\)/);
+  assert.match(evidence, /positive\(cord\.metersPerSpool\)/);
+  assert.match(evidence, /positive\(cord\.gramsPerMeter\)/);
 });
 
 test("body evidence is explicitly narrower than full product validation", () => {
