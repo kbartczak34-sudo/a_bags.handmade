@@ -70,6 +70,7 @@ export async function POST(request: Request) {
   const requestUrl = new URL(request.url);
   const origin = requestUrl.origin;
   const isProductionHost = ["abagshandmade.pl", "www.abagshandmade.pl"].includes(requestUrl.hostname.toLowerCase());
+  const standardShippingCents = 1499;
 
   try {
     const secretKey = getStripeSecretKey();
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
     form.set("line_items[0][price_data][product_data][metadata][production_package_hash]", snapshot.packageHash);
 
     form.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
-    form.set("shipping_options[0][shipping_rate_data][fixed_amount][amount]", "0");
+    form.set("shipping_options[0][shipping_rate_data][fixed_amount][amount]", String(standardShippingCents));
     form.set("shipping_options[0][shipping_rate_data][fixed_amount][currency]", "pln");
     form.set("shipping_options[0][shipping_rate_data][display_name]", "Dostawa w Polsce");
     form.set("shipping_options[0][shipping_rate_data][delivery_estimate][minimum][unit]", "business_day");
@@ -129,10 +130,12 @@ export async function POST(request: Request) {
     form.set("metadata[checkout_type]", "CONFIGURATOR_V2");
     form.set("metadata[snapshot_id]", snapshot.id);
     form.set("metadata[production_package_hash]", snapshot.packageHash);
+    form.set("metadata[shipping_amount_cents]", String(standardShippingCents));
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][checkout_type]", "CONFIGURATOR_V2");
     form.set("payment_intent_data[metadata][snapshot_id]", snapshot.id);
     form.set("payment_intent_data[metadata][production_package_hash]", snapshot.packageHash);
+    form.set("payment_intent_data[metadata][shipping_amount_cents]", String(standardShippingCents));
     form.set("custom_text[submit][message]", "Płatność jest przypisana do niezmiennego Production Snapshot tej konfiguracji.");
 
     let response: Response;
@@ -142,7 +145,7 @@ export async function POST(request: Request) {
         headers: {
           Authorization: `Bearer ${secretKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
-          "Idempotency-Key": `abags-configurator-checkout-${snapshot.id}-${crypto.randomUUID()}`,
+          "Idempotency-Key": `abags-configurator-checkout-${snapshot.id}-${payload.email.toLowerCase()}`,
         },
         body: form.toString(),
       });
