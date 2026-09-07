@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { isAgataBuilderConstructionSupported, type AgataBuilderConstructionKey } from "../lib/abags-builder-fidelity";
+import { useBagBuilderClientConfig } from "./bag-builder-config-store";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -11,8 +12,6 @@ type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
 type Strap = "none" | "leather" | "woven" | "chain";
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "charm";
-
-type Config = { family: Family; color: string; stitch: Stitch; flap: Flap; handles: Handles; strap: Strap; hardware: Hardware; accent: Accent };
 
 type Settings = {
   pricingEnabled: boolean;
@@ -43,7 +42,6 @@ type ResolverShadowResponse = {
 
 type ConstructionKey = "handles" | "strap" | "flap" | "accent";
 
-const EMPTY: Config = { family: "", color: "", stitch: "", flap: "none", handles: "none", strap: "none", hardware: "gold", accent: "none" };
 const money = new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" });
 
 const FIDELITY_KEYS: Record<ConstructionKey, AgataBuilderConstructionKey> = {
@@ -52,23 +50,6 @@ const FIDELITY_KEYS: Record<ConstructionKey, AgataBuilderConstructionKey> = {
   flap: "flaps",
   accent: "accents",
 };
-
-function readConfig(stage: HTMLElement): Config {
-  return {
-    family: (stage.dataset.family || "") as Family,
-    color: stage.dataset.color || "",
-    stitch: (stage.dataset.stitch || "") as Stitch,
-    flap: (stage.dataset.flap || "none") as Flap,
-    handles: (stage.dataset.handles || "none") as Handles,
-    strap: (stage.dataset.strap || "none") as Strap,
-    hardware: (stage.dataset.hardware || "gold") as Hardware,
-    accent: (stage.dataset.accent || "none") as Accent,
-  };
-}
-
-function sameConfig(a: Config, b: Config) {
-  return (Object.keys(a) as Array<keyof Config>).every((key) => a[key] === b[key]);
-}
 
 function label(key: string, value: string) {
   const labels: Record<string, Record<string, string>> = {
@@ -96,9 +77,9 @@ function compatible(settings: Settings, family: Exclude<Family, "">, key: Constr
 }
 
 export default function BagBuilderCommerce() {
+  const config = useBagBuilderClientConfig();
   const [stage, setStage] = useState<HTMLElement | null>(null);
   const [mount, setMount] = useState<HTMLElement | null>(null);
-  const [config, setConfig] = useState<Config>(EMPTY);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -135,18 +116,6 @@ export default function BagBuilderCommerce() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (!stage) return;
-    const sync = () => setConfig((current) => {
-      const next = readConfig(stage);
-      return sameConfig(current, next) ? current : next;
-    });
-    sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(stage, { attributes: true, attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] });
-    return () => observer.disconnect();
-  }, [stage]);
 
   useEffect(() => {
     if (!settings || !config.family) return;
