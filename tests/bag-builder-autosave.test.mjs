@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const autosave = fs.readFileSync("app/bag-builder-autosave.tsx", "utf8");
+const store = fs.readFileSync("app/bag-builder-config-store.ts", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 
 test("autosave is mounted after validation in the active Bag Builder", () => {
@@ -10,9 +11,17 @@ test("autosave is mounted after validation in the active Bag Builder", () => {
   assert.match(exact, /<BagBuilderValidationGuard \/>[\s\S]*<BagBuilderAutosave \/>/);
 });
 
-test("autosave accepts only currently supported builder values", () => {
-  assert.match(autosave, /const ALLOWED/);
-  assert.match(autosave, /KEYS\.every\(\(key\) => ALLOWED\[key\]\.has\(config\[key\]\)\)/);
+test("autosave consumes the centrally normalized builder snapshot instead of maintaining its own option lists", () => {
+  assert.match(autosave, /useBagBuilderClientConfig/);
+  assert.match(autosave, /toBagBuilderDraftConfig/);
+  assert.doesNotMatch(autosave, /const ALLOWED|function readConfig|attributeFilter/);
+  assert.match(store, /const FAMILIES/);
+  assert.match(store, /const STITCHES/);
+  assert.match(store, /const FLAPS/);
+  assert.match(store, /const HANDLES/);
+  assert.match(store, /const STRAPS/);
+  assert.match(store, /const HARDWARE/);
+  assert.match(store, /const ACCENTS/);
 });
 
 test("valid partial projects are debounced into localStorage", () => {
@@ -24,7 +33,7 @@ test("valid partial projects are debounced into localStorage", () => {
 
 test("reset projects remain empty instead of being re-saved as a blank draft", () => {
   assert.match(autosave, /function isEmpty/);
-  assert.match(autosave, /isEmpty\(config\) \? safeRemove\(\) : safeSave\(config\)/);
+  assert.match(autosave, /isEmpty\(draft\) \? safeRemove\(\) : safeSave\(draft\)/);
   assert.match(autosave, /localStorage\.removeItem\(DRAFT_KEY\)/);
 });
 
