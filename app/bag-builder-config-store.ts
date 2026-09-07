@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 export type BagBuilderClientConfig = {
   family: "" | "tote" | "round" | "bucket" | "mini";
-  color: string;
+  color: "" | "#E8DDCC" | "#E4A9B5" | "#24324D" | "#65493D" | "#C7962F" | "#222124" | "#B93A42" | "#275C4A" | "#087E81" | "#A88AE0";
   stitch: "" | "classic" | "herringbone" | "basket" | "shell";
   flap: "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
@@ -15,6 +15,24 @@ export type BagBuilderClientConfig = {
 };
 
 export type BagBuilderDraftConfig = Omit<BagBuilderClientConfig, "baseProductId">;
+export type BagBuilderConfigKey = keyof BagBuilderDraftConfig;
+
+export type BagBuilderClientState = {
+  config: BagBuilderClientConfig;
+  invalidKeys: BagBuilderConfigKey[];
+  photoTrueActive: boolean;
+};
+
+export const BAG_BUILDER_CONFIG_ORDER: BagBuilderConfigKey[] = [
+  "family",
+  "color",
+  "stitch",
+  "flap",
+  "handles",
+  "strap",
+  "hardware",
+  "accent",
+];
 
 export const EMPTY_BAG_BUILDER_CLIENT_CONFIG: BagBuilderClientConfig = {
   family: "",
@@ -29,12 +47,35 @@ export const EMPTY_BAG_BUILDER_CLIENT_CONFIG: BagBuilderClientConfig = {
 };
 
 const FAMILIES = new Set<BagBuilderClientConfig["family"]>(["", "tote", "round", "bucket", "mini"]);
+const COLORS = new Set<BagBuilderClientConfig["color"]>(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0"]);
 const STITCHES = new Set<BagBuilderClientConfig["stitch"]>(["", "classic", "herringbone", "basket", "shell"]);
 const FLAPS = new Set<BagBuilderClientConfig["flap"]>(["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"]);
 const HANDLES = new Set<BagBuilderClientConfig["handles"]>(["none", "wood-light", "wood-dark", "crochet"]);
 const STRAPS = new Set<BagBuilderClientConfig["strap"]>(["none", "leather", "woven", "chain"]);
 const HARDWARE = new Set<BagBuilderClientConfig["hardware"]>(["gold", "silver", "black"]);
 const ACCENTS = new Set<BagBuilderClientConfig["accent"]>(["none", "tassel", "scarf", "charm"]);
+
+const ALLOWED: { [K in BagBuilderConfigKey]: ReadonlySet<BagBuilderDraftConfig[K]> } = {
+  family: FAMILIES,
+  color: COLORS,
+  stitch: STITCHES,
+  flap: FLAPS,
+  handles: HANDLES,
+  strap: STRAPS,
+  hardware: HARDWARE,
+  accent: ACCENTS,
+};
+
+const FALLBACKS: BagBuilderDraftConfig = {
+  family: "",
+  color: "",
+  stitch: "",
+  flap: "none",
+  handles: "none",
+  strap: "none",
+  hardware: "gold",
+  accent: "none",
+};
 
 const STAGE_SELECTOR = ".abags-bag-builder-stage";
 const OBSERVED_ATTRIBUTES = [
@@ -47,39 +88,81 @@ const OBSERVED_ATTRIBUTES = [
   "data-hardware",
   "data-accent",
   "data-photo-product-id",
+  "data-abags-photo-true",
 ] as const;
 
-let snapshot = EMPTY_BAG_BUILDER_CLIENT_CONFIG;
-let signature = JSON.stringify(snapshot);
+const EMPTY_STATE: BagBuilderClientState = {
+  config: EMPTY_BAG_BUILDER_CLIENT_CONFIG,
+  invalidKeys: [],
+  photoTrueActive: false,
+};
+
+let stateSnapshot = EMPTY_STATE;
+let stateSignature = JSON.stringify(EMPTY_STATE);
 let observer: MutationObserver | null = null;
 const listeners = new Set<() => void>();
 
-function allowed<T extends string>(value: string | undefined, values: ReadonlySet<T>, fallback: T): T {
-  return value && values.has(value as T) ? value as T : fallback;
+function normalizeField<K extends BagBuilderConfigKey>(key: K, value: string | undefined): BagBuilderDraftConfig[K] {
+  const fallback = FALLBACKS[key];
+  const candidate = (value ?? fallback) as BagBuilderDraftConfig[K];
+  return ALLOWED[key].has(candidate) ? candidate : fallback;
 }
 
-function normalizedColor(value: string | undefined) {
-  const color = value?.trim() ?? "";
-  return !color || /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "";
+export function normalizeBagBuilderDraftInput(input: Partial<Record<BagBuilderConfigKey, string>>) {
+  const config = {} as BagBuilderDraftConfig;
+  const invalidKeys: BagBuilderConfigKey[] = [];
+
+  for (const key of BAG_BUILDER_CONFIG_ORDER) {
+    const fallback = FALLBACKS[key];
+    const raw = input[key] ?? fallback;
+    const candidate = raw as BagBuilderDraftConfig[typeof key];
+    if (!ALLOWED[key].has(candidate as never)) invalidKeys.push(key);
+    (config as Record<BagBuilderConfigKey, string>)[key] = normalizeField(key, raw);
+  }
+
+  return { config, invalidKeys };
+}
+
+export function isBagBuilderDraftConfigComplete(config: BagBuilderDraftConfig) {
+  return Boolean(config.family && config.color && config.stitch);
+}
+
+export function validBagBuilderBaseProductId(value: string) {
+  return value.length > 0 && value.length <= 160 && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
 function normalizedBaseProductId(value: string | undefined) {
   const id = value?.trim() ?? "";
-  return !id || /^[a-zA-Z0-9-]{1,80}$/.test(id) ? id : "";
+  return !id || validBagBuilderBaseProductId(id) ? id : "";
+}
+
+function rawDraftFromStage(stage: HTMLElement): Partial<Record<BagBuilderConfigKey, string>> {
+  return {
+    family: stage.dataset.family,
+    color: stage.dataset.color,
+    stitch: stage.dataset.stitch,
+    flap: stage.dataset.flap,
+    handles: stage.dataset.handles,
+    strap: stage.dataset.strap,
+    hardware: stage.dataset.hardware,
+    accent: stage.dataset.accent,
+  };
+}
+
+export function readBagBuilderClientState(stage: HTMLElement): BagBuilderClientState {
+  const { config: draft, invalidKeys } = normalizeBagBuilderDraftInput(rawDraftFromStage(stage));
+  return {
+    config: {
+      ...draft,
+      baseProductId: normalizedBaseProductId(stage.dataset.photoProductId),
+    },
+    invalidKeys,
+    photoTrueActive: stage.dataset.abagsPhotoTrue === "active",
+  };
 }
 
 export function readBagBuilderClientConfig(stage: HTMLElement): BagBuilderClientConfig {
-  return {
-    family: allowed(stage.dataset.family, FAMILIES, ""),
-    color: normalizedColor(stage.dataset.color),
-    stitch: allowed(stage.dataset.stitch, STITCHES, ""),
-    flap: allowed(stage.dataset.flap, FLAPS, "none"),
-    handles: allowed(stage.dataset.handles, HANDLES, "none"),
-    strap: allowed(stage.dataset.strap, STRAPS, "none"),
-    hardware: allowed(stage.dataset.hardware, HARDWARE, "gold"),
-    accent: allowed(stage.dataset.accent, ACCENTS, "none"),
-    baseProductId: normalizedBaseProductId(stage.dataset.photoProductId),
-  };
+  return readBagBuilderClientState(stage).config;
 }
 
 export function toBagBuilderDraftConfig(config: BagBuilderClientConfig): BagBuilderDraftConfig {
@@ -89,12 +172,12 @@ export function toBagBuilderDraftConfig(config: BagBuilderClientConfig): BagBuil
 
 function synchronize() {
   const stage = document.querySelector<HTMLElement>(STAGE_SELECTOR);
-  const next = stage ? readBagBuilderClientConfig(stage) : EMPTY_BAG_BUILDER_CLIENT_CONFIG;
+  const next = stage ? readBagBuilderClientState(stage) : EMPTY_STATE;
   const nextSignature = JSON.stringify(next);
-  if (nextSignature === signature) return;
+  if (nextSignature === stateSignature) return;
 
-  snapshot = next;
-  signature = nextSignature;
+  stateSnapshot = next;
+  stateSignature = nextSignature;
   for (const listener of listeners) listener();
 }
 
@@ -125,14 +208,26 @@ function subscribe(listener: () => void) {
   };
 }
 
-function getSnapshot() {
-  return snapshot;
+function getStateSnapshot() {
+  return stateSnapshot;
 }
 
-function getServerSnapshot() {
+function getServerStateSnapshot() {
+  return EMPTY_STATE;
+}
+
+function getConfigSnapshot() {
+  return stateSnapshot.config;
+}
+
+function getServerConfigSnapshot() {
   return EMPTY_BAG_BUILDER_CLIENT_CONFIG;
 }
 
+export function useBagBuilderClientState() {
+  return useSyncExternalStore(subscribe, getStateSnapshot, getServerStateSnapshot);
+}
+
 export function useBagBuilderClientConfig() {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useSyncExternalStore(subscribe, getConfigSnapshot, getServerConfigSnapshot);
 }

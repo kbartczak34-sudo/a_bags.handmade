@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const guard = fs.readFileSync("app/bag-builder-validation-guard.tsx", "utf8");
+const store = fs.readFileSync("app/bag-builder-config-store.ts", "utf8");
 const fidelity = fs.readFileSync("lib/abags-builder-fidelity.ts", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 
@@ -11,16 +12,14 @@ test("validation guard is mounted with the active Bag Builder", () => {
   assert.match(exact, /<BagBuilderValidationGuard \/>/);
 });
 
-test("guard validates every persisted Bag Builder field against supported values", () => {
-  assert.match(guard, /const ALLOWED/);
-  assert.match(guard, /family: new Set/);
-  assert.match(guard, /color: new Set/);
-  assert.match(guard, /stitch: new Set/);
-  assert.match(guard, /flap: new Set/);
-  assert.match(guard, /handles: new Set/);
-  assert.match(guard, /strap: new Set/);
-  assert.match(guard, /hardware: new Set/);
-  assert.match(guard, /accent: new Set/);
+test("guard consumes central normalized state and raw integrity failures", () => {
+  assert.match(guard, /useBagBuilderClientState/);
+  assert.match(guard, /invalidKeys/);
+  assert.match(guard, /toBagBuilderDraftConfig/);
+  assert.doesNotMatch(guard, /const ALLOWED/);
+  assert.match(store, /const ALLOWED/);
+  assert.match(store, /const COLORS/);
+  assert.match(store, /normalizeBagBuilderDraftInput/);
 });
 
 test("stale invalid drafts cannot silently reach the workshop flow", () => {
@@ -44,8 +43,9 @@ test("stale construction choices are repaired from the central Agata reference c
   assert.match(fidelity, /mini:\s*\{[\s\S]*?handles:\s*\["none", "wood-light"\]/);
 });
 
-test("status reports incompatible saved constructions before repairing them", () => {
+test("status reports incompatible and invalid saved constructions before repairing them", () => {
   assert.match(guard, /incompatible = fidelityInvalidKeys\(snapshot\)/);
+  assert.match(guard, /invalidKeys\.length \|\| incompatible\.length/);
   assert.match(guard, /nie ma w zweryfikowanych konstrukcjach tego fasonu A-Bags/);
   assert.match(guard, /zgodna ze zweryfikowanymi referencjami A-Bags/);
 });
@@ -56,4 +56,9 @@ test("status explains missing required decisions and successful validation", () 
   assert.match(guard, /Projekt gotowy do konsultacji/);
   assert.match(guard, /walidacja ✓/);
   assert.match(guard, /Finalna możliwość wykonania i cena personalizacji są potwierdzane przez pracownię/);
+});
+
+test("validation guard no longer owns a second configuration attribute observer", () => {
+  assert.doesNotMatch(guard, /attributeFilter:\s*\["data-family"/);
+  assert.match(store, /attributeFilter: \[\.\.\.OBSERVED_ATTRIBUTES\]/);
 });

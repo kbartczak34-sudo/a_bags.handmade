@@ -1,64 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  BAG_BUILDER_CONFIG_ORDER,
+  isBagBuilderDraftConfigComplete,
+  normalizeBagBuilderDraftInput,
+  readBagBuilderClientConfig,
+  toBagBuilderDraftConfig,
+  useBagBuilderClientState,
+  validBagBuilderBaseProductId,
+  type BagBuilderConfigKey,
+  type BagBuilderDraftConfig,
+} from "./bag-builder-config-store";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 const PHOTO_MODEL_KEY = "abags-photo-true-v1";
 const PARAM = "projekt";
 const MODEL_PARAM = "model";
 
-type BuilderConfig = {
-  family: string;
-  color: string;
-  stitch: string;
-  flap: string;
-  handles: string;
-  strap: string;
-  hardware: string;
-  accent: string;
-};
-
-type BuilderKey = keyof BuilderConfig;
-
-const ALLOWED: Record<BuilderKey, Set<string>> = {
-  family: new Set(["", "tote", "round", "bucket", "mini"]),
-  color: new Set(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0"]),
-  stitch: new Set(["", "classic", "herringbone", "basket", "shell"]),
-  flap: new Set(["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"]),
-  handles: new Set(["none", "wood-light", "wood-dark", "crochet"]),
-  strap: new Set(["none", "leather", "woven", "chain"]),
-  hardware: new Set(["gold", "silver", "black"]),
-  accent: new Set(["none", "tassel", "scarf", "charm"]),
-};
-
-const ORDER: BuilderKey[] = ["family", "color", "stitch", "flap", "handles", "strap", "hardware", "accent"];
-
-function readConfig(stage: HTMLElement): BuilderConfig {
-  return {
-    family: stage.dataset.family || "",
-    color: stage.dataset.color || "",
-    stitch: stage.dataset.stitch || "",
-    flap: stage.dataset.flap || "none",
-    handles: stage.dataset.handles || "none",
-    strap: stage.dataset.strap || "none",
-    hardware: stage.dataset.hardware || "gold",
-    accent: stage.dataset.accent || "none",
-  };
-}
-
-function isValid(config: BuilderConfig) {
-  return ORDER.every((key) => ALLOWED[key].has(config[key]));
-}
-
-function isComplete(config: BuilderConfig) {
-  return Boolean(config.family && config.color && config.stitch && isValid(config));
-}
-
-function validModelId(value: string) {
-  return value.length > 0 && value.length <= 160 && !/[\u0000-\u001f\u007f]/.test(value);
-}
-
-function encodeProject(config: BuilderConfig) {
+function encodeProject(config: BagBuilderDraftConfig) {
   return [
     "v1",
     config.family,
@@ -72,11 +32,12 @@ function encodeProject(config: BuilderConfig) {
   ].join(".");
 }
 
-function decodeProject(value: string | null): BuilderConfig | null {
+function decodeProject(value: string | null): BagBuilderDraftConfig | null {
   if (!value) return null;
   const parts = value.split(".");
   if (parts.length !== 9 || parts[0] !== "v1") return null;
-  const config: BuilderConfig = {
+
+  const { config, invalidKeys } = normalizeBagBuilderDraftInput({
     family: parts[1],
     color: parts[2] ? `#${parts[2].toUpperCase()}` : "",
     stitch: parts[3],
@@ -85,15 +46,15 @@ function decodeProject(value: string | null): BuilderConfig | null {
     strap: parts[6],
     hardware: parts[7],
     accent: parts[8],
-  };
-  return isValid(config) && isComplete(config) ? config : null;
+  });
+
+  return invalidKeys.length === 0 && isBagBuilderDraftConfigComplete(config) ? config : null;
 }
 
-function projectUrl(config: BuilderConfig, stage: HTMLElement) {
+function projectUrl(config: BagBuilderDraftConfig, photoTrueActive: boolean, baseProductId: string) {
   const url = new URL(window.location.href);
   url.searchParams.set(PARAM, encodeProject(config));
-  const modelId = stage.dataset.photoProductId || "";
-  if (stage.dataset.abagsPhotoTrue === "active" && validModelId(modelId)) url.searchParams.set(MODEL_PARAM, modelId);
+  if (photoTrueActive && validBagBuilderBaseProductId(baseProductId)) url.searchParams.set(MODEL_PARAM, baseProductId);
   else url.searchParams.delete(MODEL_PARAM);
   return url.toString();
 }
@@ -123,7 +84,7 @@ function nextFrame() {
   return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
-async function waitForStageValue(stage: HTMLElement, key: BuilderKey, value: string) {
+async function waitForStageValue(stage: HTMLElement, key: BagBuilderConfigKey, value: string) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     if ((stage.dataset[key] || "") === value) return true;
     await nextFrame();
@@ -131,7 +92,7 @@ async function waitForStageValue(stage: HTMLElement, key: BuilderKey, value: str
   return false;
 }
 
-async function applyChoice(controls: HTMLElement, stage: HTMLElement, key: BuilderKey, value: string) {
+async function applyChoice(controls: HTMLElement, stage: HTMLElement, key: BagBuilderConfigKey, value: string) {
   const current = stage.dataset[key] || "";
   if (current === value) return true;
 
@@ -149,7 +110,7 @@ async function applyChoice(controls: HTMLElement, stage: HTMLElement, key: Build
 
 async function applyPhotoProduct(stage: HTMLElement, modelId: string) {
   if (!modelId) return true;
-  if (!validModelId(modelId)) return false;
+  if (!validBagBuilderBaseProductId(modelId)) return false;
   if (stage.dataset.photoProductId === modelId) return true;
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -168,7 +129,7 @@ async function applyPhotoProduct(stage: HTMLElement, modelId: string) {
   return false;
 }
 
-function persistImportedProject(config: BuilderConfig, modelId: string) {
+function persistImportedProject(config: BagBuilderDraftConfig, modelId: string) {
   try {
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
     if (modelId) window.localStorage.setItem(PHOTO_MODEL_KEY, modelId);
@@ -188,7 +149,7 @@ function removeImportedParams() {
   if (changed) window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
-async function importSharedProject(stage: HTMLElement, controls: HTMLElement, config: BuilderConfig, modelId: string) {
+async function importSharedProject(stage: HTMLElement, controls: HTMLElement, config: BagBuilderDraftConfig, modelId: string) {
   controls.dataset.builderSharedImport = "loading";
 
   // In Photo-True links the real product is authoritative. Selecting it first
@@ -202,7 +163,7 @@ async function importSharedProject(stage: HTMLElement, controls: HTMLElement, co
     }
   }
 
-  const keys = modelId ? ORDER.filter((key) => key !== "family") : ORDER;
+  const keys = modelId ? BAG_BUILDER_CONFIG_ORDER.filter((key) => key !== "family") : BAG_BUILDER_CONFIG_ORDER;
   for (const key of keys) {
     const applied = await applyChoice(controls, stage, key, config[key]);
     if (!applied) {
@@ -211,46 +172,11 @@ async function importSharedProject(stage: HTMLElement, controls: HTMLElement, co
     }
   }
 
-  const finalConfig = readConfig(stage);
+  const finalConfig = toBagBuilderDraftConfig(readBagBuilderClientConfig(stage));
   persistImportedProject(finalConfig, modelId);
   removeImportedParams();
   controls.dataset.builderSharedImport = "ready";
   return true;
-}
-
-function ensureShareButton(controls: HTMLElement, stage: HTMLElement) {
-  const actions = controls.querySelector<HTMLElement>(".abags-builder-actions");
-  if (!actions) return;
-
-  let button = actions.querySelector<HTMLButtonElement>("[data-builder-share-project]");
-  if (!button) {
-    button = document.createElement("button");
-    button.type = "button";
-    button.dataset.builderShareProject = "true";
-    button.textContent = "Udostępnij projekt";
-    const send = actions.querySelector("a");
-    if (send) actions.insertBefore(button, send);
-    else actions.appendChild(button);
-
-    button.addEventListener("click", async () => {
-      const config = readConfig(stage);
-      const photoReady = stage.dataset.abagsPhotoTrue !== "active" || Boolean(stage.dataset.photoProductId);
-      if (!isComplete(config) || !photoReady) return;
-      const original = "Udostępnij projekt";
-      try {
-        const copied = await copyText(projectUrl(config, stage));
-        button!.textContent = copied ? "Link skopiowany ✓" : "Nie udało się skopiować";
-      } catch {
-        button!.textContent = "Nie udało się skopiować";
-      }
-      window.setTimeout(() => { if (button) button.textContent = original; }, 1800);
-    });
-  }
-
-  const config = readConfig(stage);
-  const photoReady = stage.dataset.abagsPhotoTrue !== "active" || Boolean(stage.dataset.photoProductId);
-  button.disabled = !isComplete(config) || !photoReady;
-  button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
 }
 
 function ensureImportNotice(controls: HTMLElement, state: "loading" | "error" | "ready") {
@@ -284,49 +210,102 @@ function ensureImportNotice(controls: HTMLElement, state: "loading" | "error" | 
 }
 
 export default function BagBuilderShareLink() {
+  const { config, invalidKeys, photoTrueActive } = useBagBuilderClientState();
+  const draft = useMemo(() => toBagBuilderDraftConfig(config), [config]);
+  const latest = useRef({ draft, invalidKeys, photoTrueActive, baseProductId: config.baseProductId });
+
+  useEffect(() => {
+    latest.current = { draft, invalidKeys, photoTrueActive, baseProductId: config.baseProductId };
+
+    const button = document.querySelector<HTMLButtonElement>("[data-builder-share-project]");
+    if (!button) return;
+    const photoReady = !photoTrueActive || Boolean(config.baseProductId);
+    button.disabled = invalidKeys.length > 0 || !isBagBuilderDraftConfigComplete(draft) || !photoReady;
+    button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+  }, [config.baseProductId, draft, invalidKeys, photoTrueActive]);
+
   useEffect(() => {
     let cancelled = false;
     let importStarted = false;
+    let attachedButton: HTMLButtonElement | null = null;
 
-    const synchronize = async () => {
+    const handleClick = async () => {
+      const current = latest.current;
+      const photoReady = !current.photoTrueActive || Boolean(current.baseProductId);
+      const ready = current.invalidKeys.length === 0 && isBagBuilderDraftConfigComplete(current.draft) && photoReady;
+      if (!ready || !attachedButton) return;
+
+      const original = "Udostępnij projekt";
+      try {
+        const copied = await copyText(projectUrl(current.draft, current.photoTrueActive, current.baseProductId));
+        attachedButton.textContent = copied ? "Link skopiowany ✓" : "Nie udało się skopiować";
+      } catch {
+        attachedButton.textContent = "Nie udało się skopiować";
+      }
+      window.setTimeout(() => {
+        if (attachedButton) attachedButton.textContent = original;
+      }, 1800);
+    };
+
+    const synchronize = () => {
       const stage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
       const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
       if (!stage || !controls || cancelled) return;
 
-      ensureShareButton(controls, stage);
+      const actions = controls.querySelector<HTMLElement>(".abags-builder-actions");
+      if (!actions) return;
 
-      if (!importStarted) {
-        const url = new URL(window.location.href);
-        const encoded = url.searchParams.get(PARAM);
-        const rawModelId = url.searchParams.get(MODEL_PARAM) || "";
-        if (encoded) {
-          importStarted = true;
-          const config = decodeProject(encoded);
-          const modelId = rawModelId && validModelId(rawModelId) ? rawModelId : "";
-          if (!config || (rawModelId && !modelId)) {
-            controls.dataset.builderSharedImport = "error";
-            ensureImportNotice(controls, "error");
-          } else {
-            ensureImportNotice(controls, "loading");
-            const applied = await importSharedProject(stage, controls, config, modelId);
-            if (!cancelled) ensureImportNotice(controls, applied ? "ready" : "error");
-          }
-        }
+      let button = actions.querySelector<HTMLButtonElement>("[data-builder-share-project]");
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.dataset.builderShareProject = "true";
+        button.textContent = "Udostępnij projekt";
+        const send = actions.querySelector("a");
+        if (send) actions.insertBefore(button, send);
+        else actions.appendChild(button);
       }
+
+      if (attachedButton !== button) {
+        attachedButton?.removeEventListener("click", handleClick);
+        attachedButton = button;
+        attachedButton.addEventListener("click", handleClick);
+      }
+
+      const current = latest.current;
+      const photoReady = !current.photoTrueActive || Boolean(current.baseProductId);
+      button.disabled = current.invalidKeys.length > 0 || !isBagBuilderDraftConfigComplete(current.draft) || !photoReady;
+      button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+
+      if (importStarted) return;
+      const url = new URL(window.location.href);
+      const encoded = url.searchParams.get(PARAM);
+      const rawModelId = url.searchParams.get(MODEL_PARAM) || "";
+      if (!encoded) return;
+
+      importStarted = true;
+      const sharedConfig = decodeProject(encoded);
+      const modelId = rawModelId && validBagBuilderBaseProductId(rawModelId) ? rawModelId : "";
+      if (!sharedConfig || (rawModelId && !modelId)) {
+        controls.dataset.builderSharedImport = "error";
+        ensureImportNotice(controls, "error");
+        return;
+      }
+
+      ensureImportNotice(controls, "loading");
+      void importSharedProject(stage, controls, sharedConfig, modelId).then((applied) => {
+        if (!cancelled) ensureImportNotice(controls, applied ? "ready" : "error");
+      });
     };
 
-    void synchronize();
-    const observer = new MutationObserver(() => { void synchronize(); });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent", "data-abags-photo-true", "data-photo-product-id"],
-    });
+    synchronize();
+    const observer = new MutationObserver(synchronize);
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       cancelled = true;
       observer.disconnect();
+      attachedButton?.removeEventListener("click", handleClick);
       document.querySelector("[data-builder-share-project]")?.remove();
       document.querySelector("[data-builder-share-notice]")?.remove();
     };

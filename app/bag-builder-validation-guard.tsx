@@ -1,26 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isAgataBuilderConstructionSupported, type AgataBuilderConstructionKey } from "../lib/abags-builder-fidelity";
+import {
+  toBagBuilderDraftConfig,
+  useBagBuilderClientState,
+  type BagBuilderConfigKey,
+  type BagBuilderDraftConfig,
+} from "./bag-builder-config-store";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
-const ALLOWED = {
-  family: new Set(["", "tote", "round", "bucket", "mini"]),
-  color: new Set(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0"]),
-  stitch: new Set(["", "classic", "herringbone", "basket", "shell"]),
-  flap: new Set(["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"]),
-  handles: new Set(["none", "wood-light", "wood-dark", "crochet"]),
-  strap: new Set(["none", "leather", "woven", "chain"]),
-  hardware: new Set(["gold", "silver", "black"]),
-  accent: new Set(["none", "tassel", "scarf", "charm"]),
-} as const;
-
-type BuilderKey = keyof typeof ALLOWED;
-type BuilderSnapshot = Record<BuilderKey, string>;
 type ConstructionBuilderKey = "flap" | "handles" | "strap" | "accent";
 
-const FALLBACKS: Partial<Record<BuilderKey, string>> = {
+const FALLBACKS: Partial<Record<BagBuilderConfigKey, string>> = {
   flap: "none",
   handles: "none",
   strap: "none",
@@ -35,37 +28,20 @@ const FIDELITY_KEYS: Record<ConstructionBuilderKey, AgataBuilderConstructionKey>
   accent: "accents",
 };
 
-const REQUIRED_LABELS: Array<[BuilderKey, string]> = [
+const REQUIRED_LABELS: Array<[BagBuilderConfigKey, string]> = [
   ["family", "fason"],
   ["color", "kolor sznurka"],
   ["stitch", "ścieg szydełkowy"],
 ];
 
-function readSnapshot(stage: HTMLElement): BuilderSnapshot {
-  return {
-    family: stage.dataset.family || "",
-    color: stage.dataset.color || "",
-    stitch: stage.dataset.stitch || "",
-    flap: stage.dataset.flap || "none",
-    handles: stage.dataset.handles || "none",
-    strap: stage.dataset.strap || "none",
-    hardware: stage.dataset.hardware || "gold",
-    accent: stage.dataset.accent || "none",
-  };
-}
-
-function invalidKeys(snapshot: BuilderSnapshot) {
-  return (Object.keys(ALLOWED) as BuilderKey[]).filter((key) => !ALLOWED[key].has(snapshot[key] as never));
-}
-
-function fidelityInvalidKeys(snapshot: BuilderSnapshot): ConstructionBuilderKey[] {
-  if (!snapshot.family || !ALLOWED.family.has(snapshot.family as never)) return [];
+function fidelityInvalidKeys(snapshot: BagBuilderDraftConfig): ConstructionBuilderKey[] {
+  if (!snapshot.family) return [];
   return (Object.keys(FIDELITY_KEYS) as ConstructionBuilderKey[]).filter((key) =>
     !isAgataBuilderConstructionSupported(snapshot.family, FIDELITY_KEYS[key], snapshot[key]),
   );
 }
 
-function clickChoice(controls: HTMLElement, key: BuilderKey, value: string) {
+function clickChoice(controls: HTMLElement, key: BagBuilderConfigKey, value: string) {
   const selector = `[data-builder-key="${key}"][data-builder-value="${value}"]`;
   const button = controls.querySelector<HTMLButtonElement>(selector);
   if (!button || button.disabled) return false;
@@ -81,27 +57,26 @@ function clearStaleDraft() {
   }
 }
 
-function repairSnapshot(controls: HTMLElement, snapshot: BuilderSnapshot) {
-  const invalid = invalidKeys(snapshot);
-  if (!invalid.length) return false;
+function repairSnapshot(controls: HTMLElement, invalidKeys: BagBuilderConfigKey[]) {
+  if (!invalidKeys.length) return false;
 
   clearStaleDraft();
 
-  const invalidRequired = invalid.some((key) => key === "family" || key === "color" || key === "stitch");
+  const invalidRequired = invalidKeys.some((key) => key === "family" || key === "color" || key === "stitch");
   if (invalidRequired) {
     const reset = controls.querySelector<HTMLButtonElement>(".abags-builder-actions button");
     reset?.click();
     return true;
   }
 
-  invalid.forEach((key) => {
+  invalidKeys.forEach((key) => {
     const fallback = FALLBACKS[key];
     if (fallback) clickChoice(controls, key, fallback);
   });
   return true;
 }
 
-function repairKnownCompatibility(controls: HTMLElement, snapshot: BuilderSnapshot) {
+function repairKnownCompatibility(controls: HTMLElement, snapshot: BagBuilderDraftConfig) {
   const incompatible = fidelityInvalidKeys(snapshot);
   if (!incompatible.length) return false;
   clearStaleDraft();
@@ -111,11 +86,11 @@ function repairKnownCompatibility(controls: HTMLElement, snapshot: BuilderSnapsh
   return false;
 }
 
-function requiredMissing(snapshot: BuilderSnapshot) {
+function requiredMissing(snapshot: BagBuilderDraftConfig) {
   return REQUIRED_LABELS.filter(([key]) => !snapshot[key]).map(([, label]) => label);
 }
 
-function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
+function ensureStatusCard(controls: HTMLElement, snapshot: BagBuilderDraftConfig, invalidKeys: BagBuilderConfigKey[]) {
   const actions = controls.querySelector<HTMLElement>(".abags-builder-actions");
   if (!actions) return;
 
@@ -130,10 +105,9 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
   }
 
   const missing = requiredMissing(snapshot);
-  const invalid = invalidKeys(snapshot);
   const incompatible = fidelityInvalidKeys(snapshot);
-  const ready = missing.length === 0 && invalid.length === 0 && incompatible.length === 0;
-  const signature = `${Object.values(snapshot).join("|")}|${missing.join(",")}|${invalid.join(",")}|${incompatible.join(",")}`;
+  const ready = missing.length === 0 && invalidKeys.length === 0 && incompatible.length === 0;
+  const signature = `${Object.values(snapshot).join("|")}|${missing.join(",")}|${invalidKeys.join(",")}|${incompatible.join(",")}`;
   if (card.dataset.validationSignature === signature) return;
   card.dataset.validationSignature = signature;
 
@@ -143,7 +117,7 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
   const copy = document.createElement("p");
   const note = document.createElement("small");
 
-  if (invalid.length || incompatible.length) {
+  if (invalidKeys.length || incompatible.length) {
     title.textContent = "Sprawdzam zapisany projekt";
     badge.textContent = "korekta danych";
     copy.textContent = incompatible.length
@@ -166,34 +140,32 @@ function ensureStatusCard(controls: HTMLElement, snapshot: BuilderSnapshot) {
   card.replaceChildren(heading, copy, note);
 }
 
-function synchronize() {
-  const stage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
-  const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
-  if (!stage || !controls) return;
-
-  const snapshot = readSnapshot(stage);
-  ensureStatusCard(controls, snapshot);
-
-  if (repairSnapshot(controls, snapshot)) return;
-  repairKnownCompatibility(controls, snapshot);
-}
-
 export default function BagBuilderValidationGuard() {
-  useEffect(() => {
-    synchronize();
-    const observer = new MutationObserver(synchronize);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"],
-    });
+  const { config, invalidKeys } = useBagBuilderClientState();
+  const snapshot = useMemo(() => toBagBuilderDraftConfig(config), [config]);
+  const [controls, setControls] = useState<HTMLElement | null>(null);
 
+  useEffect(() => {
+    const attach = () => {
+      const next = document.querySelector<HTMLElement>(".abags-builder-controls");
+      setControls((current) => current === next ? current : next);
+    };
+
+    attach();
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
       document.querySelector("[data-builder-validation-status]")?.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (!controls) return;
+    ensureStatusCard(controls, snapshot, invalidKeys);
+    if (repairSnapshot(controls, invalidKeys)) return;
+    repairKnownCompatibility(controls, snapshot);
+  }, [controls, invalidKeys, snapshot]);
 
   return null;
 }
