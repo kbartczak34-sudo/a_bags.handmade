@@ -117,5 +117,3 @@ test("deployment keeps Photo-True as an explicit internal reference check after 
   assert.match(mobileSmoke, /touch-selected real product/);
   assert.match(mobileSmoke, /screenshot hash|screenshotHash/);
 });
-
-console.log("customizer-visual-qa: PASS");
