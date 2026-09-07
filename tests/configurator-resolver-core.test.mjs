@@ -38,15 +38,17 @@ test("public resolve endpoint accepts the current checkout config envelope and n
   assert.doesNotMatch(route, /unitAmount|unit_amount|priceCents|grossCents\s*=\s*.*raw/);
 });
 
-test("V1 remains default while schemaVersion 2 dispatches through full physical evidence resolution", () => {
+test("V1 remains default while schemaVersion 2 dispatches through production recipe physical resolution", () => {
   assert.match(route, /isProductConfigurationV2Source\(source\)/);
   assert.match(route, /getCraftCalibrationSnapshot/);
   assert.match(route, /getCraftCordColorBindings/);
   assert.match(route, /getCraftAccessorySnapshot/);
   assert.match(route, /getCraftBuilderAccessoryBindings/);
-  assert.match(route, /resolveAccessoryBoundProductConfigurationV2/);
+  assert.match(route, /getCraftProductionRecipes/);
+  assert.match(route, /resolveProductionRecipeBoundProductConfigurationV2/);
   assert.doesNotMatch(route, /return json\(await resolveProductConfigurationV2\(/);
   assert.doesNotMatch(route, /return json\(await resolveColorBoundProductConfigurationV2\(/);
+  assert.doesNotMatch(route, /return json\(await resolveAccessoryBoundProductConfigurationV2\(/);
   assert.match(route, /return json\(await resolveBagBuilderConfiguration\(source, settings\)\)/);
   assert.match(route, /PHYSICAL_EVIDENCE_UNAVAILABLE/);
 });

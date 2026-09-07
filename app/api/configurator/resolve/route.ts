@@ -3,12 +3,13 @@ import { getCraftCalibrationSnapshot } from "../../../../lib/craft-calibration";
 import { getCraftCordColorBindings } from "../../../../lib/craft-color-bindings";
 import { getCraftAccessorySnapshot } from "../../../../lib/craft-accessories";
 import { getCraftBuilderAccessoryBindings } from "../../../../lib/craft-builder-accessory-bindings";
+import { getCraftProductionRecipes } from "../../../../lib/craft-production-recipes";
 import {
   ConfiguratorInputError,
   resolveBagBuilderConfiguration,
 } from "../../../../lib/configurator-resolver";
 import { isProductConfigurationV2Source } from "../../../../lib/product-configuration-v2";
-import { resolveAccessoryBoundProductConfigurationV2 } from "../../../../lib/product-configuration-v2-accessories";
+import { resolveProductionRecipeBoundProductConfigurationV2 } from "../../../../lib/product-configuration-v2-production-recipe";
 
 export const dynamic = "force-dynamic";
 
@@ -51,12 +52,14 @@ export async function POST(request: Request) {
       let colorBindings: Awaited<ReturnType<typeof getCraftCordColorBindings>>;
       let accessorySnapshot: Awaited<ReturnType<typeof getCraftAccessorySnapshot>>;
       let accessoryBindings: Awaited<ReturnType<typeof getCraftBuilderAccessoryBindings>>;
+      let recipes: Awaited<ReturnType<typeof getCraftProductionRecipes>>;
       try {
-        [calibration, colorBindings, accessorySnapshot, accessoryBindings] = await Promise.all([
+        [calibration, colorBindings, accessorySnapshot, accessoryBindings, recipes] = await Promise.all([
           getCraftCalibrationSnapshot(),
           getCraftCordColorBindings(),
           getCraftAccessorySnapshot(),
           getCraftBuilderAccessoryBindings(),
+          getCraftProductionRecipes(),
         ]);
       } catch (error) {
         console.error("[configurator-resolve] physical evidence load failed", {
@@ -67,13 +70,14 @@ export async function POST(request: Request) {
           503,
         );
       }
-      return json(await resolveAccessoryBoundProductConfigurationV2(
+      return json(await resolveProductionRecipeBoundProductConfigurationV2(
         source,
         settings,
         calibration,
         colorBindings,
         accessoryBindings,
         accessorySnapshot,
+        recipes,
       ));
     }
 
