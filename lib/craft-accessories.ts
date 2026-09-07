@@ -138,6 +138,7 @@ function optionalPositive(value: unknown, field: string, max = 1_000_000) {
 }
 
 function nonNegative(value: unknown, field: string, max = 1_000_000) {
+  if (value === null || value === undefined || value === "") throw new Error(`Brak pomiaru: ${field}.`);
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0 || number > max) throw new Error(`Nieprawidłowy pomiar: ${field}.`);
   return number;
