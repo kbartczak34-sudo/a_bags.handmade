@@ -26,6 +26,12 @@ export type ConfiguratorValidationResult = {
   warnings: ConfiguratorValidationIssue[];
 };
 
+export type ConfiguratorPhysicalValidationResult = {
+  status: "NOT_VALIDATED" | "VALIDATED";
+  observationalOnly: true;
+  reasons: ConfiguratorValidationIssue[];
+};
+
 export type ConfiguratorPricingResult = {
   currency: "PLN";
   status: "AVAILABLE" | "DISABLED" | "UNAVAILABLE";
@@ -40,6 +46,7 @@ export type ResolvedBagBuilderConfiguration = {
   status: "VALID" | "BLOCKED";
   configuration: ProductConfigurationV1;
   validation: ConfiguratorValidationResult;
+  physicalValidation: ConfiguratorPhysicalValidationResult;
   pricing: ConfiguratorPricingResult;
 };
 
@@ -99,6 +106,27 @@ function resolvePricing(selection: BagBuilderProjectConfig, settings: BagBuilder
   return { currency: "PLN", status: "AVAILABLE", grossCents };
 }
 
+function resolveLegacyPhysicalValidation(): ConfiguratorPhysicalValidationResult {
+  return {
+    status: "NOT_VALIDATED",
+    observationalOnly: true,
+    reasons: [
+      {
+        code: "CORD_PROFILE_NOT_BOUND",
+        message: "Projekt legacy nie wskazuje jeszcze zatwierdzonego SKU sznurka, jego zmierzonej średnicy ani partii materiału.",
+      },
+      {
+        code: "GAUGE_PROFILE_NOT_BOUND",
+        message: "Projekt legacy nie jest jeszcze związany z zatwierdzonym profilem Gauge wykonanym na fizycznej próbce.",
+      },
+      {
+        code: "GOLDEN_MASTER_NOT_BOUND",
+        message: "Projekt legacy nie jest jeszcze związany z zatwierdzonym fizycznym Golden Masterem danego fasonu.",
+      },
+    ],
+  };
+}
+
 export async function resolveBagBuilderConfiguration(
   source: unknown,
   settings: BagBuilderSettings,
@@ -128,6 +156,7 @@ export async function resolveBagBuilderConfiguration(
     status: validation.valid ? "VALID" : "BLOCKED",
     configuration,
     validation,
+    physicalValidation: resolveLegacyPhysicalValidation(),
     pricing: resolvePricing(selection, settings),
   };
 }
