@@ -5,22 +5,56 @@ import test from "node:test";
 const helper = fs.readFileSync("lib/configurator-payment-binding.ts", "utf8");
 const webhook = fs.readFileSync("app/api/stripe/webhook/route.ts", "utf8");
 
-test("configurator payment binding validates the server-side snapshot", () => {
+test("configurator payment binding validates the server-side snapshot identity", () => {
+  assert.match(helper, /CONFIGURATOR_V2/);
+  assert.match(helper, /validSnapshotId/);
+  assert.match(helper, /validHash/);
   assert.match(helper, /getProductionSnapshot\(snapshotId\)/);
   assert.match(helper, /snapshot\.packageHash !== packageHash/);
+});
+
+test("configurator payment binding validates immutable snapshot integrity", () => {
   assert.match(helper, /createConfigurationHash\(snapshot\.package\)/);
+  assert.match(helper, /recalculatedHash !== snapshot\.packageHash/);
 });
 
-test("configurator payment binding validates PaymentIntent metadata", () => {
+test("configurator payment binding validates authoritative PLN amount including shipping", () => {
+  assert.match(helper, /snapshotGrossCents/);
+  assert.match(helper, /session\.shipping_cost\?\.amount_total/);
+  assert.match(helper, /expectedSessionTotal/);
+  assert.match(helper, /session\.amount_total !== expectedSessionTotal/);
+  assert.match(helper, /currency\?\.toLowerCase\(\) !== "pln"/);
+});
+
+test("configurator payment binding fails closed for a missing or mismatched PaymentIntent", () => {
+  assert.match(helper, /if \(!paymentIntent\)/);
   assert.match(helper, /paymentIntents\.retrieve/);
-  assert.match(helper, /checkout_type !== \"CONFIGURATOR_V2\"/);
-  assert.match(helper, /snapshot_id !== snapshotId/);
-  assert.match(helper, /production_package_hash/);
+  assert.match(helper, /intent\.amount !== session\.amount_total/);
+  assert.match(helper, /PaymentIntent nie jest zgodny z Production Snapshot/);
+  assert.match(helper, /metadata\.snapshot_id !== snapshotId/);
+  assert.match(helper, /metadata\.production_package_hash/);
 });
 
-test("webhook verifies configurator binding before recording the Stripe order event", () => {
-  assert.match(webhook, /verifyConfiguratorPaymentBinding\(session\)/);
+test("webhook verifies configurator binding only on the paid-success path", () => {
+  assert.match(
+    webhook,
+    /if \(isSuccessfulPaymentEvent && isPaid\) \{\s*const binding = await verifyConfiguratorPaymentBinding\(session\)/s,
+  );
+  assert.match(webhook, /if \(!binding\)/);
+});
+
+test("webhook performs binding verification before paid order side effects", () => {
   const verification = webhook.indexOf("verifyConfiguratorPaymentBinding(session)");
   const orderRecord = webhook.indexOf("recordStripeOrderEvent(event, session)");
-  assert.ok(verification >= 0 && orderRecord > verification);
+  const paidSnapshot = webhook.indexOf("recordPaidOrderConfigurationSnapshot(session)");
+  assert.ok(verification >= 0);
+  assert.ok(orderRecord > verification);
+  assert.ok(paidSnapshot > verification);
+});
+
+test("failed and expired Stripe events do not require a Production Snapshot binding", () => {
+  const configuratorBlock = webhook.match(
+    /if \(session\.metadata\.checkout_type === "CONFIGURATOR_V2"\) \{([\s\S]*?)\n        \}/,
+  )?.[1] ?? "";
+  assert.match(configuratorBlock, /isSuccessfulPaymentEvent && isPaid/);
 });
