@@ -48,9 +48,11 @@ export async function POST(request: Request) {
           session.payment_status === "no_payment_required";
 
         if (session.metadata.checkout_type === "CONFIGURATOR_V2") {
-          const binding = await verifyConfiguratorPaymentBinding(session);
-          if (isSuccessfulPaymentEvent && isPaid && !binding) {
-            throw new Error("Brak zweryfikowanego powiązania konfiguratora z Production Snapshot.");
+          if (isSuccessfulPaymentEvent && isPaid) {
+            const binding = await verifyConfiguratorPaymentBinding(session);
+            if (!binding) {
+              throw new Error("Brak zweryfikowanego powiązania konfiguratora z Production Snapshot.");
+            }
           }
         }
 
