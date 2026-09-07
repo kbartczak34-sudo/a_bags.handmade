@@ -54,6 +54,7 @@ import BagBuilderPhotoTrueFlowGuard from "./bag-builder-photo-true-flow-guard";
 import BagBuilderPhotoTrueGate from "./bag-builder-photo-true-gate";
 import BagBuilderPhotoTrueOptionTruth from "./bag-builder-photo-true-option-truth";
 import BagBuilderPhysicalCordGeometry from "./bag-builder-physical-cord-geometry";
+import BagBuilderPhysicalEvidenceStatus from "./bag-builder-physical-evidence-status";
 import BagBuilderPremiumCompat from "./bag-builder-premium-compat";
 import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
 import BagBuilderProjectReview from "./bag-builder-project-review";
@@ -114,6 +115,7 @@ export default function ExactLiveCustomizer() {
     </BagBuilderPhotoTrueGate>
     <BagBuilderMaterialInfo />
     <BagBuilderValidationGuard />
+    <BagBuilderPhysicalEvidenceStatus />
     <BagBuilderAutosave />
     <BagBuilderProjectReview />
     <BagBuilderShareLink />
