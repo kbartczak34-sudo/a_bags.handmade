@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const resolver = fs.readFileSync("lib/product-configuration-v2-production-recipe.ts", "utf8");
+const bomResolver = fs.readFileSync("lib/product-configuration-v2-bom.ts", "utf8");
 const route = fs.readFileSync("app/api/configurator/resolve/route.ts", "utf8");
 
 test("V2 selects only a validated recipe for exact family and stitch and prefers highest version", () => {
@@ -53,8 +54,10 @@ test("validated recipe advances the boundary to BOM and immutable production sna
   assert.doesNotMatch(resolver, /sellable1to1:\s*true/);
 });
 
-test("public V2 route loads production recipe evidence fail-closed", () => {
+test("public V2 route loads BOM and production recipe evidence fail-closed", () => {
   assert.match(route, /getCraftProductionRecipes/);
-  assert.match(route, /resolveProductionRecipeBoundProductConfigurationV2/);
+  assert.match(route, /getCraftAccessoryBomUsage/);
+  assert.match(route, /resolveBomBoundProductConfigurationV2/);
   assert.match(route, /PHYSICAL_EVIDENCE_UNAVAILABLE/);
+  assert.match(bomResolver, /PRODUCTION_RECIPE_REQUIRED_FOR_BOM/);
 });
