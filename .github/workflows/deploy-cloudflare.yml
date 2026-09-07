@@ -59,7 +59,7 @@ jobs:
 
       - name: Smoke test deployed production
         id: smoke
-        if: steps.deploy.outcome == 'success'
+        if: steps.deploy.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -67,7 +67,7 @@ jobs:
 
       - name: Browser test customer realtime builder from empty construction
         id: realtime
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -76,7 +76,7 @@ jobs:
 
       - name: Verify desktop customer close integrity
         id: close_integrity
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -85,7 +85,7 @@ jobs:
 
       - name: Verify realtime render integrity on the composited surface
         id: render_integrity
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -94,7 +94,7 @@ jobs:
 
       - name: Verify accessory anchoring across customer 3D views
         id: anchor_integrity
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -102,7 +102,7 @@ jobs:
         run: node scripts/smoke-customizer-anchor-integrity.mjs
 
       - name: Upload realtime builder visual QA
-        if: always() && steps.deploy.outcome == 'success'
+        if: always() && steps.deploy.conclusion == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: realtime-builder-visual-qa-${{ github.run_number }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Browser test Photo-True V5 and capture real-product visual QA
         id: customizer
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome == 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -120,7 +120,7 @@ jobs:
         run: node scripts/smoke-customizer-photo-true-v5.mjs
 
       - name: Upload customizer visual QA
-        if: always() && steps.deploy.outcome == 'success'
+        if: always() && steps.deploy.conclusion == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: customizer-visual-qa-${{ github.run_number }}
@@ -130,7 +130,7 @@ jobs:
 
       - name: Mobile Photo-True real-product interaction test
         id: pro3d
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome == 'success' && steps.customizer.outcome == 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success' && steps.customizer.conclusion == 'success'
         continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
@@ -140,14 +140,14 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
-          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
-          REALTIME_OUTCOME: ${{ steps.realtime.outcome }}
-          CLOSE_INTEGRITY_OUTCOME: ${{ steps.close_integrity.outcome }}
-          RENDER_INTEGRITY_OUTCOME: ${{ steps.render_integrity.outcome }}
-          ANCHOR_INTEGRITY_OUTCOME: ${{ steps.anchor_integrity.outcome }}
-          CUSTOMIZER_OUTCOME: ${{ steps.customizer.outcome }}
-          MOBILE_OUTCOME: ${{ steps.pro3d.outcome }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.conclusion }}
+          SMOKE_OUTCOME: ${{ steps.smoke.conclusion }}
+          REALTIME_OUTCOME: ${{ steps.realtime.conclusion }}
+          CLOSE_INTEGRITY_OUTCOME: ${{ steps.close_integrity.conclusion }}
+          RENDER_INTEGRITY_OUTCOME: ${{ steps.render_integrity.conclusion }}
+          ANCHOR_INTEGRITY_OUTCOME: ${{ steps.anchor_integrity.conclusion }}
+          CUSTOMIZER_OUTCOME: ${{ steps.customizer.conclusion }}
+          MOBILE_OUTCOME: ${{ steps.pro3d.conclusion }}
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
@@ -193,43 +193,43 @@ jobs:
           gh issue comment 21 --body "$BODY"
 
       - name: Fail when production smoke test fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion != 'success'
         run: |
           echo "Production deployment completed, but the live smoke test failed." >&2
           exit 1
 
       - name: Fail when customer realtime builder acceptance fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion != 'success'
         run: |
           echo "Production deployment completed, but the customer realtime builder did not build a new bag live from an empty construction." >&2
           exit 1
 
       - name: Fail when desktop customer close integrity fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion != 'success'
         run: |
           echo "Production deployment completed, but the desktop customer close control is not the verified deterministic close surface." >&2
           exit 1
 
       - name: Fail when realtime composited render integrity fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion != 'success'
         run: |
           echo "Production deployment completed, but the visible composited customer render does not match the verified Fidelity3D canvas." >&2
           exit 1
 
       - name: Fail when accessory anchor integrity fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion != 'success'
         run: |
           echo "Production deployment completed, but accessory layers are not locked to the verified WebGL body across front, three-quarter and side views." >&2
           exit 1
 
       - name: Fail when Photo-True customizer browser test fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome == 'success' && steps.customizer.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success' && steps.customizer.conclusion != 'success'
         run: |
           echo "Production deployment completed, but the internal Photo-True reference acceptance failed." >&2
           exit 1
 
       - name: Fail when mobile Photo-True interaction fails
-        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome == 'success' && steps.customizer.outcome == 'success' && steps.pro3d.outcome != 'success'
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success' && steps.customizer.conclusion == 'success' && steps.pro3d.conclusion != 'success'
         run: |
           echo "Production deployment completed, but the mobile Photo-True reference interaction failed." >&2
           exit 1
