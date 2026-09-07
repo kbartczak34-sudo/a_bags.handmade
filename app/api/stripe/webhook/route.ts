@@ -56,9 +56,18 @@ export async function POST(request: Request) {
           }
         }
 
-        await recordStripeOrderEvent(event, session);
+        const orderEvent = await recordStripeOrderEvent(event, session);
 
         if (isSuccessfulPaymentEvent && isPaid) {
+          if (!orderEvent.created) {
+            console.info("Duplicate Stripe order event ignored", {
+              eventId: event.id,
+              eventType: event.type,
+              sessionId: session.id,
+            });
+            return Response.json({ received: true, duplicate: true });
+          }
+
           const configurationSnapshot = await recordPaidOrderConfigurationSnapshot(session);
           console.info("Order configuration snapshot processed", {
             sessionId: session.id,
