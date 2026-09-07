@@ -19,6 +19,7 @@ import CraftEvidenceCoverage from "./craft-evidence-coverage";
 import CraftColorBindingManager from "./craft-color-binding-manager";
 import CraftAccessoryManager from "./craft-accessory-manager";
 import CraftBuilderAccessoryBindingManager from "./craft-builder-accessory-binding-manager";
+import CraftProductionRecipeManager from "./craft-production-recipe-manager";
 
 type AdminTab =
   | "status"
@@ -103,7 +104,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
         {activeTab === "customizer" && <><BagBuilderSettingsManager /><CustomizerAssetsManager /></>}
-        {activeTab === "craft" && <><CraftEvidenceCoverage /><CraftColorBindingManager /><CraftAccessoryManager /><CraftBuilderAccessoryBindingManager /><CraftCalibrationManager /></>}
+        {activeTab === "craft" && <><CraftEvidenceCoverage /><CraftColorBindingManager /><CraftAccessoryManager /><CraftBuilderAccessoryBindingManager /><CraftProductionRecipeManager /><CraftCalibrationManager /></>}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}
