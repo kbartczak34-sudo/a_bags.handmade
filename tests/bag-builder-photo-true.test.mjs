@@ -3,14 +3,15 @@ import fs from "node:fs";
 import test from "node:test";
 
 const component = fs.readFileSync("app/bag-builder-photo-true.tsx", "utf8");
-const styles = fs.readFileSync("app/bag-builder-photo-true.css", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
+const styles = fs.readFileSync("app/bag-builder-photo-true.css", "utf8");
 const assetStore = fs.readFileSync("lib/customizer-assets.ts", "utf8");
 const exactLibrary = fs.readFileSync("lib/exact-customizer-library.ts", "utf8");
 
-test("Photo-True V5 is mounted after the reference layout and imported last", () => {
+test("Photo-True is mounted after the reference layout and guarded behind QA mode", () => {
   assert.match(exact, /bag-builder-reference-v4-product-stage\.css[\s\S]*?bag-builder-photo-true\.css/);
-  assert.match(exact, /<BagBuilderReferenceV4 \/>[\s\S]*?<BagBuilderPhotoTrue \/>/);
+  assert.match(exact, /<BagBuilderReferenceV4 \/>[\s\S]*?<BagBuilderPhotoTrueGate>[\s\S]*?<BagBuilderPhotoTrue \/>/);
+  assert.match(exact, /<BagBuilderPhotoTrueExactOnly \/>/);
 });
 
 test("model picker is driven by current real store products and restricted to canonical Exact Live references", () => {
@@ -23,10 +24,11 @@ test("model picker is driven by current real store products and restricted to ca
   assert.doesNotMatch(component, /const FAMILIES/);
 });
 
-test("selected product photo is the primary exact preview and synthetic renderers are hidden", () => {
+test("selected product photo is the primary exact preview and synthetic renderers are not used as the base", () => {
   assert.match(component, /abags-photo-true-base/);
-  assert.match(component, /src=\{rendered\.base\}/);
-  assert.match(component, /liveStage\.dataset\.abagsPhotoTrue = "active"/);
+  assert.match(component, /src=\{selected\.imageUrl\}/);
+  assert.match(component, /const base = selected\?\.imageUrl \|\| \"\"/);
+  assert.match(component, /liveStage\.dataset\.abagsPhotoTrue = \"active\"/);
   assert.match(component, /liveStage\.dataset\.photoProductId = selected\.id/);
   assert.match(component, /photoTrueReferenceId/);
   assert.match(component, /photoTrueReferenceSource/);
