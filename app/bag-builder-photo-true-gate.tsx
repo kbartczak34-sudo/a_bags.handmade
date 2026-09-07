@@ -1,13 +1,25 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+
+function subscribe() {
+  return () => {};
+}
+
+function readQaMode() {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("photoTrueQa") === "1" || params.has("abags-photo-true-v5") || params.has("abags-photo-mobile");
+}
 
 /**
- * The photographic layer is now part of the customer experience. The
- * BagBuilderPhotoTrueExactOnly guard is the authority that decides whether a
- * selected reference may be shown as PHOTO-TRUE 1:1; unsupported/customized
- * states immediately fall back to the realtime construction renderer.
+ * Photo-True is a reference/QA aid, not the customer-facing builder.
+ * Normal shoppers and ordinary automated browsers always use the realtime
+ * construction renderer. The photographic reference mode is enabled only by
+ * an explicit internal QA query flag.
  */
 export default function BagBuilderPhotoTrueGate({ children }: { children: ReactNode }) {
+  const enabled = useSyncExternalStore(subscribe, readQaMode, () => false);
+  if (!enabled) return null;
   return <>{children}</>;
 }
