@@ -4,6 +4,7 @@ import test from "node:test";
 
 const resolver = fs.readFileSync("lib/configurator-resolver.ts", "utf8");
 const route = fs.readFileSync("app/api/configurator/resolve/route.ts", "utf8");
+const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
 
 test("configurator resolver wraps the existing validated Bag Builder domain instead of duplicating it", () => {
   assert.match(resolver, /normalizeBagBuilderProjectConfig/);
@@ -43,4 +44,24 @@ test("invalid input is a 400 business boundary while infrastructure failures rem
   assert.match(route, /RESOLVE_FAILED/);
   assert.match(route, /Cache-Control/);
   assert.match(route, /no-store/);
+});
+
+test("live commerce runs resolver in shadow mode without replacing the existing UI decisions", () => {
+  assert.match(commerce, /fetch\("\/api\/configurator\/resolve"/);
+  assert.match(commerce, /JSON\.stringify\(\{ config \}\)/);
+  assert.match(commerce, /resolverParity/);
+  assert.match(commerce, /configurationHash/);
+  assert.match(commerce, /abags:configurator-resolver-shadow/);
+  assert.match(commerce, /resolver parity mismatch/);
+  assert.match(commerce, /const price = useMemo/);
+  assert.match(commerce, /const localValid = useMemo/);
+  assert.match(commerce, /data-builder-live-price=\{price \? String\(price\.total\) : "quote"\}/);
+});
+
+test("shadow resolver is debounced, abortable and does not modify configuration controls", () => {
+  assert.match(commerce, /window\.setTimeout/);
+  assert.match(commerce, /new AbortController\(\)/);
+  assert.match(commerce, /controller\.abort\(\)/);
+  assert.match(commerce, /180/);
+  assert.doesNotMatch(commerce, /resolved[^\n]*\.click\(/);
 });
