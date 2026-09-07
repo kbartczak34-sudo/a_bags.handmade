@@ -5,6 +5,7 @@ import test from "node:test";
 const snapshot = fs.readFileSync("lib/order-configuration-snapshots.ts", "utf8");
 const webhook = fs.readFileSync("app/api/stripe/webhook/route.ts", "utf8");
 const checkout = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
+const adminRoute = fs.readFileSync("app/api/admin/orders/configuration/route.ts", "utf8");
 
 test("paid configured orders are frozen in a dedicated immutable D1 snapshot table", () => {
   assert.match(snapshot, /CREATE TABLE IF NOT EXISTS order_configuration_snapshots/);
@@ -50,4 +51,13 @@ test("Stripe webhook records the immutable snapshot only in the successful paid 
     webhook.indexOf('console.info("Stripe order event persisted"'),
   );
   assert.match(paidBranch, /recordPaidOrderConfigurationSnapshot\(session\)/);
+});
+
+test("configured snapshot is readable only through a protected read-only admin endpoint", () => {
+  assert.match(adminRoute, /isAdminRequest\(request\)/);
+  assert.match(adminRoute, /getOrderConfigurationSnapshot\(sessionId\)/);
+  assert.match(adminRoute, /Brak dostępu/);
+  assert.match(adminRoute, /Cache-Control/);
+  assert.match(adminRoute, /no-store/);
+  assert.doesNotMatch(adminRoute, /export async function POST|export async function PATCH|export async function DELETE/);
 });
