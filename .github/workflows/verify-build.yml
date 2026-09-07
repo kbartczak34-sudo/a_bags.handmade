@@ -2,13 +2,19 @@ name: Verify production build
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feat/v2-bom-production-package
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: verify-production-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
