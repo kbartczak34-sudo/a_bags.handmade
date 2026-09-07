@@ -16,6 +16,7 @@ import CustomizerAssetsManager from "./customizer-assets-manager";
 import BagBuilderSettingsManager from "./bag-builder-settings-manager";
 import CraftCalibrationManager from "./craft-calibration-manager";
 import CraftEvidenceCoverage from "./craft-evidence-coverage";
+import CraftColorBindingManager from "./craft-color-binding-manager";
 
 type AdminTab =
   | "status"
@@ -100,7 +101,7 @@ export default function AdminPanel({ ownerName }: { ownerName: string }) {
         {activeTab === "products" && <ProductPanel />}
         {activeTab === "stitches" && <StitchManager />}
         {activeTab === "customizer" && <><BagBuilderSettingsManager /><CustomizerAssetsManager /></>}
-        {activeTab === "craft" && <><CraftEvidenceCoverage /><CraftCalibrationManager /></>}
+        {activeTab === "craft" && <><CraftEvidenceCoverage /><CraftColorBindingManager /><CraftCalibrationManager /></>}
         {activeTab === "compliance" && <ProductComplianceManager />}
         {activeTab === "reviews" && <ReviewManager />}
         {activeTab === "orders" && <OrdersManager />}

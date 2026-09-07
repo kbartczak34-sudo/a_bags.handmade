@@ -1,10 +1,15 @@
-import type { BuilderFamily, BuilderStitch } from "./bag-builder-settings";
+import type { BuilderColor, BuilderFamily, BuilderStitch } from "./bag-builder-settings";
 import type { CraftCalibrationSnapshot } from "./craft-calibration";
+import {
+  findCraftCordBuilderColor,
+  type CraftCordBuilderColorBinding,
+} from "./craft-color-bindings";
 import { resolveValidatedBodyEvidenceChain } from "./craft-evidence";
 
 export type PublicCraftBodyEvidenceOption = {
   family: BuilderFamily;
   stitch: BuilderStitch;
+  color: BuilderColor;
   status: "BODY_VALIDATED";
   binding: {
     cordMaterialId: string;
@@ -37,10 +42,12 @@ export type PublicCraftBodyEvidenceCatalog = {
 export type PublicCraftEvidenceFilters = {
   family?: BuilderFamily;
   stitch?: BuilderStitch;
+  color?: BuilderColor;
 };
 
 export function buildPublicCraftBodyEvidenceCatalog(
   snapshot: CraftCalibrationSnapshot,
+  colorBindings: readonly CraftCordBuilderColorBinding[],
   filters: PublicCraftEvidenceFilters = {},
 ): PublicCraftBodyEvidenceCatalog {
   const options = snapshot.goldenMasters.flatMap((master) => {
@@ -50,9 +57,13 @@ export function buildPublicCraftBodyEvidenceCatalog(
     const chain = resolveValidatedBodyEvidenceChain(master, snapshot);
     if (!chain) return [];
 
+    const color = findCraftCordBuilderColor(colorBindings, chain.cord.id);
+    if (!color || (filters.color && color !== filters.color)) return [];
+
     return [{
       family: master.bagFamily,
       stitch: master.stitchPatternId,
+      color,
       status: "BODY_VALIDATED" as const,
       binding: {
         cordMaterialId: chain.cord.id,
@@ -78,6 +89,7 @@ export function buildPublicCraftBodyEvidenceCatalog(
   options.sort((left, right) =>
     left.family.localeCompare(right.family)
     || left.stitch.localeCompare(right.stitch)
+    || left.color.localeCompare(right.color)
     || left.material.supplierSku.localeCompare(right.material.supplierSku)
     || left.binding.goldenMasterId.localeCompare(right.binding.goldenMasterId),
   );
