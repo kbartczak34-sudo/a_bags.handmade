@@ -31,3 +31,14 @@ test("configurator checkout does not accept a client-authoritative package or ha
   assert.doesNotMatch(route, /value\.productionPackageHash/);
   assert.doesNotMatch(route, /value\.packageHash/);
 });
+
+test("configurator checkout uses the centralized paid shipping rule", () => {
+  assert.match(route, /import \{ standardShippingAmount \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/catalog"/);
+  assert.match(route, /fixed_amount\]\[amount\].*standardShippingAmount/s);
+  assert.doesNotMatch(route, /const standardShippingCents = 1499/);
+});
+
+test("configurator checkout idempotency is bound to the immutable snapshot", () => {
+  assert.match(route, /Idempotency-Key.*abags-configurator-checkout-\$\{snapshot\.id\}/s);
+  assert.doesNotMatch(route, /Idempotency-Key.*payload\.email/);
+});
