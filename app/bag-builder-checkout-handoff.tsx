@@ -2,19 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  useBagBuilderClientConfig,
+  type BagBuilderClientConfig,
+} from "./bag-builder-config-store";
 
 type Family = "tote" | "round" | "bucket" | "mini";
-type Config = {
-  family: Family | "";
-  color: string;
-  stitch: string;
-  flap: string;
-  handles: string;
-  strap: string;
-  hardware: string;
-  accent: string;
-  baseProductId: string;
-};
+type Config = BagBuilderClientConfig;
 type Settings = {
   pricingEnabled: boolean;
   familyBaseCents: Record<Family, number | null>;
@@ -33,22 +27,7 @@ type Settings = {
 };
 type CatalogBase = { id: string; name: string; unitAmount: number; imageUrl: string | null };
 
-const EMPTY: Config = { family: "", color: "", stitch: "", flap: "none", handles: "none", strap: "none", hardware: "gold", accent: "none", baseProductId: "" };
 const money = new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" });
-
-function readConfig(stage: HTMLElement): Config {
-  return {
-    family: (stage.dataset.family || "") as Config["family"],
-    color: stage.dataset.color || "",
-    stitch: stage.dataset.stitch || "",
-    flap: stage.dataset.flap || "none",
-    handles: stage.dataset.handles || "none",
-    strap: stage.dataset.strap || "none",
-    hardware: stage.dataset.hardware || "gold",
-    accent: stage.dataset.accent || "none",
-    baseProductId: stage.dataset.photoProductId || "",
-  };
-}
 
 function extras(config: Config, settings: Settings) {
   return (settings.stitchCents[config.stitch] ?? 0)
@@ -56,7 +35,7 @@ function extras(config: Config, settings: Settings) {
     + (settings.handlesCents[config.handles] ?? 0)
     + (settings.strapCents[config.strap] ?? 0)
     + (settings.hardwareCents[config.hardware] ?? 0)
-    + (settings.accentCents[config.accent] ?? 0);
+    + (settings.acentCents?.[config.accent] ?? settings.accentCents[config.accent] ?? 0);
 }
 
 function calculateTotal(config: Config, settings: Settings, photographedBase: CatalogBase | null) {
@@ -75,8 +54,8 @@ function compatible(config: Config, settings: Settings) {
 }
 
 export default function BagBuilderCheckoutHandoff() {
+  const config = useBagBuilderClientConfig();
   const [mount, setMount] = useState<HTMLElement | null>(null);
-  const [config, setConfig] = useState<Config>(EMPTY);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [catalog, setCatalog] = useState<CatalogBase[]>([]);
   const [pending, setPending] = useState(false);
@@ -107,9 +86,8 @@ export default function BagBuilderCheckoutHandoff() {
   useEffect(() => {
     const attach = () => {
       const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
-      const stage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
       const actions = controls?.querySelector<HTMLElement>(".abags-builder-actions");
-      if (!controls || !stage || !actions) return;
+      if (!controls || !actions) return;
 
       let target = controls.querySelector<HTMLElement>("[data-builder-checkout-handoff]");
       if (!target) {
@@ -118,7 +96,6 @@ export default function BagBuilderCheckoutHandoff() {
         actions.insertAdjacentElement("beforebegin", target);
       }
       setMount((current) => current === target ? current : target);
-      setConfig(readConfig(stage));
     };
 
     attach();
@@ -126,8 +103,6 @@ export default function BagBuilderCheckoutHandoff() {
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent", "data-photo-product-id"],
     });
     return () => {
       observer.disconnect();
