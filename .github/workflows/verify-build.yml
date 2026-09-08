@@ -36,5 +36,17 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Lint, typecheck, production build and regression tests
-        run: npm run check:full
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        if: ${{ always() }}
+        run: npm run typecheck
+
+      - name: Production build
+        if: ${{ always() }}
+        run: npm run build
+
+      - name: Regression tests
+        if: ${{ always() }}
+        run: npm run test:regression
