@@ -8,7 +8,7 @@ const specs = await readFile(new URL("../lib/abags-fidelity-v4-family-spec.ts", 
 test("Fidelity V4 renderer consumes one calibrated family geometry contract", () => {
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
   assert.match(renderer, /ABAGS_FIDELITY_V4_RENDERER_VERSION/);
-  assert.match(renderer, /const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
+  assert.match(renderer, /familyContour\(family\).*?ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/s);
   assert.match(renderer, /function familyContour/);
   assert.match(renderer, /function superellipseContour/);
   assert.match(renderer, /function volumetricBodyMesh/);
