@@ -1,1 +1,0 @@
-Reference-derived technical placeholder asset. Replace model.glb and PBR maps with the validated atelier model before declaring 1:1 photographic fidelity.
