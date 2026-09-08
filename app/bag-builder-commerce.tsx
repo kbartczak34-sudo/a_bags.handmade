@@ -118,6 +118,7 @@ export default function BagBuilderCommerce() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [serverStatus, setServerStatus] = useState<"checking" | "validated" | "blocked" | "unavailable">("checking");
   const [serverPrice, setServerPrice] = useState<number | null>(null);
+  const [productionPackageHash, setProductionPackageHash] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,12 +213,14 @@ export default function BagBuilderCommerce() {
     if (!stage || !settings || !config.family || !config.color || !config.stitch) {
       setServerStatus(config.family || config.color || config.stitch ? "checking" : "unavailable");
       setServerPrice(null);
+      setProductionPackageHash(null);
       return;
     }
 
     const controller = new AbortController();
     setServerStatus("checking");
     setServerPrice(null);
+    setProductionPackageHash(null);
 
     const timer = window.setTimeout(async () => {
       try {
@@ -234,6 +237,7 @@ export default function BagBuilderCommerce() {
           if (active) {
             setServerStatus("blocked");
             setServerPrice(null);
+            setProductionPackageHash(null);
             stage.dataset.resolverParity = "blocked-no-physical-evidence";
           }
           return;
@@ -252,12 +256,14 @@ export default function BagBuilderCommerce() {
 
         const nextServerPrice = resolved.pricing.status === "AVAILABLE" ? resolved.pricing.grossCents : null;
         const localPrice = price?.total ?? null;
-        const priceMatch = config.baseProductId ? true : nextServerPrice === localPrice;
-        const validationMatch = resolved.validation?.valid === true || resolved.status === "BODY_VALIDATED";
-        const parity = validationMatch && priceMatch ? "match" : "mismatch";
+        const priceMatch = nextServerPrice === localPrice;
+        const packageReady = typeof resolved.productionPackageHash === "string" && resolved.productionPackageHash.length > 0;
+        const validationMatch = resolved.validation?.valid === true;
+        const parity = validationMatch && packageReady && priceMatch ? "match" : "mismatch";
 
-        setServerStatus(resolved.validation?.valid === true ? "validated" : "blocked");
+        setServerStatus(validationMatch && packageReady ? "validated" : "blocked");
         setServerPrice(nextServerPrice);
+        setProductionPackageHash(packageReady ? resolved.productionPackageHash! : null);
 
         stage.dataset.resolverVersion = resolved.resolverVersion;
         stage.dataset.configurationHash = resolved.configurationHash;
@@ -270,6 +276,7 @@ export default function BagBuilderCommerce() {
             resolverVersion: resolved.resolverVersion,
             parity,
             validationMatch,
+            packageReady,
             priceMatch,
             localPrice,
             serverPrice: nextServerPrice,
@@ -280,6 +287,7 @@ export default function BagBuilderCommerce() {
           console.warn("[configurator-shadow] V2 resolver parity mismatch", {
             configurationHash: resolved.configurationHash,
             validationMatch,
+            packageReady,
             priceMatch,
             serverStatus: resolved.status,
           });
@@ -289,6 +297,7 @@ export default function BagBuilderCommerce() {
         if (!active) return;
         setServerStatus("unavailable");
         setServerPrice(null);
+        setProductionPackageHash(null);
         stage.dataset.resolverParity = "unavailable";
       }
     }, 180);
@@ -303,7 +312,10 @@ export default function BagBuilderCommerce() {
   if (!mount) return null;
 
   const authoritativePrice = serverPrice ?? price?.total ?? null;
-  const serverReady = serverStatus === "validated" && localValid && Boolean(authoritativePrice && authoritativePrice > 0);
+  const serverReady = serverStatus === "validated"
+    && localValid
+    && Boolean(productionPackageHash)
+    && Boolean(authoritativePrice && authoritativePrice > 0);
 
   return createPortal(
     <section className="abags-builder-commerce" data-builder-live-price={authoritativePrice !== null ? String(authoritativePrice) : "quote"} data-builder-server-status={serverStatus} data-builder-server-ready={serverReady ? "true" : "false"} aria-live="polite">
