@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/v2-bom-production-package
+      - debug/quality-gate-20260908
   pull_request:
     branches: [main]
   workflow_dispatch:
