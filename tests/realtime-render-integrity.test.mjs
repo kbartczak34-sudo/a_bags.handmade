@@ -33,6 +33,6 @@ test("production deployment blocks Photo-True QA until realtime compositor integ
   assert.match(workflow, /node scripts\/smoke-customizer-render-integrity\.mjs/);
   assert.match(workflow, /RENDER_INTEGRITY_OUTCOME/);
   assert.match(workflow, /REALTIME RENDER INTEGRITY FAIL/);
-  assert.match(workflow, /steps\.render_integrity\.outcome == 'success'[\s\S]*Browser test Photo-True V5|Browser test Photo-True V5[\s\S]*steps\.render_integrity\.outcome == 'success'/);
+  assert.match(workflow, /steps\.render_integrity\.conclusion == 'success'[\s\S]*Browser test Photo-True V5|Browser test Photo-True V5[\s\S]*steps\.render_integrity\.conclusion == 'success'/);
   assert.match(workflow, /Fail when realtime composited render integrity fails/);
 });
