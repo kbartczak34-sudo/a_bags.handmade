@@ -21,15 +21,13 @@ test("final renderer is bound to the calibrated V4 family geometry contract", ()
 });
 
 test("final renderer has distinct material paths for cord, leather, metal, wood and suede", () => {
-  assert.match(renderer, /Polyester cord/);
-  assert.match(renderer, /Leather/);
-  assert.match(renderer, /Metal hardware/);
-  assert.match(renderer, /Wooden handles/);
-  assert.match(renderer, /Suede/);
   assert.match(renderer, /uMaterial<\.5/);
   assert.match(renderer, /uMaterial<1\.5/);
   assert.match(renderer, /uMaterial<2\.5/);
   assert.match(renderer, /uMaterial<3\.5/);
+  assert.match(renderer, /hm=config\.handles==="crochet"\?0:3/);
+  assert.match(renderer, /fm=config\.flap==="crochet"\?0:config\.flap==="suede-burgundy"\?4:1/);
+  assert.match(renderer, /drawMesh\(renderer,meshes\.ring[\s\S]*,hardware,0,2\)/);
 });
 
 test("final renderer accepts every customer-visible configuration dimension", () => {
