@@ -13,7 +13,6 @@ The three supplied atelier photographs are the current visual reference set for 
 ## Reference variants
 
 ### Red / dark wood
-
 - saturated red crochet body;
 - dark brown polished wood handles;
 - cream lining with red/brown plaid grid;
@@ -22,7 +21,6 @@ The three supplied atelier photographs are the current visual reference set for 
 - wide woven shoulder strap with red, cream and tan bands.
 
 ### Mauve / light wood
-
 - mauve/purple crochet body;
 - honey-colored wood handles;
 - cream lining with red/brown plaid grid;
@@ -31,7 +29,6 @@ The three supplied atelier photographs are the current visual reference set for 
 - contrasting decorative band across the front.
 
 ### Cream / pink
-
 - cream crochet body;
 - pink smooth flap with stitched perimeter;
 - central gold-tone clasp;
