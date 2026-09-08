@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AccessibilityClient from "./accessibility-client";
+import BagBuilder3DEnhancer from "./bag-builder-3d-enhancer";
 import ExactLiveCustomizer from "./exact-live-customizer";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
@@ -41,87 +42,25 @@ import "./bag-builder-reference-ui-fixes.css";
 import "./bag-builder-reference-experience.css";
 import "./bag-builder-atelier3d.css";
 
-const display = Cormorant_Garamond({
-  variable: "--font-display",
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600"],
-});
-
-const sans = Manrope({
-  variable: "--font-sans",
-  subsets: ["latin", "latin-ext"],
-});
-
+const display = Cormorant_Garamond({ variable: "--font-display", subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"] });
+const sans = Manrope({ variable: "--font-sans", subsets: ["latin", "latin-ext"] });
 const siteUrl = "https://abagshandmade.pl";
-const description =
-  "Ręcznie szydełkowane torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
+const description = "Ręcznie szydełkowane torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf6f2" },
-    { media: "(prefers-color-scheme: dark)", color: "#2b2023" },
-  ],
-};
-
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: [{ media: "(prefers-color-scheme: light)", color: "#fbf6f2" }, { media: "(prefers-color-scheme: dark)", color: "#2b2023" }] };
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  applicationName: "a_bags.handmade",
-  title: {
-    default: "a_bags.handmade",
-    template: "%s | a_bags.handmade",
-  },
-  description,
-  alternates: {
-    canonical: "/",
-  },
-  manifest: "/manifest.webmanifest",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "pl_PL",
-    url: siteUrl,
-    siteName: "a_bags.handmade",
-    title: "a_bags.handmade",
-    description,
-  },
-  twitter: {
-    card: "summary",
-    title: "a_bags.handmade",
-    description,
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "a_bags",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    shortcut: "/favicon.svg",
-    apple: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-  },
+  metadataBase: new URL(siteUrl), applicationName: "a_bags.handmade",
+  title: { default: "a_bags.handmade", template: "%s | a_bags.handmade" }, description,
+  alternates: { canonical: "/" }, manifest: "/manifest.webmanifest",
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
+  openGraph: { type: "website", locale: "pl_PL", url: siteUrl, siteName: "a_bags.handmade", title: "a_bags.handmade", description },
+  twitter: { card: "summary", title: "a_bags.handmade", description },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "a_bags" },
+  formatDetection: { telephone: false },
+  icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }], shortcut: "/favicon.svg", apple: [{ url: "/favicon.svg" }] },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pl">
       <body className={`${display.variable} ${sans.variable}`}>
@@ -135,6 +74,7 @@ export default function RootLayout({
         <StorefrontExperience />
         <PersonalizationEntry />
         <ExactLiveCustomizer />
+        <BagBuilder3DEnhancer />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
