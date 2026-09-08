@@ -67,14 +67,14 @@ test("invalid input is a 400 business boundary while infrastructure failures rem
 
 test("live commerce runs resolver in shadow mode without replacing the existing UI decisions", () => {
   assert.match(commerce, /fetch\("\/api\/configurator\/resolve"/);
-  assert.match(commerce, /JSON\.stringify\(\{ config \}\)/);
+  assert.match(commerce, /JSON\.stringify\(\{ config: buildV2Source\(config, evidence\) \}\)/);
   assert.match(commerce, /resolverParity/);
   assert.match(commerce, /configurationHash/);
   assert.match(commerce, /abags:configurator-resolver-shadow/);
   assert.match(commerce, /resolver parity mismatch/);
   assert.match(commerce, /const price = useMemo/);
   assert.match(commerce, /const localValid = useMemo/);
-  assert.match(commerce, /data-builder-live-price=\{price \? String\(price\.total\) : "quote"\}/);
+  assert.match(commerce, /data-builder-live-price=\{authoritativePrice !== null \? String\(authoritativePrice\) : "quote"\}/);
 });
 
 test("shadow resolver is debounced, abortable and does not modify configuration controls", () => {
