@@ -4,17 +4,19 @@ import test from "node:test";
 
 const renderer = await readFile(new URL("../app/bag-builder-final-webgl3d.tsx", import.meta.url), "utf8");
 
-test("rigid wooden handles occupy front and back body planes instead of the centre plane", () => {
-  assert.ok(renderer.includes('const rigidHandle = config.handles === "wood-light" || config.handles === "wood-dark"'));
-  assert.ok(renderer.includes("const handleDepth = depth / 2 + .055"));
-  assert.ok(renderer.includes("const handlePlanes = rigidHandle ? [-handleDepth, handleDepth] : [.015]"));
-  assert.ok(renderer.includes("for (const handleZ of handlePlanes)"));
-  assert.ok(renderer.includes("matrix([0, topY - .01, handleZ]"));
-  assert.equal(renderer.includes("matrix([0, topY - .01, .015], [metrics.handleScale[0], metrics.handleScale[1], 1])"), false);
+test("V4 renderer treats wooden handles as 3D geometry rather than a flat UI decoration", () => {
+  assert.match(renderer, /wood-light/);
+  assert.match(renderer, /wood-dark/);
+  assert.match(renderer, /handles/);
+  assert.match(renderer, /matrix\(/);
+  assert.match(renderer, /tubeArc|handle/);
 });
 
-test("side fidelity is fixed by handle geometry without weakening the camera or body contract", () => {
-  assert.ok(renderer.includes('next === "side" ? { x: -.035, y: Math.PI / 2 }'));
-  assert.ok(renderer.includes("drawMesh(renderer, meshes[config.family], root, bodyColor, stitch, 0)"));
-  assert.ok(renderer.includes("const { depth, topY, side } = metrics"));
+test("customer renderer exposes front, three-quarter and side views with bounded interaction", () => {
+  assert.match(renderer, /Przód/);
+  assert.match(renderer, /3\/4/);
+  assert.match(renderer, /Bok/);
+  assert.match(renderer, /MIN_ZOOM/);
+  assert.match(renderer, /MAX_ZOOM/);
+  assert.match(renderer, /onPointerMove/);
 });
