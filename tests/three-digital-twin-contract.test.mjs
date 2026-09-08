@@ -15,10 +15,12 @@ for (const family of ["tote", "round", "bucket", "mini"]) {
 test("Digital Twin requires the complete production asset set before activating", () => {
   assert.match(enhancer, /REQUIRED_ASSET_KEYS = \["model", "basecolor", "normal", "roughness", "metallic", "ao"\]/);
   assert.match(enhancer, /if \(!\(await assetsExist\(urls\)\)\)/);
+  assert.match(enhancer, /REQUIRED_MESHES = \["body", "flap", "handles", "strap", "hardware", "accessories"\]/);
 });
 
 test("Three renderer uses bundled Three.js modules and a local RoomEnvironment", () => {
   assert.match(enhancer, /import\("three"\)/);
+  assert.match(enhancer, /three\/addons\/controls\/OrbitControls\.js/);
   assert.match(enhancer, /three\/addons\/environments\/RoomEnvironment\.js/);
   assert.doesNotMatch(enhancer, /cdn\.jsdelivr\.net/);
 });
