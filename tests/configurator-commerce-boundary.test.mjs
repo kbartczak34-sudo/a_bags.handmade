@@ -37,5 +37,5 @@ test("checkout never trusts a client-supplied amount", () => {
   assert.doesNotMatch(checkout, /payload\.amount/);
   assert.doesNotMatch(checkout, /payload\.price/);
   assert.match(checkout, /pricing\.grossCents/);
-  assert.match(checkout, /unit_amount\", String\(pricing\.grossCents\)/);
+  assert.match(checkout, /form\.set\("line_items\[0\]\[price_data\]\[unit_amount\]", String\(pricing\.grossCents\)\)/);
 });
