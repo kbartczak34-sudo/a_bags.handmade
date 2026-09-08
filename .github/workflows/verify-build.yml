@@ -52,7 +52,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts
-          node --test tests/*.test.mjs --test-reporter spec 2>&1 | tee artifacts/regression-tests.log
+          node --test --test-reporter spec tests/*.test.mjs 2>&1 | tee artifacts/regression-tests.log
 
       - name: Upload regression diagnostics
         if: ${{ always() }}
