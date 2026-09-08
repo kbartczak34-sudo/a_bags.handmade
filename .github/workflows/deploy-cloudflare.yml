@@ -58,9 +58,52 @@ jobs:
         run: npm run build
 
       - name: Regression tests
+        id: regression
+        continue-on-error: true
         env:
           ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
-        run: npm run test:regression
+        shell: bash
+        run: |
+          set +e
+          npm run test:regression 2>&1 | tee regression-tests.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Report regression failures
+        if: steps.regression.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUMMARY="$(grep -E '^(not ok|\s*[0-9]+\)|✖|\S.*fail|\s*failures?:)' regression-tests.log | tail -n 80 || true)"
+          if [[ -z "$SUMMARY" ]]; then
+            SUMMARY="$(tail -n 120 regression-tests.log)"
+          fi
+          BODY="$(cat <<EOF
+          ### ❌ REGRESSION TEST DIAGNOSTIC
+
+          - Commit: \`${COMMIT_SHA}\`
+          - Run: ${RUN_URL}
+          - Regression exit code: \`${{ steps.regression.outputs.exit_code }}\`
+
+          \`npm run test:regression\` failed. Captured diagnostic output:
+
+          \`\`\`
+          ${SUMMARY}
+          \`\`\`
+          EOF
+          )"
+          gh issue comment 21 --body "$BODY"
+
+      - name: Fail regression gate
+        if: steps.regression.outputs.exit_code != '0'
+        run: |
+          echo "Regression tests failed. See the automated diagnostic comment on issue #21." >&2
+          exit 1
 
       - name: Resolve production D1/R2 bindings
         run: node scripts/patch-deploy-config.mjs
