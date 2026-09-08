@@ -9,16 +9,17 @@ const [renderer, surfaceCss] = await Promise.all([
 
 test("Fidelity v4 keeps calibrated geometry while separating physical material response", () => {
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
-  assert.match(renderer, /data-abags-material-model="polyester-leather-metal-wood-suede-v1"/);
-  assert.match(renderer, /Polyester cord:/);
-  assert.match(renderer, /Leather:/);
-  assert.match(renderer, /Metal hardware:/);
-  assert.match(renderer, /Wooden handles:/);
-  assert.match(renderer, /Suede:/);
-  assert.match(renderer, /const handleMaterial = config\.handles === "crochet" \? 0 : 3/);
-  assert.match(renderer, /config\.flap === "suede-burgundy" \? 4 : 1/);
-  assert.match(renderer, /fibreSheen/);
-  assert.match(renderer, /specularStrength/);
+  assert.match(renderer, /data-abags-material-model="polyester-leather-metal-wood-suede-v3-agata-curved-shading"/);
+  assert.match(renderer, /uMaterial<\.5/);
+  assert.match(renderer, /uMaterial<1\.5/);
+  assert.match(renderer, /uMaterial<2\.5/);
+  assert.match(renderer, /uMaterial<3\.5/);
+  assert.match(renderer, /hm=config\.handles==="crochet"\?0:3/);
+  assert.match(renderer, /fm=config\.flap==="crochet"\?0:config\.flap==="suede-burgundy"\?4:1/);
+  assert.match(renderer, /rough=/);
+  assert.match(renderer, /metallic=/);
+  assert.match(renderer, /spec=/);
+  assert.match(renderer, /sheen=/);
 });
 
 test("studio contact shadow stays behind product and follows customer view without deforming the mesh", () => {
