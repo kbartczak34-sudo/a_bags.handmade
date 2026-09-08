@@ -36,5 +36,5 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Lint, typecheck, build and regression tests
-        run: npm run check
+      - name: Lint, typecheck, production build and regression tests
+        run: npm run check:full
