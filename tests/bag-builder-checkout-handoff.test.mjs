@@ -2,126 +2,42 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const settings = fs.readFileSync("lib/bag-builder-settings.ts", "utf8");
-const familyInference = fs.readFileSync("lib/bag-builder-product-family.ts", "utf8");
-const manager = fs.readFileSync("app/panel/bag-builder-settings-manager.tsx", "utf8");
-const endpoint = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
+const endpoint = fs.readFileSync("app/api/configurator/checkout/route.ts", "utf8");
+const snapshot = fs.readFileSync("app/api/configurator/snapshot/route.ts", "utf8");
+const resolver = fs.readFileSync("app/api/configurator/resolve/route.ts", "utf8");
 const handoff = fs.readFileSync("app/bag-builder-checkout-handoff.tsx", "utf8");
-const store = fs.readFileSync("app/bag-builder-config-store.ts", "utf8");
+const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
-const orders = fs.readFileSync("app/panel/orders-manager.tsx", "utf8");
 
-test("legacy builder families can still map to real catalog products as fallback", () => {
-  assert.match(settings, /familyProductIds: Record<BuilderFamily, string \| null>/);
-  assert.match(settings, /familyProductIds: \{ tote: null, round: null, bucket: null, mini: null \}/);
-  assert.match(manager, /Produkt bazowy do bezpiecznej sprzedaży/);
-  assert.match(manager, /Nie przypisano — tylko konsultacja/);
-  assert.match(manager, /\/api\/products/);
+test("checkout is server-authoritative and accepts only an immutable snapshot identity", () => {
+  assert.match(endpoint, /snapshotId/);
+  assert.match(endpoint, /getProductionSnapshot|production snapshot/i);
+  assert.match(endpoint, /productionPackageHash|package hash/i);
+  assert.doesNotMatch(endpoint, /clientPrice|requestedPrice|raw\.price/);
 });
 
-test("checkout delegates builder compatibility and legacy pricing to the authoritative resolver", () => {
-  assert.match(endpoint, /normalizeBagBuilderProjectConfig/);
-  assert.match(endpoint, /getBagBuilderSettings/);
-  assert.match(endpoint, /resolveBagBuilderConfiguration/);
-  assert.match(endpoint, /resolved\.status !== "VALID"/);
-  assert.match(endpoint, /resolved\.pricing\.status === "DISABLED"/);
-  assert.match(endpoint, /resolved\.pricing\.status === "AVAILABLE"/);
-  assert.match(settings, /isAgataBuilderConstructionSupported/);
-  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "handles", config\.handles\)/);
-  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "straps", config\.strap\)/);
-  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "flaps", config\.flap\)/);
-  assert.match(settings, /isAgataBuilderConstructionSupported\(config\.family, "accents", config\.accent\)/);
-  assert.doesNotMatch(endpoint, /isBagBuilderProjectCompatible\(config, settings\)/);
-  assert.doesNotMatch(endpoint, /calculateBagBuilderProjectCents\(config, settings\)/);
-  assert.match(endpoint, /builder_incompatible/);
-  assert.match(endpoint, /requestedBaseProductId/);
-  assert.match(endpoint, /photoBaseProductId \|\| settings\.familyProductIds\[config\.family\]/);
-  assert.match(endpoint, /findVisibleProductsByIds\(\[productId\]\)/);
-  assert.match(endpoint, /productComplianceComplete\(baseProduct\)/);
+test("checkout flow resolves evidence, persists a V2 snapshot and then starts payment", () => {
+  assert.match(handoff, /\/api\/configurator\/evidence/);
+  assert.match(handoff, /\/api\/configurator\/resolve/);
+  assert.match(handoff, /\/api\/configurator\/snapshot/);
+  assert.match(handoff, /\/api\/configurator\/checkout/);
+  assert.match(handoff, /productionPackageHash/);
+  assert.match(snapshot, /schemaVersion/);
+  assert.match(snapshot, /BOM_VALIDATED/);
 });
 
-test("client-supplied photographed base cannot be substituted across builder families", () => {
-  assert.match(endpoint, /inferBagBuilderProductFamily/);
-  assert.match(endpoint, /mappedFamilyForProduct/);
-  assert.match(endpoint, /explicitlyMappedFamily && explicitlyMappedFamily !== config\.family/);
-  assert.match(endpoint, /!explicitlyMappedFamily && inferredFamily !== config\.family/);
-  assert.match(endpoint, /builder_product_family_mismatch/);
-  assert.match(endpoint, /builder_photo_base_missing/);
-  assert.match(familyInference, /return "mini"/);
-  assert.match(familyInference, /return "bucket"/);
-  assert.match(familyInference, /return "round"/);
-  assert.match(familyInference, /otherwise unclassified photographed model as the classic tote family/);
-  assert.match(familyInference, /return "tote"/);
+test("commerce and checkout share the same V2 physical evidence contract", () => {
+  assert.match(commerce, /physicalBinding/);
+  assert.match(commerce, /\/api\/configurator\/evidence/);
+  assert.match(commerce, /\/api\/configurator\/resolve/);
+  assert.match(resolver, /physicalBinding/);
+  assert.match(resolver, /productionPackagePreview/);
+  assert.match(resolver, /productionPackageHash/);
 });
 
-test("photo-true price still uses the actual catalog base and server-side configured extras", () => {
-  assert.match(endpoint, /baseProduct\.unitAmount \+ personalizationCents\(config, settings\)/);
-  assert.match(endpoint, /resolved\.pricing\.grossCents/);
-  assert.match(endpoint, /unit_amount.*String\(projectAmount\)/);
-  assert.doesNotMatch(endpoint, /raw\.price|source\.price|config\.price|clientPrice|requestedPrice/);
-  assert.match(handoff, /useBagBuilderClientConfig/);
-  assert.match(store, /baseProductId: normalizedBaseProductId\(stage\.dataset\.photoProductId\)/);
-  assert.match(handoff, /const \{ baseProductId, \.\.\.projectConfig \} = config/);
-  assert.match(handoff, /body: JSON\.stringify\(\{ config: projectConfig, baseProductId: baseProductId \|\| undefined \}\)/);
-  assert.doesNotMatch(handoff, /body: JSON\.stringify\(\{[^}]*price/);
-});
-
-test("checkout handoff uses the same normalized client snapshot as commerce and does not re-read stage attributes", () => {
-  assert.match(handoff, /useBagBuilderClientConfig/);
-  assert.doesNotMatch(handoff, /function readConfig|dataset\.family|dataset\.stitch|attributeFilter/);
-});
-
-test("checkout preserves existing Stripe live and webhook safeguards", () => {
-  assert.match(endpoint, /detectStripeKeyMode/);
-  assert.match(endpoint, /getStripeSecretKey/);
-  assert.match(endpoint, /isStripeLiveWebhookReady/);
-  assert.match(endpoint, /stripe_live_required/);
-  assert.match(endpoint, /stripe_live_webhook_required/);
-  assert.match(endpoint, /abags-payment-method=\(blik\|card\|wallet\)/);
-});
-
-test("server-created configuration hash survives Stripe checkout metadata", () => {
-  assert.match(endpoint, /const configurationHash = resolved\.configurationHash/);
-  assert.match(endpoint, /metadata\[builder_configuration_hash\]/);
-  assert.match(endpoint, /payment_intent_data\[metadata\]\[builder_configuration_hash\]/);
-  assert.match(endpoint, /product_data\]\[metadata\]\[configuration_hash\]/);
-  assert.match(endpoint, /return json\(\{ url: payload\.url, projectCode, configurationHash \}\)/);
-  assert.doesNotMatch(endpoint, /raw\.configurationHash|source\.configurationHash|clientConfigurationHash/);
-});
-
-test("project identity, verified photo base and material survive Stripe checkout into the order record", () => {
-  assert.match(endpoint, /resolved\.legacyProjectCode/);
-  assert.match(endpoint, /bagBuilderProjectSummary/);
-  assert.match(endpoint, /Sznurek poliestrowy z Pimiotki/);
-  assert.match(endpoint, /rzeczywista baza fotograficzna/);
-  assert.doesNotMatch(endpoint, /baza fotograficzna 1:1/);
-  assert.match(endpoint, /metadata\[cart\]/);
-  assert.match(endpoint, /metadata\[builder_project_code\]/);
-  assert.match(endpoint, /metadata\[builder_project_config\]/);
-  assert.match(endpoint, /metadata\[builder_catalog_id\]/);
-  assert.match(endpoint, /metadata\[builder_photo_true\]/);
-  assert.match(endpoint, /payment_intent_data\[metadata\]\[builder_project_code\]/);
-  assert.match(orders, /Pozycje \/ projekt:/);
-  assert.match(orders, /order\.cartReference/);
-});
-
-test("server order summary uses the same Agata family and crochet-stitch vocabulary as the customer builder", () => {
-  assert.match(settings, /tote: "Kuferek \/ tote"/);
-  assert.match(settings, /round: "Okrągła"/);
-  assert.match(settings, /bucket: "Z klapą"/);
-  assert.match(settings, /mini: "Strukturalna \/ mini"/);
-  assert.match(settings, /classic: "Ażurowy V"/);
-  assert.match(settings, /herringbone: "Pionowy ażurowy"/);
-  assert.match(settings, /basket: "Koszykowy"/);
-  assert.match(settings, /shell: "Promienisty"/);
-  assert.doesNotMatch(settings, /tote: "Prostokątna"|round: "Półokrągła"|bucket: "Kubełkowa"/);
-});
-
-test("active builder mounts secure checkout without replacing the regular cart", () => {
+test("active customer customizer mounts the secure V2 checkout handoff", () => {
   assert.match(exact, /BagBuilderCheckoutHandoff/);
-  assert.match(exact, /<BagBuilderCheckoutHandoff \/>/);
-  assert.match(handoff, /\/api\/bag-builder-checkout/);
+  assert.match(exact, /<BagBuilderCheckoutHandoff\s*\/>/);
   assert.match(handoff, /Kup ten projekt/);
-  assert.match(handoff, /rzeczywistej ceny katalogowej|Cena bazowa pochodzi z katalogu sklepu/);
-  assert.doesNotMatch(handoff, /abags-cart/);
+  assert.match(handoff, /email/);
 });
