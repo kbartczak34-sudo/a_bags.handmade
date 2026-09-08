@@ -41,7 +41,7 @@ test("settings and live commerce are bounded by real Agata construction evidence
   assert.match(commerce, /button\.disabled = !isCompatible/);
   assert.match(commerce, /is-incompatible/);
   assert.match(commerce, /data-builder-value="none"/);
-  assert.match(commerce, /zgodna z konstrukcjami A-Bags/);
+  assert.match(commerce, /Ta opcja nie występuje w zweryfikowanych konstrukcjach tego fasonu A-Bags/);
 });
 
 test("live price composes base price with selected option modifiers", () => {
