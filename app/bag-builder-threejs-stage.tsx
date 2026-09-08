@@ -5,17 +5,19 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
-import { createABagsThreeAssetPaths, isABagsThreeMeshName } from "../lib/abags-threejs-asset-contract";
+import {
+  createABagsThreeAssetPaths,
+  isABagsThreeMeshName,
+  type ABagsThreeMeshName,
+} from "../lib/abags-threejs-asset-contract";
 import { getABagsMaterialKind, getABagsPbrProfile } from "../lib/abags-photoreal-materials";
-import { useBagBuilderClientState } from "./bag-builder-config-store";
+import { useBagBuilderClientState, type BagBuilderClientConfig } from "./bag-builder-config-store";
 
 type Props = { className?: string; modelId?: string };
-
-type BuilderConfig = ReturnType<typeof useBagBuilderClientState>["config"];
 type PbrTextures = Awaited<ReturnType<typeof loadPbrTextures>>;
 
 const HDRI_URL = "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/textures/equirectangular/royal_esplanade_1k.hdr";
-const HARDWARE_COLORS: Record<BuilderConfig["hardware"], THREE.ColorRepresentation> = {
+const HARDWARE_COLORS: Record<BagBuilderClientConfig["hardware"], THREE.ColorRepresentation> = {
   gold: "#C7962F",
   silver: "#C5CAD4",
   black: "#28282B",
@@ -66,13 +68,13 @@ function disposeObject(root: THREE.Object3D) {
   });
 }
 
-function partFromMeshName(name: string): ReturnType<typeof isABagsThreeMeshName> extends never ? never : "body" | "flap" | "handles" | "strap" | "hardware" | "accessories" | null {
+function partFromMeshName(name: string): ABagsThreeMeshName | null {
   const match = name.toLowerCase().match(/^(body|flap|handles|strap|hardware|accessories)(?:$|[-_])/);
   const part = match?.[1];
   return part && isABagsThreeMeshName(part) ? part : null;
 }
 
-function partMaterialKind(part: Exclude<ReturnType<typeof partFromMeshName>, null>, config: BuilderConfig) {
+function partMaterialKind(part: ABagsThreeMeshName, config: BagBuilderClientConfig) {
   if (part === "body" || part === "accessories") return "cord" as const;
   if (part === "hardware") return "metal" as const;
   if (part === "handles") return config.handles === "crochet" ? "cord" as const : "wood" as const;
@@ -80,7 +82,7 @@ function partMaterialKind(part: Exclude<ReturnType<typeof partFromMeshName>, nul
   return "leather" as const;
 }
 
-function partVisible(part: Exclude<ReturnType<typeof partFromMeshName>, null>, config: BuilderConfig) {
+function partVisible(part: ABagsThreeMeshName, config: BagBuilderClientConfig) {
   if (part === "flap") return config.flap !== "none";
   if (part === "handles") return config.handles !== "none";
   if (part === "strap") return config.strap !== "none";
@@ -88,7 +90,7 @@ function partVisible(part: Exclude<ReturnType<typeof partFromMeshName>, null>, c
   return true;
 }
 
-function partColor(part: Exclude<ReturnType<typeof partFromMeshName>, null>, config: BuilderConfig) {
+function partColor(part: ABagsThreeMeshName, config: BagBuilderClientConfig) {
   if (part === "hardware") return new THREE.Color(HARDWARE_COLORS[config.hardware]);
   if (part === "flap") {
     if (config.flap === "leather-black") return new THREE.Color("#222124");
@@ -100,7 +102,7 @@ function partColor(part: Exclude<ReturnType<typeof partFromMeshName>, null>, con
   return new THREE.Color(config.color || "#E8DDCC");
 }
 
-function applyMaterial(mesh: THREE.Mesh, config: BuilderConfig, textures: PbrTextures) {
+function applyMaterial(mesh: THREE.Mesh, config: BagBuilderClientConfig, textures: PbrTextures) {
   const part = partFromMeshName(mesh.name);
   if (!part) return false;
   mesh.visible = partVisible(part, config);
@@ -216,10 +218,13 @@ export function BagBuilderThreeJsStage({ className, modelId }: Props) {
         scene.environment = loadedEnvironment;
 
         const model = gltf.scene.clone(true);
-        const found = new Set<string>();
+        const found = new Set<ABagsThreeMeshName>();
         model.traverse((child) => {
           if (!(child instanceof THREE.Mesh)) return;
-          if (applyMaterial(child, state.config, textures)) found.add(child.userData.abagsPart as string);
+          const part = partFromMeshName(child.name);
+          if (!part) return;
+          found.add(part);
+          applyMaterial(child, state.config, textures);
         });
 
         scene.add(model);
@@ -234,7 +239,7 @@ export function BagBuilderThreeJsStage({ className, modelId }: Props) {
 
         renderer.domElement.dataset.abagsThreejsReady = "true";
         renderer.domElement.dataset.abagsThreejsModel = resolvedModelId;
-        renderer.domElement.dataset.abagsThreejsMeshes = [...found].filter(Boolean).sort().join(",");
+        renderer.domElement.dataset.abagsThreejsMeshes = [...found].sort().join(",");
         renderer.domElement.dataset.abagsThreejsMeshCoverage = String(found.size / 6);
       } catch (error) {
         renderer.domElement.dataset.abagsThreejsReady = "fallback";
