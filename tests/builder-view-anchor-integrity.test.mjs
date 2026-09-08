@@ -37,5 +37,5 @@ test("Cloudflare production deploy blocks later acceptance when accessory anchor
   assert.match(workflow, /node scripts\/smoke-customizer-anchor-integrity\.mjs/);
   assert.match(workflow, /ACCESSORY ANCHOR INTEGRITY FAIL/);
   assert.match(workflow, /Fail when accessory anchor integrity fails/);
-  assert.match(workflow, /steps\.anchor_integrity\.outcome == 'success'/);
+  assert.match(workflow, /steps\.anchor_integrity\.conclusion == 'success'/);
 });
