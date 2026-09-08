@@ -1,0 +1,1 @@
+The final 1:1 Digital Craft Twin remains gated on real atelier GLB/PBR source assets. The application continues to use its validated V4 fallback until those assets are validated.
