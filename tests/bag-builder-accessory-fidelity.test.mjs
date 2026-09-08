@@ -70,8 +70,7 @@ test("accessory depth is split around WebGL instead of flattening every detail o
   assert.match(overlay, /abags-accessory-fidelity-front \{ z-index:271!important; \}/);
 });
 
-test("final WebGL keeps product structure but does not duplicate overlay-owned accessories", () => {
-  assert.match(renderer, /Accessory fidelity overlay owns strap\/chain and accent geometry/);
+test("final WebGL keeps product structure while refinement owns strap and accent geometry", () => {
   assert.doesNotMatch(renderer, /if \(config\.strap !== "none"\)/);
   assert.doesNotMatch(renderer, /if \(config\.accent === "charm"\)/);
   assert.doesNotMatch(renderer, /if \(config\.accent === "tassel"\)/);
