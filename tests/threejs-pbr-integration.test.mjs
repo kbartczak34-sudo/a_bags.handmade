@@ -7,24 +7,18 @@ const renderer = fs.readFileSync("app/bag-builder-threejs-pbr.tsx", "utf8");
 const assets = fs.readFileSync("lib/abags-three-asset-contract.ts", "utf8");
 
 test("GLB contract declares all physical bag meshes", () => {
-  for (const name of ["body", "flap", "handles", "strap", "hardware", "accessories"]) {
-    assert.match(registry, new RegExp(`"${name}"`));
-  }
+  for (const name of ["body", "flap", "handles", "strap", "hardware", "accessories"]) assert.match(registry, new RegExp(`"${name}"`));
 });
 
-test("production renderer consumes the canonical GLB asset contract", () => {
+test("production renderer consumes canonical GLB and texture paths", () => {
+  for (const name of ["model", "basecolor", "normal", "roughness", "metallic", "ao"]) assert.match(renderer, new RegExp(`definition\\.asset\\.${name}`));
   assert.match(renderer, /getABagsThreeModelDefinition/);
-  assert.match(renderer, /definition\.asset\.model/);
-  assert.match(renderer, /definition\.asset\.textures\.basecolor/);
-  assert.match(renderer, /definition\.asset\.textures\.normal/);
-  assert.match(renderer, /definition\.asset\.textures\.roughness/);
-  assert.match(renderer, /definition\.asset\.textures\.metallic/);
-  assert.match(renderer, /definition\.asset\.textures\.ao/);
+  assert.match(renderer, /createABagsThreePbrMaterial/);
 });
 
 test("renderer is fail-safe when the physical GLB contract is missing", () => {
   assert.match(renderer, /ABAGS_GLTF_MESH_CONTRACT_INVALID/);
-  assert.match(renderer, /host\.dataset\.abagsThreeStatus = "fallback"/);
+  assert.match(renderer, /abagsThreeStatus = "fallback"/);
 });
 
 test("asset contract uses the immutable public 3D root", () => {
