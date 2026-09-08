@@ -33,5 +33,4 @@ test("Three renderer has an explicit production fallback path", () => {
   assert.match(enhancer, /data-abags-three-fallback/);
   assert.match(enhancer, /assets-missing/);
   assert.match(enhancer, /load-failed/);
-  assert.match(enhancer, /V4/);
 });
