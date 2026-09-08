@@ -74,8 +74,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
       const reference = EXACT_ATELIER_LIBRARY.find(
         (item) => fileNameFromUrl(baseImage).toLowerCase() === item.sourceFile.toLowerCase(),
       );
-      const isKnownReference = Boolean(selectedProduct && reference);
-      if (!isKnownReference) {
+      if (!selectedProduct || !reference) {
         clearExactState(stage);
         return;
       }
