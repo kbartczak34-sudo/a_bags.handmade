@@ -47,12 +47,26 @@ export default function BagBuilderPhotoTrueExactOnly() {
     let productId = "";
     let baseline: Config | null = null;
 
+    const clearExactState = (stage: HTMLElement) => {
+      productId = "";
+      baseline = null;
+      stage.removeAttribute("data-abags-photo-true");
+      stage.removeAttribute("data-abags-photo-true-reference");
+      stage.removeAttribute("data-abags-photo-true-reference-id");
+      stage.dataset.abagsPhotoTrueState = "custom-realtime";
+      stage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.setProperty("display", "none", "important");
+    };
+
     const sync = () => {
       frame = 0;
       const stage = document.querySelector<HTMLElement>(
         ".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage",
       );
-      if (!stage) return;
+      if (!stage) {
+        productId = "";
+        baseline = null;
+        return;
+      }
 
       const selectedProduct = stage.dataset.photoProductId || "";
       const baseImage =
@@ -61,11 +75,8 @@ export default function BagBuilderPhotoTrueExactOnly() {
         (item) => fileNameFromUrl(baseImage).toLowerCase() === item.sourceFile.toLowerCase(),
       );
       const isKnownReference = Boolean(selectedProduct && reference);
-      if (!selectedProduct || !reference || !isKnownReference) {
-        stage.removeAttribute("data-abags-photo-true");
-        stage.removeAttribute("data-abags-photo-true-reference");
-        stage.removeAttribute("data-abags-photo-true-reference-id");
-        stage.dataset.abagsPhotoTrueState = "custom-realtime";
+      if (!isKnownReference) {
+        clearExactState(stage);
         return;
       }
 
@@ -85,8 +96,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
                 fileNameFromUrl(currentBaseImage).toLowerCase() === item.sourceFile.toLowerCase(),
             );
             if (!currentReference) {
-              currentStage.removeAttribute("data-abags-photo-true");
-              currentStage.dataset.abagsPhotoTrueState = "custom-realtime";
+              clearExactState(currentStage);
               return;
             }
             baseline = readConfig(currentStage);
@@ -106,6 +116,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
       const exact = sameConfig(current, baseline);
       if (!exact) {
         stage.removeAttribute("data-abags-photo-true");
+        stage.removeAttribute("data-abags-photo-true-reference");
         stage.dataset.abagsPhotoTrueState = "custom-realtime";
         stage.setAttribute("data-abags-photo-true-reference-id", reference.id);
         stage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.setProperty("display", "none", "important");
