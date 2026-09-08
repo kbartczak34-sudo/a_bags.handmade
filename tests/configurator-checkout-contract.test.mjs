@@ -7,6 +7,7 @@ const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
 const legacyCheckout = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
 const v2Checkout = fs.readFileSync("app/api/configurator/checkout/route.ts", "utf8");
 const snapshotRoute = fs.readFileSync("app/api/configurator/snapshot/route.ts", "utf8");
+const bomResolver = fs.readFileSync("lib/product-configuration-v2-bom.ts", "utf8");
 
 const postsTo = (source, path) => source.includes(`fetch(\"${path}\"`);
 
@@ -49,7 +50,11 @@ test("server checkout trusts snapshotId rather than a client-supplied price/conf
 });
 
 test("snapshot route re-resolves the production BOM and persists its package hash", () => {
-  assert.equal(snapshotRoute.includes("resolveProductionPackage"), true);
+  assert.equal(snapshotRoute.includes("isProductConfigurationV2Source(source)"), true);
+  assert.equal(snapshotRoute.includes("resolveBomBoundProductConfigurationV2"), true);
+  assert.equal(snapshotRoute.includes("persistProductionSnapshot"), true);
   assert.equal(snapshotRoute.includes("productionPackageHash"), true);
   assert.equal(snapshotRoute.includes("BOM_VALIDATED"), true);
+  assert.equal(bomResolver.includes("productionPackageHash"), true);
+  assert.equal(bomResolver.includes("BOM_VALIDATED"), true);
 });
