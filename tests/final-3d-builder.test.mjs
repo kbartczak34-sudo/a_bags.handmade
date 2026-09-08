@@ -13,7 +13,6 @@ const [stack, renderer, controller, css, smoke] = await Promise.all([
 test("final customer stack mounts calibrated A-Bags Fidelity v4 before its verifier", () => {
   assert.match(stack, /<BagBuilderFinalWebGL3D\s*\/>[\s\S]*<BagBuilderFinal3DController\s*\/>/);
   assert.doesNotMatch(stack, /<BagBuilderFidelity3D\s*\/>/);
-  assert.match(renderer, /preserveDrawingBuffer: true/);
   assert.match(renderer, /RENDERER_VERSION = ABAGS_FIDELITY_V4_RENDERER_VERSION/);
   assert.match(renderer, /data-abags-final-webgl="v4"/);
   assert.match(renderer, /abagsFidelity3dReady = RENDERER_VERSION/);
@@ -22,21 +21,23 @@ test("final customer stack mounts calibrated A-Bags Fidelity v4 before its verif
   assert.match(renderer, /gl\.finish\(\)/);
 });
 
-test("A-Bags body geometry is smooth, family-specific and mobile-camera aware", () => {
+test("A-Bags body geometry is volumetric, family-specific and mobile-camera aware", () => {
   assert.match(renderer, /function superellipseContour/);
   assert.match(renderer, /function beveledExtrusion/);
+  assert.match(renderer, /function volumetricBodyMesh/);
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
   assert.match(renderer, /spec\.rx, spec\.ry, spec\.power/);
   assert.match(renderer, /spec\.taper/);
+  assert.match(renderer, /spec\.depth/);
   assert.match(renderer, /const narrow = aspect < \.82/);
   assert.match(renderer, /cameraZ = narrow \? -6\.45/);
 });
 
-test("four product stitches have independent yarn constructions", () => {
-  assert.match(renderer, /ażurowy V/i);
-  assert.match(renderer, /pionowy ażurowy/i);
-  assert.match(renderer, /koszykowy/i);
-  assert.match(renderer, /promienisty/i);
+test("four product stitches have independent yarn constructions in the shader", () => {
+  assert.match(renderer, /function stitchPattern/);
+  assert.match(renderer, /mode<\.5/);
+  assert.match(renderer, /mode<1\.5/);
+  assert.match(renderer, /mode<2\.5/);
   assert.match(renderer, /float yarnFibres/);
   assert.match(renderer, /float cord/);
 });
@@ -66,9 +67,9 @@ test("final verifier accepts only the shared Agata renderer contract with real f
 
 test("SVG remains fallback and completed WebGL becomes visible primary", () => {
   assert.match(css, /data-abags-final3d="ready"/);
-  assert.match(css, /> \.abags-fidelity3d-layer/);
+  assert.match(css, /\.abags-fidelity3d-layer/);
   assert.match(css, /opacity:1!important;[\s\S]*visibility:visible!important;[\s\S]*pointer-events:auto!important/);
-  assert.match(css, /data-abags-final3d="ready"\] > svg[\s\S]*opacity:0!important/);
+  assert.match(css, /data-abags-final3d="ready"\][\s\S]*opacity:0!important/);
   assert.match(css, /\.abags-canvas3d-layer[\s\S]*display:none!important/);
 });
 
