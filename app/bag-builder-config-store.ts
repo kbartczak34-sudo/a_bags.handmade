@@ -78,6 +78,7 @@ const FALLBACKS: BagBuilderDraftConfig = {
 };
 
 const STAGE_SELECTOR = ".abags-bag-builder-stage";
+const DRAFT_STORAGE_KEY = "abags-bag-builder-v3";
 const OBSERVED_ATTRIBUTES = [
   "data-family",
   "data-color",
@@ -149,6 +150,15 @@ function rawDraftFromStage(stage: HTMLElement): Partial<Record<BagBuilderConfigK
   };
 }
 
+function persistNormalizedDraft(config: BagBuilderDraftConfig) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(config));
+  } catch {
+    // localStorage can be blocked or full; the in-memory builder must keep working.
+  }
+}
+
 export function readBagBuilderClientState(stage: HTMLElement): BagBuilderClientState {
   const { config: draft, invalidKeys } = normalizeBagBuilderDraftInput(rawDraftFromStage(stage));
   return {
@@ -178,6 +188,7 @@ function synchronize() {
 
   stateSnapshot = next;
   stateSignature = nextSignature;
+  if (stage && next.invalidKeys.length === 0) persistNormalizedDraft(toBagBuilderDraftConfig(next.config));
   for (const listener of listeners) listener();
 }
 
