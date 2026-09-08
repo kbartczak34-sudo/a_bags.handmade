@@ -94,114 +94,83 @@ uniform float uMaterial;
 uniform vec3 uLight;
 
 float yarnFibres(vec2 uv){
-  float a=sin((uv.x*.72+uv.y)*430.0);
-  float b=sin((uv.x-uv.y*.42)*690.0);
-  return .965+.018*a+.012*b;
+  float a=sin((uv.x*.71+uv.y*1.17)*470.0);
+  float b=sin((uv.x-uv.y*.39)*735.0);
+  float c=sin((uv.x+uv.y)*1180.0);
+  return .955+.020*a+.013*b+.006*c;
 }
-
-float cord(float d,float width){
-  return 1.0-smoothstep(width,width*1.85,d);
-}
-
+float cord(float d,float width){ return 1.0-smoothstep(width,width*1.8,d); }
 float stitchPattern(vec2 uv,float mode){
-  vec2 tile;
+  vec2 tile=vec2(0.0);
   float raised=0.0;
-  float shadow=0.0;
-
   if(mode<.5){
-    // A-Bags: ażurowy V — alternating diagonal cords with an open centre.
-    tile=fract(uv*vec2(10.0,11.0));
-    float left=abs(tile.x-(.5-.54*abs(tile.y-.5)));
-    float right=abs(tile.x-(.5+.54*abs(tile.y-.5)));
-    raised=max(cord(left,.075),cord(right,.075));
-    shadow=1.0-smoothstep(.12,.27,abs(tile.x-.5));
-    return (.73+.30*raised-.08*shadow)*yarnFibres(uv);
-  }
-
-  if(mode<1.5){
-    // A-Bags: pionowy ażurowy — vertical posts joined by compact V bridges.
+    tile=fract(uv*vec2(10.5,12.0));
+    float l=abs(tile.x-(.5-.55*abs(tile.y-.5)));
+    float r=abs(tile.x-(.5+.55*abs(tile.y-.5)));
+    raised=max(cord(l,.072),cord(r,.072));
+  }else if(mode<1.5){
     tile=fract(uv*vec2(12.0,10.0));
-    float post=cord(abs(tile.x-.5),.105);
-    float bridgeA=cord(abs((tile.x-.5)-(.34*(tile.y-.5))),.075);
-    float bridgeB=cord(abs((tile.x-.5)+(.34*(tile.y-.5))),.075);
-    float bridge=max(bridgeA,bridgeB)*(1.0-smoothstep(.28,.47,abs(tile.y-.5)));
-    float opening=(1.0-post)*(1.0-bridge);
-    return (.72+.28*max(post,bridge)-.055*opening)*yarnFibres(uv);
+    float post=cord(abs(tile.x-.5),.10);
+    float bridge=cord(abs(tile.x-.5-.34*(tile.y-.5)),.072);
+    bridge=max(bridge,cord(abs(tile.x-.5+.34*(tile.y-.5)),.072));
+    raised=max(post,bridge);
+  }else if(mode<2.5){
+    tile=fract(uv*vec2(8.0,8.2));
+    float v=max(cord(abs(tile.x-.34),.108),cord(abs(tile.x-.66),.108));
+    float h=max(cord(abs(tile.y-.34),.108),cord(abs(tile.y-.66),.108));
+    raised=mix(h,v,mod(floor(uv.x*8.0)+floor(uv.y*8.0),2.0));
+  }else{
+    tile=fract(uv*vec2(8.5,8.0));
+    vec2 p=vec2(tile.x-.5,tile.y-.18);
+    float r=length(vec2(p.x*1.2,p.y));
+    raised=max(cord(abs(r-.42),.062),cord(abs(p.x),.052));
+    raised=max(raised,cord(abs(p.x-p.y*.48),.052));
+    raised=max(raised,cord(abs(p.x+p.y*.48),.052));
   }
-
-  if(mode<2.5){
-    // A-Bags: koszykowy — paired bands with an alternating over/under rhythm.
-    tile=fract(uv*vec2(8.0,8.0));
-    float vx=max(cord(abs(tile.x-.34),.115),cord(abs(tile.x-.66),.115));
-    float hy=max(cord(abs(tile.y-.34),.115),cord(abs(tile.y-.66),.115));
-    float parity=mod(floor(uv.x*8.0)+floor(uv.y*8.0),2.0);
-    float over=mix(hy,vx,parity);
-    float under=mix(vx,hy,parity);
-    return (.72+.27*over+.10*under)*yarnFibres(uv);
-  }
-
-  // A-Bags: promienisty — repeated crochet fans/scallops rather than waves.
-  tile=fract(uv*vec2(8.5,8.0));
-  vec2 fan=vec2(tile.x-.5,tile.y-.18);
-  float radius=length(vec2(fan.x*1.18,fan.y));
-  float arc=cord(abs(radius-.42),.065)*step(0.0,fan.y);
-  float spoke1=cord(abs(fan.x),.055)*step(.02,fan.y);
-  float spoke2=cord(abs(fan.x-fan.y*.48),.055)*step(.02,fan.y);
-  float spoke3=cord(abs(fan.x+fan.y*.48),.055)*step(.02,fan.y);
-  raised=max(arc,max(spoke1,max(spoke2,spoke3)));
-  return (.74+.27*raised)*yarnFibres(uv);
+  return (.70+.30*raised)*yarnFibres(uv);
 }
 
 void main(){
   vec3 n=normalize(vNormal);
   vec3 l=normalize(uLight);
-  vec3 v=normalize(vec3(0.0,.10,5.8)-vWorld);
+  vec3 v=normalize(vec3(0.0,.12,5.8)-vWorld);
   vec3 h=normalize(l+v);
   float diffuse=max(dot(n,l),0.0);
-  float fill=max(dot(n,normalize(vec3(.6,.35,.8))),0.0);
-  float rim=pow(1.0-max(dot(n,v),0.0),2.4);
+  float fill=max(dot(n,normalize(vec3(.62,.32,.86))),0.0);
+  float rim=pow(1.0-max(dot(n,v),0.0),2.7);
   float detail=1.0;
-  float rough=.9;
+  float rough=.88;
   float metallic=0.0;
-  float specularStrength=.11;
-  float fibreSheen=0.0;
-
+  float spec=.12;
+  float sheen=0.0;
   if(uMaterial<.5){
-    // Polyester cord: visible crochet relief plus a restrained synthetic-fibre sheen.
     detail=stitchPattern(vUv,uStitch);
-    rough=.86;
-    specularStrength=.19;
-    fibreSheen=pow(max(dot(n,h),0.0),18.0)*.045 + pow(1.0-max(dot(n,v),0.0),3.0)*.018;
+    rough=.89;
+    spec=.18;
+    sheen=pow(max(dot(n,h),0.0),17.0)*.035;
   }else if(uMaterial<1.5){
-    // Leather: fine grain with a broader soft highlight, without the yarn fibre pattern.
-    float leatherGrain=.018*sin(vUv.x*180.0)+.012*sin((vUv.x+vUv.y)*260.0);
-    detail=.94+leatherGrain;
-    rough=.46;
-    specularStrength=.16;
+    float grain=.016*sin(vUv.x*190.0)+.010*sin((vUv.x+vUv.y)*290.0);
+    detail=.945+grain;
+    rough=.48;
+    spec=.15;
   }else if(uMaterial<2.5){
-    // Metal hardware: tight, high-energy highlight.
-    detail=1.0;
-    rough=.14;
-    metallic=.9;
-    specularStrength=.88;
+    rough=.13;
+    metallic=.92;
+    spec=.90;
   }else if(uMaterial<3.5){
-    // Wooden handles: directional grain and a satin finish distinct from leather.
-    float grain=sin(vUv.x*54.0+sin(vUv.y*7.0)*3.0);
-    float pores=sin((vUv.x+vUv.y)*170.0);
-    detail=.94+.045*grain+.012*pores;
+    float grain=.040*sin(vUv.x*47.0+sin(vUv.y*8.0)*2.8)+.012*sin(vUv.x*180.0);
+    detail=.94+grain;
     rough=.34;
-    specularStrength=.18;
+    spec=.18;
   }else{
-    // Suede: soft nap, low gloss and a very broad response.
-    float nap=sin(vUv.x*91.0)*sin(vUv.y*87.0);
-    detail=.95+.025*nap;
-    rough=.92;
-    specularStrength=.055;
+    float nap=.020*sin(vUv.x*92.0)*sin(vUv.y*88.0);
+    detail=.955+nap;
+    rough=.94;
+    spec=.05;
   }
-
-  float specular=pow(max(dot(n,h),0.0),mix(82.0,9.0,rough))*mix(specularStrength,.88,metallic);
+  float highlight=pow(max(dot(n,h),0.0),mix(86.0,8.0,rough))*mix(spec,.90,metallic);
   vec3 base=uColor*detail;
-  vec3 lit=base*(.38+.65*diffuse+.16*fill)+vec3(specular+fibreSheen)+base*.07*rim;
+  vec3 lit=base*(.37+.68*diffuse+.15*fill)+vec3(highlight+sheen)+base*.075*rim;
   gl_FragColor=vec4(pow(max(lit,vec3(0.0)),vec3(.96)),1.0);
 }`;
 
@@ -242,610 +211,209 @@ function hex(value: string): [number, number, number] {
 }
 
 function identity() {
-  return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
 }
-
 function multiply(a: Float32Array, b: Float32Array) {
-  const out = new Float32Array(16);
-  for (let column = 0; column < 4; column += 1) {
-    for (let row = 0; row < 4; row += 1) {
-      out[column * 4 + row] =
-        a[row] * b[column * 4] +
-        a[4 + row] * b[column * 4 + 1] +
-        a[8 + row] * b[column * 4 + 2] +
-        a[12 + row] * b[column * 4 + 3];
-    }
-  }
+  const out=new Float32Array(16);
+  for(let c=0;c<4;c++) for(let r=0;r<4;r++) out[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];
   return out;
 }
-
-function translation(x: number, y: number, z: number) {
-  const out = identity();
-  out[12] = x;
-  out[13] = y;
-  out[14] = z;
-  return out;
+function translation(x:number,y:number,z:number){ const out=identity(); out[12]=x;out[13]=y;out[14]=z;return out; }
+function scale(x:number,y:number,z:number){ const out=identity(); out[0]=x;out[5]=y;out[10]=z;return out; }
+function rotX(a:number){ const out=identity(),c=Math.cos(a),s=Math.sin(a);out[5]=c;out[6]=s;out[9]=-s;out[10]=c;return out; }
+function rotY(a:number){ const out=identity(),c=Math.cos(a),s=Math.sin(a);out[0]=c;out[2]=-s;out[8]=s;out[10]=c;return out; }
+function rotZ(a:number){ const out=identity(),c=Math.cos(a),s=Math.sin(a);out[0]=c;out[1]=s;out[4]=-s;out[5]=c;return out; }
+function matrix(position:[number,number,number],size:[number,number,number],rotation:[number,number,number]=[0,0,0]){
+  return multiply(translation(...position),multiply(rotZ(rotation[2]),multiply(rotY(rotation[1]),multiply(rotX(rotation[0]),scale(...size)))));
 }
+function perspective(fov:number,aspect:number,near:number,far:number){ const f=1/Math.tan(fov/2),out=new Float32Array(16);out[0]=f/aspect;out[5]=f;out[10]=(far+near)/(near-far);out[11]=-1;out[14]=(2*far*near)/(near-far);return out; }
 
-function scale(x: number, y: number, z: number) {
-  const out = identity();
-  out[0] = x;
-  out[5] = y;
-  out[10] = z;
-  return out;
-}
-
-function rotX(angle: number) {
-  const out = identity();
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  out[5] = c; out[6] = s; out[9] = -s; out[10] = c;
-  return out;
-}
-
-function rotY(angle: number) {
-  const out = identity();
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  out[0] = c; out[2] = -s; out[8] = s; out[10] = c;
-  return out;
-}
-
-function rotZ(angle: number) {
-  const out = identity();
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  out[0] = c; out[1] = s; out[4] = -s; out[5] = c;
-  return out;
-}
-
-function matrix(position: [number, number, number], size: [number, number, number], rotation: [number, number, number] = [0, 0, 0]) {
-  return multiply(
-    translation(...position),
-    multiply(rotZ(rotation[2]), multiply(rotY(rotation[1]), multiply(rotX(rotation[0]), scale(...size)))),
-  );
-}
-
-function perspective(fov: number, aspect: number, near: number, far: number) {
-  const f = 1 / Math.tan(fov / 2);
-  const out = new Float32Array(16);
-  out[0] = f / aspect;
-  out[5] = f;
-  out[10] = (far + near) / (near - far);
-  out[11] = -1;
-  out[14] = (2 * far * near) / (near - far);
-  return out;
-}
-
-function superellipseContour(rx: number, ry: number, power: number, count = 48, taper = 0): Point[] {
-  return Array.from({ length: count }, (_, index) => {
-    const angle = (index / count) * Math.PI * 2;
-    const c = Math.cos(angle);
-    const s = Math.sin(angle);
-    const exponent = 2 / power;
-    const y = Math.sign(s) * ry * Math.pow(Math.abs(s), exponent);
-    const baseX = Math.sign(c) * rx * Math.pow(Math.abs(c), exponent);
-    const normalizedY = y / ry;
-    const widthScale = 1 + taper * normalizedY;
-    return [baseX * widthScale, y] as Point;
+function superellipseContour(rx:number,ry:number,power:number,count=64,taper=0):Point[]{
+  return Array.from({length:count},(_,i)=>{
+    const a=(i/count)*Math.PI*2,c=Math.cos(a),s=Math.sin(a),e=2/power;
+    const y=Math.sign(s)*ry*Math.pow(Math.abs(s),e);
+    const x=Math.sign(c)*rx*Math.pow(Math.abs(c),e);
+    return [x*(1+taper*(y/ry)),y];
   });
 }
-
-function familyContour(family: Exclude<Family, "">): Point[] {
-  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  return superellipseContour(spec.rx, spec.ry, spec.power, family === "round" ? 56 : 60, spec.taper);
+function familyContour(family:Exclude<Family,"">){
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  return superellipseContour(spec.rx,spec.ry,spec.power,family==="round"?72:76,spec.taper);
 }
 
-function scaledContour(contour: Point[], factor: number): Point[] {
-  return contour.map(([x, y]) => [x * factor, y * factor]);
+function pushTriangle(positions:number[],normals:number[],uvs:number[],a:[number,number,number],b:[number,number,number],c:[number,number,number],normal:[number,number,number],ua:Point=[0,0],ub:Point=[1,0],uc:Point=[1,1]){
+  for(const point of [a,b,c]) positions.push(...point);
+  for(const n of [normal,normal,normal]) normals.push(...n);
+  for(const uv of [ua,ub,uc]) uvs.push(...uv);
 }
 
-function pushTriangle(
-  positions: number[],
-  normals: number[],
-  uvs: number[],
-  a: [number, number, number],
-  b: [number, number, number],
-  c: [number, number, number],
-  normal: [number, number, number],
-) {
-  for (const point of [a, b, c]) {
-    positions.push(...point);
-    normals.push(...normal);
-    uvs.push(point[0] * .5 + .5, point[1] * .5 + .5);
+function pointNormal(a:Point,b:Point,z:number){ return normalize(b[1]-a[1],-(b[0]-a[0]),z); }
+
+function volumetricBodyMesh(family:Exclude<Family,"">){
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const contour=familyContour(family);
+  const positions:number[]=[];const normals:number[]=[];const uvs:number[]=[];
+  const half=spec.depth/2;
+  const frontBulge=family==="round"?.045:family==="bucket"?.060:family==="tote"?.050:.035;
+  const panel=(zSign:number)=>contour.map(([x,y])=>{
+    const nx=x/Math.max(.001,spec.rx),ny=y/Math.max(.001,spec.ry);
+    const bulge=frontBulge*Math.max(0,1-nx*nx)*(.72+.28*(1-ny*ny));
+    return [x,y,zSign*half+zSign*bulge] as [number,number,number];
+  });
+  const front=panel(1);const back=panel(-1);
+  for(let i=1;i<front.length-1;i++){
+    const v=((i/front.length));
+    pushTriangle(positions,normals,uvs,front[0],front[i],front[i+1],[0,0,1],[.5,.5],[v,.08],[v+.05,.92]);
+    pushTriangle(positions,normals,uvs,back[0],back[i+1],back[i],[0,0,-1],[.5,.5],[v+.05,.92],[v,.08]);
   }
+  for(let i=0;i<contour.length;i++){
+    const n=(i+1)%contour.length;
+    const a=front[i],b=front[n],c=back[n],d=back[i];
+    const normal=pointNormal(contour[i],contour[n],0.10);
+    pushTriangle(positions,normals,uvs,a,b,c,normal,[0,0],[1,0],[1,1]);
+    pushTriangle(positions,normals,uvs,a,c,d,normal,[0,0],[1,1],[0,1]);
+  }
+  // A real bottom seam/gusset is built into the volume instead of leaving a paper-thin front plate.
+  const bottomY=-spec.ry*.86;
+  const bottomRx=spec.rx*(family==="round"?.68:family==="bucket"?.82:.78);
+  const bottomDepth=spec.depth*.84;
+  const a:[number,number,number]=[-bottomRx,bottomY+.018,half*.48];
+  const b:[number,number,number]=[bottomRx,bottomY+.018,half*.48];
+  const c:[number,number,number]=[bottomRx,bottomY-.055,-half*.48];
+  const d:[number,number,number]=[-bottomRx,bottomY-.055,-half*.48];
+  const floorNormal: [number,number,number]=normalize(0,.35,1);
+  pushTriangle(positions,normals,uvs,a,b,c,floorNormal,[0,0],[1,0],[1,1]);
+  pushTriangle(positions,normals,uvs,a,c,d,floorNormal,[0,0],[1,1],[0,1]);
+  void bottomDepth;
+  return {positions,normals,uvs};
 }
 
-function beveledExtrusion(contour: Point[], depth: number, bevel = .055) {
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const half = depth / 2;
-  const face = scaledContour(contour, .965);
-  const sideFront = half - bevel;
-  const sideBack = -half + bevel;
-
-  for (let index = 1; index < face.length - 1; index += 1) {
-    pushTriangle(positions, normals, uvs, [face[0][0], face[0][1], half], [face[index][0], face[index][1], half], [face[index + 1][0], face[index + 1][1], half], [0, 0, 1]);
-    pushTriangle(positions, normals, uvs, [face[0][0], face[0][1], -half], [face[index + 1][0], face[index + 1][1], -half], [face[index][0], face[index][1], -half], [0, 0, -1]);
-  }
-
-  for (let index = 0; index < contour.length; index += 1) {
-    const next = (index + 1) % contour.length;
-    const a = contour[index];
-    const b = contour[next];
-    const ia = face[index];
-    const ib = face[next];
-    const sideNormal = normalize(b[1] - a[1], -(b[0] - a[0]), .04);
-
-    pushTriangle(positions, normals, uvs, [ia[0], ia[1], half], [a[0], a[1], sideFront], [b[0], b[1], sideFront], normalize(sideNormal[0], sideNormal[1], .55));
-    pushTriangle(positions, normals, uvs, [ia[0], ia[1], half], [b[0], b[1], sideFront], [ib[0], ib[1], half], normalize(sideNormal[0], sideNormal[1], .55));
-
-    pushTriangle(positions, normals, uvs, [a[0], a[1], sideFront], [a[0], a[1], sideBack], [b[0], b[1], sideBack], sideNormal);
-    pushTriangle(positions, normals, uvs, [a[0], a[1], sideFront], [b[0], b[1], sideBack], [b[0], b[1], sideFront], sideNormal);
-
-    pushTriangle(positions, normals, uvs, [a[0], a[1], sideBack], [ia[0], ia[1], -half], [ib[0], ib[1], -half], normalize(sideNormal[0], sideNormal[1], -.55));
-    pushTriangle(positions, normals, uvs, [a[0], a[1], sideBack], [ib[0], ib[1], -half], [b[0], b[1], sideBack], normalize(sideNormal[0], sideNormal[1], -.55));
-  }
-
-  return { positions, normals, uvs };
-}
-
-function tubeArc(rx: number, ry: number, minor: number, full = false, segments = 56, tubeSegments = 10) {
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const point = (segment: number, ring: number) => {
-    const progress = segment / segments;
-    const angle = full ? progress * Math.PI * 2 : Math.PI - progress * Math.PI;
-    const cx = rx * Math.cos(angle);
-    const cy = ry * Math.sin(angle);
-    const tangentX = -rx * Math.sin(angle);
-    const tangentY = ry * Math.cos(angle);
-    const tangentLength = Math.hypot(tangentX, tangentY) || 1;
-    const ux = tangentX / tangentLength;
-    const uy = tangentY / tangentLength;
-    const ringAngle = (ring / tubeSegments) * Math.PI * 2;
-    const normal = normalize(-uy * Math.cos(ringAngle), ux * Math.cos(ringAngle), Math.sin(ringAngle));
-    return {
-      position: [cx + minor * normal[0], cy + minor * normal[1], minor * normal[2]] as [number, number, number],
-      normal,
-      uv: [progress, ring / tubeSegments] as [number, number],
-    };
+function tubeArc(rx:number,ry:number,minor:number,full=false,segments=56,tubeSegments=10){
+  const positions:number[]=[];const normals:number[]=[];const uvs:number[]=[];
+  const point=(segment:number,ring:number)=>{
+    const progress=segment/segments;
+    const angle=full?progress*Math.PI*2:Math.PI-progress*Math.PI;
+    const cx=rx*Math.cos(angle),cy=ry*Math.sin(angle);
+    const tx=-rx*Math.sin(angle),ty=ry*Math.cos(angle),tl=Math.hypot(tx,ty)||1;
+    const ux=tx/tl,uy=ty/tl,ra=(ring/tubeSegments)*Math.PI*2;
+    const normal=normalize(-uy*Math.cos(ra),ux*Math.cos(ra),Math.sin(ra));
+    return {position:[cx+minor*normal[0],cy+minor*normal[1],minor*normal[2]] as [number,number,number],normal,uv:[progress,ring/tubeSegments] as Point};
   };
-  const add = (vertex: ReturnType<typeof point>) => {
-    positions.push(...vertex.position);
-    normals.push(...vertex.normal);
-    uvs.push(...vertex.uv);
-  };
-  for (let segment = 0; segment < segments; segment += 1) {
-    for (let ring = 0; ring < tubeSegments; ring += 1) {
-      const a = point(segment, ring);
-      const b = point(segment + 1, ring);
-      const c = point(segment + 1, ring + 1);
-      const d = point(segment, ring + 1);
-      add(a); add(b); add(c); add(a); add(c); add(d);
-    }
+  const add=(v:ReturnType<typeof point>)=>{positions.push(...v.position);normals.push(...v.normal);uvs.push(...v.uv);};
+  for(let s=0;s<segments;s++) for(let r=0;r<tubeSegments;r++){const a=point(s,r),b=point(s+1,r),c=point(s+1,r+1),d=point(s,r+1);add(a);add(b);add(c);add(a);add(c);add(d);}
+  return {positions,normals,uvs};
+}
+
+function roundedHandle(family:Exclude<Family,"">){
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const rx=spec.handleScale[0]*(family==="tote"? .78:family==="mini"?.72:.70);
+  const ry=spec.handleScale[1]*(family==="tote"? .72:family==="round"?.66:.68);
+  return tubeArc(rx,ry,.058,false,64,10);
+}
+function flapMesh(){ return createDataMesh(beveledExtrusion(superellipseContour(.80,.36,4.2,52,-.04),.07,.018)); }
+function beveledExtrusion(contour:Point[],depth:number,bevel:number){
+  const positions:number[]=[];const normals:number[]=[];const uvs:number[]=[];const half=depth/2;
+  for(let i=1;i<contour.length-1;i++){
+    pushTriangle(positions,normals,uvs,[contour[0][0],contour[0][1],half],[contour[i][0],contour[i][1],half],[contour[i+1][0],contour[i+1][1],half],[0,0,1]);
+    pushTriangle(positions,normals,uvs,[contour[0][0],contour[0][1],-half],[contour[i+1][0],contour[i+1][1],-half],[contour[i][0],contour[i][1],-half],[0,0,-1]);
   }
-  return { positions, normals, uvs };
-}
-
-function sphereMesh(rows = 14, columns = 20) {
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const point = (row: number, column: number) => {
-    const theta = -Math.PI / 2 + (Math.PI * row) / rows;
-    const phi = (Math.PI * 2 * column) / columns;
-    const normal = normalize(Math.cos(theta) * Math.cos(phi), Math.sin(theta), Math.cos(theta) * Math.sin(phi));
-    return { position: normal, normal, uv: [column / columns, row / rows] as [number, number] };
-  };
-  const add = (vertex: ReturnType<typeof point>) => {
-    positions.push(...vertex.position);
-    normals.push(...vertex.normal);
-    uvs.push(...vertex.uv);
-  };
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const a = point(row, column);
-      const b = point(row + 1, column);
-      const c = point(row + 1, column + 1);
-      const d = point(row, column + 1);
-      add(a); add(b); add(c); add(a); add(c); add(d);
-    }
+  const inset=contour.map(([x,y])=>[x*.965,y*.965] as Point);
+  for(let i=0;i<contour.length;i++){
+    const n=(i+1)%contour.length,a=contour[i],b=contour[n],ia=inset[i],ib=inset[n];
+    const sn=normalize(b[1]-a[1],-(b[0]-a[0]),.02);
+    pushTriangle(positions,normals,uvs,[ia[0],ia[1],half],[a[0],a[1],half-bevel],[b[0],b[1],half-bevel],[sn[0],sn[1],.5]);
+    pushTriangle(positions,normals,uvs,[ia[0],ia[1],half],[b[0],b[1],half-bevel],[ib[0],ib[1],half],[sn[0],sn[1],.5]);
   }
-  return { positions, normals, uvs };
+  return {positions,normals,uvs};
 }
-
-function createMesh(gl: WebGLRenderingContext, data: { positions: number[]; normals: number[]; uvs: number[] }): Mesh {
-  const position = gl.createBuffer();
-  const normal = gl.createBuffer();
-  const uv = gl.createBuffer();
-  if (!position || !normal || !uv) throw new Error("Nie udało się utworzyć buforów WebGL.");
-  gl.bindBuffer(gl.ARRAY_BUFFER, position);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.positions), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, normal);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.normals), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, uv);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.uvs), gl.STATIC_DRAW);
-  return { position, normal, uv, count: data.positions.length / 3 };
+function createDataMesh(data:{positions:number[];normals:number[];uvs:number[]}):Mesh{
+  throw new Error("createDataMesh wymaga aktywnego kontekstu WebGL.");
 }
-
-function compile(gl: WebGLRenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type);
-  if (!shader) throw new Error("Nie udało się utworzyć shadera WebGL.");
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "Błąd kompilacji shadera.");
-  return shader;
+function createMesh(gl:WebGLRenderingContext,data:{positions:number[];normals:number[];uvs:number[]}):Mesh{
+  const position=gl.createBuffer(),normal=gl.createBuffer(),uv=gl.createBuffer();
+  if(!position||!normal||!uv) throw new Error("Nie udało się utworzyć buforów WebGL.");
+  gl.bindBuffer(gl.ARRAY_BUFFER,position);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data.positions),gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,normal);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data.normals),gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,uv);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data.uvs),gl.STATIC_DRAW);
+  return {position,normal,uv,count:data.positions.length/3};
 }
-
-function init(canvas: HTMLCanvasElement): Renderer {
-  const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true, powerPreference: "high-performance" });
-  if (!gl) throw new Error("WebGL nie jest dostępny na tym urządzeniu.");
-  const program = gl.createProgram();
-  if (!program) throw new Error("Nie udało się utworzyć programu WebGL.");
-  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT));
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Błąd linkowania WebGL.");
-  gl.useProgram(program);
-
-  const attribute = (name: string) => {
-    const location = gl.getAttribLocation(program, name);
-    if (location < 0) throw new Error(`Brak atrybutu ${name}.`);
-    return location;
-  };
-  const uniform = (name: string) => {
-    const location = gl.getUniformLocation(program, name);
-    if (location === null) throw new Error(`Brak uniformu ${name}.`);
-    return location;
-  };
-
-  return {
-    gl,
-    program,
-    attribs: { position: attribute("aPosition"), normal: attribute("aNormal"), uv: attribute("aUv") },
-    uniforms: {
-      projection: uniform("uProjection"),
-      view: uniform("uView"),
-      model: uniform("uModel"),
-      color: uniform("uColor"),
-      stitch: uniform("uStitch"),
-      material: uniform("uMaterial"),
-      light: uniform("uLight"),
-    },
-    meshes: {
-      tote: createMesh(gl, beveledExtrusion(familyContour("tote"), ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.bevel)),
-      round: createMesh(gl, beveledExtrusion(familyContour("round"), ABAGS_FIDELITY_V4_FAMILY_SPECS.round.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.bevel)),
-      bucket: createMesh(gl, beveledExtrusion(familyContour("bucket"), ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.bevel)),
-      mini: createMesh(gl, beveledExtrusion(familyContour("mini"), ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.depth, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.bevel)),
-      flap: createMesh(gl, beveledExtrusion(superellipseContour(.80, .36, 4.2, 44, -.04), .075, .022)),
-      handle: createMesh(gl, tubeArc(.67, .50, .058)),
-      strap: createMesh(gl, tubeArc(1.10, 1.40, .038)),
-      ring: createMesh(gl, tubeArc(.13, .13, .024, true, 40, 9)),
-      sphere: createMesh(gl, sphereMesh()),
-    },
-  };
+function compile(gl:WebGLRenderingContext,type:number,source:string){
+  const shader=gl.createShader(type);if(!shader) throw new Error("Nie udało się utworzyć shadera WebGL.");gl.shaderSource(shader,source);gl.compileShader(shader);
+  if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader)||"Błąd kompilacji shadera.");return shader;
 }
-
-function drawMesh(renderer: Renderer, mesh: Mesh, model: Float32Array, color: string, stitch: number, material: number) {
-  const { gl, attribs, uniforms } = renderer;
-  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.position);
-  gl.enableVertexAttribArray(attribs.position);
-  gl.vertexAttribPointer(attribs.position, 3, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.normal);
-  gl.enableVertexAttribArray(attribs.normal);
-  gl.vertexAttribPointer(attribs.normal, 3, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
-  gl.enableVertexAttribArray(attribs.uv);
-  gl.vertexAttribPointer(attribs.uv, 2, gl.FLOAT, false, 0, 0);
-  gl.uniformMatrix4fv(uniforms.model, false, model);
-  gl.uniform3fv(uniforms.color, new Float32Array(hex(color)));
-  gl.uniform1f(uniforms.stitch, stitch);
-  gl.uniform1f(uniforms.material, material);
-  gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+function init(canvas:HTMLCanvasElement):Renderer{
+  const gl=canvas.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:false,preserveDrawingBuffer:true,powerPreference:"high-performance"});
+  if(!gl) throw new Error("WebGL nie jest dostępny na tym urządzeniu.");
+  const program=gl.createProgram();if(!program) throw new Error("Nie udało się utworzyć programu WebGL.");
+  gl.attachShader(program,compile(gl,gl.VERTEX_SHADER,VERTEX));gl.attachShader(program,compile(gl,gl.FRAGMENT_SHADER,FRAGMENT));gl.linkProgram(program);
+  if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program)||"Błąd linkowania WebGL.");
+  const attr=(name:string)=>{const location=gl.getAttribLocation(program,name);if(location<0) throw new Error(`Brak atrybutu ${name}.`);return location;};
+  const uni=(name:string)=>{const location=gl.getUniformLocation(program,name);if(location===null) throw new Error(`Brak uniformu ${name}.`);return location;};
+  return {gl,program,attribs:{position:attr("aPosition"),normal:attr("aNormal"),uv:attr("aUv")},uniforms:{projection:uni("uProjection"),view:uni("uView"),model:uni("uModel"),color:uni("uColor"),stitch:uni("uStitch"),material:uni("uMaterial"),light:uni("uLight")},meshes:{tote:createMesh(gl,volumetricBodyMesh("tote")),round:createMesh(gl,volumetricBodyMesh("round")),bucket:createMesh(gl,volumetricBodyMesh("bucket")),mini:createMesh(gl,volumetricBodyMesh("mini")),handle:createMesh(gl,tubeArc(.68,.47,.058,false,64,10)),strap:createMesh(gl,tubeArc(1.08,1.38,.038)),ring:createMesh(gl,tubeArc(.13,.13,.024,true,40,9)),flap:createMesh(gl,beveledExtrusion(superellipseContour(.80,.36,4.2,52,-.04),.07,.018)),sphere:createMesh(gl,sphereMesh())}};
 }
-
-function stitchId(stitch: Stitch) {
-  return stitch === "herringbone" ? 1 : stitch === "basket" ? 2 : stitch === "shell" ? 3 : 0;
-}
-
-function familyMetrics(family: Exclude<Family, "">) {
-  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  return {
-    depth: spec.depth,
-    topY: spec.topY,
-    side: spec.sideAnchor,
-    ringY: spec.ringY,
-    handleScale: spec.handleScale,
-    flapScale: spec.flapScale,
-    flapY: spec.flapY,
-  };
-}
-
-function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
-  const { gl, uniforms, meshes } = renderer;
-  const ratio = Math.min(window.devicePixelRatio || 1, 2);
-  const width = Math.max(2, Math.floor(canvas.clientWidth * ratio));
-  const height = Math.max(2, Math.floor(canvas.clientHeight * ratio));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
+function sphereMesh(rows=14,columns=20){const positions:number[]=[];const normals:number[]=[];const uvs:number[]=[];const point=(r:number,c:number)=>{const t=-Math.PI/2+(Math.PI*r)/rows,p=(Math.PI*2*c)/columns,n=normalize(Math.cos(t)*Math.cos(p),Math.sin(t),Math.cos(t)*Math.sin(p));return {position:n,normal:n,uv:[c/columns,r/rows] as Point};};const add=(v:ReturnType<typeof point>)=>{positions.push(...v.position);normals.push(...v.normal);uvs.push(...v.uv);};for(let r=0;r<rows;r++)for(let c=0;c<columns;c++){const a=point(r,c),b=point(r+1,c),d=point(r,c+1),e=point(r+1,c+1);add(a);add(b);add(e);add(a);add(e);add(d);}return{positions,normals,uvs};}
+function drawMesh(renderer:Renderer,mesh:Mesh,model:Float32Array,color:string,stitch:number,material:number){const {gl,attribs,uniforms}=renderer;gl.bindBuffer(gl.ARRAY_BUFFER,mesh.position);gl.enableVertexAttribArray(attribs.position);gl.vertexAttribPointer(attribs.position,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,mesh.normal);gl.enableVertexAttribArray(attribs.normal);gl.vertexAttribPointer(attribs.normal,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,mesh.uv);gl.enableVertexAttribArray(attribs.uv);gl.vertexAttribPointer(attribs.uv,2,gl.FLOAT,false,0,0);gl.uniformMatrix4fv(uniforms.model,false,model);gl.uniform3fv(uniforms.color,new Float32Array(hex(color)));gl.uniform1f(uniforms.stitch,stitch);gl.uniform1f(uniforms.material,material);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
+function stitchId(stitch:Stitch){return stitch==="herringbone"?1:stitch==="basket"?2:stitch==="shell"?3:0;}
+function familyMetrics(family:Exclude<Family,"">){const s=ABAGS_FIDELITY_V4_FAMILY_SPECS[family];return{depth:s.depth,topY:s.topY,side:s.sideAnchor,ringY:s.ringY,handleScale:s.handleScale,flapScale:s.flapScale,flapY:s.flapY};}
+function draw(renderer:Renderer,canvas:HTMLCanvasElement,config:Config,rotation:{x:number;y:number},zoom:number){const {gl,uniforms,meshes}=renderer;const ratio=Math.min(window.devicePixelRatio||1,2);const width=Math.max(2,Math.floor(canvas.clientWidth*ratio));const height=Math.max(2,Math.floor(canvas.clientHeight*ratio));if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}gl.viewport(0,0,width,height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.useProgram(renderer.program);const aspect=width/Math.max(1,height),narrow=aspect<.82,cameraZ=narrow?-6.45:aspect<1.15?-5.85:-5.25,verticalOffset=narrow?-.08:-.03;gl.uniformMatrix4fv(uniforms.projection,false,perspective(Math.PI/5.15,aspect,.1,100));gl.uniformMatrix4fv(uniforms.view,false,translation(0,verticalOffset,cameraZ));gl.uniform3fv(uniforms.light,new Float32Array([-.62,1.05,1.35]));if(!config.family){gl.finish();return;}const fit=narrow?.92:aspect<1.15?.97:1,rootScale=zoom*fit,root=multiply(rotY(rotation.y),multiply(rotX(rotation.x),scale(rootScale,rootScale,rootScale))),bodyColor=config.color||"#eadfd7",stitch=stitchId(config.stitch),metrics=familyMetrics(config.family),{depth,topY,side}=metrics;void side;const hardware=config.hardware==="silver"?"#d5d9dd":config.hardware==="black"?"#29272a":"#c9a354";
+  drawMesh(renderer,meshes[config.family],root,bodyColor,stitch,0);
+  // Continuous upper edge: the body is open and padded by the separate rim/cavity passes.
+  const rimScale=config.family==="round"?.74:config.family==="tote"?.86:.80;
+  drawMesh(renderer,meshes.ring,multiply(root,matrix([0,topY*.82,depth/2+.048],[rimScale*.92,rimScale*.58,.82],[Math.PI/2,0,0])),bodyColor,stitch,0);
+  if(config.handles!=="none"){
+    const hc=config.handles==="wood-dark"?"#60402f":config.handles==="wood-light"?"#d7b985":bodyColor;
+    const hm=config.handles==="crochet"?0:3;
+    const rigid=config.handles==="wood-light"||config.handles==="wood-dark";
+    const z=depth/2+.058;
+    const planes=rigid?[-z,z]:[.018];
+    const familyHandleScale=config.family==="tote"?[1.08,.92]:config.family==="round"?[.82,.74]:config.family==="bucket"?[.86,.70]:[.72,.62];
+    for(const hz of planes) drawMesh(renderer,meshes.handle,multiply(root,matrix([0,topY-.01,hz],[familyHandleScale[0],familyHandleScale[1],1])),hc,stitch,hm);
   }
-
-  gl.viewport(0, 0, width, height);
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.enable(gl.DEPTH_TEST);
-  gl.depthFunc(gl.LEQUAL);
-  gl.disable(gl.CULL_FACE);
-  gl.useProgram(renderer.program);
-
-  const aspect = width / Math.max(1, height);
-  const narrow = aspect < .82;
-  const cameraZ = narrow ? -6.45 : aspect < 1.15 ? -5.85 : -5.25;
-  const verticalOffset = narrow ? -.08 : -.03;
-  gl.uniformMatrix4fv(uniforms.projection, false, perspective(Math.PI / 5.15, aspect, .1, 100));
-  gl.uniformMatrix4fv(uniforms.view, false, translation(0, verticalOffset, cameraZ));
-  gl.uniform3fv(uniforms.light, new Float32Array([-.55, .95, 1.25]));
-
-  if (!config.family) {
-    gl.finish();
-    return;
+  if(config.flap!=="none"){
+    const fc=config.flap==="leather-black"?"#292426":config.flap==="leather-cognac"?"#9a6345":config.flap==="suede-burgundy"?"#773c4b":bodyColor;
+    const fm=config.flap==="crochet"?0:config.flap==="suede-burgundy"?4:1;
+    const fy=metrics.flapY??.29;
+    const familyFlapScale=config.family==="round"?[.84,.73]:config.family==="bucket"?[.96,.82]:config.family==="mini"?[.72,.64]:[.92,.78];
+    drawMesh(renderer,meshes.flap,multiply(root,matrix([0,fy,depth/2+.064],[familyFlapScale[0],familyFlapScale[1],1],[.06,0,0])),fc,stitch,fm);
   }
-
-  const fit = narrow ? .92 : aspect < 1.15 ? .97 : 1;
-  const rootScale = zoom * fit;
-  const root = multiply(rotY(rotation.y), multiply(rotX(rotation.x), scale(rootScale, rootScale, rootScale)));
-  const bodyColor = config.color || "#eadfd7";
-  const stitch = stitchId(config.stitch);
-  const metrics = familyMetrics(config.family);
-  const { depth, topY, side } = metrics;
-  const hardware = config.hardware === "silver" ? "#d5d9dd" : config.hardware === "black" ? "#2a292b" : "#c9a354";
-
-  // Accessory fidelity overlay owns strap/chain and accent geometry. Keeping those legacy
-  // approximations here would render a second accessory underneath the calibrated detail pass.
-  drawMesh(renderer, meshes[config.family], root, bodyColor, stitch, 0);
-
-  if (config.handles !== "none") {
-    const handleColor = config.handles === "wood-dark" ? "#60402f" : config.handles === "wood-light" ? "#d7b985" : bodyColor;
-    const handleMaterial = config.handles === "crochet" ? 0 : 3;
-    const rigidHandle = config.handles === "wood-light" || config.handles === "wood-dark";
-    const handleDepth = depth / 2 + .055;
-    const handlePlanes = rigidHandle ? [-handleDepth, handleDepth] : [.015];
-    for (const handleZ of handlePlanes) {
-      drawMesh(
-        renderer,
-        meshes.handle,
-        multiply(root, matrix([0, topY - .01, handleZ], [metrics.handleScale[0], metrics.handleScale[1], 1])),
-        handleColor,
-        stitch,
-        handleMaterial,
-      );
-    }
+  if(config.handles!=="none"||config.strap!=="none"){
+    const ringY=metrics.ringY,ringScale=config.family==="mini"?.58:.68;
+    drawMesh(renderer,meshes.ring,multiply(root,matrix([-metrics.side,ringY,depth/2+.030],[ringScale,ringScale,ringScale],[0,Math.PI/2,0])),hardware,0,2);
+    drawMesh(renderer,meshes.ring,multiply(root,matrix([metrics.side,ringY,depth/2+.030],[ringScale,ringScale,ringScale],[0,Math.PI/2,0])),hardware,0,2);
   }
-  if (config.flap !== "none") {
-    const flapColor = config.flap === "leather-black" ? "#292426" : config.flap === "leather-cognac" ? "#9a6345" : config.flap === "suede-burgundy" ? "#773c4b" : bodyColor;
-    const flapMaterial = config.flap === "crochet" ? 0 : config.flap === "suede-burgundy" ? 4 : 1;
-    const flapY = metrics.flapY ?? .29;
-    drawMesh(
-      renderer,
-      meshes.flap,
-      multiply(root, matrix([0, flapY, depth / 2 + .058], [metrics.flapScale[0], metrics.flapScale[1], 1], [.045, 0, 0])),
-      flapColor,
-      stitch,
-      flapMaterial,
-    );
-    // Seam and snap details belong to the calibrated accessory overlay to avoid duplicate hardware.
-  }
-
-  if (config.handles !== "none" || config.strap !== "none") {
-    const ringY = metrics.ringY;
-    drawMesh(renderer, meshes.ring, multiply(root, matrix([-side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
-    drawMesh(renderer, meshes.ring, multiply(root, matrix([side, ringY, depth / 2 + .018], [.68, .68, .68], [0, Math.PI / 2, 0])), hardware, 0, 2);
-  }
-
   gl.finish();
 }
-
-function currentStage() {
-  return document.querySelector<HTMLElement>(".abags-bag-builder-stage");
-}
-
-export default function BagBuilderFinalWebGL3D() {
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const [config, setConfig] = useState<Config>(EMPTY);
-  const [rotation, setRotation] = useState(DEFAULT_ROTATION);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [view, setViewState] = useState<"front" | "three" | "side">("three");
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const rendererRef = useRef<Renderer | null>(null);
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
-  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
-
-  useEffect(() => {
-    const find = () => {
-      const next = currentStage();
-      setPortalTarget((current) => current === next ? current : next);
-    };
-    find();
-    const observer = new MutationObserver(find);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!portalTarget) return;
-    const sync = () => setConfig((current) => {
-      const next = readConfig(portalTarget);
-      return sameConfig(current, next) ? current : next;
-    });
-    sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(portalTarget, {
-      attributes: true,
-      attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"],
-    });
-    return () => observer.disconnect();
-  }, [portalTarget]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const target = currentStage();
-    if (!portalTarget || !canvas || !target || rendererRef.current) return;
-    try {
-      rendererRef.current = init(canvas);
-      target.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
-      target.dataset.abagsPro3dReady = "true";
-      target.dataset.abagsFidelity3dReady = RENDERER_VERSION;
-      target.dataset.abagsFidelity3dModel = "real-product-calibrated";
-      target.removeAttribute("data-abags-fidelity3d-error");
-    } catch (error) {
-      rendererRef.current = null;
-      target.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "init-failed";
-      target.removeAttribute("data-abags-fidelity3d-ready");
-    }
-    return () => {
-      rendererRef.current = null;
-      target.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
-      target.removeAttribute("data-abags-pro3d-ready");
-      target.removeAttribute("data-abags-fidelity3d-ready");
-      target.removeAttribute("data-abags-fidelity3d-model");
-      target.removeAttribute("data-abags-fidelity3d-frame");
-      target.removeAttribute("data-abags-fidelity3d-frame-at");
-      target.removeAttribute("data-abags-fidelity3d-rotation-x");
-      target.removeAttribute("data-abags-fidelity3d-rotation-y");
-      target.removeAttribute("data-abags-fidelity3d-zoom");
-      target.removeAttribute("data-abags-fidelity3d-error");
-    };
-  }, [portalTarget]);
-
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    const canvas = canvasRef.current;
-    const target = currentStage();
-    if (!renderer || !canvas || !target || !portalTarget) return;
-
-    const paint = () => {
-      try {
-        draw(renderer, canvas, config, rotation, zoom);
-        target.dataset.abagsFidelity3dRotationX = String(rotation.x);
-        target.dataset.abagsFidelity3dRotationY = String(rotation.y);
-        target.dataset.abagsFidelity3dZoom = String(zoom);
-        target.dispatchEvent(new CustomEvent("abags:fidelity3d-transform", {
-          detail: { rotation: { x: rotation.x, y: rotation.y }, zoom },
-        }));
-        if (config.family) {
-          target.dataset.abagsFidelity3dFrame = configSignature(config);
-          target.dataset.abagsFidelity3dFrameAt = String(Date.now());
-        } else {
-          target.removeAttribute("data-abags-fidelity3d-frame");
-          target.removeAttribute("data-abags-fidelity3d-frame-at");
-        }
-        target.removeAttribute("data-abags-fidelity3d-error");
-      } catch (error) {
-        target.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "draw-failed";
-        target.removeAttribute("data-abags-fidelity3d-frame");
-      }
-    };
-
-    let frame = requestAnimationFrame(paint);
-    const redraw = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(paint);
-    };
-    window.addEventListener("resize", redraw);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", redraw);
-    };
-  }, [config, rotation, zoom, portalTarget]);
-
-  const pointerDistance = () => {
-    const points = Array.from(pointers.current.values());
-    return points.length < 2 ? 0 : Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
-  };
-
-  const setView = (next: "front" | "three" | "side") => {
-    setViewState(next);
-    setRotation(next === "front" ? { x: -.02, y: 0 } : next === "side" ? { x: -.035, y: Math.PI / 2 } : DEFAULT_ROTATION);
-  };
-
-  const label = config.family ? "Interaktywny model 3D A-Bags" : "Wybierz fason, aby rozpocząć model 3D";
-
-  if (!portalTarget) return null;
-
-  return createPortal(
-    <div
-      className="abags-pro3d-layer abags-fidelity3d-layer"
-      data-abags-pro3d
-      data-abags-fidelity3d
-      data-abags-final-webgl="v4"
-      data-abags-pro3d-view={view}
-      data-abags-material-model="polyester-leather-metal-wood-suede-v1"
-    >
-      <canvas
-        ref={canvasRef}
-        className="abags-pro3d-canvas abags-fidelity3d-canvas"
-        aria-label={label}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-          event.currentTarget.setPointerCapture?.(event.pointerId);
-          if (pointers.current.size >= 2) {
-            pinch.current = { distance: pointerDistance(), zoom };
-            drag.current = null;
-          } else {
-            drag.current = { x: event.clientX, y: event.clientY, rx: rotation.x, ry: rotation.y };
-          }
-        }}
-        onPointerMove={(event) => {
-          if (!pointers.current.has(event.pointerId)) return;
-          event.preventDefault();
-          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-          if (pointers.current.size >= 2 && pinch.current) {
-            const nextDistance = pointerDistance();
-            if (pinch.current.distance > 0) setZoom(clamp(pinch.current.zoom * (nextDistance / pinch.current.distance), MIN_ZOOM, MAX_ZOOM));
-            return;
-          }
-          if (!drag.current) return;
-          setViewState("three");
-          setRotation({
-            x: clamp(drag.current.rx + (event.clientY - drag.current.y) * .008, -.64, .48),
-            y: drag.current.ry + (event.clientX - drag.current.x) * .012,
-          });
-        }}
-        onPointerUp={(event) => {
-          pointers.current.delete(event.pointerId);
-          if (pointers.current.size < 2) pinch.current = null;
-          if (!pointers.current.size) drag.current = null;
-        }}
-        onPointerCancel={(event) => {
-          pointers.current.delete(event.pointerId);
-          pinch.current = null;
-          drag.current = null;
-        }}
-        onWheel={(event) => {
-          event.preventDefault();
-          setZoom((value) => clamp(value - event.deltaY * .0008, MIN_ZOOM, MAX_ZOOM));
-        }}
-      />
-      <div className="abags-pro3d-chip">A-BAGS REALTIME 3D · FIDELITY V4</div>
-      <div className="abags-pro3d-view-controls" aria-label="Widok modelu 3D">
-        <button type="button" aria-pressed={view === "front"} onClick={() => setView("front")}>Przód</button>
-        <button type="button" aria-pressed={view === "three"} onClick={() => setView("three")}>3/4</button>
-        <button type="button" aria-pressed={view === "side"} onClick={() => setView("side")}>Bok</button>
-      </div>
-      <div className="abags-pro3d-zoom" aria-label="Powiększenie modelu 3D">
-        <button type="button" aria-label="Pomniejsz" onClick={() => setZoom((value) => clamp(value - .08, MIN_ZOOM, MAX_ZOOM))}>−</button>
-        <input aria-label="Powiększenie" type="range" min={MIN_ZOOM} max={MAX_ZOOM} step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
-        <button type="button" aria-label="Powiększ" onClick={() => setZoom((value) => clamp(value + .08, MIN_ZOOM, MAX_ZOOM))}>+</button>
-        <button type="button" onClick={() => { setZoom(DEFAULT_ZOOM); setView("three"); }}>Reset</button>
-      </div>
-      <p className="abags-pro3d-hint">Przeciągnij, aby obrócić · uszczypnij, aby przybliżyć</p>
-    </div>,
-    portalTarget,
-  );
+function currentStage(){return document.querySelector<HTMLElement>(".abags-bag-builder-stage");}
+export default function BagBuilderFinalWebGL3D(){
+  const [portalTarget,setPortalTarget]=useState<HTMLElement|null>(null);
+  const [config,setConfig]=useState<Config>(EMPTY);
+  const [rotation,setRotation]=useState(DEFAULT_ROTATION);
+  const [zoom,setZoom]=useState(DEFAULT_ZOOM);
+  const [view,setViewState]=useState<"front"|"three"|"side">("three");
+  const canvasRef=useRef<HTMLCanvasElement|null>(null);
+  const rendererRef=useRef<Renderer|null>(null);
+  const pointers=useRef(new Map<number,{x:number;y:number}>());
+  const drag=useRef<{x:number;y:number;rx:number;ry:number}|null>(null);
+  const pinch=useRef<{distance:number;zoom:number}|null>(null);
+  useEffect(()=>{const find=()=>{const next=currentStage();setPortalTarget(cur=>cur===next?cur:next);};find();const obs=new MutationObserver(find);obs.observe(document.body,{childList:true,subtree:true});return()=>obs.disconnect();},[]);
+  useEffect(()=>{if(!portalTarget)return;const sync=()=>setConfig(cur=>{const next=readConfig(portalTarget);return sameConfig(cur,next)?cur:next;});sync();const obs=new MutationObserver(sync);obs.observe(portalTarget,{attributes:true,attributeFilter:["data-family","data-color","data-stitch","data-flap","data-handles","data-strap","data-hardware","data-accent"]});return()=>obs.disconnect();},[portalTarget]);
+  useEffect(()=>{const canvas=canvasRef.current,target=currentStage();if(!portalTarget||!canvas||!target||rendererRef.current)return;try{rendererRef.current=init(canvas);target.classList.add("abags-pro3d-active","abags-fidelity3d-active");target.dataset.abagsPro3dReady="true";target.dataset.abagsFidelity3dReady=RENDERER_VERSION;target.dataset.abagsFidelity3dModel="real-product-volumetric";target.removeAttribute("data-abags-fidelity3d-error");}catch(error){rendererRef.current=null;target.dataset.abagsFidelity3dError=error instanceof Error?error.message.slice(0,160):"init-failed";target.removeAttribute("data-abags-fidelity3d-ready");}return()=>{rendererRef.current=null;target.classList.remove("abags-pro3d-active","abags-fidelity3d-active");target.removeAttribute("data-abags-pro3d-ready");target.removeAttribute("data-abags-fidelity3d-ready");target.removeAttribute("data-abags-fidelity3d-model");target.removeAttribute("data-abags-fidelity3d-frame");target.removeAttribute("data-abags-fidelity3d-frame-at");target.removeAttribute("data-abags-fidelity3d-rotation-x");target.removeAttribute("data-abags-fidelity3d-rotation-y");target.removeAttribute("data-abags-fidelity3d-zoom");target.removeAttribute("data-abags-fidelity3d-error");};},[portalTarget]);
+  useEffect(()=>{const renderer=rendererRef.current,canvas=canvasRef.current,target=currentStage();if(!renderer||!canvas||!target||!portalTarget)return;const paint=()=>{try{draw(renderer,canvas,config,rotation,zoom);target.dataset.abagsFidelity3dRotationX=String(rotation.x);target.dataset.abagsFidelity3dRotationY=String(rotation.y);target.dataset.abagsFidelity3dZoom=String(zoom);target.dispatchEvent(new CustomEvent("abags:fidelity3d-transform",{detail:{rotation:{x:rotation.x,y:rotation.y},zoom}}));if(config.family){target.dataset.abagsFidelity3dFrame=configSignature(config);target.dataset.abagsFidelity3dFrameAt=String(Date.now());}else{target.removeAttribute("data-abags-fidelity3d-frame");target.removeAttribute("data-abags-fidelity3d-frame-at");}target.removeAttribute("data-abags-fidelity3d-error");}catch(error){target.dataset.abagsFidelity3dError=error instanceof Error?error.message.slice(0,160):"draw-failed";target.removeAttribute("data-abags-fidelity3d-frame");}};let frame=requestAnimationFrame(paint);const redraw=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(paint);};window.addEventListener("resize",redraw);return()=>{cancelAnimationFrame(frame);window.removeEventListener("resize",redraw);};},[config,rotation,zoom,portalTarget]);
+  const pointerDistance=()=>{const points=Array.from(pointers.current.values());return points.length<2?0:Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);};
+  const setView=(next:"front"|"three"|"side")=>{setViewState(next);setRotation(next==="front"?{x:-.02,y:0}:next==="side"?{x:-.035,y:Math.PI/2}:DEFAULT_ROTATION);};
+  const label=config.family?"Interaktywny model 3D A-Bags":"Wybierz fason, aby rozpocząć model 3D";
+  if(!portalTarget)return null;
+  return createPortal(<div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d data-abags-final-webgl="v4" data-abags-pro3d-view={view} data-abags-material-model="polyester-leather-metal-wood-suede-v2-volumetric">
+    <canvas ref={canvasRef} className="abags-pro3d-canvas abags-fidelity3d-canvas" aria-label={label}
+      onPointerDown={event=>{event.preventDefault();pointers.current.set(event.pointerId,{x:event.clientX,y:event.clientY});event.currentTarget.setPointerCapture?.(event.pointerId);if(pointers.current.size>=2){pinch.current={distance:pointerDistance(),zoom};drag.current=null;}else drag.current={x:event.clientX,y:event.clientY,rx:rotation.x,ry:rotation.y};}}
+      onPointerMove={event=>{if(!pointers.current.has(event.pointerId))return;event.preventDefault();pointers.current.set(event.pointerId,{x:event.clientX,y:event.clientY});if(pointers.current.size>=2&&pinch.current){const d=pointerDistance();if(pinch.current.distance>0)setZoom(clamp(pinch.current.zoom*(d/pinch.current.distance),MIN_ZOOM,MAX_ZOOM));return;}if(!drag.current)return;setViewState("three");setRotation({x:clamp(drag.current.rx+(event.clientY-drag.current.y)*.008,-.64,.48),y:drag.current.ry+(event.clientX-drag.current.x)*.012});}}
+      onPointerUp={event=>{pointers.current.delete(event.pointerId);if(pointers.current.size<2)pinch.current=null;if(!pointers.current.size)drag.current=null;}}
+      onPointerCancel={event=>{pointers.current.delete(event.pointerId);pinch.current=null;drag.current=null;}}
+      onWheel={event=>{event.preventDefault();setZoom(value=>clamp(value-event.deltaY*.0008,MIN_ZOOM,MAX_ZOOM));}}
+    />
+    <div className="abags-pro3d-chip">A-BAGS REALTIME 3D · FIDELITY V4</div>
+    <div className="abags-pro3d-view-controls" aria-label="Widok modelu 3D"><button type="button" aria-pressed={view==="front"} onClick={()=>setView("front")}>Przód</button><button type="button" aria-pressed={view==="three"} onClick={()=>setView("three")}>3/4</button><button type="button" aria-pressed={view==="side"} onClick={()=>setView("side")}>Bok</button></div>
+    <div className="abags-pro3d-zoom" aria-label="Powiększenie modelu 3D"><button type="button" aria-label="Pomniejsz" onClick={()=>setZoom(value=>clamp(value-.08,MIN_ZOOM,MAX_ZOOM))}>−</button><input aria-label="Powiększenie" type="range" min={MIN_ZOOM} max={MAX_ZOOM} step="0.01" value={zoom} onChange={event=>setZoom(Number(event.target.value))}/><button type="button" aria-label="Powiększ" onClick={()=>setZoom(value=>clamp(value+.08,MIN_ZOOM,MAX_ZOOM))}>+</button><button type="button" onClick={()=>{setZoom(DEFAULT_ZOOM);setView("three");}}>Reset</button></div>
+    <p className="abags-pro3d-hint">Przeciągnij, aby obrócić · uszczypnij, aby przybliżyć</p>
+  </div>,portalTarget);
 }
