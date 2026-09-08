@@ -21,10 +21,13 @@ export default defineConfig([
       "app/bag-builder-atelier3d.tsx",
       "app/bag-builder-fidelity3d.tsx",
       "app/bag-builder-material-pass.tsx",
+      "app/bag-builder-commerce.tsx",
+      "app/bag-builder-checkout-handoff.tsx",
     ],
     rules: {
-      // 3D/material renderers are imperative browser bridges. Their ready/mount
-      // state is synchronized only after the real browser rendering surface exists.
+      // These components bridge React with imperative DOM/browser systems. Their
+      // effects intentionally reset/synchronize state when the external builder
+      // surface or its validated server state changes.
       "react-hooks/set-state-in-effect": "off",
     },
   },
