@@ -69,12 +69,14 @@ import BagBuilderShareLink from "./bag-builder-share-link";
 import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth";
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
+import BagBuilder3DEnhancer from "./bag-builder-3d-enhancer";
 
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
     <BagBuilderFidelityOptions />
     <BagBuilderFinalWebGL3D />
+    <BagBuilder3DEnhancer />
     <BagBuilderAgataCordWebGL />
     <BagBuilderLifelikeSurface />
     <BagBuilderCrochetReliefOverlay />
