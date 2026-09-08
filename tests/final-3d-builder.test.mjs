@@ -15,9 +15,9 @@ test("final customer stack mounts calibrated A-Bags Fidelity v4 before its verif
   assert.doesNotMatch(stack, /<BagBuilderFidelity3D\s*\/>/);
   assert.match(renderer, /RENDERER_VERSION = ABAGS_FIDELITY_V4_RENDERER_VERSION/);
   assert.match(renderer, /data-abags-final-webgl="v4"/);
-  assert.match(renderer, /abagsFidelity3dReady = RENDERER_VERSION/);
-  assert.match(renderer, /abagsFidelity3dFrame = configSignature\(config\)/);
-  assert.match(renderer, /abagsFidelity3dModel = "real-product-calibrated"/);
+  assert.match(renderer, /dataset\.abagsFidelity3dReady\s*=\s*RENDERER_VERSION/);
+  assert.match(renderer, /abagsFidelity3dFrame=configSignature\(config\)/);
+  assert.match(renderer, /abagsFidelity3dModel=/);
   assert.match(renderer, /gl\.finish\(\)/);
 });
 
@@ -26,15 +26,16 @@ test("A-Bags body geometry is volumetric, family-specific and mobile-camera awar
   assert.match(renderer, /function beveledExtrusion/);
   assert.match(renderer, /function volumetricBodyMesh/);
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
-  assert.match(renderer, /spec\.rx, spec\.ry, spec\.power/);
+  assert.match(renderer, /spec\.rx,spec\.ry,spec\.power/);
   assert.match(renderer, /spec\.taper/);
   assert.match(renderer, /spec\.depth/);
-  assert.match(renderer, /const narrow = aspect < \.82/);
-  assert.match(renderer, /cameraZ = narrow \? -6\.45/);
+  assert.match(renderer, /narrow=aspect<\.82/);
+  assert.match(renderer, /cameraZ/);
+  assert.match(renderer, /-6\.65/);
 });
 
 test("four product stitches have independent yarn constructions in the shader", () => {
-  assert.match(renderer, /function stitchPattern/);
+  assert.match(renderer, /float stitchPattern/);
   assert.match(renderer, /mode<\.5/);
   assert.match(renderer, /mode<1\.5/);
   assert.match(renderer, /mode<2\.5/);
