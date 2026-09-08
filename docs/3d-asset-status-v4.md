@@ -1,0 +1,1 @@
+No release should label the renderer as 1:1 photographic/physical fidelity until the real atelier source model and calibrated PBR textures are present and validated by the asset gate.
