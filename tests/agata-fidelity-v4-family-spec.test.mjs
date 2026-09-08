@@ -16,7 +16,7 @@ test("each Fidelity V4 family is locked to a real Agata product reference", () =
     "cream-burgundy-flap",
     "small-multicolor-chain",
   ]) {
-    assert.ok(spec.includes(`reference: \"${reference}\"`), `missing geometry reference ${reference}`);
+    assert.ok(spec.includes(`reference: "${reference}"`), `missing geometry reference ${reference}`);
     assert.ok(contract.includes(reference), `customer fidelity contract must expose ${reference}`);
   }
 });
@@ -26,15 +26,15 @@ test("family contract owns hardware anchors instead of renderer guesses", () => 
   const ringValues = [...spec.matchAll(/ringY:\s*([0-9.]+)/g)].map((match) => match[1]);
   assert.equal(ringValues.length, 4, "all four families must define a ringY anchor");
   assert.ok(ringValues.every((value) => Number.isFinite(Number(value))));
-  assert.match(renderer, /ringY: spec\.ringY/);
-  assert.match(renderer, /const ringY = metrics\.ringY;/);
+  assert.match(renderer, /function familyMetrics[\s\S]*ringY:s\.ringY/);
+  assert.match(renderer, /const ringY\s*=\s*metrics\.ringY/);
   assert.doesNotMatch(renderer, /config\.family === "mini" \? \.42/);
 });
 
 test("renderer and final verifier share the Agata fidelity version contract", () => {
-  assert.match(spec, /ABAGS_FIDELITY_V4_RENDERER_VERSION = \"abags-fidelity-v4-agata-1to1\"/);
+  assert.match(spec, /ABAGS_FIDELITY_V4_RENDERER_VERSION = "abags-fidelity-v4-agata-1to1"/);
   assert.match(renderer, /ABAGS_FIDELITY_V4_RENDERER_VERSION/);
   assert.match(controller, /import \{ ABAGS_FIDELITY_V4_RENDERER_VERSION \}/);
   assert.match(controller, /const REQUIRED_RENDERER = ABAGS_FIDELITY_V4_RENDERER_VERSION;/);
-  assert.doesNotMatch(controller, /const REQUIRED_RENDERER = \"abags-fidelity-v4\"/);
+  assert.doesNotMatch(controller, /const REQUIRED_RENDERER = "abags-fidelity-v4"/);
 });
