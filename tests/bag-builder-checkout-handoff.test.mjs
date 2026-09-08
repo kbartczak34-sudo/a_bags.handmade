@@ -5,6 +5,7 @@ import test from "node:test";
 const endpoint = fs.readFileSync("app/api/configurator/checkout/route.ts", "utf8");
 const snapshot = fs.readFileSync("app/api/configurator/snapshot/route.ts", "utf8");
 const resolver = fs.readFileSync("app/api/configurator/resolve/route.ts", "utf8");
+const bomResolver = fs.readFileSync("lib/product-configuration-v2-bom.ts", "utf8");
 const handoff = fs.readFileSync("app/bag-builder-checkout-handoff.tsx", "utf8");
 const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
@@ -33,8 +34,10 @@ test("commerce and checkout share the same V2 physical evidence contract", () =>
   assert.match(commerce, /\/api\/configurator\/resolve/);
   assert.match(handoff, /physicalBinding/);
   assert.match(resolver, /isProductConfigurationV2Source/);
-  assert.match(resolver, /productionPackagePreview/);
-  assert.match(resolver, /productionPackageHash/);
+  assert.match(resolver, /resolveBomBoundProductConfigurationV2/);
+  assert.match(bomResolver, /productionPackagePreview/);
+  assert.match(bomResolver, /productionPackageHash/);
+  assert.match(bomResolver, /physicalBinding/);
 });
 
 test("active customer customizer mounts the secure V2 checkout handoff", () => {
