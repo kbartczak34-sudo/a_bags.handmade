@@ -29,8 +29,9 @@ test("PBR texture pipeline keeps basecolor in sRGB and data maps in NoColorSpace
   assert.match(pbr, /loadABagsThreePbrMaps/);
 });
 
-test("Three renderer has an explicit production fallback path", () => {
-  assert.match(enhancer, /data-abags-three-fallback/);
+test("Three renderer has explicit safe fallback states", () => {
+  assert.match(enhancer, /abagsThreeFallback/);
   assert.match(enhancer, /assets-missing/);
+  assert.match(enhancer, /mesh-contract-failed/);
   assert.match(enhancer, /load-failed/);
 });
