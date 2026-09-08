@@ -63,9 +63,10 @@ async function mountThreeTwin(layer: HTMLElement) {
     return () => undefined;
   }
 
-  const [THREE, { GLTFLoader }, { RoomEnvironment }, { createABagsThreePbrMaterial, loadABagsThreePbrMaps }] = await Promise.all([
+  const [THREE, { GLTFLoader }, { OrbitControls }, { RoomEnvironment }, { createABagsThreePbrMaterial, loadABagsThreePbrMaps }] = await Promise.all([
     import("three"),
     import("three/addons/loaders/GLTFLoader.js"),
+    import("three/addons/controls/OrbitControls.js"),
     import("three/addons/environments/RoomEnvironment.js"),
     import("../lib/abags-three-pbr"),
   ]);
@@ -90,6 +91,16 @@ async function mountThreeTwin(layer: HTMLElement) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
   camera.position.set(0, 0.1, 4.2);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.065;
+  controls.enablePan = false;
+  controls.minDistance = 2.4;
+  controls.maxDistance = 6.5;
+  controls.minPolarAngle = 0.65;
+  controls.maxPolarAngle = 2.45;
+  controls.target.set(0, 0, 0);
+
   const environmentScene = new RoomEnvironment(renderer);
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(environmentScene, 0.04).texture;
@@ -116,6 +127,7 @@ async function mountThreeTwin(layer: HTMLElement) {
       layer.removeAttribute(THREE_LOADING_ATTR);
       host.remove();
       renderer.dispose();
+      controls.dispose();
       return () => undefined;
     }
     root.traverse((object) => {
@@ -134,6 +146,7 @@ async function mountThreeTwin(layer: HTMLElement) {
     layer.dataset.abagsThreeFallback = "load-failed";
     layer.removeAttribute(THREE_LOADING_ATTR);
     host.remove();
+    controls.dispose();
     renderer.dispose();
     return () => undefined;
   }
@@ -149,7 +162,7 @@ async function mountThreeTwin(layer: HTMLElement) {
   resizeObserver.observe(host);
   resize();
   let raf = 0;
-  const animate = () => { if (disposed) return; raf = window.requestAnimationFrame(animate); renderer.render(scene, camera); };
+  const animate = () => { if (disposed) return; raf = window.requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
   animate();
 
   const observer = new MutationObserver(() => {
@@ -169,6 +182,7 @@ async function mountThreeTwin(layer: HTMLElement) {
     window.cancelAnimationFrame(raf);
     resizeObserver.disconnect();
     observer.disconnect();
+    controls.dispose();
     if (root) { scene.remove(root); disposeObject(THREE, root); }
     renderer.dispose();
     scene.clear();
