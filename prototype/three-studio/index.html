@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#efe7dd" />
+    <meta name="description" content="A-Bags Handmade — Three.js Stage 1 photorealistic studio prototype." />
+    <title>A-Bags Handmade — 3D Studio Stage 1</title>
+    <link rel="stylesheet" href="./styles.css" />
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="studio-shell" aria-label="A-Bags Handmade 3D studio">
+      <div id="viewport" class="studio-viewport"></div>
+
+      <section class="studio-overlay" aria-live="polite">
+        <div class="brand-lockup">
+          <span class="eyebrow">A-BAGS HANDMADE</span>
+          <h1>Digital Craft Twin</h1>
+          <p>ETAP 1 · fotorealistyczne studio Three.js</p>
+        </div>
+
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">Inicjalizacja renderera…</span>
+          </div>
+          <div class="status-meta" id="status-meta">HDRI · ACES Filmic · Retina</div>
+        </div>
+      </section>
+
+      <div class="hint">Przeciągnij, aby obrócić · kółko/pinch, aby przybliżyć</div>
+      <noscript>Ta wersja kreatora 3D wymaga włączonego JavaScript.</noscript>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
