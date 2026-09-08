@@ -133,3 +133,118 @@ jobs:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
           ABAGS_VISUAL_QA_DIR: artifacts/customizer-v5
         run: node scripts/smoke-customizer-photo-true-v5.mjs
+
+      - name: Upload customizer visual QA
+        if: always() && steps.deploy.conclusion == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: customizer-visual-qa-${{ github.run_number }}
+          path: artifacts/customizer-v5/*.png
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Mobile Photo-True real-product interaction test
+        id: pro3d
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success' && steps.customizer.conclusion == 'success'
+        continue-on-error: true
+        env:
+          ABAGS_PRODUCTION_URL: https://abagshandmade.pl
+        run: node scripts/smoke-photo-true-mobile.mjs
+
+      - name: Record deployment status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.conclusion }}
+          SMOKE_OUTCOME: ${{ steps.smoke.conclusion }}
+          REALTIME_OUTCOME: ${{ steps.realtime.conclusion }}
+          CLOSE_INTEGRITY_OUTCOME: ${{ steps.close_integrity.conclusion }}
+          RENDER_INTEGRITY_OUTCOME: ${{ steps.render_integrity.conclusion }}
+          ANCHOR_INTEGRITY_OUTCOME: ${{ steps.anchor_integrity.conclusion }}
+          CUSTOMIZER_OUTCOME: ${{ steps.customizer.conclusion }}
+          MOBILE_OUTCOME: ${{ steps.pro3d.conclusion }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${DEPLOY_OUTCOME:-}" == "success" && "${SMOKE_OUTCOME:-}" == "success" && "${REALTIME_OUTCOME:-}" == "success" && "${CLOSE_INTEGRITY_OUTCOME:-}" == "success" && "${RENDER_INTEGRITY_OUTCOME:-}" == "success" && "${ANCHOR_INTEGRITY_OUTCOME:-}" == "success" && "${CUSTOMIZER_OUTCOME:-}" == "success" && "${MOBILE_OUTCOME:-}" == "success" ]]; then
+            RESULT="✅ PASS"
+          elif [[ "${DEPLOY_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ DEPLOY FAIL"
+          elif [[ "${SMOKE_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ SMOKE FAIL"
+          elif [[ "${REALTIME_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ REALTIME BUILDER FAIL"
+          elif [[ "${CLOSE_INTEGRITY_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ CUSTOMER CLOSE INTEGRITY FAIL"
+          elif [[ "${RENDER_INTEGRITY_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ REALTIME RENDER INTEGRITY FAIL"
+          elif [[ "${ANCHOR_INTEGRITY_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ ACCESSORY ANCHOR INTEGRITY FAIL"
+          elif [[ "${CUSTOMIZER_OUTCOME:-}" != "success" ]]; then
+            RESULT="❌ PHOTO-TRUE REFERENCE FAIL"
+          else
+            RESULT="❌ PHOTO-TRUE MOBILE FAIL"
+          fi
+
+          BODY="$(cat <<EOF
+          ### ${RESULT}
+
+          - Commit: \`${COMMIT_SHA}\`
+          - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
+          - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
+          - Customer realtime builder acceptance: \`${REALTIME_OUTCOME:-skipped}\`
+          - Desktop customer close integrity: \`${CLOSE_INTEGRITY_OUTCOME:-skipped}\`
+          - Realtime composited render integrity: \`${RENDER_INTEGRITY_OUTCOME:-skipped}\`
+          - Accessory anchor integrity (front / 3/4 / side, desktop + mobile): \`${ANCHOR_INTEGRITY_OUTCOME:-skipped}\`
+          - Photo-True internal reference acceptance: \`${CUSTOMIZER_OUTCOME:-skipped}\`
+          - Mobile Photo-True reference interaction: \`${MOBILE_OUTCOME:-skipped}\`
+          - Run: ${RUN_URL}
+
+          Automated deployment record for \`main\`.
+          EOF
+          )"
+          gh issue comment 21 --body "$BODY"
+
+      - name: Fail when production smoke test fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but the live smoke test failed." >&2
+          exit 1
+
+      - name: Fail when customer realtime builder acceptance fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but the customer realtime builder did not build a new bag live from an empty construction." >&2
+          exit 1
+
+      - name: Fail when desktop customer close integrity fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but the desktop customer close control is not the verified deterministic close surface." >&2
+          exit 1
+
+      - name: Fail when realtime composited render integrity fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but the visible composited customer render does not match the verified Fidelity3D canvas." >&2
+          exit 1
+
+      - name: Fail when accessory anchor integrity fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but accessory layers are not locked to the verified WebGL body across front, three-quarter and side views." >&2
+          exit 1
+
+      - name: Fail when Photo-True customizer browser test fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success' && steps.customizer.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but the internal Photo-True reference acceptance failed." >&2
+          exit 1
+
+      - name: Fail when mobile Photo-True interaction fails
+        if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success' && steps.close_integrity.conclusion == 'success' && steps.render_integrity.conclusion == 'success' && steps.anchor_integrity.conclusion == 'success' && steps.customizer.conclusion == 'success' && steps.pro3d.conclusion != 'success'
+        run: |
+          echo "Production deployment completed, but the mobile Photo-True reference interaction failed." >&2
+          exit 1
