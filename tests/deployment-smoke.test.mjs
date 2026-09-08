@@ -41,13 +41,14 @@ test("post-deploy site-content convergence is bounded and never weakens the appr
   assert.match(smoke, /did not converge to approved production contract after post-deploy retries/);
 });
 
-test("Cloudflare deployment retries only transient API or transport failures and preserves hard failures", () => {
+test("Cloudflare deployment retries transient API or transport failures and preserves hard failures", () => {
   assert.match(workflow, /max_attempts=3/);
   assert.match(workflow, /npx wrangler deploy --config dist\/server\/wrangler\.json --keep-vars/);
-  assert.match(workflow, /\(502\|503\|504\)/);
+  assert.match(workflow, /\(429\|502\|503\|504\)/);
   assert.match(workflow, /upstream connect error/);
   assert.match(workflow, /connection \(reset\|termination\)/);
   assert.match(workflow, /Received a malformed response from the API/);
+  assert.match(workflow, /Too Many Requests/);
   assert.match(workflow, /non-retryable or exhausted error/);
   assert.match(workflow, /exit "\$status"/);
 });
