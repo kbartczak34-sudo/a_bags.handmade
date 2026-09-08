@@ -14,8 +14,8 @@ test("customer close production probe is valid JavaScript and inspects actual re
   assert.match(probe, /getComputedStyle\(close,'::before'\)/);
   assert.match(probe, /getComputedStyle\(close,'::after'\)/);
   assert.match(probe, /elementsFromPoint/);
-  assert.match(probe, /close-integrity\.json/);
-  assert.match(probe, /close-integrity-desktop\.png/);
+  assert.match(probe, /close-integrity\\.json/);
+  assert.match(probe, /close-integrity-desktop\\.png/);
   assert.match(probe, /marker !== "lines-v2"/);
   assert.match(probe, /stroke transform missing/);
 });
@@ -24,8 +24,8 @@ test("production deploy blocks on the close integrity gate before render integri
   const close = workflow.indexOf("id: close_integrity");
   const render = workflow.indexOf("id: render_integrity");
   assert.ok(close >= 0 && render > close);
-  assert.match(workflow, /run: node scripts\/smoke-customizer-close-integrity\.mjs/);
-  assert.match(workflow, /steps\.close_integrity\.outcome == 'success'/);
+  assert.match(workflow, /run: node scripts\\/smoke-customizer-close-integrity\\.mjs/);
+  assert.match(workflow, /steps\\.close_integrity\\.conclusion == 'success'/);
   assert.match(workflow, /CLOSE_INTEGRITY_OUTCOME:/);
   assert.match(workflow, /Fail when desktop customer close integrity fails/);
 });
