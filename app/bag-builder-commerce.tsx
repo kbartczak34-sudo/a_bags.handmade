@@ -259,9 +259,10 @@ export default function BagBuilderCommerce() {
         const priceMatch = nextServerPrice === localPrice;
         const packageReady = typeof resolved.productionPackageHash === "string" && resolved.productionPackageHash.length > 0;
         const validationMatch = resolved.validation?.valid === true;
-        const parity = validationMatch && packageReady && priceMatch ? "match" : "mismatch";
+        const fullyReady = validationMatch && packageReady && priceMatch;
+        const parity = fullyReady ? "match" : "mismatch";
 
-        setServerStatus(validationMatch && packageReady ? "validated" : "blocked");
+        setServerStatus(fullyReady ? "validated" : "blocked");
         setServerPrice(nextServerPrice);
         setProductionPackageHash(packageReady ? resolved.productionPackageHash! : null);
 
