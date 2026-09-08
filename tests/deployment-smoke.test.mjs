@@ -9,7 +9,8 @@ test("production deployment runs a post-deploy smoke test and records the result
   assert.match(workflow, /bash scripts\/smoke-production\.sh/);
   assert.match(workflow, /gh issue comment 21/);
   assert.match(workflow, /issues:\s*write/);
-  assert.match(workflow, /steps\.smoke\.outcome/);
+  assert.match(workflow, /SMOKE_OUTCOME:\s*\$\{\{ steps\.smoke\.conclusion \}\}/);
+  assert.match(workflow, /Production smoke:\s*\$\{SMOKE_OUTCOME/);
 });
 
 test("production smoke test covers storefront, security, PWA, APIs and admin protection", () => {
