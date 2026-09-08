@@ -8,6 +8,7 @@ const resolver = fs.readFileSync("app/api/configurator/resolve/route.ts", "utf8"
 const handoff = fs.readFileSync("app/bag-builder-checkout-handoff.tsx", "utf8");
 const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
+const bomResolver = fs.readFileSync("lib/product-configuration-v2-bom.ts", "utf8");
 
 test("checkout is server-authoritative and accepts only an immutable snapshot identity", () => {
   assert.match(endpoint, /snapshotId/);
@@ -22,7 +23,8 @@ test("checkout flow resolves evidence, persists a V2 snapshot and then starts pa
   assert.match(handoff, /\/api\/configurator\/snapshot/);
   assert.match(handoff, /\/api\/configurator\/checkout/);
   assert.match(handoff, /productionPackageHash/);
-  assert.match(snapshot, /schemaVersion/);
+  assert.match(handoff, /schemaVersion:\s*2/);
+  assert.match(snapshot, /isProductConfigurationV2Source\(source\)/);
   assert.match(snapshot, /BOM_VALIDATED/);
 });
 
@@ -30,7 +32,9 @@ test("commerce and checkout share the same V2 physical evidence contract", () =>
   assert.match(commerce, /physicalBinding/);
   assert.match(commerce, /\/api\/configurator\/evidence/);
   assert.match(commerce, /\/api\/configurator\/resolve/);
-  assert.match(resolver, /physicalBinding/);
+  assert.match(handoff, /physicalBinding/);
+  assert.match(resolver, /isProductConfigurationV2Source/);
+  assert.match(bomResolver, /physicalBinding/);
   assert.match(resolver, /productionPackagePreview/);
   assert.match(resolver, /productionPackageHash/);
 });
