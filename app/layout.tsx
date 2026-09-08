@@ -12,6 +12,7 @@ import StitchGallery from "./stitch-gallery";
 import StorefrontExperience from "./storefront-experience";
 import SocialQuickLinks from "./social-quick-links";
 import VatDisplayEnhancer from "./vat-display-enhancer";
+import BagBuilderThreeJsBridge from "./bag-builder-threejs-bridge";
 import "./globals.css";
 import "./footer-overrides.css";
 import "./legal-compliance.css";
@@ -40,6 +41,7 @@ import "./bag-builder-reference-ui.css";
 import "./bag-builder-reference-ui-fixes.css";
 import "./bag-builder-reference-experience.css";
 import "./bag-builder-atelier3d.css";
+import "./bag-builder-threejs-bridge.css";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -135,6 +137,7 @@ export default function RootLayout({
         <StorefrontExperience />
         <PersonalizationEntry />
         <ExactLiveCustomizer />
+        <BagBuilderThreeJsBridge />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
