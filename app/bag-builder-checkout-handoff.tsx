@@ -112,6 +112,9 @@ export default function BagBuilderCheckoutHandoff() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [commerceReady, setCommerceReady] = useState(false);
+  const [commercePrice, setCommercePrice] = useState<number | null>(null);
+  const [commerceStatus, setCommerceStatus] = useState("unavailable");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -162,6 +165,34 @@ export default function BagBuilderCheckoutHandoff() {
     };
   }, []);
 
+  useEffect(() => {
+    const syncCommerceGate = () => {
+      const commerce = document.querySelector<HTMLElement>("[data-abags-builder-commerce]");
+      if (!commerce) {
+        setCommerceReady(false);
+        setCommercePrice(null);
+        setCommerceStatus("unavailable");
+        return;
+      }
+      const ready = commerce.dataset.builderServerReady === "true";
+      const status = commerce.dataset.builderServerStatus || "unavailable";
+      const rawPrice = Number(commerce.dataset.builderLivePrice || "");
+      setCommerceReady(ready);
+      setCommercePrice(Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : null);
+      setCommerceStatus(status);
+    };
+
+    syncCommerceGate();
+    const observer = new MutationObserver(syncCommerceGate);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-builder-server-ready", "data-builder-server-status", "data-builder-live-price"],
+    });
+    return () => observer.disconnect();
+  }, [config]);
+
   const complete = Boolean(config.family && config.color && config.stitch);
   const photographedBase = useMemo(
     () => config.baseProductId ? catalog.find((product) => product.id === config.baseProductId) ?? null : null,
@@ -173,7 +204,14 @@ export default function BagBuilderCheckoutHandoff() {
   );
   const mapped = Boolean(photographedBase || (settings && config.family && settings.familyProductIds[config.family]));
   const isCompatible = Boolean(settings && compatible(config, settings));
-  const ready = Boolean(settings?.pricingEnabled && complete && mapped && isCompatible && total && total > 0);
+  const localReady = Boolean(settings?.pricingEnabled && complete && mapped && isCompatible && total && total > 0);
+  const ready = localReady && commerceReady;
+  const displayPrice = commercePrice ?? total;
+
+  useEffect(() => {
+    if (!config.family || !config.color || !config.stitch) return;
+    setError("");
+  }, [config.family, config.color, config.stitch, config.flap, config.handles, config.strap, config.hardware, config.accent, config.baseProductId]);
 
   const startCheckout = async () => {
     const normalizedEmail = email.trim();
@@ -259,12 +297,22 @@ export default function BagBuilderCheckoutHandoff() {
   } else if (complete && settings && !isCompatible) {
     title = "Sprawdź konfigurację";
     copy = "Jedna z wybranych opcji nie jest kompatybilna z fasonem. Zmień ją przed zakupem.";
-  } else if (ready && total !== null) {
-    title = "Projekt gotowy do ponownej walidacji";
-    status = money.format(total / 100);
+  } else if (ready && displayPrice !== null) {
+    title = "Projekt gotowy do bezpiecznego zakupu";
+    status = money.format(displayPrice / 100);
     copy = photographedBase
-      ? `Bazą projektu jest widoczny produkt: ${photographedBase.name}. Przed płatnością system ponownie sprawdzi referencję fizyczną, BOM, recepturę i cenę.`
-      : "Przed płatnością system ponownie sprawdzi fizyczne powiązania, BOM, recepturę i cenę, a następnie zapisze niezmienny Production Snapshot.";
+      ? `Bazą projektu jest widoczny produkt: ${photographedBase.name}. System potwierdził fizyczny łańcuch V2, BOM i cenę przed udostępnieniem zakupu.`
+      : "System potwierdził fizyczne powiązania V2, recepturę, BOM i cenę. Przed Stripe zostanie zapisany niezmienny Production Snapshot.";
+  } else if (complete && commerceStatus === "checking") {
+    title = "Sprawdzam projekt";
+    status = "walidacja…";
+    copy = "Sprawdzam aktualny wariant fizyczny, recepturę, BOM i cenę. Przycisk zakupu pojawi się dopiero po pozytywnej walidacji serwera.";
+  } else if (complete && commerceStatus === "blocked") {
+    title = "Zakup jeszcze niedostępny";
+    copy = "Ten wariant nie ma obecnie kompletnego zatwierdzonego łańcucha produkcyjnego. Możesz zapisać projekt lub wysłać go do konsultacji.";
+  } else if (complete && commerceStatus === "unavailable") {
+    title = "Walidacja chwilowo niedostępna";
+    copy = "Nie udostępniam zakupu bez potwierdzenia aktualnego stanu konfiguracji przez serwer. Spróbuj ponownie za chwilę.";
   }
 
   return createPortal(
@@ -289,7 +337,7 @@ export default function BagBuilderCheckoutHandoff() {
       )}
       <small>Sznurek poliestrowy z Pimiotki · płatność Stripe / BLIK po pełnej walidacji projektu.</small>
       {error && <p id="abags-configurator-checkout-error" role="alert">{error}</p>}
-      {ready && <button type="button" onClick={() => void startCheckout()} disabled={pending}>{pending ? "Waliduję i przygotowuję Stripe…" : `Kup ten projekt · ${money.format((total ?? 0) / 100)} →`}</button>}
+      {ready && <button type="button" onClick={() => void startCheckout()} disabled={pending}>{pending ? "Waliduję i przygotowuję Stripe…" : `Kup ten projekt · ${money.format((displayPrice ?? 0) / 100)} →`}</button>}
     </section>,
     mount,
   );
