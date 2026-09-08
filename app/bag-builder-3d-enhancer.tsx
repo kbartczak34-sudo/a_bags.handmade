@@ -9,6 +9,7 @@ const THREE_LAYER_CLASS = "abags-three-digital-twin-layer";
 const THREE_READY_ATTR = "data-abags-three-ready";
 const THREE_LOADING_ATTR = "data-abags-three-loading";
 const REQUIRED_ASSET_KEYS = ["model", "basecolor", "normal", "roughness", "metallic", "ao"] as const;
+const REQUIRED_MESHES = ["body", "flap", "handles", "strap", "hardware", "accessories"] as const;
 
 type ThreeRuntime = typeof import("three");
 type ThreeObject3D = import("three").Object3D;
@@ -62,7 +63,7 @@ async function mountThreeTwin(layer: HTMLElement) {
     return () => undefined;
   }
 
-  const [THREE, { GLTFLoader }, { RoomEnvironment }, { createABagsThreePbrMaterial }] = await Promise.all([
+  const [THREE, { GLTFLoader }, { RoomEnvironment }, { createABagsThreePbrMaterial, loadABagsThreePbrMaps }] = await Promise.all([
     import("three"),
     import("three/addons/loaders/GLTFLoader.js"),
     import("three/addons/environments/RoomEnvironment.js"),
@@ -94,7 +95,6 @@ async function mountThreeTwin(layer: HTMLElement) {
   scene.environment = pmrem.fromScene(environmentScene, 0.04).texture;
   environmentScene.dispose();
   pmrem.dispose();
-
   const key = new THREE.DirectionalLight(0xfff5ec, 2.2); key.position.set(3.5, 4.5, 5.5); key.castShadow = true; scene.add(key);
   const fill = new THREE.DirectionalLight(0xf3e5da, 0.85); fill.position.set(-4, 1.8, 3.2); scene.add(fill);
   const rim = new THREE.DirectionalLight(0xffffff, 1.4); rim.position.set(1.5, 4, -4); scene.add(rim);
@@ -104,15 +104,26 @@ async function mountThreeTwin(layer: HTMLElement) {
   let root: ThreeObject3D | null = null;
   let disposed = false;
   try {
-    const gltf = await loader.loadAsync(urls.model);
-    if (disposed) { disposeObject(THREE, gltf.scene); return () => undefined; }
+    const [gltf, maps] = await Promise.all([loader.loadAsync(urls.model), loadABagsThreePbrMaps(urls)]);
+    if (disposed) { disposeObject(THREE, gltf.scene); Object.values(maps).forEach((texture) => texture?.dispose()); return () => undefined; }
     root = gltf.scene;
+    const meshNames = new Set<string>();
+    root.traverse((object) => { if ((object as import("three").Mesh).isMesh) meshNames.add(object.name.toLowerCase()); });
+    if (!REQUIRED_MESHES.every((name) => meshNames.has(name))) {
+      layer.dataset.abagsThreeFallback = "mesh-contract-failed";
+      disposeObject(THREE, root);
+      Object.values(maps).forEach((texture) => texture?.dispose());
+      layer.removeAttribute(THREE_LOADING_ATTR);
+      host.remove();
+      renderer.dispose();
+      return () => undefined;
+    }
     root.traverse((object) => {
       const mesh = object as import("three").Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      mesh.material = createABagsThreePbrMaterial(materialKind(mesh.name || "body"), layer.dataset.color || "#E8DDCC");
+      mesh.material = createABagsThreePbrMaterial(materialKind(mesh.name || "body"), layer.dataset.color || "#E8DDCC", maps);
     });
     scene.add(root);
     layer.dataset.abagsThreeMounted = "true";
@@ -148,10 +159,10 @@ async function mountThreeTwin(layer: HTMLElement) {
       const mesh = object as import("three").Mesh;
       if (!mesh.isMesh) return;
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      materials.forEach((material) => { const physical = material as import("three").MeshPhysicalMaterial; physical.color?.set(nextColor); });
+      materials.forEach((material) => { const physical = material as import("three").MeshPhysicalMaterial; if (!physical.map) physical.color?.set(nextColor); });
     });
   });
-  observer.observe(layer, { attributes: true, attributeFilter: ["data-color", "data-family", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] });
+  observer.observe(layer, { attributes: true, attributeFilter: ["data-color"] });
 
   return () => {
     disposed = true;
@@ -196,9 +207,7 @@ export default function BagBuilder3DEnhancer() {
       let scale = DEFAULT_SCALE;
       const applyScale = (next: number) => { scale = clamp(next); layer.style.setProperty("--abags-extra-scale", scale.toFixed(3)); range.value = String(Math.round(scale * 100)); reset.textContent = `${Math.round(scale * 100)}%`; };
       const zoomOut = () => applyScale(scale - 0.1); const zoomIn = () => applyScale(scale + 0.1); const zoomReset = () => applyScale(DEFAULT_SCALE); const zoomRange = () => applyScale(Number(range.value) / 100);
-      zoomPanel.querySelector<HTMLButtonElement>("[data-abags-zoom-out]")!.addEventListener("click", zoomOut);
-      zoomPanel.querySelector<HTMLButtonElement>("[data-abags-zoom-in]")!.addEventListener("click", zoomIn);
-      reset.addEventListener("click", zoomReset); range.addEventListener("input", zoomRange);
+      zoomPanel.querySelector<HTMLButtonElement>("[data-abags-zoom-out]")!.addEventListener("click", zoomOut); zoomPanel.querySelector<HTMLButtonElement>("[data-abags-zoom-in]")!.addEventListener("click", zoomIn); reset.addEventListener("click", zoomReset); range.addEventListener("input", zoomRange);
       const pointers = new Map<number, { x: number; y: number }>(); let pinchStarted = false; let pinchDistance = 0; let pinchScale = scale;
       const pointerDown = (event: PointerEvent) => { pointers.set(event.pointerId, { x: event.clientX, y: event.clientY }); if (pointers.size >= 2) { pinchStarted = true; pinchDistance = distance(Array.from(pointers.values()).slice(0, 2)); pinchScale = scale; event.preventDefault(); event.stopPropagation(); } };
       const pointerMove = (event: PointerEvent) => { if (!pointers.has(event.pointerId)) return; pointers.set(event.pointerId, { x: event.clientX, y: event.clientY }); if (!pinchStarted || pointers.size < 2) return; const nextDistance = distance(Array.from(pointers.values()).slice(0, 2)); if (pinchDistance > 0) applyScale(pinchScale * (nextDistance / pinchDistance)); event.preventDefault(); event.stopPropagation(); };
