@@ -18,7 +18,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run test:regression",
     "check:full": "npm run lint && npm run typecheck && npm test",
-    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
+    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
+    "diagnostics:3d": "node --check prototype/three-studio/main.js"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
