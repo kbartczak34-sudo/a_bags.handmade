@@ -43,8 +43,7 @@ export async function loadABagsThreePbrMaps(urls: ABagsThreeTextureUrls): Promis
   ]);
   configureColorTexture(baseColor);
   [normal, roughness, metallic, ao].forEach(configureDataTexture);
-  const maxAnisotropy = Math.min(8, 16);
-  [baseColor, normal, roughness, metallic, ao].forEach((texture) => { texture.anisotropy = maxAnisotropy; texture.needsUpdate = true; });
+  [baseColor, normal, roughness, metallic, ao].forEach((texture) => { texture.anisotropy = 8; texture.needsUpdate = true; });
   return { baseColor, normal, roughness, metallic, ao };
 }
 
@@ -83,7 +82,5 @@ export function createABagsThreePbrMaterial(
 }
 
 export function disposeABagsPbrMaterial(material: THREE.Material) {
-  const physical = material as THREE.MeshPhysicalMaterial;
-  for (const value of Object.values(physical)) if (value instanceof THREE.Texture) value.dispose();
   material.dispose();
 }
