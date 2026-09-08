@@ -5,6 +5,7 @@ import test from "node:test";
 const snapshot = fs.readFileSync("lib/order-configuration-snapshots.ts", "utf8");
 const webhook = fs.readFileSync("app/api/stripe/webhook/route.ts", "utf8");
 const checkout = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
+const configuratorCheckout = fs.readFileSync("app/api/configurator/checkout/route.ts", "utf8");
 const adminRoute = fs.readFileSync("app/api/admin/orders/configuration/route.ts", "utf8");
 
 test("paid configured orders are frozen in a dedicated immutable D1 snapshot table", () => {
@@ -29,7 +30,8 @@ test("snapshot verifies server-created SHA-256 hash against the stored project b
   assert.match(snapshot, /createConfigurationHash\(configuration\)/);
   assert.match(snapshot, /calculatedHash !== storedHash/);
   assert.match(snapshot, /\^\[a-f0-9\]\{64\}\$/);
-  assert.match(checkout, /metadata\[builder_configuration_hash\]/);
+  assert.match(configuratorCheckout, /metadata\[production_package_hash\]/);
+  assert.match(configuratorCheckout, /snapshot\.packageHash/);
   assert.doesNotMatch(snapshot, /metadata\?\.builder_configuration_hash[^\n]*as ProductConfigurationV1/);
 });
 
