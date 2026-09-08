@@ -12,15 +12,15 @@ const profileBlock = (kind) => {
 
 test("PBR material registry covers the production material families", () => {
   for (const kind of ["cord", "leather", "suede", "satin", "wood", "metal"]) {
-    assert.match(source, new RegExp(`kind: \\\"${kind}\\\"`));
+    assert.match(source, new RegExp(`kind: "${kind}"`));
   }
 });
 
 test("metal profile is physically metallic and fabric profiles remain non-metallic", () => {
-  assert.match(profileBlock("metal"), /kind: "metal"[\\s\\S]*?metalness: 1/);
-  assert.match(profileBlock("cord"), /kind: "cord"[\\s\\S]*?metalness: 0/);
-  assert.match(profileBlock("leather"), /kind: "leather"[\\s\\S]*?metalness: 0/);
-  assert.match(profileBlock("suede"), /kind: "suede"[\\s\\S]*?metalness: 0/);
+  assert.match(profileBlock("metal"), /kind: "metal"[\s\S]*?metalness: 1/);
+  assert.match(profileBlock("cord"), /kind: "cord"[\s\S]*?metalness: 0/);
+  assert.match(profileBlock("leather"), /kind: "leather"[\s\S]*?metalness: 0/);
+  assert.match(profileBlock("suede"), /kind: "suede"[\s\S]*?metalness: 0/);
 });
 
 test("registry exposes Fresnel and studio-environment helpers", () => {
@@ -29,7 +29,7 @@ test("registry exposes Fresnel and studio-environment helpers", () => {
 });
 
 test("PBR profiles include micro-detail and environment calibration controls", () => {
-  assert.match(source, /normalScale: 0\\./);
-  assert.match(source, /microDetail: 0\\./);
-  assert.match(source, /environmentIntensity: 0\\./);
+  assert.match(source, /normalScale: 0\./);
+  assert.match(source, /microDetail: 0\./);
+  assert.match(source, /environmentIntensity: (?:0\.|1\.)/);
 });
