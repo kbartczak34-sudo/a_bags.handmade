@@ -6,9 +6,9 @@ const registry = await readFile(new URL("../lib/abags-three-model-registry.ts", 
 const enhancer = await readFile(new URL("../app/bag-builder-3d-enhancer.tsx", import.meta.url), "utf8");
 const pbr = await readFile(new URL("../lib/abags-three-pbr.ts", import.meta.url), "utf8");
 
-for (const family of ["tote", "round", "bucket", "mini"]) {
+for (const [family, modelId] of [["tote", "abags-tote-v1"], ["round", "abags-round-v1"], ["bucket", "abags-bucket-v1"], ["mini", "abags-mini-v1"]]) {
   test(`Three model registry maps ${family} to immutable v1 asset id`, () => {
-    assert.match(registry, new RegExp(`if \\(family === "${family}"\\) return "abags-${family}-v1"`));
+    assert.match(registry, new RegExp(`${family}: "${modelId}"`));
   });
 }
 
