@@ -71,13 +71,13 @@ test("accessory depth is split around WebGL instead of flattening every detail o
 });
 
 test("final WebGL keeps product structure while refinement owns strap and accent geometry", () => {
-  assert.doesNotMatch(renderer, /if \(config\.strap !== "none"\)/);
-  assert.doesNotMatch(renderer, /if \(config\.accent === "charm"\)/);
-  assert.doesNotMatch(renderer, /if \(config\.accent === "tassel"\)/);
-  assert.doesNotMatch(renderer, /if \(config\.accent === "scarf"\)/);
-  assert.doesNotMatch(renderer, /flapY - \.22/);
-  assert.match(renderer, /if \(config\.flap !== "none"\)/);
-  assert.match(renderer, /if \(config\.handles !== "none"\)/);
+  assert.doesNotMatch(renderer, /if\s*\(config\.strap\s*!==\s*"none"\)/);
+  assert.doesNotMatch(renderer, /if\s*\(config\.accent\s*===\s*"charm"\)/);
+  assert.doesNotMatch(renderer, /if\s*\(config\.accent\s*===\s*"tassel"\)/);
+  assert.doesNotMatch(renderer, /if\s*\(config\.accent\s*===\s*"scarf"\)/);
+  assert.doesNotMatch(renderer, /flapY\s*-\s*\.22/);
+  assert.match(renderer, /config\.flap\s*!==\s*"none"/);
+  assert.match(renderer, /config\.handles\s*!==\s*"none"/);
   assert.match(renderer, /meshes\.ring/);
 });
 
