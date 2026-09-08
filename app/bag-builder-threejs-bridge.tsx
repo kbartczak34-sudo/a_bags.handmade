@@ -58,12 +58,17 @@ export default function BagBuilderThreeJsBridge() {
 
     reconcile();
     const observer = new MutationObserver(reconcile);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-family", "data-photo-product-id"] });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-family", "data-photo-product-id"],
+    });
     return () => {
       active = false;
       observer.disconnect();
     };
   }, []);
 
-  return <>{mounts.map(({ element, modelId }) => createPortal(<BagBuilderThreeJsStage modelId={modelId} />, element, `${modelId}:${String(mounts.indexOf(mounts.find((item) => item.element === element)))}`))}</>;
+  return <>{mounts.map(({ element, modelId }, index) => createPortal(<BagBuilderThreeJsStage modelId={modelId} />, element, `${modelId}:${index}`))}</>;
 }
