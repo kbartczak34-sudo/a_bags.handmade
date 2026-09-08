@@ -59,9 +59,19 @@ export default function AccessibilityClient() {
       });
     };
 
-    const observer = new MutationObserver(syncModalFocus);
+    const enhanceBuilderFocus = () => {
+      document.querySelectorAll<HTMLButtonElement>(".abags-builder-options button").forEach((button) => {
+        button.style.setProperty("--abags-builder-focus-ring", button.disabled ? "transparent" : "rgba(184, 120, 128, .82)");
+      });
+    };
+
+    const observer = new MutationObserver(() => {
+      syncModalFocus();
+      enhanceBuilderFocus();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
     syncModalFocus();
+    enhanceBuilderFocus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const modal = getActiveModal();
@@ -87,6 +97,22 @@ export default function AccessibilityClient() {
       }
     };
 
+    const handleBuilderFocus = (event: FocusEvent) => {
+      const button = event.target instanceof HTMLButtonElement
+        ? event.target.closest<HTMLButtonElement>(".abags-builder-options button")
+        : null;
+      if (!button || button.disabled) return;
+      button.style.boxShadow = "0 0 0 3px var(--abags-builder-focus-ring, rgba(184,120,128,.82)), 0 8px 18px rgba(90,66,69,.08)";
+    };
+
+    const handleBuilderBlur = (event: FocusEvent) => {
+      const button = event.target instanceof HTMLButtonElement
+        ? event.target.closest<HTMLButtonElement>(".abags-builder-options button")
+        : null;
+      if (!button) return;
+      button.style.removeProperty("box-shadow");
+    };
+
     const keepFocusInside = (event: FocusEvent) => {
       const modal = getActiveModal();
       if (!modal || modal.contains(event.target as Node)) return;
@@ -96,11 +122,15 @@ export default function AccessibilityClient() {
 
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("focusin", keepFocusInside);
+    document.addEventListener("focusin", handleBuilderFocus);
+    document.addEventListener("focusout", handleBuilderBlur);
 
     return () => {
       observer.disconnect();
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("focusin", keepFocusInside);
+      document.removeEventListener("focusin", handleBuilderFocus);
+      document.removeEventListener("focusout", handleBuilderBlur);
     };
   }, []);
 
