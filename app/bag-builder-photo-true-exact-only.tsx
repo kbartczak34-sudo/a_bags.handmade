@@ -107,7 +107,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
       if (!exact) {
         stage.removeAttribute("data-abags-photo-true");
         stage.dataset.abagsPhotoTrueState = "custom-realtime";
-        stage.setAttribute("data-photo-true-reference-id", reference.id);
+        stage.setAttribute("data-abags-photo-true-reference-id", reference.id);
         stage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.setProperty("display", "none", "important");
         return;
       }
