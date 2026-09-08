@@ -78,10 +78,10 @@ jobs:
           {
             echo "### ❌ REGRESSION TEST DIAGNOSTIC"
             echo
-            echo "- Commit: \\`${GITHUB_SHA}\\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-            echo "- Regression outcome: \\`${{ steps.regression.outcome }}\\`"
-            echo "- Regression exit code: \\`${{ steps.regression.outputs.exit_code }}\\`"
+            echo "- Regression outcome: \`${{ steps.regression.outcome }}\`"
+            echo "- Regression exit code: \`${{ steps.regression.outputs.exit_code }}\`"
             echo
             echo '```text'
             tail -n 400 regression-tests.log
@@ -142,7 +142,7 @@ jobs:
             fi
 
             transient=false
-            if grep -Eiq '(^|[^0-9])(502|503|504)([^0-9]|$)|upstream connect error|connection (reset|termination)|Received a malformed response from the API|Service Unavailable|Bad Gateway|Gateway Timeout' "$log_file"; then
+            if grep -Eiq '(^|[^0-9])(429|502|503|504)([^0-9]|$)|upstream connect error|connection (reset|termination)|Received a malformed response from the API|Too Many Requests|Service Unavailable|Bad Gateway|Gateway Timeout' "$log_file"; then
               transient=true
             fi
 
@@ -278,18 +278,18 @@ jobs:
           BODY="$(cat <<EOF
           ### ${RESULT}
 
-          - Commit: \\`${COMMIT_SHA}\\`
-          - Deploy: \\`${DEPLOY_OUTCOME:-unknown}\\`
-          - Production smoke: \\`${SMOKE_OUTCOME:-skipped}\\`
-          - Customer realtime builder acceptance: \\`${REALTIME_OUTCOME:-skipped}\\`
-          - Desktop customer close integrity: \\`${CLOSE_INTEGRITY_OUTCOME:-skipped}\\`
-          - Realtime composited render integrity: \\`${RENDER_INTEGRITY_OUTCOME:-skipped}\\`
-          - Accessory anchor integrity (front / 3/4 / side, desktop + mobile): \\`${ANCHOR_INTEGRITY_OUTCOME:-skipped}\\`
-          - Photo-True internal reference acceptance: \\`${CUSTOMIZER_OUTCOME:-skipped}\\`
-          - Mobile Photo-True reference interaction: \\`${MOBILE_OUTCOME:-skipped}\\`
+          - Commit: \`${COMMIT_SHA}\`
+          - Deploy: \`${DEPLOY_OUTCOME:-unknown}\`
+          - Production smoke: \`${SMOKE_OUTCOME:-skipped}\`
+          - Customer realtime builder acceptance: \`${REALTIME_OUTCOME:-skipped}\`
+          - Desktop customer close integrity: \`${CLOSE_INTEGRITY_OUTCOME:-skipped}\`
+          - Realtime composited render integrity: \`${RENDER_INTEGRITY_OUTCOME:-skipped}\`
+          - Accessory anchor integrity (front / 3/4 / side, desktop + mobile): \`${ANCHOR_INTEGRITY_OUTCOME:-skipped}\`
+          - Photo-True internal reference acceptance: \`${CUSTOMIZER_OUTCOME:-skipped}\`
+          - Mobile Photo-True reference interaction: \`${MOBILE_OUTCOME:-skipped}\`
           - Run: ${RUN_URL}
 
-          Automated deployment record for \\`main\\`.
+          Automated deployment record for \`main\`.
           EOF
           )"
           gh issue comment 21 --body "$BODY"
