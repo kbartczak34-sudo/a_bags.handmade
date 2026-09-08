@@ -8,8 +8,6 @@ export default defineConfig([
   {
     files: ["app/legal-compliance-enhancer.tsx"],
     rules: {
-      // This mount effect intentionally synchronizes React state from browser
-      // persistence (cookie/localStorage). Keep the exception local to this bridge.
       "react-hooks/set-state-in-effect": "off",
     },
   },
@@ -23,11 +21,9 @@ export default defineConfig([
       "app/bag-builder-material-pass.tsx",
       "app/bag-builder-commerce.tsx",
       "app/bag-builder-checkout-handoff.tsx",
+      "app/bag-builder-threejs-bridge.tsx",
     ],
     rules: {
-      // These components bridge React with imperative DOM/browser systems. Their
-      // effects intentionally reset/synchronize state when the external builder
-      // surface or its validated server state changes.
       "react-hooks/set-state-in-effect": "off",
     },
   },
