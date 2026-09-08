@@ -68,7 +68,7 @@ jobs:
           npm run test:regression 2>&1 | tee regression-tests.log
           status=${PIPESTATUS[0]}
           echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
-          exit 0
+          exit "$status"
 
       - name: Capture regression diagnostics
         if: steps.regression.outcome == 'failure'
