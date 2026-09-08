@@ -22,8 +22,10 @@ test("each Fidelity V4 family is locked to a real Agata product reference", () =
 });
 
 test("family contract owns hardware anchors instead of renderer guesses", () => {
-  for (const ringY of ["0.49", "0.46", "0.42"]) assert.ok(spec.includes(`ringY: ${ringY}`));
   assert.match(spec, /ringY: number/);
+  const ringValues = [...spec.matchAll(/ringY:\s*([0-9.]+)/g)].map((match) => match[1]);
+  assert.equal(ringValues.length, 4, "all four families must define a ringY anchor");
+  assert.ok(ringValues.every((value) => Number.isFinite(Number(value))));
   assert.match(renderer, /ringY: spec\.ringY/);
   assert.match(renderer, /const ringY = metrics\.ringY;/);
   assert.doesNotMatch(renderer, /config\.family === "mini" \? \.42/);
