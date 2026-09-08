@@ -1,0 +1,1 @@
+Final acceptance: real atelier source assets only. A single marketing/rendered image is insufficient to establish hidden geometry, depth, back/side construction, attachment points, or true PBR calibration. Until those source assets exist, the validated V4 renderer remains the production fallback.
