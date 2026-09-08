@@ -33,12 +33,28 @@ type Settings = {
 type ResolverShadowResponse = {
   resolverVersion: string;
   configurationHash: string;
-  status: "VALID" | "BLOCKED";
+  status: "BODY_VALIDATED" | "BLOCKED";
   pricing: {
     status: "AVAILABLE" | "DISABLED" | "UNAVAILABLE";
     grossCents: number | null;
   };
+  productionPackageHash?: string | null;
+  sellability?: { status?: string; message?: string };
+  validation?: { valid?: boolean };
 };
+
+type EvidenceOption = {
+  family: Exclude<Family, "">;
+  stitch: Exclude<Stitch, "">;
+  color: string;
+  binding: {
+    cordMaterialId: string;
+    gaugeProfileId: string;
+    goldenMasterId: string;
+  };
+};
+
+type Config = ReturnType<typeof useBagBuilderClientConfig>;
 
 type ConstructionKey = "handles" | "strap" | "flap" | "accent";
 
@@ -76,12 +92,32 @@ function compatible(settings: Settings, family: Exclude<Family, "">, key: Constr
     && isAgataBuilderConstructionSupported(family, FIDELITY_KEYS[key], value);
 }
 
+function buildV2Source(config: Config, evidence: EvidenceOption) {
+  return {
+    schemaVersion: 2 as const,
+    source: "DIGITAL_CRAFT_TWIN" as const,
+    selection: {
+      family: config.family,
+      color: config.color,
+      stitch: config.stitch,
+      flap: config.flap,
+      handles: config.handles,
+      strap: config.strap,
+      hardware: config.hardware,
+      accent: config.accent,
+    },
+    physicalBinding: evidence.binding,
+  };
+}
+
 export default function BagBuilderCommerce() {
   const config = useBagBuilderClientConfig();
   const [stage, setStage] = useState<HTMLElement | null>(null);
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [serverStatus, setServerStatus] = useState<"checking" | "validated" | "blocked" | "unavailable">("checking");
+  const [serverPrice, setServerPrice] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,61 +208,93 @@ export default function BagBuilderCommerce() {
   }, [config.accent, config.family, config.flap, config.handles, config.strap, settings]);
 
   useEffect(() => {
-    if (!stage || !settings || !config.family || !config.color || !config.stitch) return;
+    let active = true;
+    if (!stage || !settings || !config.family || !config.color || !config.stitch) {
+      setServerStatus(config.family || config.color || config.stitch ? "checking" : "unavailable");
+      setServerPrice(null);
+      return;
+    }
 
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      fetch("/api/configurator/resolve", {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config }),
-        signal: controller.signal,
-      })
-        .then(async (response) => {
-          if (!response.ok) throw new Error(String(response.status));
-          return response.json() as Promise<ResolverShadowResponse>;
-        })
-        .then((resolved) => {
-          const serverValid = resolved.status === "VALID";
-          const serverPrice = resolved.pricing.status === "AVAILABLE" ? resolved.pricing.grossCents : null;
-          const localPrice = price?.total ?? null;
-          const validationMatch = serverValid === localValid;
-          const priceMatch = serverPrice === localPrice;
-          const parity = validationMatch && priceMatch ? "match" : "mismatch";
+    setServerStatus("checking");
+    setServerPrice(null);
 
-          stage.dataset.resolverVersion = resolved.resolverVersion;
-          stage.dataset.configurationHash = resolved.configurationHash;
-          stage.dataset.resolverStatus = resolved.status.toLowerCase();
-          stage.dataset.resolverParity = parity;
-
-          window.dispatchEvent(new CustomEvent("abags:configurator-resolver-shadow", {
-            detail: {
-              configurationHash: resolved.configurationHash,
-              resolverVersion: resolved.resolverVersion,
-              parity,
-              validationMatch,
-              priceMatch,
-              localPrice,
-              serverPrice,
-            },
-          }));
-
-          if (parity === "mismatch") {
-            console.warn("[configurator-shadow] resolver parity mismatch", {
-              configurationHash: resolved.configurationHash,
-              validationMatch,
-              priceMatch,
-            });
+    const timer = window.setTimeout(async () => {
+      try {
+        const evidenceResponse = await fetch(
+          `/api/configurator/evidence?family=${encodeURIComponent(config.family)}&stitch=${encodeURIComponent(config.stitch)}&color=${encodeURIComponent(config.color)}`,
+          { cache: "no-store", signal: controller.signal },
+        );
+        if (!evidenceResponse.ok) throw new Error(String(evidenceResponse.status));
+        const evidencePayload = await evidenceResponse.json() as { options?: EvidenceOption[] };
+        const evidence = evidencePayload.options?.find((option) =>
+          option.family === config.family && option.stitch === config.stitch && option.color === config.color,
+        );
+        if (!evidence) {
+          if (active) {
+            setServerStatus("blocked");
+            setServerPrice(null);
+            stage.dataset.resolverParity = "blocked-no-physical-evidence";
           }
-        })
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
-          stage.dataset.resolverParity = "unavailable";
+          return;
+        }
+
+        const resolveResponse = await fetch("/api/configurator/resolve", {
+          method: "POST",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ config: buildV2Source(config, evidence) }),
+          signal: controller.signal,
         });
+        if (!resolveResponse.ok) throw new Error(String(resolveResponse.status));
+        const resolved = await resolveResponse.json() as ResolverShadowResponse;
+        if (!active) return;
+
+        const nextServerPrice = resolved.pricing.status === "AVAILABLE" ? resolved.pricing.grossCents : null;
+        const localPrice = price?.total ?? null;
+        const priceMatch = config.baseProductId ? true : nextServerPrice === localPrice;
+        const validationMatch = resolved.validation?.valid === true || resolved.status === "BODY_VALIDATED";
+        const parity = validationMatch && priceMatch ? "match" : "mismatch";
+
+        setServerStatus(resolved.validation?.valid === true ? "validated" : "blocked");
+        setServerPrice(nextServerPrice);
+
+        stage.dataset.resolverVersion = resolved.resolverVersion;
+        stage.dataset.configurationHash = resolved.configurationHash;
+        stage.dataset.resolverStatus = resolved.status.toLowerCase();
+        stage.dataset.resolverParity = parity;
+
+        window.dispatchEvent(new CustomEvent("abags:configurator-resolver-shadow", {
+          detail: {
+            configurationHash: resolved.configurationHash,
+            resolverVersion: resolved.resolverVersion,
+            parity,
+            validationMatch,
+            priceMatch,
+            localPrice,
+            serverPrice: nextServerPrice,
+          },
+        }));
+
+        if (parity === "mismatch") {
+          console.warn("[configurator-shadow] V2 resolver parity mismatch", {
+            configurationHash: resolved.configurationHash,
+            validationMatch,
+            priceMatch,
+            serverStatus: resolved.status,
+          });
+        }
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (!active) return;
+        setServerStatus("unavailable");
+        setServerPrice(null);
+        stage.dataset.resolverParity = "unavailable";
+      }
     }, 180);
 
     return () => {
+      active = false;
       window.clearTimeout(timer);
       controller.abort();
     };
@@ -234,16 +302,46 @@ export default function BagBuilderCommerce() {
 
   if (!mount) return null;
 
+  const authoritativePrice = serverPrice ?? price?.total ?? null;
+  const serverReady = serverStatus === "validated" && localValid && Boolean(authoritativePrice && authoritativePrice > 0);
+
   return createPortal(
-    <section className="abags-builder-commerce" data-builder-live-price={price ? String(price.total) : "quote"} aria-live="polite">
+    <section className="abags-builder-commerce" data-builder-live-price={authoritativePrice !== null ? String(authoritativePrice) : "quote"} data-builder-server-status={serverStatus} data-builder-server-ready={serverReady ? "true" : "false"} aria-live="polite">
       <div className="abags-builder-commerce-head">
-        <div><span>Zgodność projektu</span><strong>{config.family ? "Konfiguracja sprawdzana na żywo" : "Wybierz fason"}</strong></div>
-        <span className="abags-builder-commerce-ok">{config.family ? "✓ zgodna z konstrukcjami A-Bags" : "—"}</span>
+        <div>
+          <span>Zgodność projektu</span>
+          <strong>
+            {!config.family
+              ? "Wybierz fason"
+              : serverStatus === "checking"
+                ? "Sprawdzam fizyczną referencję…"
+                : serverStatus === "validated"
+                  ? "Konfiguracja zwalidowana na serwerze"
+                  : serverStatus === "blocked"
+                    ? "Konfiguracja wymaga uzupełnienia walidacji"
+                    : "Walidacja serwera chwilowo niedostępna"}
+          </strong>
+        </div>
+        <span className="abags-builder-commerce-ok">
+          {serverStatus === "validated" ? "✓ V2" : serverStatus === "checking" ? "…" : "—"}
+        </span>
       </div>
-      {price ? <>
-        <div className="abags-builder-live-price"><span>Cena projektu</span><strong>{money.format(price.total / 100)}</strong></div>
-        <details className="abags-builder-price-breakdown"><summary>Pokaż skład ceny</summary>{price.rows.map((row) => <div key={`${row.label}-${row.cents}`}><span>{row.label}</span><strong>{money.format(row.cents / 100)}</strong></div>)}</details>
-      </> : <div className="abags-builder-live-price is-quote"><span>Cena projektu</span><strong>Wycena indywidualna</strong><small>{loadFailed ? "Cena zostanie potwierdzona przez pracownię." : settings?.pricingEnabled ? "Uzupełnij cenę bazową tego fasonu w panelu właścicielki." : "Cena zostanie potwierdzona po przesłaniu projektu do pracowni."}</small></div>}
+      {authoritativePrice !== null && serverStatus === "validated" ? <>
+        <div className="abags-builder-live-price"><span>Cena projektu</span><strong>{money.format(authoritativePrice / 100)}</strong></div>
+        <details className="abags-builder-price-breakdown"><summary>Pokaż skład ceny</summary>{price?.rows.map((row) => <div key={`${row.label}-${row.cents}`}><span>{row.label}</span><strong>{money.format(row.cents / 100)}</strong></div>)}</details>
+      </> : <div className="abags-builder-live-price is-quote">
+        <span>Cena projektu</span>
+        <strong>{authoritativePrice !== null ? money.format(authoritativePrice / 100) : "Wycena indywidualna"}</strong>
+        <small>
+          {serverStatus === "blocked"
+            ? "Ten wariant nie przejdzie jeszcze pełnej walidacji produkcyjnej. Zakup zostanie odblokowany dopiero po zatwierdzeniu kompletnego łańcucha fizycznego."
+            : loadFailed
+              ? "Cena zostanie potwierdzona przez pracownię."
+              : settings?.pricingEnabled
+                ? "Trwa potwierdzanie fizycznej referencji, receptury i BOM."
+                : "Cena zostanie potwierdzona po przesłaniu projektu do pracowni."}
+        </small>
+      </div>}
     </section>,
     mount,
   );
