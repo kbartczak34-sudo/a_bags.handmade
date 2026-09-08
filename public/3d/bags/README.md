@@ -1,17 +1,45 @@
-# A-Bags 3D asset contract
+# A-Bags Handmade — production 3D asset contract
 
-Each bag model is stored under `public/3d/bags/MODEL-ID/`.
+Each production bag model lives in its own stable model directory:
 
-Required files:
+```text
+public/3d/bags/MODEL-ID/
+├── model.glb
+└── textures/
+    ├── basecolor.webp
+    ├── normal.webp
+    ├── roughness.webp
+    ├── metallic.webp
+    └── ao.webp
+```
 
-- `model.glb` — glTF 2.0 binary model.
-- `textures/basecolor.webp` — sRGB base color.
-- `textures/normal.webp` — tangent-space normal map.
-- `textures/roughness.webp` — linear roughness map.
-- `textures/metallic.webp` — linear metallic map.
-- `textures/ao.webp` — linear ambient-occlusion map.
+## GLB mesh contract
 
-Recommended GLB mesh names for the configurator:
-`body`, `flap`, `handles`, `strap`, `hardware`, `accessories`.
+The GLB should expose separate meshes (or named nodes) for:
 
-Additional `clearcoat`, `sheen` and `height` maps can be introduced in the next material-fidelity stage without changing this base contract.
+- `body`
+- `flap`
+- `handles`
+- `strap`
+- `hardware`
+- `accessories`
+
+The separation is required so the configurator can swap construction components without duplicating geometry.
+
+## Texture contract
+
+- `basecolor.webp`: sRGB color data
+- `normal.webp`: tangent-space normal data, non-color
+- `roughness.webp`: linear scalar data, non-color
+- `metallic.webp`: linear scalar data, non-color
+- `ao.webp`: linear occlusion data, non-color
+
+All maps must use the same production UV set unless a future model manifest explicitly declares otherwise.
+
+## Material extensions
+
+The material engine reserves support for `clearcoat`, `sheen` and `height` maps. They can be added without changing the base asset layout.
+
+## Revision policy
+
+`MODEL-ID` is immutable once deployed. A revised production model must receive a new stable model ID rather than overwriting an existing asset.
