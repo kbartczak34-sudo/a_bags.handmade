@@ -125,7 +125,39 @@ jobs:
 
       - name: Deploy production Worker
         id: deploy
-        run: npx wrangler deploy --config dist/server/wrangler.json --keep-vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            log_file="$(mktemp)"
+            set +e
+            npx wrangler deploy --config dist/server/wrangler.json --keep-vars 2>&1 | tee "$log_file"
+            status=${PIPESTATUS[0]}
+            set -e
+
+            if [[ "$status" -eq 0 ]]; then
+              rm -f "$log_file"
+              exit 0
+            fi
+
+            transient=false
+            if grep -Eiq '(^|[^0-9])(502|503|504)([^0-9]|$)|upstream connect error|connection (reset|termination)|Received a malformed response from the API|Service Unavailable|Bad Gateway|Gateway Timeout' "$log_file"; then
+              transient=true
+            fi
+
+            if [[ "$transient" == "true" && "$attempt" -lt "$max_attempts" ]]; then
+              delay=$((attempt * 10))
+              echo "Cloudflare deploy hit a transient upstream/API failure; retrying in ${delay}s (attempt ${attempt}/${max_attempts})."
+              rm -f "$log_file"
+              sleep "$delay"
+              continue
+            fi
+
+            echo "Cloudflare deploy failed with a non-retryable or exhausted error."
+            rm -f "$log_file"
+            exit "$status"
+          done
 
       - name: Smoke test deployed production
         id: smoke
