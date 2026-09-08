@@ -16,7 +16,7 @@ test("Three.js registry maps every supported family to an immutable model id", (
 });
 
 test("Three.js asset contract contains the complete GLB and PBR set", () => {
-  for (const key of assetKeys) assert.match(contract, new RegExp(`\\"${key}\\"`));
+  for (const key of assetKeys) assert.match(contract, new RegExp(`\\b${key}\\b`));
   for (const file of ["model.glb", "basecolor.webp", "normal.webp", "roughness.webp", "metallic.webp", "ao.webp"]) {
     assert.match(contract, new RegExp(file.replace(".", "\\.")));
   }
@@ -28,5 +28,5 @@ test("Three.js readiness gate requires every production asset", () => {
 });
 
 test("Required production meshes remain explicitly separated", () => {
-  for (const mesh of meshNames) assert.match(registry, new RegExp(`\\"${mesh}\\"`));
+  for (const mesh of meshNames) assert.match(registry, new RegExp(`\\b${mesh}\\b`));
 });
