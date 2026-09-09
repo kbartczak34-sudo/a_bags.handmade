@@ -13,6 +13,7 @@ test("photoreal V2 renderer is mounted as the final layout-level visual controll
   assert.match(renderer, /uStitch/);
   assert.match(renderer, /uMaterial/);
   assert.match(renderer, /uRough/);
+  assert.match(renderer, /precision mediump float/);
 });
 
 test("photoreal renderer contains all four supported bag families", async () => {
