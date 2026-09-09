@@ -19,7 +19,7 @@ test("photoreal V2 renderer is mounted as the final layout-level visual controll
 test("photoreal renderer contains all four supported bag families", async () => {
   const renderer = await read("app/bag-builder-photoreal-v2.tsx");
   for (const family of ["tote", "round", "bucket", "mini"]) {
-    assert.match(renderer, new RegExp(`\\b${family}:mesh`));
+    assert.match(renderer, new RegExp(`\\b${family}:geometry`));
   }
   assert.match(renderer, /function shell/);
   assert.match(renderer, /function tube/);
@@ -32,5 +32,5 @@ test("photoreal renderer keeps material separation for crochet and rigid compone
   assert.match(renderer, /uMaterial<1\.5/);
   assert.match(renderer, /uMaterial<2\.5/);
   assert.match(renderer, /uMaterial>2\.5/);
-  assert.match(renderer, /noise\(vUv\*680\.0\)/);
+  assert.match(renderer, /noise\(vUv\*620\.\)/);
 });
