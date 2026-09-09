@@ -33,8 +33,8 @@ jobs:
       - name: Typecheck
         run: bash scripts/sites-env.sh -- npm run typecheck
 
-      - name: Regression tests
-        run: bash scripts/sites-env.sh -- npm run test:regression
-
       - name: Production build
         run: bash scripts/sites-env.sh -- npm run build
+
+      - name: Regression tests
+        run: bash scripts/sites-env.sh -- npm run test:regression
