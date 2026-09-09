@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AccessibilityClient from "./accessibility-client";
 import BagBuilder3DEnhancer from "./bag-builder-3d-enhancer";
 import BagBuilderPhotorealV2 from "./bag-builder-photoreal-v2";
+import BagBuilderPhotorealV3 from "./bag-builder-photoreal-v3";
 import ExactLiveCustomizer from "./exact-live-customizer";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
@@ -77,6 +78,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ExactLiveCustomizer />
         <BagBuilder3DEnhancer />
         <BagBuilderPhotorealV2 />
+        <BagBuilderPhotorealV3 />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
