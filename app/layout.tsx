@@ -4,6 +4,7 @@ import AccessibilityClient from "./accessibility-client";
 import BagBuilder3DEnhancer from "./bag-builder-3d-enhancer";
 import BagBuilderPhotorealV2 from "./bag-builder-photoreal-v2";
 import BagBuilderPhotorealV3 from "./bag-builder-photoreal-v3";
+import BagBuilderPhotorealV4 from "./bag-builder-photoreal-v4";
 import ExactLiveCustomizer from "./exact-live-customizer";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
@@ -79,6 +80,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <BagBuilder3DEnhancer />
         <BagBuilderPhotorealV2 />
         <BagBuilderPhotorealV3 />
+        <BagBuilderPhotorealV4 />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
