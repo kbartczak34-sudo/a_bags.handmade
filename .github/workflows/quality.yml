@@ -34,6 +34,8 @@ jobs:
         run: bash scripts/sites-env.sh -- npm run typecheck
 
       - name: Production build
+        env:
+          ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
         run: bash scripts/sites-env.sh -- npm run build
 
       - name: Regression tests
