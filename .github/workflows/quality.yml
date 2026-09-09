@@ -1,0 +1,40 @@
+name: A-Bags quality gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: abags-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: bash scripts/install-ci.sh
+
+      - name: Typecheck
+        run: bash scripts/sites-env.sh -- npm run typecheck
+
+      - name: Regression tests
+        run: bash scripts/sites-env.sh -- npm run test:regression
+
+      - name: Production build
+        run: bash scripts/sites-env.sh -- npm run build
