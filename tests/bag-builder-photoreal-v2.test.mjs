@@ -30,7 +30,7 @@ test("photoreal renderer keeps material separation for crochet and rigid compone
   const renderer = await read("app/bag-builder-photoreal-v2.tsx");
   assert.match(renderer, /uMaterial<\.5/);
   assert.match(renderer, /uMaterial<1\.5/);
-  assert.match(renderer, /uMaterial<2\.5/);
+  assert.match(renderer, /step\(2\.5,uMaterial\)/);
   assert.match(renderer, /uMaterial>2\.5/);
   assert.match(renderer, /noise\(vUv\*620\.\)/);
 });
