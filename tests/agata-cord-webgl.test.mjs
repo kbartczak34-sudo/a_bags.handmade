@@ -11,7 +11,9 @@ const [stack, renderer, css] = await Promise.all([
 test("legacy Agata cord renderer is isolated from the authoritative V18 customer renderer", () => {
   assert.doesNotMatch(stack, /<BagBuilderAgataCordWebGL\s*\/>/);
   assert.doesNotMatch(stack, /<BagBuilderFinalWebGL3D\s*\/>/);
-  assert.match(renderer, /agataOpenV|agataVerticalOpen|agataBasket|agataRadial/);
+  assert.match(renderer, /type Family/);
+  assert.match(renderer, /type Stitch/);
+  assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
   assert.match(css, /data-abags-agata-cord-webgl/);
 });
 
