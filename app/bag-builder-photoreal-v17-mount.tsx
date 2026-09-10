@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BagBuilderPhotorealV18 from "./bag-builder-photoreal-v18";
+import BagBuilderPhotorealV19 from "./bag-builder-photoreal-v19";
 
 const SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage";
 
@@ -18,7 +18,7 @@ export default function BagBuilderPhotorealV17Mount() {
     if (!ready) return;
     const style = () => {
       const stage = document.querySelector<HTMLElement>(SELECTOR);
-      const canvas = document.querySelector<HTMLCanvasElement>(".abags-photoreal-v18-canvas");
+      const canvas = document.querySelector<HTMLCanvasElement>(".abags-photoreal-v19-canvas");
       if (!stage || !canvas) return false;
       if (getComputedStyle(stage).position === "static") stage.style.position = "relative";
       canvas.style.position = "absolute";
@@ -36,5 +36,5 @@ export default function BagBuilderPhotorealV17Mount() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [ready]);
-  return ready ? <BagBuilderPhotorealV18 /> : null;
+  return ready ? <BagBuilderPhotorealV19 /> : null;
 }
