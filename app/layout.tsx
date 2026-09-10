@@ -6,6 +6,7 @@ import BagBuilderPhotorealV2 from "./bag-builder-photoreal-v2";
 import BagBuilderPhotorealV3 from "./bag-builder-photoreal-v3";
 import BagBuilderPhotorealV4 from "./bag-builder-photoreal-v4";
 import BagBuilderPhotorealV5 from "./bag-builder-photoreal-v5";
+import BagBuilderPhotorealV6 from "./bag-builder-photoreal-v6";
 import ExactLiveCustomizer from "./exact-live-customizer";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <BagBuilderPhotorealV3 />
         <BagBuilderPhotorealV4 />
         <BagBuilderPhotorealV5 />
+        <BagBuilderPhotorealV6 />
         {children}
         <SocialQuickLinks />
         <AccessibilityClient />
