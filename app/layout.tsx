@@ -6,7 +6,7 @@ import BagBuilderPhotorealV2 from "./bag-builder-photoreal-v2";
 import BagBuilderPhotorealV3 from "./bag-builder-photoreal-v3";
 import BagBuilderPhotorealV4 from "./bag-builder-photoreal-v4";
 import BagBuilderPhotorealV5 from "./bag-builder-photoreal-v5";
-import BagBuilderPhotorealV6 from "./bag-builder-photoreal-v6";
+import BagBuilderPhotorealV7 from "./bag-builder-photoreal-v7";
 import ExactLiveCustomizer from "./exact-live-customizer";
 import LegalComplianceEnhancer from "./legal-compliance-enhancer";
 import PaymentMethodEnhancer from "./payment-method-enhancer";
@@ -51,44 +51,6 @@ const display = Cormorant_Garamond({ variable: "--font-display", subsets: ["lati
 const sans = Manrope({ variable: "--font-sans", subsets: ["latin", "latin-ext"] });
 const siteUrl = "https://abagshandmade.pl";
 const description = "Ręcznie szydełkowane torebki tworzone w Polsce. Odkryj limitowane modele a_bags.handmade.";
-
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: [{ media: "(prefers-color-scheme: light)", color: "#fbf6f2" }, { media: "(prefers-color-scheme: dark)", color: "#2b2023" }] };
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl), applicationName: "a_bags.handmade",
-  title: { default: "a_bags.handmade", template: "%s | a_bags.handmade" }, description,
-  alternates: { canonical: "/" }, manifest: "/manifest.webmanifest",
-  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
-  openGraph: { type: "website", locale: "pl_PL", url: siteUrl, siteName: "a_bags.handmade", title: "a_bags.handmade", description },
-  twitter: { card: "summary", title: "a_bags.handmade", description },
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "a_bags" },
-  formatDetection: { telephone: false },
-  icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }], shortcut: "/favicon.svg", apple: [{ url: "/favicon.svg" }] },
-};
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="pl">
-      <body className={`${display.variable} ${sans.variable}`}>
-        <PrivacyConsentBanner />
-        <LegalComplianceEnhancer />
-        <PaymentMethodEnhancer />
-        <ProductPreviewEnhancer />
-        <ProductComplianceEnhancer />
-        <VatDisplayEnhancer />
-        <StitchGallery />
-        <StorefrontExperience />
-        <PersonalizationEntry />
-        <ExactLiveCustomizer />
-        <BagBuilder3DEnhancer />
-        <BagBuilderPhotorealV2 />
-        <BagBuilderPhotorealV3 />
-        <BagBuilderPhotorealV4 />
-        <BagBuilderPhotorealV5 />
-        <BagBuilderPhotorealV6 />
-        {children}
-        <SocialQuickLinks />
-        <AccessibilityClient />
-      </body>
-    </html>
-  );
-}
+export const metadata: Metadata = { metadataBase: new URL(siteUrl), applicationName: "a_bags.handmade", title: { default: "a_bags.handmade", template: "%s | a_bags.handmade" }, description, alternates: { canonical: "/" }, manifest: "/manifest.webmanifest", robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } }, openGraph: { type: "website", locale: "pl_PL", url: siteUrl, siteName: "a_bags.handmade", title: "a_bags.handmade", description }, twitter: { card: "summary", title: "a_bags.handmade", description }, appleWebApp: { capable: true, statusBarStyle: "default", title: "a_bags" }, formatDetection: { telephone: false }, icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }], shortcut: "/favicon.svg", apple: [{ url: "/favicon.svg" }] } };
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="pl"><body className={`${display.variable} ${sans.variable}`}><PrivacyConsentBanner /><LegalComplianceEnhancer /><PaymentMethodEnhancer /><ProductPreviewEnhancer /><ProductComplianceEnhancer /><VatDisplayEnhancer /><StitchGallery /><StorefrontExperience /><PersonalizationEntry /><ExactLiveCustomizer /><BagBuilder3DEnhancer /><BagBuilderPhotorealV2 /><BagBuilderPhotorealV3 /><BagBuilderPhotorealV4 /><BagBuilderPhotorealV5 /><BagBuilderPhotorealV7 />{children}<SocialQuickLinks /><AccessibilityClient /></body></html>; }
