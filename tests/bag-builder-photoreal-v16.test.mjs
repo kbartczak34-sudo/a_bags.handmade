@@ -3,13 +3,23 @@ import fs from "node:fs";
 import test from "node:test";
 
 const renderer=fs.readFileSync(new URL("../app/bag-builder-photoreal-v17.tsx",import.meta.url),"utf8");
+const mount=fs.readFileSync(new URL("../app/bag-builder-photoreal-v17-mount.tsx",import.meta.url),"utf8");
 const layout=fs.readFileSync(new URL("../app/layout.tsx",import.meta.url),"utf8");
+const customizer=fs.readFileSync(new URL("../app/exact-live-customizer.tsx",import.meta.url),"utf8");
 
 test("V17 is the sole final volumetric photoreal renderer",()=>{
-  assert.match(layout,/import BagBuilderPhotorealV17 from "\.\/bag-builder-photoreal-v17"/);
-  assert.match(layout,/<BagBuilderPhotorealV17 \/>/);
+  assert.match(layout,/import BagBuilderPhotorealV17Mount from "\.\/bag-builder-photoreal-v17-mount"/);
+  assert.match(layout,/<BagBuilderPhotorealV17Mount \/>/);
   assert.doesNotMatch(layout,/BagBuilderPhotorealV16/);
   assert.doesNotMatch(layout,/BagBuilderPhotorealV15/);
+  assert.doesNotMatch(layout,/BagBuilderPhotorealV[234]/);
+  assert.doesNotMatch(layout,/BagBuilder3DEnhancer/);
+});
+
+test("V17 mount waits for the live customizer stage",()=>{
+  assert.match(mount,/abags-vc-dialog\.abags-vc-builder-active \.abags-bag-builder-stage/);
+  assert.match(mount,/MutationObserver/);
+  assert.match(mount,/BagBuilderPhotorealV17/);
 });
 
 test("V17 uses physical front back sidewall rim and opening geometry",()=>{
@@ -33,7 +43,11 @@ test("V17 preserves live crochet material and touch controls",()=>{
   assert.match(renderer,/requestAnimationFrame\(render\)/);
 });
 
-test("V17 hides superseded renderers only after WebGL initialization",()=>{
+test("V17 is not competing with legacy WebGL visual mounts",()=>{
+  for(const symbol of ["BagBuilderFinalWebGL3D","BagBuilder3DEnhancer","BagBuilderAgataCordWebGL","BagBuilderPhysicalCordGeometry","BagBuilderBasketPhysicalCordV2"])assert.doesNotMatch(customizer,new RegExp(symbol));
+});
+
+test("V17 hides superseded canvases only after WebGL initialization",()=>{
   const webgl=renderer.indexOf('getContext("webgl"');
   const hide=renderer.indexOf('querySelectorAll<HTMLElement>');
   assert.ok(webgl>=0 && hide>webgl);
