@@ -23,10 +23,7 @@ import "./bag-builder-sidewall-crochet-depth.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAccessoryMaterialFinish from "./bag-builder-accessory-material-finish";
-import BagBuilderAgataCordWebGL from "./bag-builder-agata-cord-webgl";
-import BagBuilderAgataTopRim from "./bag-builder-agata-top-rim";
 import BagBuilderAutosave from "./bag-builder-autosave";
-import BagBuilderBasketPhysicalCordV2 from "./bag-builder-basket-physical-cord-v2";
 import BagBuilderBasketWeaveFinish from "./bag-builder-basket-weave-finish";
 import BagBuilderChainRealism from "./bag-builder-chain-realism";
 import BagBuilderCheckoutHandoff from "./bag-builder-checkout-handoff";
@@ -42,7 +39,6 @@ import BagBuilderEngine from "./bag-builder-engine";
 import BagBuilderFidelityOptions from "./bag-builder-fidelity-options";
 import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
 import BagBuilderFidelity3DControlNamespace from "./bag-builder-fidelity3d-control-namespace";
-import BagBuilderFinalWebGL3D from "./bag-builder-final-webgl3d";
 import BagBuilderFinal3DController from "./bag-builder-final3d-controller";
 import BagBuilderFlapRealism from "./bag-builder-flap-realism";
 import BagBuilderHandmadeEdgeFinish from "./bag-builder-handmade-edge-finish";
@@ -54,7 +50,6 @@ import BagBuilderPhotoTrueExactOnly from "./bag-builder-photo-true-exact-only";
 import BagBuilderPhotoTrueFlowGuard from "./bag-builder-photo-true-flow-guard";
 import BagBuilderPhotoTrueGate from "./bag-builder-photo-true-gate";
 import BagBuilderPhotoTrueOptionTruth from "./bag-builder-photo-true-option-truth";
-import BagBuilderPhysicalCordGeometry from "./bag-builder-physical-cord-geometry";
 import BagBuilderPhysicalEvidenceStatus from "./bag-builder-physical-evidence-status";
 import BagBuilderPremiumCompat from "./bag-builder-premium-compat";
 import BagBuilderPro3DTouchRescue from "./bag-builder-pro3d-touch-rescue";
@@ -69,24 +64,17 @@ import BagBuilderShareLink from "./bag-builder-share-link";
 import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth";
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
-import BagBuilder3DEnhancer from "./bag-builder-3d-enhancer";
 
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
     <BagBuilderFidelityOptions />
-    <BagBuilderFinalWebGL3D />
-    <BagBuilder3DEnhancer />
-    <BagBuilderAgataCordWebGL />
     <BagBuilderLifelikeSurface />
     <BagBuilderCrochetReliefOverlay />
     <BagBuilderBasketWeaveFinish />
-    <BagBuilderPhysicalCordGeometry />
-    <BagBuilderBasketPhysicalCordV2 />
     <BagBuilderHandmadeEdgeFinish />
     <BagBuilderOpeningDepth />
     <BagBuilderSidewallCrochetDepth />
-    <BagBuilderAgataTopRim />
     <BagBuilderAccessoryFidelityOverlay />
     <BagBuilderAccessoryMaterialFinish />
     <BagBuilderChainRealism />
