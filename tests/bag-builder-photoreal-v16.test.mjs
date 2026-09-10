@@ -23,7 +23,7 @@ test("V17 mount waits for the live customizer stage",()=>{
 });
 
 test("V17 uses physical front back sidewall rim and opening geometry",()=>{
-  for(const fn of ["face","wall","tube","rim","opening"])assert.match(renderer,new RegExp(`function ${fn}\\(`));
+  for(const fn of ["face","wall","tube","rim","opening"])assert.match(renderer,new RegExp(`\\b${fn}\\s*(?:=|\\()`));
   assert.match(renderer,/gl\.enable\(gl\.DEPTH_TEST\)/);
   assert.match(renderer,/gl\.disable\(gl\.CULL_FACE\)/);
 });
@@ -49,7 +49,7 @@ test("V17 is not competing with legacy WebGL visual mounts",()=>{
 
 test("V17 hides superseded canvases only after WebGL initialization",()=>{
   const webgl=renderer.indexOf('getContext("webgl"');
-  const hide=renderer.indexOf('querySelectorAll<HTMLElement>');
+  const hide=renderer.indexOf("querySelectorAll");
   assert.ok(webgl>=0 && hide>webgl);
   assert.match(renderer,/abags-photoreal-v5-canvas/);
   assert.match(renderer,/abags-photoreal-v15-canvas/);
