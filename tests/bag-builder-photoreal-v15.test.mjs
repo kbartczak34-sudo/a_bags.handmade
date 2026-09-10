@@ -6,7 +6,7 @@ const layout = fs.readFileSync(new URL("../app/layout.tsx", import.meta.url), "u
 const renderer = fs.readFileSync(new URL("../app/bag-builder-photoreal-v17.tsx", import.meta.url), "utf8");
 
 test("current photoreal renderer is V17", () => {
-  assert.match(layout, /import BagBuilderPhotorealV17 from "\.\/bag-builder-photoreal-v17"/);
+  assert.match(layout, /import BagBuilderPhotorealV17 from "\\.\\/bag-builder-photoreal-v17"/);
   assert.match(layout, /<BagBuilderPhotorealV17 \/>/);
   assert.doesNotMatch(layout, /BagBuilderPhotorealV15/);
 });
@@ -17,6 +17,6 @@ test("V17 retains physical construction geometry", () => {
   assert.match(renderer, /function tube\(/);
   assert.match(renderer, /function rim\(/);
   assert.match(renderer, /function opening\(/);
-  assert.match(renderer, /function bottom\(/);
+  assert.match(renderer, /bottom=make\(face\(/);
   assert.match(renderer, /gl\.enable\(gl\.DEPTH_TEST\)/);
 });
