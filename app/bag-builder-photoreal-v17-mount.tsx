@@ -14,5 +14,25 @@ export default function BagBuilderPhotorealV17Mount() {
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] });
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const style = () => {
+      const canvas = document.querySelector<HTMLCanvasElement>(".abags-photoreal-v18-canvas");
+      if (!canvas) return false;
+      canvas.style.position = "absolute";
+      canvas.style.inset = "0";
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.display = "block";
+      canvas.style.zIndex = "90";
+      canvas.style.touchAction = "none";
+      canvas.style.pointerEvents = "auto";
+      return true;
+    };
+    if (style()) return;
+    const observer = new MutationObserver(style);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [ready]);
   return ready ? <BagBuilderPhotorealV18 /> : null;
 }
