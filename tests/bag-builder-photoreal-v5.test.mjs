@@ -11,8 +11,10 @@ test("Photoreal V5 is mounted as the final construction-depth layer", () => {
 });
 
 test("Photoreal V5 contains real bag construction geometry", () => {
-  assert.match(renderer, /roundedBody\(1\.72,1\.52,1\.12\)/);
-  assert.match(renderer, /rimLoop\(1\.46,\.84,\.76\)/);
+  assert.match(renderer, /roundedBody\(1\.72,1\.52,1\.42\)/);
+  assert.match(renderer, /rimLoop\(1\.46,1\.08,\.76\)/);
+  assert.match(renderer, /ellipsoid\(\.67,\.13,\.49\)/);
+  assert.match(renderer, /ellipsoid\(\.69,\.055,\.51\)/);
   assert.match(renderer, /meshes\.interior/);
   assert.match(renderer, /meshes\.bottom/);
   assert.match(renderer, /tube3D\(\[\[-\.66/);
@@ -33,6 +35,7 @@ test("Photoreal V5 supports distinct product families and mobile framing", () =>
   assert.match(renderer, /round/);
   assert.match(renderer, /flap/);
   assert.match(renderer, /mini/);
+  assert.match(renderer, /else if\(fam===\"round\"\)\{sx=\.91;sy=1\.10;sz=1\.04;\}/);
   assert.match(renderer, /stage\.clientWidth<700/);
   assert.match(renderer, /camZ=\(mobile\?5\.7:5\.15\)\/zoom/);
 });
