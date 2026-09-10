@@ -17,8 +17,10 @@ export default function BagBuilderPhotorealV17Mount() {
   useEffect(() => {
     if (!ready) return;
     const style = () => {
+      const stage = document.querySelector<HTMLElement>(SELECTOR);
       const canvas = document.querySelector<HTMLCanvasElement>(".abags-photoreal-v18-canvas");
-      if (!canvas) return false;
+      if (!stage || !canvas) return false;
+      if (getComputedStyle(stage).position === "static") stage.style.position = "relative";
       canvas.style.position = "absolute";
       canvas.style.inset = "0";
       canvas.style.width = "100%";
