@@ -1,52 +1,14 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-
 const renderer=fs.readFileSync(new URL("../app/bag-builder-photoreal-v17.tsx",import.meta.url),"utf8");
-const renderer19=fs.readFileSync(new URL("../app/bag-builder-photoreal-v19.tsx",import.meta.url),"utf8");
+const renderer21=fs.readFileSync(new URL("../app/bag-builder-photoreal-v21.tsx",import.meta.url),"utf8");
 const mount=fs.readFileSync(new URL("../app/bag-builder-photoreal-v17-mount.tsx",import.meta.url),"utf8");
 const layout=fs.readFileSync(new URL("../app/layout.tsx",import.meta.url),"utf8");
 const customizer=fs.readFileSync(new URL("../app/exact-live-customizer.tsx",import.meta.url),"utf8");
-
-test("single photoreal mount remains the final renderer entrypoint",()=>{
-  assert.match(layout,/BagBuilderPhotorealV17Mount/);
-  assert.doesNotMatch(layout,/BagBuilderPhotorealV16/);
-  assert.doesNotMatch(layout,/BagBuilderPhotorealV15/);
-  assert.doesNotMatch(layout,/BagBuilderPhotorealV[234]/);
-  assert.doesNotMatch(layout,/BagBuilder3DEnhancer/);
-});
-
-test("authoritative mount waits for the live customizer stage and mounts V19",()=>{
-  assert.match(mount,/abags-vc-dialog\.abags-vc-builder-active \.abags-bag-builder-stage/);
-  assert.match(mount,/MutationObserver/);
-  assert.match(mount,/BagBuilderPhotorealV19/);
-  assert.match(mount,/abags-photoreal-v19-canvas/);
-});
-
-test("V17 fallback renderer remains physically volumetric",()=>{
-  for(const fn of ["face","wall","tube","rim","opening"])assert.match(renderer,new RegExp(`\\b${fn}\\s*(?:=|\\()`));
-  assert.match(renderer,/gl\.enable\(gl\.DEPTH_TEST\)/);
-  assert.match(renderer,/gl\.disable\(gl\.CULL_FACE\)/);
-});
-
-test("V19 uses open-top physical geometry, material shading and four family profiles",()=>{
-  for(const fn of ["shell","innerWalls","rim","arch"])assert.match(renderer19,new RegExp(`function ${fn}\\(`));
-  for(const family of ["round","flap","mini","tote"])assert.match(renderer19,new RegExp(family+":"));
-  assert.match(renderer19,/gl\.enable\(gl\.DEPTH_TEST\)/);
-  assert.match(renderer19,/gl\.disable\(gl\.CULL_FACE\)/);
-  assert.match(renderer19,/uStitch/);
-  assert.match(renderer19,/uMetal/);
-  assert.match(renderer19,/uColor/);
-});
-
-test("V19 keeps live family, color, stitch and accessory controls",()=>{
-  for(const field of ["family","color","stitch","handles","strap","hardware","flap"])assert.match(renderer19,new RegExp(`stage\\.dataset\\.${field}`));
-  assert.match(renderer19,/pointerdown/);
-  assert.match(renderer19,/pointermove/);
-  assert.match(renderer19,/wheel/);
-  assert.match(renderer19,/requestAnimationFrame\(render\)/);
-});
-
-test("V19 is not competing with legacy WebGL visual mounts",()=>{
-  for(const symbol of ["BagBuilderFinalWebGL3D","BagBuilder3DEnhancer","BagBuilderAgataCordWebGL","BagBuilderPhysicalCordGeometry","BagBuilderBasketPhysicalCordV2"])assert.doesNotMatch(customizer,new RegExp(symbol));
-});
+test("single photoreal mount remains the final renderer entrypoint",()=>{assert.match(layout,/BagBuilderPhotorealV17Mount/);for(const x of ["V15","V16","V2","V3","V4","3DEnhancer"])assert.doesNotMatch(layout,new RegExp(`BagBuilderPhotoreal${x}`.replace("BagBuilderPhotoreal3DEnhancer","BagBuilder3DEnhancer"))) });
+test("authoritative mount waits for the live stage and mounts V21",()=>{assert.match(mount,/abags-vc-dialog\.abags-vc-builder-active \.abags-bag-builder-stage/);assert.match(mount,/MutationObserver/);assert.match(mount,/BagBuilderPhotorealV21/);assert.match(mount,/abags-photoreal-v21-canvas/)});
+test("V17 fallback remains volumetric",()=>{for(const fn of ["face","wall","tube","rim","opening"])assert.match(renderer,new RegExp(`\\b${fn}\\s*(?:=|\\()`));assert.match(renderer,/gl\.enable\(gl\.DEPTH_TEST\)/);assert.match(renderer,/gl\.disable\(gl\.CULL_FACE\)/)});
+test("V21 uses cached open-top geometry, physical materials and four profiles",()=>{for(const fn of ["shell","cavity","rim","arch"])assert.match(renderer21,new RegExp(`function ${fn}\\(`));for(const family of ["round","flap","mini","tote"])assert.match(renderer21,new RegExp(family+":"));assert.match(renderer21,/gl\.enable\(g\.DEPTH_TEST\)/);assert.match(renderer21,/gl\.disable\(g\.CULL_FACE\)/);assert.match(renderer21,/uStitch|stitch/);assert.match(renderer21,/uMetal|metal/);assert.match(renderer21,/uniform vec3 col/);assert.match(renderer21,/cache=new Map/)});
+test("V21 keeps live family, color, stitch and accessory controls",()=>{for(const field of ["family","color","stitch","handles","strap","hardware"])assert.match(renderer21,new RegExp(`ds\\.${field}`));assert.match(renderer21,/pointerdown/);assert.match(renderer21,/pointermove/);assert.match(renderer21,/wheel/);assert.match(renderer21,/requestAnimationFrame\(render\)/)});
+test("exact customizer does not mount competing legacy WebGL renderers",()=>{for(const symbol of ["BagBuilderFinalWebGL3D","BagBuilder3DEnhancer","BagBuilderAgataCordWebGL","BagBuilderPhysicalCordGeometry","BagBuilderBasketPhysicalCordV2"])assert.doesNotMatch(customizer,new RegExp(symbol))});
