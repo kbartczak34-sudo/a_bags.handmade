@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["app/bag-builder-photoreal-v5.tsx", "app/bag-builder-photoreal-v15.tsx"],
+    files: ["app/bag-builder-photoreal-v5.tsx", "app/bag-builder-photoreal-v15.tsx", "app/bag-builder-photoreal-v16.tsx"],
     rules: {
       "prefer-const": "off",
     },
