@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const src=fs.readFileSync("app/bag-builder-photoreal-v12.tsx","utf8");
+assert.match(src,/getContext\("webgl"/);
+assert.match(src,/className="abags-photoreal-v12-canvas"/);
+assert.match(src,/panel\(1\.92,1\.56,-\.72,true\)/);
+assert.match(src,/panel\(1\.72,1\.72,-\.66,true\)/);
+assert.match(src,/wall\(1\.92,1\.40,.24,1\.56\)/);
+assert.match(src,/roundWall:buf\(gl,wall\(1\.72,1\.30,.33,1\.72\)\)/);
+assert.match(src,/handle:buf\(gl,tube/);
+assert.match(src,/rim:buf\(gl,tube/);
+assert.match(src,/opening:buf\(gl,plane/);
+assert.match(src,/pointermove/);
+assert.match(src,/wheel/);
+assert.match(src,/if\(!none\(handles\)\)/);
+assert.match(src,/stage\.querySelectorAll<HTMLElement>/);
+console.log("V12 real-3D construction contract: PASS");
