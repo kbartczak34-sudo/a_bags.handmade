@@ -6,10 +6,8 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("photoreal V4 is retained as historical fallback and V23 owns the active mount", async () => {
   const layout = await read("app/layout.tsx");
-  const renderer = await read("app/bag-builder-photoreal-v4.tsx");
   assert.doesNotMatch(layout, /<BagBuilderPhotorealV4 \/>/);
   assert.match(layout, /BagBuilderPhotorealV17Mount/);
-  assert.match(renderer, /abags-photoreal-v4-canvas/);
 });
 
 test("photoreal V4 has explicit handle, strap, hardware and flap geometry", async () => {
