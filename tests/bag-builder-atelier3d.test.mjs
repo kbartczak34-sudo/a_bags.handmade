@@ -4,13 +4,15 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer uses the final verified WebGL v2 renderer", async () => {
+test("live customizer uses the current Bag Builder engine and verified V23 renderer mount", async () => {
   const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /BagBuilderFinalWebGL3D/);
-  assert.match(source, /<BagBuilderFinalWebGL3D\s*\/>/);
-  assert.doesNotMatch(source, /<BagBuilderFidelity3D\s*\/>/);
-  assert.doesNotMatch(source, /<BagBuilderAtelier3D\s*\/>/);
+  assert.match(source, /<BagBuilderEngine \/>/);
+  assert.match(source, /<BagBuilderFidelityOptions \/>/);
+  assert.doesNotMatch(source, /<BagBuilderFinalWebGL3D\s*\/>/);
+  const layout = await read("app/layout.tsx");
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
 });
+
 
 test("legacy fidelity calibration still documents distinct variable-depth silhouettes", async () => {
   const source = await read("app/bag-builder-fidelity3d.tsx");

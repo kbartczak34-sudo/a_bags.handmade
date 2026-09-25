@@ -5,9 +5,9 @@ import test from "node:test";
 const layout = fs.readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 const renderer = fs.readFileSync(new URL("../app/bag-builder-photoreal-v17.tsx", import.meta.url), "utf8");
 
-test("V5 contract now delegates to the current V17 renderer", () => {
-  assert.doesNotMatch(layout, /<BagBuilderPhotorealV5 \/>/);
-  assert.match(layout, /<BagBuilderPhotorealV17 \/>/);
+test("V5 contract delegates active rendering to the V23 compatibility mount", () => {
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
+  assert.doesNotMatch(layout, /BagBuilderPhotorealV5/);
 });
 
 test("current renderer owns volumetric construction", () => {

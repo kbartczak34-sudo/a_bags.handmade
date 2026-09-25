@@ -13,8 +13,6 @@ type RequestedItem = {
   quantity: number;
 };
 
-type PaymentChoice = "blik" | "card" | "wallet";
-
 type StripeCheckoutResponse = {
   id?: string;
   url?: string | null;
@@ -65,12 +63,6 @@ function parsePayload(value: unknown) {
   }
 
   return { email, items };
-}
-
-function readPaymentChoice(request: Request): PaymentChoice {
-  const cookie = request.headers.get("cookie") ?? "";
-  const match = cookie.match(/(?:^|;\s*)abags-payment-method=(blik|card|wallet)(?:;|$)/);
-  return (match?.[1] as PaymentChoice | undefined) ?? "blik";
 }
 
 function productComplianceComplete(product: CatalogProduct) {
@@ -165,7 +157,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const paymentChoice = readPaymentChoice(request);
   const shippingAmount = standardShippingAmount;
   const cartReference = selectedProducts
     .map(({ product, quantity }) => `${product.id}:${quantity}`)
@@ -216,7 +207,6 @@ export async function POST(request: Request) {
     form.set("locale", "pl");
     // Promotion codes stay disabled until the store has a compliant 30-day
     // price-history mechanism for price-reduction disclosures.
-    form.set("payment_method_types[0]", paymentChoice === "blik" ? "blik" : "card");
     form.set("customer_email", payload.email);
     form.set("customer_creation", "always");
     form.set("phone_number_collection[enabled]", "true");
@@ -241,12 +231,17 @@ export async function POST(request: Request) {
     form.set("success_url", `${origin}/zamowienie/sukces?session_id={CHECKOUT_SESSION_ID}`);
     form.set("cancel_url", `${origin}/?platnosc=anulowana#kolekcja`);
     form.set("client_reference_id", `abags-${crypto.randomUUID()}`);
+    const integrationSuffix = Array.from({ length: 8 }, () => {
+      const bytes = new Uint8Array(1);
+      crypto.getRandomValues(bytes);
+      return String.fromCharCode(97 + (bytes[0] % 26));
+    }).join("");
+    form.set("integration_identifier", `abags_checkout_${integrationSuffix}`);
     form.set("metadata[store]", "a_bags.handmade");
+    // Payment methods remain dynamically selected by Stripe Checkout. BLIK and cards are controlled in Dashboard.
     form.set("metadata[cart]", cartReference);
-    form.set("metadata[payment_choice]", paymentChoice);
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][cart]", cartReference);
-    form.set("payment_intent_data[metadata][payment_choice]", paymentChoice);
 
     const shippingMessage = orderSettings.pickupEnabled && orderSettings.pickupAddress
       ? `Dostawa na terenie Polski lub bezpłatny odbiór osobisty: ${orderSettings.pickupAddress}`
@@ -300,7 +295,6 @@ export async function POST(request: Request) {
         type: stripeBody.error?.type,
         message: stripeBody.error?.message,
         requestId,
-        paymentChoice,
       });
       return json(
         { error: `${publicStripeErrorMessage(code)} [${code}]`, code, requestId },

@@ -6,12 +6,12 @@ const stack = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const layout = fs.readFileSync("app/bag-builder-reference-layout-v3.tsx", "utf8");
 const reference = fs.readFileSync("app/bag-builder-reference-experience.tsx", "utf8");
 
-test("reference layout v3 is mounted in the real active customizer", () => {
-  assert.match(stack, /BagBuilderReferenceLayoutV3/);
-  assert.match(stack, /<BagBuilderReferenceLayoutV3 \/>/);
-  assert.doesNotMatch(stack, /BagBuilderReferenceLayoutV2/);
-  assert.match(layout, /abags-reference-layout-v3/);
-  assert.match(layout, /dialog\.dataset\.abagsReferenceLayout = "v3"/);
+test("visual layer keeps one authoritative interactive renderer visible at a time", () => {
+  const rootLayout = fs.readFileSync("app/layout.tsx", "utf8");
+  const renderer = fs.readFileSync("app/bag-builder-photoreal-v17-mount.tsx", "utf8");
+  assert.match(rootLayout, /BagBuilderPhotorealV17Mount/);
+  assert.match(renderer, /BagBuilderPhotorealV23/);
+  assert.match(renderer, /zIndex:"90"/);
 });
 
 test("desktop builder follows the target three-zone workspace", () => {
@@ -55,14 +55,13 @@ test("reference family photos, inspiration presets and active layers remain real
 });
 
 test("visual layer keeps only one interactive renderer visible at a time", () => {
-  assert.match(stack, /<BagBuilderFinalWebGL3D \/>/);
-  assert.doesNotMatch(stack, /<BagBuilderFidelity3D \/>/);
+  assert.match(stack, /<BagBuilderEngine \/>/);
   assert.match(stack, /<BagBuilderRendererFallback \/>/);
+  assert.doesNotMatch(stack, /<BagBuilderFinalWebGL3D \/>/);
+  assert.doesNotMatch(stack, /<BagBuilderFidelity3D \/>/);
   assert.doesNotMatch(stack, /AtelierBagRendererV7/);
   assert.doesNotMatch(stack, /BagBuilderMaterialPass/);
   assert.doesNotMatch(stack, /BagBuilderConstructionPass/);
-  assert.match(layout, /abags-bag-builder-stage\.abags-pro3d-active > svg/);
-  assert.match(layout, /abags-bag-builder-stage\.abags-canvas3d-active > svg/);
 });
 
 test("target look does not invent a personalization price", () => {

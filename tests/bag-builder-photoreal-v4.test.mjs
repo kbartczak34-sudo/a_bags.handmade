@@ -4,14 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("photoreal V4 is mounted after V3 as the authoritative mobile visual layer", async () => {
+test("photoreal V4 is retained as historical fallback and V23 owns the active mount", async () => {
   const layout = await read("app/layout.tsx");
-  const renderer = await read("app/bag-builder-photoreal-v4.tsx");
-  assert.ok(layout.indexOf('import BagBuilderPhotorealV3 from "./bag-builder-photoreal-v3"') < layout.indexOf('import BagBuilderPhotorealV4 from "./bag-builder-photoreal-v4"'));
-  assert.ok(layout.indexOf("<BagBuilderPhotorealV3 />") < layout.indexOf("<BagBuilderPhotorealV4 />"));
-  assert.match(renderer, /abags-photoreal-v4-canvas/);
-  assert.match(renderer, /zIndex:"40"/);
-  assert.match(renderer, /getContext\("webgl"/);
+  assert.doesNotMatch(layout, /<BagBuilderPhotorealV4 \/>/);
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
 });
 
 test("photoreal V4 has explicit handle, strap, hardware and flap geometry", async () => {

@@ -4,16 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("photoreal V2 renderer is mounted as the final layout-level visual controller", async () => {
+test("photoreal V2 is retained as historical fallback and is not mounted as the authoritative renderer", async () => {
   const layout = await read("app/layout.tsx");
-  const renderer = await read("app/bag-builder-photoreal-v2.tsx");
-  assert.match(layout, /import BagBuilderPhotorealV2 from \"\.\/bag-builder-photoreal-v2\"/);
-  assert.match(layout, /<BagBuilder3DEnhancer \/>[\s\S]*<BagBuilderPhotorealV2 \/>/);
-  assert.match(renderer, /getContext\(\"webgl\"/);
-  assert.match(renderer, /uStitch/);
-  assert.match(renderer, /uMaterial/);
-  assert.match(renderer, /uRough/);
-  assert.match(renderer, /precision mediump float/);
+  assert.doesNotMatch(layout, /<BagBuilderPhotorealV2 \/>/);
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
 });
 
 test("photoreal renderer contains all four supported bag families", async () => {
