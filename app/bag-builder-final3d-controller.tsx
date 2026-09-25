@@ -223,6 +223,7 @@ export default function BagBuilderFinal3DController() {
       stage.dataset.abagsFinal3dReason = reason.slice(0, 120);
       stage.classList.remove("abags-final3d-ready");
       stage.removeAttribute("data-abags-final3d-signature");
+      clearPixelDiagnostics();
     };
 
     const recordPixels = (inspection: PixelInspection) => {
@@ -251,7 +252,7 @@ export default function BagBuilderFinal3DController() {
       clearPending();
       if (!stage) return;
       if (!stage.dataset.family) {
-        stage.dataset.abagsFinal3d = "waiting-for-fason";
+        stage.dataset.abagsFinal3d = "waiting-for-family";
         stage.dataset.abagsFinal3dReason = "choose-family";
         stage.classList.remove("abags-final3d-ready");
         stage.removeAttribute("data-abags-final3d-signature");
@@ -330,13 +331,39 @@ export default function BagBuilderFinal3DController() {
       });
     };
 
+    const unbindCanvasEvents = () => {
+      if (!boundCanvas) return;
+      boundCanvas.removeEventListener("webglcontextlost", onContextLost);
+      boundCanvas.removeEventListener("webglcontextrestored", onContextRestored);
+      boundCanvas = null;
+    };
+
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      clearPending();
+      clearPixelDiagnostics();
+      markFallback("context-lost");
+    };
+
+    const onContextRestored = () => {
+      clearPending();
+      if (stage) {
+        stage.dataset.abagsFinal3d = "waiting-for-renderer";
+        stage.dataset.abagsFinal3dReason = "context-restored";
+        stage.classList.remove("abags-final3d-ready");
+        stage.removeAttribute("data-abags-final3d-signature");
+      }
+      validate();
+    };
+
     const bindCanvasEvents = () => {
       if (!stage) return;
       const canvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
       if (!canvas || canvas === boundCanvas) return;
+      unbindCanvasEvents();
       boundCanvas = canvas;
-      canvas.addEventListener("webglcontextlost", () => markFallback("context-lost"), { passive: true });
-      canvas.addEventListener("webglcontextrestored", () => validate(), { passive: true });
+      canvas.addEventListener("webglcontextlost", onContextLost);
+      canvas.addEventListener("webglcontextrestored", onContextRestored);
     };
 
     const shouldIgnorePaintMetadata = (records: MutationRecord[]) => {
@@ -360,6 +387,7 @@ export default function BagBuilderFinal3DController() {
       }
       stageObserver?.disconnect();
       clearPending();
+      unbindCanvasEvents();
       stage = next;
       boundCanvas = null;
       if (!stage) return;
@@ -389,6 +417,7 @@ export default function BagBuilderFinal3DController() {
 
     return () => {
       clearPending();
+      unbindCanvasEvents();
       stageObserver?.disconnect();
       bodyObserver?.disconnect();
       if (stage) {
