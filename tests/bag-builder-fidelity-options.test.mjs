@@ -7,8 +7,9 @@ const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 
 test("Agata fidelity option guard mounts immediately after the live engine", () => {
   assert.match(exact, /import BagBuilderFidelityOptions/);
-  assert.match(exact, /<BagBuilderEngine \/>\s*<BagBuilderFidelityOptions \/>\s*<BagBuilderFinalWebGL3D \/>/);
+  assert.match(exact, /<BagBuilderEngine \/>\s*<BagBuilderFidelityOptions \/>\s*<BagBuilderLifelikeSurface \/>/);
 });
+
 
 test("guard covers every construction field constrained by Agata reference evidence", () => {
   assert.match(guard, /flap: "flaps"/);
