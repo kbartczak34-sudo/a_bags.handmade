@@ -14,7 +14,7 @@ test("final customer stack mounts the calibrated A-Bags Fidelity contract before
   assert.match(stack, /<BagBuilderEngine \/>/);
   assert.match(stack, /<BagBuilderAbagsFidelityContract \/>/);
   assert.match(stack, /<BagBuilderFinal3DController \/>/);
-  assert.ok(stack.indexOf("<BagBuilderAbagsFidelityContract />") < stack.indexOf("<BagBuilderFinal3DController />"));
+  assert.ok(stack.indexOf("<BagBuilderFinal3DController />") < stack.indexOf("<BagBuilderAbagsFidelityContract />"));
 });
 
 test("A-Bags body geometry is volumetric, family-specific and mobile-camera aware", () => {
