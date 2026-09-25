@@ -13,8 +13,6 @@ type RequestedItem = {
   quantity: number;
 };
 
-type PaymentChoice = "blik" | "card" | "wallet";
-
 type StripeCheckoutResponse = {
   id?: string;
   url?: string | null;
@@ -241,7 +239,14 @@ export async function POST(request: Request) {
     form.set("success_url", `${origin}/zamowienie/sukces?session_id={CHECKOUT_SESSION_ID}`);
     form.set("cancel_url", `${origin}/?platnosc=anulowana#kolekcja`);
     form.set("client_reference_id", `abags-${crypto.randomUUID()}`);
+    const integrationSuffix = Array.from({ length: 8 }, () => {
+      const bytes = new Uint8Array(1);
+      crypto.getRandomValues(bytes);
+      return String.fromCharCode(97 + (bytes[0] % 26));
+    }).join("");
+    form.set("integration_identifier", `abags_checkout_${integrationSuffix}`);
     form.set("metadata[store]", "a_bags.handmade");
+    // Payment methods remain dynamically selected by Stripe Checkout. BLIK and cards are controlled in Dashboard.
     form.set("metadata[cart]", cartReference);
     form.set("metadata[payment_choice]", paymentChoice);
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
