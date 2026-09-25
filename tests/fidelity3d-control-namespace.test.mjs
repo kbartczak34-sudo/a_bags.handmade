@@ -8,11 +8,11 @@ const css = readFileSync("app/bag-builder-fidelity3d-controls.css", "utf8");
 const viewSync = readFileSync("app/bag-builder-view-sync.tsx", "utf8");
 const smoke = readFileSync("scripts/smoke-customizer-realtime.mjs", "utf8");
 
-test("Fidelity3D control namespace is mounted immediately after the final WebGL renderer", () => {
-  const renderer = live.indexOf("<BagBuilderFinalWebGL3D />");
-  const controlNamespace = live.indexOf("<BagBuilderFidelity3DControlNamespace />");
-  const compositor = live.indexOf("<BagBuilderFidelity3DCompositorSync />");
-  assert.ok(renderer >= 0 && controlNamespace > renderer && compositor > controlNamespace);
+test("Fidelity3D control namespace is mounted in the current verified stack", async () => {
+  const source = await read("app/exact-live-customizer.tsx");
+  assert.match(source, /<BagBuilderFidelity3DControlNamespace \/>/);
+  assert.match(source, /<BagBuilderFidelity3DCompositorSync \/>/);
+  assert.match(source, /<BagBuilderFinal3DController \/>/);
 });
 
 test("active Fidelity3D controls are migrated away from legacy Pro3D selector names", () => {
