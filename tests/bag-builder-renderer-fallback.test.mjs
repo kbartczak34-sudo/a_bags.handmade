@@ -7,10 +7,10 @@ const fallback = fs.readFileSync("app/bag-builder-renderer-fallback.tsx", "utf8"
 const canvas = fs.readFileSync("app/bag-builder-premium-canvas3d.tsx", "utf8");
 
 test("V23 remains primary while premium software 3D stays fallback infrastructure", () => {
-  const primary = fs.readFileSync("app/bag-builder-photoreal-v23.tsx", "utf8");
-  assert.match(primary, /function shell/);
-  assert.match(primary, /g\.enable\(g\.DEPTH_TEST\)/);
-  assert.match(fallback, /data-abags-final3d/);
+  const primary=fs.readFileSync("app/bag-builder-photoreal-v23.tsx","utf8");
+  assert.match(primary,/function shell/);
+  assert.match(primary,/g\.enable\(g\.DEPTH_TEST\)/);
+  assert.match(fallback,/BagBuilderPremiumCanvas3D/);
 });
 
 test("premium software renderer activates only when WebGL readiness is absent", () => {
