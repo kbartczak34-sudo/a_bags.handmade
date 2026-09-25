@@ -62,4 +62,10 @@ test("customer Fidelity3D renderer consumes the same V4 family geometry contract
   assert.match(renderer, /spec.handleScale/);
   assert.match(renderer, /spec.flapScale/);
   assert.match(renderer, /spec.sideAnchor/);
+  assert.match(renderer, /const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
+  assert.match(renderer, /const exponent = 2 \/ Math\.max\(1\.01, spec\.power\)/);
+  assert.match(renderer, /spec\.ry/);
+  assert.match(renderer, /spec\.taper/);
+  assert.match(renderer, /return spec\.depth/);
+  assert.doesNotMatch(renderer, /if \(family === "tote"\) \{[\s\S]*quad\(p, \[-0\.92, 0\.76\]/);
 });
