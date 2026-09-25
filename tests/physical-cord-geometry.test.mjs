@@ -8,9 +8,10 @@ const [stack, geometry, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-physical-cord-geometry.css", import.meta.url), "utf8"),
 ]);
 
-test("Physical Cord V1 is mounted above the flat basket material and below edge/accessory finishing", () => {
+test("Physical Cord V1 remains available as a legacy fallback while the active V23 renderer owns the visible product", async () => {
   assert.match(stack, /bag-builder-physical-cord-geometry\.css/);
-  assert.match(stack, /<BagBuilderBasketWeaveFinish\s*\/>[\s\S]*<BagBuilderPhysicalCordGeometry\s*\/>[\s\S]*<BagBuilderHandmadeEdgeFinish\s*\/>/);
+  assert.match(stack, /<BagBuilderBasketWeaveFinish\s*\/>[\s\S]*<BagBuilderHandmadeEdgeFinish\s*\/>/);
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
   assert.match(geometry, /SURFACE_VERSION = "physical-cord-geometry-v1-volumetric-loops"/);
   assert.match(css, /z-index:4!important/);
 });
