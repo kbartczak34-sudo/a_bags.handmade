@@ -99,11 +99,11 @@ test("Fidelity3D body has physical rounded edge construction and family-specific
 test("Fidelity3D accessories use family-specific physical attachment points", () => {
   assert.match(renderer, /function familyAttachment\(profile: FamilyProfile, family: Exclude<Family, "">\)/);
   assert.match(renderer, /function handleTransform\(profile: FamilyProfile, family: Exclude<Family, "">, side: number\)/);
-  assert.match(renderer, /family === "mini" \? 0\.72/);
-  assert.match(renderer, /family === "round" \? 0\.84/);
-  assert.match(renderer, /family === "bucket" \? 0\.88/);
-  assert.match(renderer, /const transform = handleTransform\(profile, config\.family, side\)/);
-  assert.match(renderer, /const x = side \* attachment\.x/);
+  assert.match(renderer, /spec\.attachmentWidthFactor/);
+  assert.match(renderer, /spec\.attachmentYOffset/);
+  assert.match(renderer, /spec\.attachmentZFactor/);
+  assert.match(renderer, /spec\.handleSpanFactor/);
+  assert.match(renderer, /spec\.handleScaleFactor/);
   assert.doesNotMatch(renderer, /matrix\(\[x, profile\.topY - 0\.18, 0\.02\]/);
 });
 
@@ -132,10 +132,10 @@ test("Fidelity3D chain hardware uses discrete alternating links instead of a con
   assert.match(renderer, /function makeSegmentedChain\(rx: number, ry: number, z: number, links = 34/);
   assert.match(renderer, /const u = i % 2 === 0 \? tangent : normalXY/);
   assert.match(renderer, /const linkNormal = normalize/);
-  assert.match(renderer, /toteChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.tote\.rx \* 1\.12/);
-  assert.match(renderer, /roundChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.round\.rx \* 1\.08/);
-  assert.match(renderer, /bucketChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.bucket\.rx \* 1\.08/);
-  assert.match(renderer, /miniChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.mini\.rx \* 0\.98/);
+  assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\.tote\.chain\[0\]/);
+  assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\.round\.chain\[0\]/);
+  assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\.bucket\.chain\[0\]/);
+  assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS\.mini\.chain\[0\]/);
   assert.match(renderer, /meshes\[config\.family \+ "Chain"\]/);
 });
 
