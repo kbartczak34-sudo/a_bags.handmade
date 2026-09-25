@@ -128,7 +128,11 @@ test("Fidelity3D chain hardware uses discrete alternating links instead of a con
   assert.match(renderer, /function makeSegmentedChain\(rx: number, ry: number, z: number, links = 34/);
   assert.match(renderer, /const u = i % 2 === 0 \? tangent : normalXY/);
   assert.match(renderer, /const linkNormal = normalize/);
-  assert.match(renderer, /chain: createMesh\(gl, makeSegmentedChain\(1\.18, 1\.62, 0, 34, 0\.043, 0\.011\)\)/);
+  assert.match(renderer, /toteChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.tote\.rx \* 1\.12/);
+  assert.match(renderer, /roundChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.round\.rx \* 1\.08/);
+  assert.match(renderer, /bucketChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.bucket\.rx \* 1\.08/);
+  assert.match(renderer, /miniChain: createMesh\(gl, makeSegmentedChain\(ABAGS_FIDELITY_V4_FAMILY_SPECS\.mini\.rx \* 0\.98/);
+  assert.match(renderer, /meshes\[config\.family \+ "Chain"\]/);
 });
 
 
