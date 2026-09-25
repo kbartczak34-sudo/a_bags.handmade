@@ -93,6 +93,9 @@ test("Fidelity3D body has physical rounded edge construction and family-specific
   assert.match(renderer, /meshes\[config\.family \+ "Interior"\]/);
   assert.match(renderer, /function darken\(value: string/);
   assert.match(renderer, /handleScaleY: spec\.handleScale\[1\]/);
+  assert.match(renderer, /webglcontextlost/);
+  assert.match(renderer, /webglcontextrestored/);
+  assert.match(renderer, /setRendererEpoch\(\(value\) => value \+ 1\)/);
   assert.match(renderer, /\[size, sizeY, 1\]/);
 });
 
