@@ -778,7 +778,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       strap: createMesh(gl, makeArchTube(1.18, 1.62, 0, 0.043, 84, 12, false)),
-      chain: createMesh(gl, makeSegmentedChain(1.18, 1.62, 0, 34, 0.043, 0.011)),
+      toteChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.rx * 1.12, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.ry * 1.72, 0, 34, 0.043, 0.011)),
+      roundChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.round.rx * 1.08, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.ry * 1.62, 0, 32, 0.043, 0.011)),
+      bucketChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.rx * 1.08, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.ry * 1.68, 0, 34, 0.043, 0.011)),
+      miniChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.rx * 0.98, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.ry * 1.58, 0, 28, 0.039, 0.010)),
       ring: createMesh(gl, makeArchTube(0.13, 0.13, 0, 0.025, 40, 9, true)),
       sphere: createMesh(gl, makeEllipsoid(1, 1, 1)),
       ribbon: createMesh(gl, makeEllipsoid(0.46, 0.14, 0.045, 18, 30)),
@@ -870,7 +873,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const strapScale = config.strap === "chain" ? profile.handleScale * 0.96 : profile.handleScale;
     drawMesh(
       renderer,
-      config.strap === "chain" ? meshes.chain : meshes.strap,
+      config.strap === "chain" ? meshes[config.family + "Chain"] : meshes.strap,
       multiply(root, matrix([0, attachment.y - 0.02, -profile.topDepth * 0.58], [strapScale, 0.92, 1])),
       strapColor,
       material,
