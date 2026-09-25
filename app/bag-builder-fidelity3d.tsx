@@ -130,6 +130,12 @@ function hex(value: string): [number, number, number] {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
+function darken(value: string, amount = 0.34) {
+  const [r, g, b] = hex(value).map((channel) => Math.round(channel * 255));
+  const factor = clamp(1 - amount, 0.18, 1);
+  return "#" + [r, g, b].map((channel) => Math.round(channel * factor).toString(16).padStart(2, "0")).join("");
+}
+
 function identity() {
   return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 }
@@ -397,6 +403,52 @@ function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 1
   return { positions, normals, uvs, indices };
 }
 
+function makeOpeningInterior(family: Exclude<Family, "">) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const width = spec.rx * 0.82;
+  const depth = spec.depth * 0.68;
+  const y = spec.topY - 0.035;
+  const radius = Math.min(width, depth) * 0.14;
+  const points: Array<[number, number]> = [];
+  const add = (x: number, z: number) => points.push([x, z]);
+  const segments = 12;
+  for (let i = 0; i <= segments; i += 1) {
+    const t = i / segments;
+    add(-width + radius + 2 * (width - radius) * t, depth * 0.5 - radius);
+  }
+  for (let i = 1; i <= segments; i += 1) {
+    const a = -Math.PI / 2 + (Math.PI / 2) * (i / segments);
+    add(width - radius + radius * Math.cos(a), depth * 0.5 - radius + radius * Math.sin(a));
+  }
+  for (let i = 1; i <= segments; i += 1) {
+    const t = i / segments;
+    add(width - radius - 2 * (width - radius) * t, -depth * 0.5 + radius);
+  }
+  for (let i = 1; i <= segments; i += 1) {
+    const a = Math.PI / 2 + (Math.PI / 2) * (i / segments);
+    add(-width + radius + radius * Math.cos(a), -depth * 0.5 + radius + radius * Math.sin(a));
+  }
+
+  const positions = [0, y, 0];
+  const normals = [0, 1, 0];
+  const uvs = [0.5, 0.5];
+  const indices: number[] = [];
+  const minX = Math.min(...points.map((p) => p[0]));
+  const maxX = Math.max(...points.map((p) => p[0]));
+  const minZ = Math.min(...points.map((p) => p[1]));
+  const maxZ = Math.max(...points.map((p) => p[1]));
+  points.forEach(([x, z]) => {
+    positions.push(x, y, z);
+    normals.push(0, 1, 0);
+    uvs.push((x - minX) / Math.max(0.001, maxX - minX), (z - minZ) / Math.max(0.001, maxZ - minZ));
+  });
+  for (let i = 0; i < points.length; i += 1) {
+    const next = (i + 1) % points.length;
+    indices.push(0, next + 1, i + 1);
+  }
+  return { positions, normals, uvs, indices };
+}
+
 function makeExtrudedContour(contour: Point[], depth: number) {
   const positions: number[] = [];
   const normals: number[] = [];
@@ -635,6 +687,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundRim: createMesh(gl, makeOpeningRim("round")),
       bucketRim: createMesh(gl, makeOpeningRim("bucket")),
       miniRim: createMesh(gl, makeOpeningRim("mini")),
+      toteInterior: createMesh(gl, makeOpeningInterior("tote")),
+      roundInterior: createMesh(gl, makeOpeningInterior("round")),
+      bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
+      miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105)),
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
@@ -698,6 +754,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, meshes[config.family], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
+  const interiorColor = darken(openingColor, 0.58);
+  drawMesh(renderer, meshes[config.family + "Interior"], root, interiorColor, 0, stitch, 0);
   drawMesh(renderer, meshes[config.family + "Rim"], root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
 
   if (config.strap !== "none") {
