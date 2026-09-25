@@ -23,6 +23,15 @@ export type FidelityV4FamilySpec = {
   flapScale: readonly [number, number];
   /** Family-specific flap position; null means an optional flap uses the generic position. */
   flapY: number | null;
+  /** Renderer calibration factors for the soft handmade silhouette and hardware anchors. */
+  softnessFactor: number;
+  attachmentWidthFactor: number;
+  attachmentYOffset: number;
+  attachmentZFactor: number;
+  handleSpanFactor: number;
+  handleScaleFactor: number;
+  handleYScaleFactor: number;
+  chain: readonly [number, number, number, number, number];
 };
 
 /**
@@ -51,6 +60,14 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     handleScale: [0.94, 0.72],
     flapScale: [0.92, 0.79],
     flapY: 0.27,
+    softnessFactor: 1,
+    attachmentWidthFactor: 0.96,
+    attachmentYOffset: -0.02,
+    attachmentZFactor: 0.74,
+    handleSpanFactor: 0.84,
+    handleScaleFactor: 1,
+    handleYScaleFactor: 1,
+    chain: [1.12, 1.72, 34, 0.043, 0.011],
   },
   round: {
     label: "Okrągła",
@@ -67,6 +84,14 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     handleScale: [0.82, 0.76],
     flapScale: [0.79, 0.70],
     flapY: 0.31,
+    softnessFactor: 1.08,
+    attachmentWidthFactor: 0.84,
+    attachmentYOffset: -0.02,
+    attachmentZFactor: 0.74,
+    handleSpanFactor: 0.72,
+    handleScaleFactor: 1,
+    handleYScaleFactor: 1,
+    chain: [1.08, 1.62, 32, 0.043, 0.011],
   },
   bucket: {
     label: "Z klapą",
@@ -83,6 +108,14 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     handleScale: [0.84, 0.72],
     flapScale: [0.91, 0.78],
     flapY: 0.29,
+    softnessFactor: 0.96,
+    attachmentWidthFactor: 0.88,
+    attachmentYOffset: -0.02,
+    attachmentZFactor: 0.74,
+    handleSpanFactor: 0.84,
+    handleScaleFactor: 1,
+    handleYScaleFactor: 1.08,
+    chain: [1.08, 1.68, 34, 0.043, 0.011],
   },
   mini: {
     label: "Strukturalna / mini",
@@ -99,6 +132,14 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     handleScale: [0.70, 0.58],
     flapScale: [0.75, 0.66],
     flapY: 0.21,
+    softnessFactor: 0.72,
+    attachmentWidthFactor: 0.72,
+    attachmentYOffset: -0.035,
+    attachmentZFactor: 0.74,
+    handleSpanFactor: 0.62,
+    handleScaleFactor: 0.9,
+    handleYScaleFactor: 1,
+    chain: [0.98, 1.58, 28, 0.039, 0.010],
   },
 };
 
