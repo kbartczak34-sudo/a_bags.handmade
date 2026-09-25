@@ -70,6 +70,21 @@ test("customer Fidelity3D renderer consumes the same V4 family geometry contract
   assert.doesNotMatch(renderer, /if \(family === "tote"\) \{[\s\S]*quad\(p, \[-0\.92, 0\.76\]/);
 });
 
+test("Fidelity3D body has physical rounded edge construction and family-specific opening rims", () => {
+  assert.match(renderer, /const bevel = Math\.min\(\.055, spec\.depth \* \.14\)/);
+  assert.match(renderer, /const frontFace = addRing\(inset, 1, bevel, "face"\)/);
+  assert.match(renderer, /const frontEdge = addRing\(1, 1, 0, "bevel"\)/);
+  assert.match(renderer, /const backEdge = addRing\(1, -1, 0, "bevel"\)/);
+  assert.match(renderer, /function makeOpeningRim\(family/);
+  assert.match(renderer, /makeOpeningRim\("tote"\)/);
+  assert.match(renderer, /makeOpeningRim\("round"\)/);
+  assert.match(renderer, /makeOpeningRim\("bucket"\)/);
+  assert.match(renderer, /makeOpeningRim\("mini"\)/);
+  assert.match(renderer, /meshes\[config\.family \+ "Rim"\]/);
+  assert.match(renderer, /handleScaleY: spec\.handleScale\[1\]/);
+  assert.match(renderer, /\[size, sizeY, 1\]/);
+});
+
 test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
   assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief/);
   assert.match(renderer, /float hx=\(knit\(aUv\+vec2\(eps,0\.0\),uStitch\)-knit\(aUv-vec2\(eps,0\.0\),uStitch\)\)/);
