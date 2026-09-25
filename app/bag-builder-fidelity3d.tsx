@@ -53,6 +53,7 @@ type FamilyProfile = {
   bottomDepth: number;
   width: number;
   handleScale: number;
+  handleScaleY: number;
   handleY: number;
   flapScale: [number, number, number];
   flapY: number;
@@ -90,6 +91,7 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
       bottomDepth: spec.depth * 1.12,
       width: spec.rx,
       handleScale: spec.handleScale[0],
+      handleScaleY: spec.handleScale[1],
       handleY: spec.topY + 0.14,
       flapScale: [spec.flapScale[0], spec.flapScale[1], 1],
       flapY: spec.flapY ?? spec.topY * 0.34,
@@ -273,54 +275,125 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const cx = contour.reduce((sum, point) => sum + point[0], 0) / contour.length;
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
-  const centerDepth = depthAt(family, cy) / 2;
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const bevel = Math.min(0.055, spec.depth * 0.14);
+  const inset = 0.965;
+  const frontZ = spec.depth * 0.5;
+  const backZ = -frontZ;
+  const frontFaceZ = frontZ - bevel;
+  const backFaceZ = backZ + bevel;
+
+  const addRing = (scaleFactor: number, zSign: number, zInset: number, mode: "face" | "bevel" | "side") => {
+    const startIndex = positions.length / 3;
+    contour.forEach((point) => {
+      const x = cx + (point[0] - cx) * scaleFactor;
+      const y = cy + (point[1] - cy) * scaleFactor;
+      const z = zSign > 0 ? depthAt(family, y) * 0.5 - zInset : -depthAt(family, y) * 0.5 + zInset;
+      const radial = normalize(x - cx, y - cy, 0);
+      const nz = mode === "bevel" ? zSign * 0.72 : zSign;
+      const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
+      normals.push(...normalize(radial[0] * tangent, radial[1] * tangent, nz));
+      positions.push(x, y, z);
+      const [u, v] = uvFor(point);
+      uvs.push(u, v);
+    });
+    return startIndex;
+  };
+
+  const frontFace = addRing(inset, 1, bevel, "face");
+  const frontEdge = addRing(1, 1, 0, "bevel");
+  const backEdge = addRing(1, -1, 0, "bevel");
+  const backFace = addRing(inset, -1, bevel, "face");
 
   const frontCenter = positions.length / 3;
-  positions.push(cx, cy, centerDepth); normals.push(0, 0, 1); uvs.push(0.5, 0.5);
-  const frontStart = positions.length / 3;
-  contour.forEach((point) => {
-    const [u, v] = uvFor(point);
-    positions.push(point[0], point[1], depthAt(family, point[1]) / 2);
-    normals.push(0, 0, 1);
-    uvs.push(u, v);
-  });
-
+  positions.push(cx, cy, frontFaceZ);
+  normals.push(0, 0, 1);
+  uvs.push(0.5, 0.5);
   const backCenter = positions.length / 3;
-  positions.push(cx, cy, -centerDepth); normals.push(0, 0, -1); uvs.push(0.5, 0.5);
-  const backStart = positions.length / 3;
-  contour.forEach((point) => {
-    const [u, v] = uvFor(point);
-    positions.push(point[0], point[1], -depthAt(family, point[1]) / 2);
-    normals.push(0, 0, -1);
-    uvs.push(u, v);
-  });
+  positions.push(cx, cy, backFaceZ);
+  normals.push(0, 0, -1);
+  uvs.push(0.5, 0.5);
 
   for (let i = 0; i < contour.length; i += 1) {
     const next = (i + 1) % contour.length;
-    indices.push(frontCenter, frontStart + i, frontStart + next);
-    indices.push(backCenter, backStart + next, backStart + i);
+    indices.push(frontCenter, frontFace + i, frontFace + next);
+    indices.push(backCenter, backFace + next, backFace + i);
+
+    const connect = (aStart: number, bStart: number, reverse = false) => {
+      const a = aStart + i;
+      const b = aStart + next;
+      const c = bStart + i;
+      const d = bStart + next;
+      if (reverse) indices.push(a, b, c, b, d, c);
+      else indices.push(a, c, b, b, c, d);
+    };
+    connect(frontFace, frontEdge);
+    connect(frontEdge, backEdge);
+    connect(backEdge, backFace, true);
   }
 
-  const sideStart = positions.length / 3;
-  for (let i = 0; i < contour.length; i += 1) {
-    const next = (i + 1) % contour.length;
-    const a = contour[i];
-    const b = contour[next];
-    const za = depthAt(family, a[1]) / 2;
-    const zb = depthAt(family, b[1]) / 2;
-    const [nx, ny] = normalize(b[1] - a[1], -(b[0] - a[0]), 0);
-    positions.push(
-      a[0], a[1], za,
-      a[0], a[1], -za,
-      b[0], b[1], zb,
-      b[0], b[1], -zb,
-    );
-    normals.push(nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0);
-    uvs.push(i / contour.length, 1, i / contour.length, 0, (i + 1) / contour.length, 1, (i + 1) / contour.length, 0);
-    const base = sideStart + i * 4;
-    indices.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
-  }
+  return { positions, normals, uvs, indices };
+}
 
+function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 18, tube = 8) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const width = spec.rx * 0.91;
+  const depth = spec.depth * 0.84;
+  const y = spec.topY + 0.015;
+  const radius = Math.min(width, depth) * 0.12;
+  const points: Array<[number, number, number]> = [];
+  const add = (x: number, z: number) => points.push([x, y, z]);
+
+  for (let i = 0; i <= segments; i += 1) {
+    const t = i / segments;
+    add(-width + radius + (2 * (width - radius)) * t, depth * 0.5);
+  }
+  for (let i = 1; i <= segments; i += 1) {
+    const a = Math.PI / 2 - (Math.PI / 2) * (i / segments);
+    add(width - radius + radius * Math.cos(a), depth * 0.5 - radius + radius * Math.sin(a));
+  }
+  for (let i = 1; i <= segments; i += 1) {
+    const t = i / segments;
+    add(width - radius - (2 * (width - radius)) * t, -depth * 0.5);
+  }
+  for (let i = 1; i <= segments; i += 1) {
+    const a = -Math.PI / 2 - (Math.PI / 2) * (i / segments);
+    add(-width + radius + radius * Math.cos(a), -depth * 0.5 + radius + radius * Math.sin(a));
+  }
+  points.push(points[0]);
+
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  for (let i = 0; i < points.length; i += 1) {
+    const prev = points[Math.max(0, i - 1)];
+    const next = points[Math.min(points.length - 1, i + 1)];
+    const tx = next[0] - prev[0];
+    const tz = next[2] - prev[2];
+    const len = Math.hypot(tx, tz) || 1;
+    const txN = tx / len;
+    const tzN = tz / len;
+    for (let j = 0; j <= tube; j += 1) {
+      const a = (j / tube) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const nx = -tzN * ca;
+      const ny = sa;
+      const nz = txN * ca;
+      positions.push(points[i][0] + minor * nx, points[i][1] + minor * ny, points[i][2] + minor * nz);
+      normals.push(...normalize(nx, ny, nz));
+      uvs.push(i / Math.max(1, points.length - 1), j / tube);
+    }
+  }
+  const stride = tube + 1;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    for (let j = 0; j < tube; j += 1) {
+      const a = i * stride + j;
+      const b = a + stride;
+      indices.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
   return { positions, normals, uvs, indices };
 }
 
@@ -558,6 +631,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       round: createMesh(gl, makeVariableDepthBody("round")),
       bucket: createMesh(gl, makeVariableDepthBody("bucket")),
       mini: createMesh(gl, makeVariableDepthBody("mini")),
+      toteRim: createMesh(gl, makeOpeningRim("tote")),
+      roundRim: createMesh(gl, makeOpeningRim("round")),
+      bucketRim: createMesh(gl, makeOpeningRim("bucket")),
+      miniRim: createMesh(gl, makeOpeningRim("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105)),
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
@@ -621,7 +698,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, meshes[config.family], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
-  drawMesh(renderer, meshes.ring, multiply(root, matrix([0, profile.topY + 0.01, 0], [profile.width * 5.25, 1.04, profile.topDepth * 1.08], [Math.PI / 2, 0, 0])), openingColor, 0, stitch, 0.007);
+  drawMesh(renderer, meshes[config.family + "Rim"], root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
@@ -636,9 +713,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const mesh = config.handles.startsWith("wood") ? meshes.woodHandle : meshes.crochetHandle;
     const y = profile.handleY;
     const size = profile.handleScale;
-    const zOffset = profile.topDepth * 0.48;
+    const sizeY = profile.handleScaleY;
+    const zOffset = profile.topDepth * 0.46;
     for (const z of [-zOffset, zOffset]) {
-      drawMesh(renderer, mesh, multiply(root, matrix([0, y, z], [size, size, 1])), handleColor, material, stitch, config.handles === "crochet" ? 0.018 : 0);
+      drawMesh(renderer, mesh, multiply(root, matrix([0, y, z], [size, sizeY, 1])), handleColor, material, stitch, config.handles === "crochet" ? 0.018 : 0);
     }
   }
 
