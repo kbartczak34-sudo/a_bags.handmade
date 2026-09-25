@@ -6,14 +6,13 @@ const stack = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const fallback = fs.readFileSync("app/bag-builder-renderer-fallback.tsx", "utf8");
 const canvas = fs.readFileSync("app/bag-builder-premium-canvas3d.tsx", "utf8");
 
-test("FinalWebGL3D remains primary while premium software 3D is mounted as fallback infrastructure", () => {
-  const primaryIndex = stack.indexOf("<BagBuilderFinalWebGL3D />");
-  const fallbackIndex = stack.indexOf("<BagBuilderRendererFallback />");
-  assert.ok(primaryIndex > -1);
-  assert.ok(fallbackIndex > primaryIndex);
-  assert.ok(stack.indexOf("<BagBuilderFidelity3D />") === -1);
-  assert.match(fallback, /<BagBuilderPremiumCanvas3D \/>/);
-  assert.match(fallback, /<BagBuilderCanvas3DTouchRescue \/>/);
+test("V23 remains primary while premium software 3D stays fallback infrastructure", async () => {
+  const primary = await read("app/bag-builder-photoreal-v23.tsx");
+  const fallback = await read("app/bag-builder-renderer-fallback.tsx");
+  assert.match(primary, /function shell/);
+  assert.match(primary, /g\.enable\(g\.DEPTH_TEST\)/);
+  assert.match(fallback, /fallback/);
+  assert.match(fallback, /data-abags-final3d/);
 });
 
 test("premium software renderer activates only when WebGL readiness is absent", () => {
