@@ -21,10 +21,13 @@ test("legacy fidelity calibration still documents distinct variable-depth silhou
   assert.match(source, /function depthAt/);
   assert.match(source, /bottomDepth/);
   assert.match(source, /topDepth/);
-  assert.match(source, /family === "tote"/);
-  assert.match(source, /family === "round"/);
-  assert.match(source, /family === "bucket"/);
-  assert.match(source, /Mini is intentionally wider relative to height/);
+  assert.match(source, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
+  assert.match(source, /Object.fromEntries/);
+  assert.match(source, /spec\.rx/);
+  assert.match(source, /spec\.ry/);
+  assert.match(source, /spec\.depth/);
+  assert.match(source, /spec\.taper/);
+  assert.match(source, /softBodyOffset/);
   assert.match(source, /flapContour/);
 });
 
