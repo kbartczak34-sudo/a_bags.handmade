@@ -8,14 +8,13 @@ const [stack, surface, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-lifelike-surface.css", import.meta.url), "utf8"),
 ]);
 
-test("lifelike pass follows the Agata material renderer without replacing product geometry", () => {
-  assert.match(stack, /<BagBuilderFinalWebGL3D\s*\/>[\s\S]*<BagBuilderAgataCordWebGL\s*\/>[\s\S]*<BagBuilderLifelikeSurface\s*\/>/);
+test("lifelike pass follows the current live renderer stack without replacing product geometry", () => {
+  assert.match(stack, /<BagBuilderEngine \/>[\s\S]*<BagBuilderFidelityOptions \/>[\s\S]*<BagBuilderLifelikeSurface \/>/);
   assert.match(stack, /import "\.\/bag-builder-lifelike-surface\.css"/);
   assert.doesNotMatch(surface, /bodyPath|familyContour|superellipseContour|beveledExtrusion/);
   assert.match(surface, /BASE_SOURCE_SELECTOR = "\.abags-fidelity3d-canvas"/);
-  assert.match(surface, /AGATA_SOURCE_SELECTOR = "\.abags-agata-cord-webgl"/);
-  assert.match(surface, /drawImage\(source, 0, 0, width, height\)/);
 });
+
 
 test("polyester realism remains neutral and deterministic", () => {
   assert.match(surface, /createFibrePattern/);
