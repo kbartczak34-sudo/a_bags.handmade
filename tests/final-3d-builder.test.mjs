@@ -12,8 +12,10 @@ const [stack, renderer, controller, css, smoke] = await Promise.all([
 
 test("final customer stack mounts the calibrated A-Bags Fidelity contract before its verifier", () => {
   assert.match(stack, /<BagBuilderEngine \/>/);
+  assert.match(stack, /<BagBuilderFidelity3D \/>/);
   assert.match(stack, /<BagBuilderAbagsFidelityContract \/>/);
   assert.match(stack, /<BagBuilderFinal3DController \/>/);
+  assert.ok(stack.indexOf("<BagBuilderFidelity3D />") < stack.indexOf("<BagBuilderFinal3DController />"));
   assert.ok(stack.indexOf("<BagBuilderFinal3DController />") < stack.indexOf("<BagBuilderAbagsFidelityContract />"));
 });
 
