@@ -122,3 +122,11 @@ test("Fidelity3D uses soft-body deformation for the crocheted silhouette and fla
   assert.match(renderer, /softened = contour\.map/);
   assert.match(renderer, /makeExtrudedContour\(flapContour\(\), 0\.105, 0\.085\)/);
 });
+
+
+test("Fidelity3D chain hardware uses discrete alternating links instead of a continuous rod", () => {
+  assert.match(renderer, /function makeSegmentedChain\(rx: number, ry: number, z: number, links = 34/);
+  assert.match(renderer, /const u = i % 2 === 0 \? tangent : normalXY/);
+  assert.match(renderer, /const linkNormal = normalize/);
+  assert.match(renderer, /chain: createMesh\(gl, makeSegmentedChain\(1\.18, 1\.62, 0, 34, 0\.043, 0\.011\)\)/);
+});
