@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [stack, controller, compositor, stageCss] = await Promise.all([
+const [stack, renderer, controller, compositor, stageCss] = await Promise.all([
   readFile(new URL("../app/exact-live-customizer.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/bag-builder-fidelity3d.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-final3d-controller.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-fidelity3d-compositor-sync.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/bag-builder-reference-v4-product-stage.css", import.meta.url), "utf8"),
@@ -50,4 +51,15 @@ test("legacy product scenery cannot recolor or cover the Fidelity3D surface", ()
   assert.match(stageCss, /\.abags-fidelity3d-canvas[\s\S]*filter:none!important/);
   assert.match(stageCss, /mix-blend-mode:normal!important/);
   assert.match(stageCss, /backface-visibility:hidden!important/);
+});
+
+
+test("customer Fidelity3D renderer consumes the same V4 family geometry contract", () => {
+  assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
+  assert.match(renderer, /Object.keys(ABAGS_FIDELITY_V4_FAMILY_SPECS)/);
+  assert.match(renderer, /spec.rx/);
+  assert.match(renderer, /spec.depth/);
+  assert.match(renderer, /spec.handleScale/);
+  assert.match(renderer, /spec.flapScale/);
+  assert.match(renderer, /spec.sideAnchor/);
 });
