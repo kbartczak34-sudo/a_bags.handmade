@@ -948,6 +948,7 @@ export default function BagBuilderFidelity3D() {
   const [rotation, setRotation] = useState(DEFAULT_ROTATION);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [ready, setReady] = useState(false);
+  const [rendererEpoch, setRendererEpoch] = useState(0);
   const [view, setViewState] = useState<"front" | "three" | "side">("three");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
@@ -993,12 +994,29 @@ export default function BagBuilderFidelity3D() {
       rendererRef.current = null;
       setReady(false);
     }
-    return () => {
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      setReady(false);
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
     };
-  }, [stage]);
+    const handleContextRestored = () => {
+      rendererRef.current = null;
+      setRendererEpoch((value) => value + 1);
+    };
+    canvas.addEventListener("webglcontextlost", handleContextLost);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored);
+
+    return () => {
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+      stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+      stage.removeAttribute("data-abags-pro3d-ready");
+      stage.removeAttribute("data-abags-fidelity3d-ready");
+    };
+  }, [stage, rendererEpoch]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
