@@ -134,9 +134,10 @@ test("desktop and mobile navigation receive personalization entry", () => {
   assert.match(styles, /abags-personalize-nav-link/);
 });
 
-test("Bag Builder does not duplicate checkout and Stripe payment methods stay untouched", () => {
+test("Bag Builder does not duplicate checkout and Stripe Checkout controls payment methods dynamically", () => {
   assert.doesNotMatch(builder, /api\/checkout/);
-  assert.match(checkout, /payment_method_types/);
+  assert.doesNotMatch(checkout, /payment_method_types/);
+  assert.match(checkout, /integration_identifier/);
 });
 
 test("Bag Builder has responsive mobile styles", () => {
