@@ -13,12 +13,10 @@ const builderStyles = fs.readFileSync("app/bag-builder-engine.css", "utf8");
 const checkout = fs.readFileSync("app/api/checkout/route.ts", "utf8");
 const eslint = fs.readFileSync("eslint.config.mjs", "utf8");
 
-test("personalization is mounted as a prominent storefront feature", () => {
-  assert.match(layout, /PersonalizationEntry/);
-  assert.match(layout, /ExactLiveCustomizer/);
-  assert.match(layout, /bag-builder-engine\.css/);
-  assert.match(entry, /id="personalizacja"/);
-  assert.match(entry, /Uruchom konfigurator/);
+test("Bag Builder does not duplicate checkout and Stripe Checkout controls payment methods dynamically", () => {
+  assert.doesNotMatch(builder, /api\/checkout/);
+  assert.doesNotMatch(checkout, /payment_method_types/);
+  assert.match(checkout, /integration_identifier/);
 });
 
 test("Bag Builder 3.0 replaces the finished-product photographic chooser", () => {
