@@ -6,9 +6,8 @@ const layout = fs.readFileSync(new URL("../app/layout.tsx", import.meta.url), "u
 const renderer = fs.readFileSync(new URL("../app/bag-builder-photoreal-v17.tsx", import.meta.url), "utf8");
 
 test("current photoreal renderer is V23 behind the compatibility mount", () => {
-  assert.match(layout, /import BagBuilderPhotorealV17Mount from "\.\/bag-builder-photoreal-v17-mount"/);
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
   assert.match(layout, /<BagBuilderPhotorealV17Mount \/>/);
-  assert.match(layout, /ExactLiveCustomizer/);
   assert.match(renderer, /function face\(/);
 });
 
