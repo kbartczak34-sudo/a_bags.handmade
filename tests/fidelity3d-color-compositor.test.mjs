@@ -69,3 +69,11 @@ test("customer Fidelity3D renderer consumes the same V4 family geometry contract
   assert.match(renderer, /return spec\.depth/);
   assert.doesNotMatch(renderer, /if \(family === "tote"\) \{[\s\S]*quad\(p, \[-0\.92, 0\.76\]/);
 });
+
+test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
+  assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief/);
+  assert.match(renderer, /float hx=\(knit\(aUv\+vec2\(eps,0\.0\),uStitch\)-knit\(aUv-vec2\(eps,0\.0\),uStitch\)\)/);
+  assert.match(renderer, /float hy=\(knit\(aUv\+vec2\(0\.0,eps\),uStitch\)-knit\(aUv-vec2\(0\.0,eps\),uStitch\)\)/);
+  assert.match(renderer, /vec3 reliefNormal=normalize/);
+  assert.match(renderer, /mix\(aNormal,reliefNormal,frontFace\*\.72\)/);
+});
