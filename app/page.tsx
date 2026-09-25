@@ -442,6 +442,8 @@ export default function Home() {
             className="hero-product-photo"
             src={heroImageUrl}
             alt={siteContent.hero.imageAlt}
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="art-label">
             <span>{siteContent.hero.imageLabel}</span>
@@ -484,6 +486,8 @@ export default function Home() {
                     className="product-photo"
                     src={product.imageUrl}
                     alt={product.name}
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="product-placeholder">
