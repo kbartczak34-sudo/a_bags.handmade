@@ -295,7 +295,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const bevel = Math.min(0.055, spec.depth * 0.14);
+  const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
   const frontZ = spec.depth * 0.5;
   const backZ = -frontZ;
