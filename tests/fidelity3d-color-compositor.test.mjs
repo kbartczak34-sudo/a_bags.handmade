@@ -42,6 +42,10 @@ test("verified framebuffer must preserve the selected chromatic cord hue", () =>
   assert.match(controller, /abagsFinal3dHueMatches/);
   assert.match(controller, /abagsFinal3dExpectedHue/);
   assert.match(controller, /inspectVisiblePixels\(canvas, stage\.dataset\.color \|\| ""\)/);
+  assert.match(controller, /function unbindCanvasEvents\(\)/);
+  assert.match(controller, /event\.preventDefault\(\)/);
+  assert.match(controller, /waiting-for-renderer/);
+  assert.match(controller, /clearPixelDiagnostics\(\)/);
 });
 
 test("legacy product scenery cannot recolor or cover the Fidelity3D surface", () => {
