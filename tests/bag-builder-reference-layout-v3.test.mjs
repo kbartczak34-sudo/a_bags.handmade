@@ -57,8 +57,9 @@ test("reference family photos, inspiration presets and active layers remain real
 test("visual layer keeps only one interactive renderer visible at a time", () => {
   assert.match(stack, /<BagBuilderEngine \/>/);
   assert.match(stack, /<BagBuilderRendererFallback \/>/);
+  assert.match(stack, /<BagBuilderFidelity3D \/>/);
+  assert.match(stack, /<BagBuilderFinal3DController \/>/);
   assert.doesNotMatch(stack, /<BagBuilderFinalWebGL3D \/>/);
-  assert.doesNotMatch(stack, /<BagBuilderFidelity3D \/>/);
   assert.doesNotMatch(stack, /AtelierBagRendererV7/);
   assert.doesNotMatch(stack, /BagBuilderMaterialPass/);
   assert.doesNotMatch(stack, /BagBuilderConstructionPass/);
