@@ -12,6 +12,7 @@ export type FidelityV4FamilySpec = {
   power: number;
   /** Positive = wider at top, negative = narrower at top. */
   taper: number;
+  bodyY: number;
   /** Front-to-back body depth. */
   depth: number;
   bevel: number;
@@ -52,6 +53,7 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     ry: 0.86,
     power: 5.6,
     taper: -0.045,
+    bodyY: -0.1,
     depth: 0.48,
     bevel: 0.055,
     topY: 0.86,
@@ -76,6 +78,7 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     ry: 0.90,
     power: 2.15,
     taper: 0,
+    bodyY: -0.1,
     depth: 0.46,
     bevel: 0.052,
     topY: 0.83,
@@ -100,6 +103,7 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     ry: 0.87,
     power: 5.0,
     taper: 0.10,
+    bodyY: -0.1,
     depth: 0.54,
     bevel: 0.056,
     topY: 0.86,
@@ -124,6 +128,7 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     ry: 0.67,
     power: 6.2,
     taper: -0.025,
+    bodyY: -0.08,
     depth: 0.40,
     bevel: 0.045,
     topY: 0.65,
