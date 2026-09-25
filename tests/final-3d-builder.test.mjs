@@ -10,12 +10,11 @@ const [stack, renderer, controller, css, smoke] = await Promise.all([
   readFile(new URL("../scripts/smoke-customizer-realtime.mjs", import.meta.url), "utf8"),
 ]);
 
-test("final customer stack mounts the calibrated A-Bags Fidelity contract before its verifier", async () => {
-  const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /<BagBuilderEngine \/>/);
-  assert.match(source, /<BagBuilderAbagsFidelityContract \/>/);
-  assert.match(source, /<BagBuilderFinal3DController \/>/);
-  assert.ok(source.indexOf("<BagBuilderAbagsFidelityContract />") < source.indexOf("<BagBuilderFinal3DController />"));
+test("final customer stack mounts the calibrated A-Bags Fidelity contract before its verifier", () => {
+  assert.match(stack, /<BagBuilderEngine \/>/);
+  assert.match(stack, /<BagBuilderAbagsFidelityContract \/>/);
+  assert.match(stack, /<BagBuilderFinal3DController \/>/);
+  assert.ok(stack.indexOf("<BagBuilderAbagsFidelityContract />") < stack.indexOf("<BagBuilderFinal3DController />"));
 });
 
 test("A-Bags body geometry is volumetric, family-specific and mobile-camera aware", () => {
