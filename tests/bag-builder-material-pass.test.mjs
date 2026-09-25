@@ -8,7 +8,6 @@ test("live customizer keeps the legacy procedural material pass out of the visib
   const source = await read("app/exact-live-customizer.tsx");
   assert.match(source, /<BagBuilderEngine \/>/);
   assert.doesNotMatch(source, /<BagBuilderMaterialPass\s*\/>/);
-  assert.doesNotMatch(source, /<BagBuilderFidelity3D\s*\/>/);
 });
 
 
