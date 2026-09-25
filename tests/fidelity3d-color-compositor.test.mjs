@@ -42,7 +42,7 @@ test("verified framebuffer must preserve the selected chromatic cord hue", () =>
   assert.match(controller, /abagsFinal3dHueMatches/);
   assert.match(controller, /abagsFinal3dExpectedHue/);
   assert.match(controller, /inspectVisiblePixels\(canvas, stage\.dataset\.color \|\| ""\)/);
-  assert.match(controller, /function unbindCanvasEvents\(\)/);
+  assert.match(controller, /(?:function unbindCanvasEvents\(\)|const unbindCanvasEvents =)/);
   assert.match(controller, /event\.preventDefault\(\)/);
   assert.match(controller, /waiting-for-renderer/);
   assert.match(controller, /clearPixelDiagnostics\(\)/);
@@ -75,7 +75,7 @@ test("customer Fidelity3D renderer consumes the same V4 family geometry contract
 });
 
 test("Fidelity3D body has physical rounded edge construction and family-specific opening rims", () => {
-  assert.match(renderer, /const bevel = Math\.min\(spec\.bevel, spec\.depth \* \.14\)/);
+  assert.match(renderer, /const bevel = Math\.min\(spec\.bevel, spec\.depth \* (?:\.14|0\.14)\)/);
   assert.match(renderer, /const frontFace = addRing\(inset, 1, bevel, "face"\)/);
   assert.match(renderer, /const frontEdge = addRing\(1, 1, 0, "bevel"\)/);
   assert.match(renderer, /const backEdge = addRing\(1, -1, 0, "bevel"\)/);
