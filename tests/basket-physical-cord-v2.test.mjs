@@ -8,7 +8,7 @@ const [stack, basket, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-basket-physical-cord-v2.css", import.meta.url), "utf8"),
 ]);
 
-test("Basket Physical Cord V2 stays a non-authoritative finishing layer below the active V23 renderer", () => {
+test("Basket Physical Cord V2 stays a non-authoritative finishing layer below the active V23 renderer", async () => {
   const rootLayout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   assert.match(stack, /<BagBuilderBasketWeaveFinish \/>/);
   assert.match(stack, /<BagBuilderHandmadeEdgeFinish \/>/);
