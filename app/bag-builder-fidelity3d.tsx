@@ -223,39 +223,20 @@ function quad(points: Point[], a: Point, control: Point, b: Point, steps = 10) {
 }
 
 function familyContour(family: Exclude<Family, "">): Point[] {
-  const p: Point[] = [];
-  if (family === "tote") {
-    quad(p, [-0.92, 0.76], [0, 0.83], [0.92, 0.76], 18);
-    quad(p, [0.92, 0.76], [1.03, 0.08], [0.98, -0.62], 15);
-    quad(p, [0.98, -0.62], [0.58, -0.8], [0, -0.79], 11);
-    quad(p, [0, -0.79], [-0.58, -0.8], [-0.98, -0.62], 11);
-    quad(p, [-0.98, -0.62], [-1.03, 0.08], [-0.92, 0.76], 15);
-    return p;
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const points: Point[] = [];
+  const samples = 96;
+  const exponent = 2 / Math.max(1.01, spec.power);
+  for (let i = 0; i < samples; i += 1) {
+    const theta = (i / samples) * Math.PI * 2;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    const x0 = Math.sign(cos) * Math.pow(Math.abs(cos), exponent) * spec.rx;
+    const y = Math.sign(sin) * Math.pow(Math.abs(sin), exponent) * spec.ry;
+    const taper = 1 + spec.taper * (y / Math.max(0.001, spec.ry));
+    points.push([x0 * taper, y]);
   }
-  if (family === "round") {
-    quad(p, [-0.78, 0.53], [0, 0.61], [0.78, 0.53], 16);
-    quad(p, [0.78, 0.53], [0.98, 0.24], [1.0, -0.05], 10);
-    quad(p, [1.0, -0.05], [0.94, -0.57], [0.42, -0.73], 13);
-    quad(p, [0.42, -0.73], [0, -0.85], [-0.42, -0.73], 11);
-    quad(p, [-0.42, -0.73], [-0.94, -0.57], [-1.0, -0.05], 13);
-    quad(p, [-1.0, -0.05], [-0.98, 0.24], [-0.78, 0.53], 10);
-    return p;
-  }
-  if (family === "bucket") {
-    quad(p, [-0.66, 0.82], [0, 0.88], [0.66, 0.82], 16);
-    quad(p, [0.66, 0.82], [0.8, 0.15], [0.92, -0.56], 15);
-    quad(p, [0.92, -0.56], [0.5, -0.82], [0, -0.8], 11);
-    quad(p, [0, -0.8], [-0.5, -0.82], [-0.92, -0.56], 11);
-    quad(p, [-0.92, -0.56], [-0.8, 0.15], [-0.66, 0.82], 15);
-    return p;
-  }
-  // Mini is intentionally wider relative to height, following the real multicolour mini reference.
-  quad(p, [-0.8, 0.58], [0, 0.64], [0.8, 0.58], 16);
-  quad(p, [0.8, 0.58], [0.88, 0.03], [0.82, -0.5], 13);
-  quad(p, [0.82, -0.5], [0.46, -0.68], [0, -0.67], 10);
-  quad(p, [0, -0.67], [-0.46, -0.68], [-0.82, -0.5], 10);
-  quad(p, [-0.82, -0.5], [-0.88, 0.03], [-0.8, 0.58], 13);
-  return p;
+  return points;
 }
 
 function flapContour(): Point[] {
@@ -269,15 +250,12 @@ function flapContour(): Point[] {
 }
 
 function depthAt(family: Exclude<Family, "">, y: number) {
-  const profile = PROFILES[family];
-  const minY = family === "round" ? -0.85 : family === "bucket" ? -0.82 : family === "mini" ? -0.68 : -0.8;
-  const maxY = family === "round" ? 0.61 : family === "bucket" ? 0.88 : family === "mini" ? 0.64 : 0.83;
-  const t = clamp((y - minY) / Math.max(0.001, maxY - minY), 0, 1);
-  const lower = profile.bottomDepth + (profile.baseDepth - profile.bottomDepth) * Math.min(1, t * 2);
-  const upper = profile.baseDepth + (profile.topDepth - profile.baseDepth) * Math.max(0, (t - 0.5) * 2);
-  const depth = t < 0.5 ? lower : upper;
-  // Slight belly in the middle mimics the volume created by cord and lining.
-  return depth * (1 + Math.sin(t * Math.PI) * (family === "round" ? 0.08 : 0.045));
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const normalizedY = clamp(y / Math.max(0.001, spec.ry), -1, 1);
+  const edge = Math.abs(normalizedY);
+  const belly = 1 + Math.sin((1 - edge) * Math.PI * 0.5) * (0.035 + spec.depth * 0.035);
+  const topCompression = 1 - Math.max(0, normalizedY) * 0.04;
+  return spec.depth * belly * topCompression;
 }
 
 function makeVariableDepthBody(family: Exclude<Family, "">) {
