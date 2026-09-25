@@ -96,7 +96,8 @@ test("Fidelity3D body has physical rounded edge construction and family-specific
   assert.match(renderer, /webglcontextlost/);
   assert.match(renderer, /webglcontextrestored/);
   assert.match(renderer, /setRendererEpoch\(\(value\) => value \+ 1\)/);
-  assert.match(renderer, /scaleX: profile\.handleScale \* spec\.handleScaleFactor/);\n  assert.match(renderer, /scaleY: profile\.handleScaleY \* spec\.handleYScaleFactor/);
+  assert.match(renderer, /scaleX: profile\.handleScale \* spec\.handleScaleFactor/);
+  assert.match(renderer, /scaleY: profile\.handleScaleY \* spec\.handleYScaleFactor/);
 });
 
 test("Fidelity3D accessories use family-specific physical attachment points", () => {
