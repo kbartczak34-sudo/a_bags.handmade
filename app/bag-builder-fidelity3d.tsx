@@ -83,7 +83,7 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
   (Object.keys(ABAGS_FIDELITY_V4_FAMILY_SPECS) as FidelityV4Family[]).map((family) => {
     const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
     return [family, {
-      bodyY: family === "mini" ? -0.08 : -0.1,
+      bodyY: spec.bodyY,
       topY: spec.topY,
       frontZ: spec.depth / 2,
       baseDepth: spec.depth,
