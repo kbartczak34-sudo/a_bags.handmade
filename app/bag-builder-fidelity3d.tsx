@@ -730,6 +730,27 @@ function stitchId(stitch: Stitch) {
   return stitch === "herringbone" ? 1 : stitch === "basket" ? 2 : stitch === "shell" ? 3 : 0;
 }
 
+function familyAttachment(profile: Profile, family: Exclude<Family, "">) {
+  const widthFactor = family === "mini" ? 0.72 : family === "round" ? 0.84 : family === "bucket" ? 0.88 : 0.96;
+  return {
+    x: profile.width * widthFactor,
+    y: profile.topY + (family === "mini" ? -0.035 : -0.02),
+    z: profile.frontZ * 0.74,
+  };
+}
+
+function handleTransform(profile: Profile, family: Exclude<Family, "">, side: number) {
+  const attachment = familyAttachment(profile, family);
+  const span = profile.width * (family === "mini" ? 0.62 : family === "round" ? 0.72 : 0.84);
+  return {
+    x: side * span,
+    y: attachment.y,
+    z: attachment.z,
+    scaleX: profile.handleScale * (family === "mini" ? 0.9 : 1),
+    scaleY: profile.handleScaleY * (family === "bucket" ? 1.08 : 1),
+  };
+}
+
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
   const { gl, uniforms, meshes } = renderer;
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -762,19 +783,37 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const material = config.strap === "chain" ? 4 : config.strap === "leather" ? 2 : 3;
-    drawMesh(renderer, config.strap === "chain" ? meshes.chain : meshes.strap, multiply(root, matrix([0, profile.topY - 0.02, -profile.topDepth * 0.62], [profile.handleScale, 0.95, 1])), strapColor, material, stitch, 0);
+    const attachment = familyAttachment(profile, config.family);
+    const strapScale = config.strap === "chain" ? profile.handleScale * 0.96 : profile.handleScale;
+    drawMesh(
+      renderer,
+      config.strap === "chain" ? meshes.chain : meshes.strap,
+      multiply(root, matrix([0, attachment.y - 0.02, -profile.topDepth * 0.58], [strapScale, 0.92, 1])),
+      strapColor,
+      material,
+      stitch,
+      0,
+    );
   }
 
   if (config.handles !== "none") {
     const handleColor = config.handles === "wood-light" ? "#c99b63" : config.handles === "wood-dark" ? "#61331f" : body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const mesh = config.handles.startsWith("wood") ? meshes.woodHandle : meshes.crochetHandle;
-    const y = profile.handleY;
-    const size = profile.handleScale;
-    const sizeY = profile.handleScaleY;
     const zOffset = profile.topDepth * 0.46;
-    for (const z of [-zOffset, zOffset]) {
-      drawMesh(renderer, mesh, multiply(root, matrix([0, y, z], [size, sizeY, 1])), handleColor, material, stitch, config.handles === "crochet" ? 0.018 : 0);
+    for (const side of [-1, 1]) {
+      const transform = handleTransform(profile, config.family, side);
+      for (const z of [-zOffset, zOffset]) {
+        drawMesh(
+          renderer,
+          mesh,
+          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1])),
+          handleColor,
+          material,
+          stitch,
+          config.handles === "crochet" ? 0.018 : 0,
+        );
+      }
     }
   }
 
@@ -788,8 +827,17 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, config.flap !== "none" ? profile.lockY : -0.47, profile.frontZ + 0.15], [0.105, 0.105, 0.07])), metal, 4, 0);
 
   if (config.strap !== "none") {
-    for (const x of [-profile.sideX, profile.sideX]) {
-      drawMesh(renderer, meshes.ring, multiply(root, matrix([x, profile.topY - 0.18, 0.02], [0.92, 1, 1], [0, Math.PI / 2, 0])), metal, 4, 0);
+    for (const side of [-1, 1]) {
+      const attachment = familyAttachment(profile, config.family);
+      const x = side * attachment.x;
+      drawMesh(
+        renderer,
+        meshes.ring,
+        multiply(root, matrix([x, attachment.y - 0.08, 0.02], [0.74, 0.88, 1], [0, Math.PI / 2, 0])),
+        metal,
+        4,
+        0,
+      );
     }
   }
 
