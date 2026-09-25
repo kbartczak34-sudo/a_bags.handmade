@@ -553,6 +553,65 @@ function makeArchTube(rx: number, ry: number, z: number, minor = 0.055, segments
   return { positions, normals, uvs, indices };
 }
 
+function makeSegmentedChain(rx: number, ry: number, z: number, links = 34, major = 0.043, minor = 0.011) {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const rows = 8;
+  const cols = 10;
+
+  for (let i = 0; i < links; i += 1) {
+    const progress = links === 1 ? 0.5 : i / (links - 1);
+    const t = Math.PI - progress * Math.PI;
+    const cx = rx * Math.cos(t);
+    const cy = ry * Math.sin(t);
+    const tx = -rx * Math.sin(t);
+    const ty = ry * Math.cos(t);
+    const tangent = normalize(tx, ty, 0);
+    const normalXY: [number, number, number] = [-tangent[1], tangent[0], 0];
+    const u = i % 2 === 0 ? tangent : normalXY;
+    const v: [number, number, number] = [0, 0, 1];
+    const linkNormal = normalize(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]);
+    const base = positions.length / 3;
+
+    for (let r = 0; r <= rows; r += 1) {
+      const a = (r / rows) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      for (let k = 0; k <= cols; k += 1) {
+        const b = (k / cols) * Math.PI * 2;
+        const cb = Math.cos(b);
+        const sb = Math.sin(b);
+        const ringX = ca * u[0] + sa * u[1];
+        const ringY = ca * u[1] + sa * u[0];
+        const radial: [number, number, number] = [ringX, ringY, ca * u[2] + sa * v[2]];
+        const px = cx + (major + minor * cb) * (ca * u[0] + sa * v[0]) + minor * sb * linkNormal[0];
+        const py = cy + (major + minor * cb) * (ca * u[1] + sa * v[1]) + minor * sb * linkNormal[1];
+        const pz = z + (major + minor * cb) * (ca * u[2] + sa * v[2]) + minor * sb * linkNormal[2];
+        const n = normalize(
+          radial[0] * cb + linkNormal[0] * sb,
+          radial[1] * cb + linkNormal[1] * sb,
+          radial[2] * cb + linkNormal[2] * sb,
+        );
+        positions.push(px, py, pz);
+        normals.push(...n);
+        uvs.push(progress, (r * (cols + 1) + k) / ((rows + 1) * (cols + 1)));
+      }
+    }
+
+    const stride = cols + 1;
+    for (let r = 0; r < rows; r += 1) {
+      for (let k = 0; k < cols; k += 1) {
+        const a = base + r * stride + k;
+        const b = a + stride;
+        indices.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    }
+  }
+  return { positions, normals, uvs, indices };
+}
+
 function makeEllipsoid(a: number, b: number, c: number, rows = 22, cols = 34) {
   const positions: number[] = [];
   const normals: number[] = [];
@@ -717,7 +776,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       strap: createMesh(gl, makeArchTube(1.18, 1.62, 0, 0.043, 84, 12, false)),
-      chain: createMesh(gl, makeArchTube(1.18, 1.62, 0, 0.025, 92, 10, false)),
+      chain: createMesh(gl, makeSegmentedChain(1.18, 1.62, 0, 34, 0.043, 0.011)),
       ring: createMesh(gl, makeArchTube(0.13, 0.13, 0, 0.025, 40, 9, true)),
       sphere: createMesh(gl, makeEllipsoid(1, 1, 1)),
       ribbon: createMesh(gl, makeEllipsoid(0.46, 0.14, 0.045, 18, 30)),
