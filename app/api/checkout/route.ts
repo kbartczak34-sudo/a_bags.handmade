@@ -65,12 +65,6 @@ function parsePayload(value: unknown) {
   return { email, items };
 }
 
-function readPaymentChoice(request: Request): PaymentChoice {
-  const cookie = request.headers.get("cookie") ?? "";
-  const match = cookie.match(/(?:^|;\s*)abags-payment-method=(blik|card|wallet)(?:;|$)/);
-  return (match?.[1] as PaymentChoice | undefined) ?? "blik";
-}
-
 function productComplianceComplete(product: CatalogProduct) {
   return Boolean(
     product.productIdentifier.trim() &&
@@ -163,7 +157,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const paymentChoice = readPaymentChoice(request);
   const shippingAmount = standardShippingAmount;
   const cartReference = selectedProducts
     .map(({ product, quantity }) => `${product.id}:${quantity}`)
@@ -214,7 +207,6 @@ export async function POST(request: Request) {
     form.set("locale", "pl");
     // Promotion codes stay disabled until the store has a compliant 30-day
     // price-history mechanism for price-reduction disclosures.
-    form.set("payment_method_types[0]", paymentChoice === "blik" ? "blik" : "card");
     form.set("customer_email", payload.email);
     form.set("customer_creation", "always");
     form.set("phone_number_collection[enabled]", "true");
@@ -248,10 +240,8 @@ export async function POST(request: Request) {
     form.set("metadata[store]", "a_bags.handmade");
     // Payment methods remain dynamically selected by Stripe Checkout. BLIK and cards are controlled in Dashboard.
     form.set("metadata[cart]", cartReference);
-    form.set("metadata[payment_choice]", paymentChoice);
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][cart]", cartReference);
-    form.set("payment_intent_data[metadata][payment_choice]", paymentChoice);
 
     const shippingMessage = orderSettings.pickupEnabled && orderSettings.pickupAddress
       ? `Dostawa na terenie Polski lub bezpłatny odbiór osobisty: ${orderSettings.pickupAddress}`
@@ -305,7 +295,6 @@ export async function POST(request: Request) {
         type: stripeBody.error?.type,
         message: stripeBody.error?.message,
         requestId,
-        paymentChoice,
       });
       return json(
         { error: `${publicStripeErrorMessage(code)} [${code}]`, code, requestId },
