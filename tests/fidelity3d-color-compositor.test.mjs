@@ -92,6 +92,17 @@ test("Fidelity3D body has physical rounded edge construction and family-specific
   assert.match(renderer, /\[size, sizeY, 1\]/);
 });
 
+test("Fidelity3D accessories use family-specific physical attachment points", () => {
+  assert.match(renderer, /function familyAttachment\(profile: Profile, family: Exclude<Family, "">\)/);
+  assert.match(renderer, /function handleTransform\(profile: Profile, family: Exclude<Family, "">, side: number\)/);
+  assert.match(renderer, /family === "mini" \? 0\.72/);
+  assert.match(renderer, /family === "round" \? 0\.84/);
+  assert.match(renderer, /family === "bucket" \? 0\.88/);
+  assert.match(renderer, /const transform = handleTransform\(profile, config\.family, side\)/);
+  assert.match(renderer, /const x = side \* attachment\.x/);
+  assert.doesNotMatch(renderer, /matrix\(\[x, profile\.topY - 0\.18, 0\.02\]/);
+});
+
 test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
   assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief/);
   assert.match(renderer, /float hx=\(knit\(aUv\+vec2\(eps,0\.0\),uStitch\)-knit\(aUv-vec2\(eps,0\.0\),uStitch\)\)/);
