@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ABAGS_FIDELITY_V4_RENDERER_VERSION } from "../lib/abags-fidelity-v4-family-spec";
+import {
+  ABAGS_FIDELITY_V4_FAMILY_SPECS,
+  ABAGS_FIDELITY_V4_RENDERER_VERSION,
+  type FidelityV4Family,
+} from "../lib/abags-fidelity-v4-family-spec";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -74,36 +78,28 @@ const DEFAULT_ZOOM = 0.8;
 const MIN_ZOOM = 0.34;
 const MAX_ZOOM = 1.45;
 
-const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = {
-  tote: {
-    bodyY: -0.1, topY: 0.73, frontZ: 0.29,
-    baseDepth: 0.55, topDepth: 0.46, bottomDepth: 0.62,
-    width: 1.02, handleScale: 1, handleY: 1.0,
-    flapScale: [0.84, 0.72, 1], flapY: 0.34, lockY: 0.15,
-    sideX: 1.0, accentX: -0.92, accentY: 0.34,
-  },
-  round: {
-    bodyY: -0.12, topY: 0.55, frontZ: 0.31,
-    baseDepth: 0.58, topDepth: 0.42, bottomDepth: 0.64,
-    width: 0.98, handleScale: 0.92, handleY: 0.8,
-    flapScale: [0.8, 0.72, 1], flapY: 0.27, lockY: 0.08,
-    sideX: 0.93, accentX: -0.86, accentY: 0.25,
-  },
-  bucket: {
-    bodyY: -0.1, topY: 0.79, frontZ: 0.3,
-    baseDepth: 0.58, topDepth: 0.44, bottomDepth: 0.66,
-    width: 0.88, handleScale: 0.86, handleY: 1.04,
-    flapScale: [0.72, 0.67, 1], flapY: 0.4, lockY: 0.18,
-    sideX: 0.86, accentX: -0.8, accentY: 0.33,
-  },
-  mini: {
-    bodyY: -0.08, topY: 0.6, frontZ: 0.24,
-    baseDepth: 0.46, topDepth: 0.38, bottomDepth: 0.5,
-    width: 0.81, handleScale: 0.76, handleY: 0.84,
-    flapScale: [0.68, 0.58, 1], flapY: 0.26, lockY: 0.08,
-    sideX: 0.76, accentX: -0.68, accentY: 0.25,
-  },
-};
+const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
+  (Object.keys(ABAGS_FIDELITY_V4_FAMILY_SPECS) as FidelityV4Family[]).map((family) => {
+    const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+    return [family, {
+      bodyY: family === "mini" ? -0.08 : -0.1,
+      topY: spec.topY,
+      frontZ: spec.depth / 2,
+      baseDepth: spec.depth,
+      topDepth: spec.depth * 0.92,
+      bottomDepth: spec.depth * 1.12,
+      width: spec.rx,
+      handleScale: spec.handleScale[0],
+      handleY: spec.topY + 0.14,
+      flapScale: [spec.flapScale[0], spec.flapScale[1], 1],
+      flapY: spec.flapY ?? spec.topY * 0.34,
+      lockY: spec.ringY - 0.32,
+      sideX: spec.sideAnchor,
+      accentX: -spec.sideAnchor * 0.92,
+      accentY: spec.flapY ?? spec.topY * 0.34,
+    }] as const;
+  }),
+) as Record<Exclude<Family, "">, FamilyProfile>;
 
 function readConfig(stage: HTMLElement): Config {
   return {
