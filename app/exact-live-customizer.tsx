@@ -40,6 +40,7 @@ import BagBuilderFidelityOptions from "./bag-builder-fidelity-options";
 import BagBuilderFidelity3DCompositorSync from "./bag-builder-fidelity3d-compositor-sync";
 import BagBuilderFidelity3DControlNamespace from "./bag-builder-fidelity3d-control-namespace";
 import BagBuilderFinal3DController from "./bag-builder-final3d-controller";
+import BagBuilderFidelity3D from "./bag-builder-fidelity3d";
 import BagBuilderFlapRealism from "./bag-builder-flap-realism";
 import BagBuilderHandmadeEdgeFinish from "./bag-builder-handmade-edge-finish";
 import BagBuilderLifelikeSurface from "./bag-builder-lifelike-surface";
@@ -68,6 +69,7 @@ import BagBuilderViewSync from "./bag-builder-view-sync";
 export default function ExactLiveCustomizer() {
   return <>
     <BagBuilderEngine />
+    <BagBuilderFidelity3D />
     <BagBuilderFidelityOptions />
     <BagBuilderLifelikeSurface />
     <BagBuilderCrochetReliefOverlay />
