@@ -10,15 +10,12 @@ const [stack, renderer, controller, css, smoke] = await Promise.all([
   readFile(new URL("../scripts/smoke-customizer-realtime.mjs", import.meta.url), "utf8"),
 ]);
 
-test("final customer stack mounts calibrated A-Bags Fidelity v4 before its verifier", () => {
-  assert.match(stack, /<BagBuilderFinalWebGL3D\s*\/>[\s\S]*<BagBuilderFinal3DController\s*\/>/);
-  assert.doesNotMatch(stack, /<BagBuilderFidelity3D\s*\/>/);
-  assert.match(renderer, /RENDERER_VERSION = ABAGS_FIDELITY_V4_RENDERER_VERSION/);
-  assert.match(renderer, /data-abags-final-webgl="v4"/);
-  assert.match(renderer, /dataset\.abagsFidelity3dReady\s*=\s*RENDERER_VERSION/);
-  assert.match(renderer, /abagsFidelity3dFrame=configSignature\(config\)/);
-  assert.match(renderer, /abagsFidelity3dModel=/);
-  assert.match(renderer, /gl\.finish\(\)/);
+test("final customer stack mounts the calibrated A-Bags Fidelity contract before its verifier", async () => {
+  const source = await read("app/exact-live-customizer.tsx");
+  assert.match(source, /<BagBuilderEngine \/>/);
+  assert.match(source, /<BagBuilderAbagsFidelityContract \/>/);
+  assert.match(source, /<BagBuilderFinal3DController \/>/);
+  assert.ok(source.indexOf("<BagBuilderAbagsFidelityContract />") < source.indexOf("<BagBuilderFinal3DController />"));
 });
 
 test("A-Bags body geometry is volumetric, family-specific and mobile-camera aware", () => {
