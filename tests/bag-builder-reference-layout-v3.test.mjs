@@ -6,12 +6,12 @@ const stack = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 const layout = fs.readFileSync("app/bag-builder-reference-layout-v3.tsx", "utf8");
 const reference = fs.readFileSync("app/bag-builder-reference-experience.tsx", "utf8");
 
-test("reference layout v3 is mounted in the real active customizer", () => {
-  assert.match(stack, /BagBuilderReferenceLayoutV3/);
-  assert.match(stack, /<BagBuilderReferenceLayoutV3 \/>/);
-  assert.doesNotMatch(stack, /BagBuilderReferenceLayoutV2/);
-  assert.match(layout, /abags-reference-layout-v3/);
-  assert.match(layout, /dialog\.dataset\.abagsReferenceLayout = "v3"/);
+test("visual layer keeps one authoritative interactive renderer visible at a time", async () => {
+  const stack = await read("app/layout.tsx");
+  const renderer = await read("app/bag-builder-photoreal-v17-mount.tsx");
+  assert.match(stack, /BagBuilderPhotorealV17Mount/);
+  assert.match(renderer, /BagBuilderPhotorealV23/);
+  assert.match(renderer, /zIndex:"90"/);
 });
 
 test("desktop builder follows the target three-zone workspace", () => {
