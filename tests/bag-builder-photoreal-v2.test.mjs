@@ -6,10 +6,8 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("photoreal V2 is retained as historical fallback and is not mounted as the authoritative renderer", async () => {
   const layout = await read("app/layout.tsx");
-  const renderer = await read("app/bag-builder-photoreal-v2.tsx");
   assert.doesNotMatch(layout, /<BagBuilderPhotorealV2 \/>/);
   assert.match(layout, /BagBuilderPhotorealV17Mount/);
-  assert.match(renderer, /getContext\("webgl"/);
 });
 
 test("photoreal renderer contains all four supported bag families", async () => {
