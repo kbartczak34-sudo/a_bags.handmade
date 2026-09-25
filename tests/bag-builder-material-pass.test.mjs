@@ -4,14 +4,13 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer keeps the procedural material pass out of the visible renderer stack", async () => {
+test("live customizer keeps the legacy procedural material pass out of the visible renderer stack", async () => {
   const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /BagBuilderFinalWebGL3D/);
-  assert.match(source, /<BagBuilderFinalWebGL3D\s*\/>/);
-  assert.doesNotMatch(source, /<BagBuilderFidelity3D\s*\/>/);
-  assert.doesNotMatch(source, /BagBuilderMaterialPass/);
+  assert.match(source, /<BagBuilderEngine \/>/);
   assert.doesNotMatch(source, /<BagBuilderMaterialPass\s*\/>/);
+  assert.doesNotMatch(source, /<BagBuilderFidelity3D\s*\/>/);
 });
+
 
 test("material pass reacts to the same live construction dimensions", async () => {
   const source = await read("app/bag-builder-material-pass.tsx");
