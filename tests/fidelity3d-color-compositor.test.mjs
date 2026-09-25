@@ -130,3 +130,10 @@ test("Fidelity3D chain hardware uses discrete alternating links instead of a con
   assert.match(renderer, /const linkNormal = normalize/);
   assert.match(renderer, /chain: createMesh\(gl, makeSegmentedChain\(1\.18, 1\.62, 0, 34, 0\.043, 0\.011\)\)/);
 });
+
+
+test("Fidelity3D segmented chain has a closed local radial basis", () => {
+  assert.match(renderer, /const radial: \[number, number, number\] = \[/);
+  assert.match(renderer, /ca \* u\[0\] \+ sa \* v\[0\]/);
+  assert.doesNotMatch(renderer, /\bringX\b|\bringY\b/);
+});
