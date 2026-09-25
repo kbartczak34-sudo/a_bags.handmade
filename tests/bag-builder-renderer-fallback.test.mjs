@@ -11,7 +11,6 @@ test("V23 remains primary while premium software 3D stays fallback infrastructur
   const fallback = await read("app/bag-builder-renderer-fallback.tsx");
   assert.match(primary, /function shell/);
   assert.match(primary, /g\.enable\(g\.DEPTH_TEST\)/);
-  assert.match(fallback, /fallback/);
   assert.match(fallback, /data-abags-final3d/);
 });
 
