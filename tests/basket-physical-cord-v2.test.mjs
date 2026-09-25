@@ -8,13 +8,12 @@ const [stack, basket, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-basket-physical-cord-v2.css", import.meta.url), "utf8"),
 ]);
 
-test("Basket Physical Cord V2 stays a non-authoritative finishing layer below the active V23 renderer", async () => {
-  const stack = await read("app/exact-live-customizer.tsx");
-  const layout = await read("app/layout.tsx");
+test("Basket Physical Cord V2 stays a non-authoritative finishing layer below the active V23 renderer", () => {
+  const rootLayout = readFileSync("app/layout.tsx", "utf8");
   assert.match(stack, /<BagBuilderBasketWeaveFinish \/>/);
   assert.match(stack, /<BagBuilderHandmadeEdgeFinish \/>/);
   assert.doesNotMatch(stack, /<BagBuilderBasketPhysicalCordV2 \/>/);
-  assert.match(layout, /BagBuilderPhotorealV17Mount/);
+  assert.match(rootLayout, /BagBuilderPhotorealV17Mount/);
 });
 
 test("V2 takes exclusive structural basket ownership only after its ready marker", () => {
