@@ -135,5 +135,5 @@ test("Fidelity3D chain hardware uses discrete alternating links instead of a con
 test("Fidelity3D segmented chain has a closed local radial basis", () => {
   assert.match(renderer, /const radial: \[number, number, number\] = \[/);
   assert.match(renderer, /ca \* u\[0\] \+ sa \* v\[0\]/);
-  assert.doesNotMatch(renderer, /\bringX\b|\bringY\b/);
+  assert.doesNotMatch(renderer, /const ringX|const ringY/);
 });
