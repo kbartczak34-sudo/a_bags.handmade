@@ -467,10 +467,16 @@ float knit(vec2 uv,float m){
 }
 void main(){
   float h=knit(aUv,uStitch)*uRelief;
+  float eps=.0035;
+  float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
+  float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
+  vec3 reliefNormal=normalize(vec3(-hx*uRelief*1.8,-hy*uRelief*1.8,1.0));
+  float frontFace=clamp(abs(aNormal.z),0.0,1.0);
+  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.72));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
-  vNormal=normalize(mat3(uModel)*aNormal);
+  vNormal=normalize(mat3(uModel)*localNormal);
   vUv=aUv;
   gl_Position=uProjection*uView*world;
 }`;
