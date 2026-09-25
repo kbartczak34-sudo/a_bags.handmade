@@ -268,7 +268,7 @@ function depthAt(family: Exclude<Family, "">, y: number) {
 
 function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const familyFactor = family === "mini" ? 0.72 : family === "round" ? 1.08 : family === "bucket" ? 0.96 : 1;
+  const familyFactor = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].softnessFactor;
   const xn = clamp(x / Math.max(0.001, spec.rx), -1, 1);
   const yn = clamp(y / Math.max(0.001, spec.ry), -1, 1);
   const center = 1 - xn * xn;
@@ -778,10 +778,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       strap: createMesh(gl, makeArchTube(1.18, 1.62, 0, 0.043, 84, 12, false)),
-      toteChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.rx * 1.12, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.ry * 1.72, 0, 34, 0.043, 0.011)),
-      roundChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.round.rx * 1.08, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.ry * 1.62, 0, 32, 0.043, 0.011)),
-      bucketChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.rx * 1.08, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.ry * 1.68, 0, 34, 0.043, 0.011)),
-      miniChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.rx * 0.98, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.ry * 1.58, 0, 28, 0.039, 0.010)),
+      toteChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[4])),
+      roundChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.round.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[4])),
+      bucketChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[4])),
+      miniChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[4])),
       ring: createMesh(gl, makeArchTube(0.13, 0.13, 0, 0.025, 40, 9, true)),
       sphere: createMesh(gl, makeEllipsoid(1, 1, 1)),
       ribbon: createMesh(gl, makeEllipsoid(0.46, 0.14, 0.045, 18, 30)),
@@ -817,23 +817,24 @@ function stitchId(stitch: Stitch) {
 }
 
 function familyAttachment(profile: FamilyProfile, family: Exclude<Family, "">) {
-  const widthFactor = family === "mini" ? 0.72 : family === "round" ? 0.84 : family === "bucket" ? 0.88 : 0.96;
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   return {
-    x: profile.width * widthFactor,
-    y: profile.topY + (family === "mini" ? -0.035 : -0.02),
-    z: profile.frontZ * 0.74,
+    x: profile.width * spec.attachmentWidthFactor,
+    y: profile.topY + spec.attachmentYOffset,
+    z: profile.frontZ * spec.attachmentZFactor,
   };
 }
 
 function handleTransform(profile: FamilyProfile, family: Exclude<Family, "">, side: number) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const attachment = familyAttachment(profile, family);
-  const span = profile.width * (family === "mini" ? 0.62 : family === "round" ? 0.72 : 0.84);
+  const span = profile.width * spec.handleSpanFactor;
   return {
     x: side * span,
     y: attachment.y,
     z: attachment.z,
-    scaleX: profile.handleScale * (family === "mini" ? 0.9 : 1),
-    scaleY: profile.handleScaleY * (family === "bucket" ? 1.08 : 1),
+    scaleX: profile.handleScale * spec.handleScaleFactor,
+    scaleY: profile.handleScaleY * spec.handleYScaleFactor,
   };
 }
 
