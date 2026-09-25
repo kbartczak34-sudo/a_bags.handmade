@@ -56,7 +56,7 @@ test("legacy product scenery cannot recolor or cover the Fidelity3D surface", ()
 
 test("customer Fidelity3D renderer consumes the same V4 family geometry contract", () => {
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
-  assert.match(renderer, /Object.keys(ABAGS_FIDELITY_V4_FAMILY_SPECS)/);
+  assert.match(renderer, /Object.fromEntries/);
   assert.match(renderer, /spec.rx/);
   assert.match(renderer, /spec.depth/);
   assert.match(renderer, /spec.handleScale/);
