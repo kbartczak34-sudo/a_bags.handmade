@@ -8,13 +8,13 @@ const [stack, basket, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-basket-physical-cord-v2.css", import.meta.url), "utf8"),
 ]);
 
-test("Basket Physical Cord V2 replaces only the basket V1 pass and stays below edge finishing", () => {
-  assert.match(stack, /bag-builder-basket-physical-cord-v2\.css/);
-  assert.match(stack, /<BagBuilderPhysicalCordGeometry\s*\/>[\s\S]*<BagBuilderBasketPhysicalCordV2\s*\/>[\s\S]*<BagBuilderHandmadeEdgeFinish\s*\/>/);
-  assert.match(basket, /SURFACE_VERSION = "basket-physical-cord-v2-continuous-handmade-weave"/);
-  assert.match(css, /z-index:4!important/);
-  assert.match(css, /data-stitch="basket"/);
-  assert.match(css, /data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"[\s\S]*abags-physical-cord-geometry/);
+test("Basket Physical Cord V2 stays a non-authoritative finishing layer below the active V23 renderer", async () => {
+  const stack = await read("app/exact-live-customizer.tsx");
+  const layout = await read("app/layout.tsx");
+  assert.match(stack, /<BagBuilderBasketWeaveFinish \/>/);
+  assert.match(stack, /<BagBuilderHandmadeEdgeFinish \/>/);
+  assert.doesNotMatch(stack, /<BagBuilderBasketPhysicalCordV2 \/>/);
+  assert.match(layout, /BagBuilderPhotorealV17Mount/);
 });
 
 test("V2 takes exclusive structural basket ownership only after its ready marker", () => {
