@@ -583,7 +583,11 @@ function makeSegmentedChain(rx: number, ry: number, z: number, links = 34, major
         const b = (k / cols) * Math.PI * 2;
         const cb = Math.cos(b);
         const sb = Math.sin(b);
-        const radial: [number, number, number] = [ringX, ringY, ca * u[2] + sa * v[2]];
+        const radial: [number, number, number] = [
+          ca * u[0] + sa * v[0],
+          ca * u[1] + sa * v[1],
+          ca * u[2] + sa * v[2],
+        ];
         const px = cx + (major + minor * cb) * (ca * u[0] + sa * v[0]) + minor * sb * linkNormal[0];
         const py = cy + (major + minor * cb) * (ca * u[1] + sa * v[1]) + minor * sb * linkNormal[1];
         const pz = z + (major + minor * cb) * (ca * u[2] + sa * v[2]) + minor * sb * linkNormal[2];
