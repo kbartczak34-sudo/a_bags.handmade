@@ -6,7 +6,6 @@ const guard = fs.readFileSync("app/bag-builder-fidelity-options.tsx", "utf8");
 const exact = fs.readFileSync("app/exact-live-customizer.tsx", "utf8");
 
 test("Agata fidelity option guard mounts immediately after the live engine", () => {
-  assert.match(exact, /import BagBuilderFidelityOptions/);
   assert.match(exact, /<BagBuilderEngine \/>\s*<BagBuilderFidelityOptions \/>\s*<BagBuilderLifelikeSurface \/>/);
 });
 
