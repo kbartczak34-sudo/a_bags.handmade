@@ -9,11 +9,10 @@ const [stack, controller, compositor, stageCss] = await Promise.all([
   readFile(new URL("../app/bag-builder-reference-v4-product-stage.css", import.meta.url), "utf8"),
 ]);
 
-test("customer stack keeps the compositor bridge between the engine and verifier", async () => {
-  const source = await read("app/exact-live-customizer.tsx");
-  assert.match(source, /<BagBuilderFidelity3DCompositorSync \/>/);
-  assert.match(source, /<BagBuilderFinal3DController \/>/);
-  assert.match(source, /<BagBuilderEngine \/>/);
+test("customer stack keeps the compositor bridge between the engine and verifier", () => {
+  assert.match(stack, /<BagBuilderFidelity3DCompositorSync \/>/);
+  assert.match(stack, /<BagBuilderFinal3DController \/>/);
+  assert.match(stack, /<BagBuilderEngine \/>/);
 });
 
 test("compositor bridge never consumes WebGL before the verifier reads the product framebuffer", () => {
