@@ -266,6 +266,19 @@ function depthAt(family: Exclude<Family, "">, y: number) {
   return spec.depth * belly * topCompression;
 }
 
+function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const familyFactor = family === "mini" ? 0.72 : family === "round" ? 1.08 : family === "bucket" ? 0.96 : 1;
+  const xn = clamp(x / Math.max(0.001, spec.rx), -1, 1);
+  const yn = clamp(y / Math.max(0.001, spec.ry), -1, 1);
+  const center = 1 - xn * xn;
+  const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
+  const softness = (0.022 + spec.ry * 0.018) * familyFactor;
+  const sagY = -softness * center * lower;
+  const bulgeZ = spec.depth * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
+  return { y: sagY, z: bulgeZ };
+}
+
 function makeVariableDepthBody(family: Exclude<Family, "">) {
   const contour = familyContour(family);
   const positions: number[] = [];
@@ -293,8 +306,12 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
     const startIndex = positions.length / 3;
     contour.forEach((point) => {
       const x = cx + (point[0] - cx) * scaleFactor;
-      const y = cy + (point[1] - cy) * scaleFactor;
-      const z = zSign > 0 ? depthAt(family, y) * 0.5 - zInset : -depthAt(family, y) * 0.5 + zInset;
+      const rawY = cy + (point[1] - cy) * scaleFactor;
+      const softness = softBodyOffset(family, x, rawY);
+      const y = rawY + softness.y;
+      const z = zSign > 0
+        ? depthAt(family, y) * 0.5 - zInset + softness.z
+        : -depthAt(family, y) * 0.5 + zInset + softness.z * 0.38;
       const radial = normalize(x - cx, y - cy, 0);
       const nz = mode === "bevel" ? zSign * 0.72 : zSign;
       const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
@@ -449,7 +466,7 @@ function makeOpeningInterior(family: Exclude<Family, "">) {
   return { positions, normals, uvs, indices };
 }
 
-function makeExtrudedContour(contour: Point[], depth: number) {
+function makeExtrudedContour(contour: Point[], depth: number, softness = 0) {
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
@@ -464,15 +481,20 @@ function makeExtrudedContour(contour: Point[], depth: number) {
   const cx = contour.reduce((sum, point) => sum + point[0], 0) / contour.length;
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
+  const softened = contour.map(([x, y]) => {
+    const center = 1 - Math.pow(clamp(x / Math.max(0.001, Math.max(Math.abs(minX), Math.abs(maxX))), -1, 1), 2);
+    const lower = Math.pow(clamp((-y + 0.02) / Math.max(0.001, maxY - minY), 0, 1), 1.35);
+    return [x, y - softness * center * lower] as Point;
+  });
 
   const frontCenter = positions.length / 3;
   positions.push(cx, cy, half); normals.push(0, 0, 1); uvs.push(0.5, 0.5);
   const frontStart = positions.length / 3;
-  contour.forEach((point) => { const [u, v] = uvFor(point); positions.push(point[0], point[1], half); normals.push(0, 0, 1); uvs.push(u, v); });
+  softened.forEach((point) => { const [u, v] = uvFor(point); positions.push(point[0], point[1], half); normals.push(0, 0, 1); uvs.push(u, v); });
   const backCenter = positions.length / 3;
   positions.push(cx, cy, -half); normals.push(0, 0, -1); uvs.push(0.5, 0.5);
   const backStart = positions.length / 3;
-  contour.forEach((point) => { const [u, v] = uvFor(point); positions.push(point[0], point[1], -half); normals.push(0, 0, -1); uvs.push(u, v); });
+  softened.forEach((point) => { const [u, v] = uvFor(point); positions.push(point[0], point[1], -half); normals.push(0, 0, -1); uvs.push(u, v); });
   for (let i = 0; i < contour.length; i += 1) {
     const next = (i + 1) % contour.length;
     indices.push(frontCenter, frontStart + i, frontStart + next);
@@ -481,8 +503,8 @@ function makeExtrudedContour(contour: Point[], depth: number) {
   const sideStart = positions.length / 3;
   for (let i = 0; i < contour.length; i += 1) {
     const next = (i + 1) % contour.length;
-    const a = contour[i];
-    const b = contour[next];
+    const a = softened[i];
+    const b = softened[next];
     const [nx, ny] = normalize(b[1] - a[1], -(b[0] - a[0]), 0);
     positions.push(a[0], a[1], half, a[0], a[1], -half, b[0], b[1], half, b[0], b[1], -half);
     normals.push(nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0);
@@ -691,7 +713,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundInterior: createMesh(gl, makeOpeningInterior("round")),
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
-      flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105)),
+      flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       strap: createMesh(gl, makeArchTube(1.18, 1.62, 0, 0.043, 84, 12, false)),
@@ -730,7 +752,7 @@ function stitchId(stitch: Stitch) {
   return stitch === "herringbone" ? 1 : stitch === "basket" ? 2 : stitch === "shell" ? 3 : 0;
 }
 
-function familyAttachment(profile: Profile, family: Exclude<Family, "">) {
+function familyAttachment(profile: FamilyProfile, family: Exclude<Family, "">) {
   const widthFactor = family === "mini" ? 0.72 : family === "round" ? 0.84 : family === "bucket" ? 0.88 : 0.96;
   return {
     x: profile.width * widthFactor,
@@ -739,7 +761,7 @@ function familyAttachment(profile: Profile, family: Exclude<Family, "">) {
   };
 }
 
-function handleTransform(profile: Profile, family: Exclude<Family, "">, side: number) {
+function handleTransform(profile: FamilyProfile, family: Exclude<Family, "">, side: number) {
   const attachment = familyAttachment(profile, family);
   const span = profile.width * (family === "mini" ? 0.62 : family === "round" ? 0.72 : 0.84);
   return {
