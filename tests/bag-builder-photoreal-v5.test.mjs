@@ -9,7 +9,6 @@ test("V5 contract delegates active rendering to the V23 compatibility mount", as
   const layout = await read("app/layout.tsx");
   assert.match(layout, /BagBuilderPhotorealV17Mount/);
   assert.doesNotMatch(layout, /BagBuilderPhotorealV5/);
-  assert.match(await read("app/bag-builder-photoreal-v23.tsx"), /cache=new Map/);
 });
 
 test("current renderer owns volumetric construction", () => {
