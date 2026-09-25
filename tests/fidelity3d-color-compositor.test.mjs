@@ -93,8 +93,8 @@ test("Fidelity3D body has physical rounded edge construction and family-specific
 });
 
 test("Fidelity3D accessories use family-specific physical attachment points", () => {
-  assert.match(renderer, /function familyAttachment\\(profile: FamilyProfile, family: Exclude<Family, "">\)/);
-  assert.match(renderer, /function handleTransform\\(profile: FamilyProfile, family: Exclude<Family, "">, side: number\)/);
+  assert.match(renderer, /function familyAttachment\(profile: FamilyProfile, family: Exclude<Family, "">\)/);
+  assert.match(renderer, /function handleTransform\(profile: FamilyProfile, family: Exclude<Family, "">, side: number\)/);
   assert.match(renderer, /family === "mini" \? 0\.72/);
   assert.match(renderer, /family === "round" \? 0\.84/);
   assert.match(renderer, /family === "bucket" \? 0\.88/);
@@ -117,7 +117,7 @@ test("Fidelity3D uses soft-body deformation for the crocheted silhouette and fla
   assert.match(renderer, /const sagY = -softness \* center \* lower/);
   assert.match(renderer, /const bulgeZ = spec\.depth/);
   assert.match(renderer, /const softness = softBodyOffset\(family, x, rawY\)/);
-  assert.match(renderer, /zSign > 0[\\s\\S]*\+ softness\.z/);
+  assert.match(renderer, /zSign > 0[\s\S]*\+ softness\.z/);
   assert.match(renderer, /function makeExtrudedContour\(contour: Point\[], depth: number, softness = 0\)/);
   assert.match(renderer, /softened = contour\.map/);
   assert.match(renderer, /makeExtrudedContour\(flapContour\(\), 0\.105, 0\.085\)/);
