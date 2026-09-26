@@ -254,6 +254,16 @@ export default function BagBuilderReferenceV4() {
   // wins over the older V3 runtime style tag without removing compatibility
   // classes that the production browser and touch tests still exercise.
   return <style jsx global>{`
+    /* WebGL is the single customer-facing preview surface. Hide every legacy
+       SVG preview mounted inside an active 3D stage, including compatibility
+       mounts created during the promotion handoff. */
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active > svg,
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > svg {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
     .abags-reference-layout-v4 .abags-builder-heading { order: 0 !important; }
     .abags-reference-layout-v4 .abags-builder-group { order: 10 !important; }
     .abags-reference-layout-v4 [data-v4-core-summary] { order: 60 !important; }
