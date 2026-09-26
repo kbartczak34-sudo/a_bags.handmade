@@ -21,7 +21,7 @@ type SideSurface = {
   visibility: number;
 };
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage";
+const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
