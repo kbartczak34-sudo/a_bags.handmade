@@ -512,17 +512,25 @@ function makeExtrudedContour(contour: Point[], depth: number, softness = 0) {
   // center and rolls into the edge instead of reading as a sticker.
   const frontBulge = Math.min(0.085, Math.max(0.035, depth * 0.42));
   const frontZAt = (x: number, y: number) => {
-    const nx = x / Math.max(0.001, Math.max(Math.abs(minX), Math.abs(maxX)));
-    const ny = y / Math.max(0.001, Math.max(Math.abs(minY), Math.abs(maxY)));
-    const radial = clamp(1 - nx * nx - ny * ny, 0, 1);
-    return half + frontBulge * Math.pow(radial, 1.35);
+    const sx = x / Math.max(0.001, Math.max(Math.abs(minX), Math.abs(maxX)));
+    const sy = y / Math.max(0.001, Math.max(Math.abs(minY), Math.abs(maxY)));
+    const radial = clamp(1 - sx * sx - sy * sy, 0, 1);
+    // Hinge construction: the upper edge stays close to the bag body while the
+    // lower half rolls gently toward the viewer. This gives the flap a real
+    // textile fold instead of a centered sticker-like dome.
+    const hingeT = clamp((maxY - y) / Math.max(0.001, maxY - minY), 0, 1);
+    const hingeCurl = Math.pow(hingeT, 1.55) * frontBulge * 0.72;
+    const lateralBow = frontBulge * 0.28 * Math.pow(radial, 1.35);
+    return half + hingeCurl + lateralBow;
   };
   const frontNormalAt = (x: number, y: number) => {
     const sx = x / Math.max(0.001, Math.max(Math.abs(minX), Math.abs(maxX)));
     const sy = y / Math.max(0.001, Math.max(Math.abs(minY), Math.abs(maxY)));
     const radial = clamp(1 - sx * sx - sy * sy, 0, 1);
-    const slope = frontBulge * 2.7 * Math.pow(Math.max(0, radial), 0.32);
-    return normalize(-sx * slope, -sy * slope, 1);
+    const hingeT = clamp((maxY - y) / Math.max(0.001, maxY - minY), 0, 1);
+    const hingeSlope = frontBulge * 0.72 * 1.55 * Math.pow(Math.max(0.001, hingeT), 0.55) / Math.max(0.001, maxY - minY);
+    const lateralSlope = frontBulge * 0.28 * 2.7 * Math.pow(Math.max(0, radial), 0.32);
+    return normalize(-sx * lateralSlope, hingeSlope + sy * lateralSlope, 1);
   };
 
   const frontCenter = positions.length / 3;
