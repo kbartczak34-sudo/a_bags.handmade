@@ -7,6 +7,7 @@ import {
   ABAGS_FIDELITY_V4_RENDERER_VERSION,
   type FidelityV4Family,
 } from "../lib/abags-fidelity-v4-family-spec";
+import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -104,11 +105,14 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
 ) as Record<Exclude<Family, "">, FamilyProfile>;
 
 function readConfig(stage: HTMLElement): Config {
+  const family = (stage.dataset.family || "") as Family;
+  const rawFlap = (stage.dataset.flap || "none") as Flap;
+  const flap = family && !isAgataBuilderConstructionSupported(family, "flaps", rawFlap) ? "none" : rawFlap;
   return {
-    family: (stage.dataset.family || "") as Family,
+    family,
     color: stage.dataset.color || "",
     stitch: (stage.dataset.stitch || "") as Stitch,
-    flap: (stage.dataset.flap || "none") as Flap,
+    flap,
     handles: (stage.dataset.handles || "none") as Handles,
     strap: (stage.dataset.strap || "none") as Strap,
     hardware: (stage.dataset.hardware || "gold") as Hardware,
@@ -1095,6 +1099,10 @@ export default function BagBuilderFidelity3D() {
     if (!stage) return;
     const sync = () => setConfig((current) => {
       const next = readConfig(stage);
+      // Keep persisted/legacy drafts from rendering a flap that the selected
+      // family does not support. The visual renderer must never invent a
+      // construction that the customer cannot actually select in the UI.
+      if (stage.dataset.flap !== next.flap) stage.dataset.flap = next.flap;
       return sameConfig(current, next) ? current : next;
     });
     sync();
