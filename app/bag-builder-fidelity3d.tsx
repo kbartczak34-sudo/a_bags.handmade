@@ -96,10 +96,10 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
     return [family, {
       bodyY: spec.bodyY,
       topY: spec.topY,
-      frontZ: physicalDepth(family) / 2,
-      baseDepth: physicalDepth(family),
-      topDepth: physicalDepth(family) * 0.92,
-      bottomDepth: physicalDepth(family) * 1.12,
+      frontZ: spec.depth * (family === "round" ? 1.34 : 1) / 2,
+      baseDepth: spec.depth * (family === "round" ? 1.34 : 1),
+      topDepth: spec.depth * (family === "round" ? 1.34 : 1) * 0.92,
+      bottomDepth: spec.depth * (family === "round" ? 1.34 : 1) * 1.12,
       width: spec.rx,
       handleScale: spec.handleScale[0],
       handleScaleY: spec.handleScale[1],
@@ -277,7 +277,8 @@ function depthAt(family: Exclude<Family, "">, y: number) {
   const edge = Math.abs(normalizedY);
   const belly = 1 + Math.sin((1 - edge) * Math.PI * 0.5) * (0.035 + spec.depth * 0.035);
   const topCompression = 1 - Math.max(0, normalizedY) * 0.04;
-  return physicalDepth(family) * belly * topCompression;
+  const depthScale = family === "round" ? 1.34 : 1;
+  return spec.depth * depthScale * belly * topCompression;
 }
 
 function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
@@ -289,7 +290,7 @@ function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
   const softness = (0.022 + spec.ry * 0.018) * familyFactor;
   const sagY = -softness * center * lower;
-  const bulgeZ = physicalDepth(family) * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
+  const bulgeZ = spec.depth * depthScale * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
   return { y: sagY, z: bulgeZ };
 }
 
@@ -309,8 +310,9 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const bodyDepth = physicalDepth(family);
-  const bevel = Math.min(spec.bevel, bodyDepth * 0.14);
+  const depthScale = family === "round" ? 1.34 : 1;
+  const bodyDepth = spec.depth * depthScale;
+  const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
   const frontZ = bodyDepth * 0.5;
   const backZ = -frontZ;
@@ -336,7 +338,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const xn = (x - cx) / Math.max(0.001, spec.rx);
         const yn = (y - cy) / Math.max(0.001, spec.ry);
         const radialField = clamp(1 - xn * xn - yn * yn, 0, 1);
-        const bulge = bodyDepth * 0.12;
+        const bulge = spec.depth * 0.12 * depthScale;
         const slope = 2 * bulge * Math.pow(Math.max(0, radialField), 0.55);
         normal = normalize(-xn * slope, -yn * slope, 1);
       } else {
@@ -357,14 +359,14 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const backEdge = addRing(1, -1, 0, "bevel");
   const backFace = addRing(inset, -1, bevel, "face");
 
-  const frontBulge = bodyDepth * 0.075;
-  const bodyDomeLift = bodyDepth * 0.045;
+  const frontBulge = spec.depth * 0.075 * depthScale;
+  const bodyDomeLift = spec.depth * 0.045 * depthScale;
   const frontCenter = positions.length / 3;
   positions.push(cx, cy, frontFaceZ + frontBulge + bodyDomeLift);
   normals.push(0, 0, 1);
   uvs.push(0.5, 0.5);
   const backCenter = positions.length / 3;
-  positions.push(cx, cy, backFaceZ - bodyDepth * 0.025);
+  positions.push(cx, cy, backFaceZ - spec.depth * 0.025 * depthScale);
   normals.push(0, 0, -1);
   uvs.push(0.5, 0.5);
 
