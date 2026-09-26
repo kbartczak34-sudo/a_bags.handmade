@@ -853,6 +853,7 @@ function renderSignature(config: Config) {
 
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
   const { gl, uniforms, meshes } = renderer;
+  if (gl.isContextLost()) throw new Error("webgl-context-lost");
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
   const width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
   const height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
@@ -866,7 +867,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   gl.uniformMatrix4fv(uniforms.view, false, translation(0, -0.02, -5.0));
   gl.uniform3fv(uniforms.light, new Float32Array([-0.42, 0.86, 0.92]));
   if (!config.family) {
-    canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
+    const renderError = gl.getError();
+  if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
+  if (gl.isContextLost()) throw new Error("webgl-context-lost");
+  canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
     canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
     canvas.removeAttribute("data-abags-fidelity3d-error");
     return;
