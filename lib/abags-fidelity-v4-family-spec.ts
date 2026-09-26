@@ -79,10 +79,8 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     power: 2.15,
     taper: 0,
     bodyY: -0.1,
-    // Round is a soft structured body, not a paper-thin disc. Increase calibrated depth
-    // so the default mobile 3/4 view exposes the side wall and real volume.
-    depth: 0.62,
-    bevel: 0.060,
+    depth: 0.46,
+    bevel: 0.052,
     topY: 0.83,
     sideAnchor: 0.81,
     ringY: 0.49,
