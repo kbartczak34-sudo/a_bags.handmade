@@ -19,6 +19,7 @@ import "./bag-builder-flap-realism-tuning.css";
 import "./bag-builder-crochet-flap-density.css";
 import "./bag-builder-handmade-edge-finish.css";
 import "./bag-builder-opening-depth.css";
+import "./bag-builder-premium-mobile-final.css";
 import "./bag-builder-sidewall-crochet-depth.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
