@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const checkoutHandoff = fs.readFileSync("app/bag-builder-checkout-handoff.tsx", "utf8");
-const commerce = fs.readFileSync("app/bag-builder-commerce.tsx", "utf8");
-const legacyCheckout = fs.readFileSync("app/api/bag-builder-checkout/route.ts", "utf8");
-const v2Checkout = fs.readFileSync("app/api/configurator/checkout/route.ts", "utf8");
-const snapshotRoute = fs.readFileSync("app/api/configurator/snapshot/route.ts", "utf8");
-const bomResolver = fs.readFileSync("lib/product-configuration-v2-bom.ts", "utf8");
+const read = (relativePath) => fs.readFileSync(relativePath, "utf8");
+
+const checkoutHandoff = read("app/bag-builder-checkout-handoff.tsx");
+const commerce = read("app/bag-builder-commerce.tsx");
+const legacyCheckout = read("app/api/bag-builder-checkout/route.ts");
+const v2Checkout = read("app/api/configurator/checkout/route.ts");
+const snapshotRoute = read("app/api/configurator/snapshot/route.ts");
+const bomResolver = read("lib/product-configuration-v2-bom.ts");
 
 const postsTo = (source, path) => source.includes(`fetch(\"${path}\"`);
 
