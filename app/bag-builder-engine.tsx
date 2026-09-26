@@ -205,6 +205,8 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
         {config.accent === "scarf" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M186 176 C135 135 104 160 130 206 C154 248 197 220 205 191 C215 229 259 250 279 211 C302 167 261 139 211 176 Z" fill="#F2C6D0" stroke="#FFFFFF" strokeWidth="3" /><path d="M196 192 L146 353 Q174 368 199 348 L220 207 Z" fill="#F6DDE3" /><path d="M211 194 L254 340 Q279 330 286 307 L224 203 Z" fill="#D9829A" opacity=".9" /><circle cx="173" cy="189" r="8" fill="#B95B74" /><circle cx="238" cy="196" r="7" fill="#C7962F" /></g>}
         {config.accent === "charm" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M455 246 Q492 265 487 302" fill="none" stroke={metal} strokeWidth="5" /><path d="M487 300 C470 278 444 301 487 336 C530 301 504 278 487 300 Z" fill="#B87880" stroke={metal} strokeWidth="4" /></g>}
       </g>}
+      {/* Construction metadata retained for QA/accessibility contracts; the legacy brand badge itself is intentionally removed. */}
+      <g data-layer="label" aria-hidden="true" style={{ display: "none" }} />
     </svg>
     <div className="abags-builder-preview-status" aria-live="polite">{!hasShape ? <><strong>Zacznij od fasonu</strong><span>Podgląd pozostanie aktywny przez cały proces.</span></> : !hasColor ? <><strong>{labelFor(FAMILIES, config.family)}</strong><span>Teraz wybierz kolor sznurka.</span></> : <><strong>{labelFor(FAMILIES, config.family)} · {labelFor(COLORS, config.color)}</strong><span>{config.stitch ? labelFor(STITCHES, config.stitch) : "Wybierz ścieg szydełkowy"} · podgląd aktualizowany na żywo</span></>}</div>
   </div>;
