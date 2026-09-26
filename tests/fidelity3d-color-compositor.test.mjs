@@ -144,6 +144,18 @@ test("Fidelity3D accessories use family-specific physical attachment points", ()
   assert.doesNotMatch(renderer, /matrix\(\[x, profile\.topY - 0\.18, 0\.02\]/);
 });
 
+test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures and a convex handmade front", () => {
+  assert.match(renderer, /Classic crochet: compact horizontal loops/);
+  assert.match(renderer, /Herringbone: interlocking chevrons/);
+  assert.match(renderer, /Basket stitch: alternating over\/under bands/);
+  assert.match(renderer, /Shell stitch: repeated scallops/);
+  assert.match(renderer, /const frontBulge = spec\.depth \* 0\.075/);
+  assert.match(renderer, /frontFaceZ \+ frontBulge/);
+  assert.match(renderer, /float fillLight=max\(dot\(n,fill\),0\.0\)/);
+  assert.match(renderer, /A restrained warm atelier bounce/);
+  assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.021 : 0\.004/);
+});
+
 test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
   assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief/);
   assert.match(renderer, /float hx=\(knit\(aUv\+vec2\(eps,0\.0\),uStitch\)-knit\(aUv-vec2\(eps,0\.0\),uStitch\)\)/);
