@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import "./bag-builder-reference-v4.css";
 import "./bag-builder-reference-v4-final.css";
 import "./bag-builder-reference-v4-product-stage.css";
@@ -68,6 +69,27 @@ import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
 export default function ExactLiveCustomizer() {
+  useEffect(() => {
+    const syncMobileViewport = () => {
+      const touchDevice = window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(hover: none)").matches;
+      const handsetViewport = window.innerWidth <= 1100;
+      document.querySelectorAll<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active").forEach((dialog) => {
+        dialog.classList.toggle("abags-mobile-forced", touchDevice && handsetViewport);
+      });
+    };
+    syncMobileViewport();
+    const observer = new MutationObserver(syncMobileViewport);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("resize", syncMobileViewport);
+    window.addEventListener("orientationchange", syncMobileViewport);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncMobileViewport);
+      window.removeEventListener("orientationchange", syncMobileViewport);
+      document.querySelectorAll<HTMLElement>(".abags-mobile-forced").forEach((dialog) => dialog.classList.remove("abags-mobile-forced"));
+    };
+  }, []);
+
   return <>
     <BagBuilderEngine />
     <BagBuilderFidelity3D />
