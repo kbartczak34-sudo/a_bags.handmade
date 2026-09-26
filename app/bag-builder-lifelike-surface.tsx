@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage";
+const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const BASE_SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const AGATA_SOURCE_SELECTOR = ".abags-agata-cord-webgl";
