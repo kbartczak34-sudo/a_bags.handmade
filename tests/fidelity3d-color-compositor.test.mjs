@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readFileSync } from "node:fs/promises";
 import test from "node:test";
+
+const read = (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 const [stack, renderer, controller, compositor, stageCss] = await Promise.all([
   readFile(new URL("../app/exact-live-customizer.tsx", import.meta.url), "utf8"),
