@@ -58,6 +58,17 @@ test("legacy product scenery cannot recolor or cover the Fidelity3D surface", ()
 });
 
 
+test("renderer publishes a verified frame signature and recovers from draw failures", () => {
+  const renderer = read("app/bag-builder-fidelity3d.tsx");
+  assert.match(renderer, /function renderSignature\(config: Config\)/);
+  assert.match(renderer, /canvas\.dataset\.abagsFidelity3dFrame = renderSignature\(config\)/);
+  assert.match(renderer, /canvas\.dataset\.abagsFidelity3dFrameAt = String\(Date\.now\(\)\)/);
+  assert.match(renderer, /canvas\.removeAttribute\("data-abags-fidelity3d-error"\)/);
+  assert.match(renderer, /canvas\.dataset\.abagsFidelity3dError = error instanceof Error/);
+  assert.match(renderer, /setRendererEpoch\(\(value\) => value \+ 1\)/);
+  assert.match(renderer, /rendererRef\.current !== renderer \|\| canvasRef\.current !== canvas/);
+});
+
 test("customer Fidelity3D renderer consumes the same V4 family geometry contract", () => {
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
   assert.match(renderer, /Object.fromEntries/);
