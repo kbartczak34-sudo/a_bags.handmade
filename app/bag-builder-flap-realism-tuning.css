@@ -7,3 +7,13 @@
     opacity:.54!important;
   }
 }
+
+
+/* Fidelity3D owns the flap silhouette and textile shading. Never paint a second flat
+   screen-space flap over the verified 3D mesh. */
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-flap-realism {
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
