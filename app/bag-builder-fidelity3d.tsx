@@ -488,10 +488,33 @@ function makeExtrudedContour(contour: Point[], depth: number, softness = 0) {
     return [x, y - softness * center * lower] as Point;
   });
 
+  // A flap is a soft textile component, not a flat card. Give the front
+  // surface a shallow dome so the yarn catches light continuously across the
+  // center and rolls into the edge instead of reading as a sticker.
+  const frontBulge = Math.min(0.085, Math.max(0.035, depth * 0.42));
+  const frontZAt = (x: number, y: number) => {
+    const nx = x / Math.max(0.001, Math.max(Math.abs(minX), Math.abs(maxX)));
+    const ny = y / Math.max(0.001, Math.max(Math.abs(minY), Math.abs(maxY)));
+    const radial = clamp(1 - nx * nx - ny * ny, 0, 1);
+    return half + frontBulge * Math.pow(radial, 1.35);
+  };
+  const frontNormalAt = (x: number, y: number) => {
+    const sx = x / Math.max(0.001, Math.max(Math.abs(minX), Math.abs(maxX)));
+    const sy = y / Math.max(0.001, Math.max(Math.abs(minY), Math.abs(maxY)));
+    const radial = clamp(1 - sx * sx - sy * sy, 0, 1);
+    const slope = frontBulge * 2.7 * Math.pow(Math.max(0, radial), 0.32);
+    return normalize(-sx * slope, -sy * slope, 1);
+  };
+
   const frontCenter = positions.length / 3;
-  positions.push(cx, cy, half); normals.push(0, 0, 1); uvs.push(0.5, 0.5);
+  positions.push(cx, cy, half + frontBulge); normals.push(0, 0, 1); uvs.push(0.5, 0.5);
   const frontStart = positions.length / 3;
-  softened.forEach((point) => { const [u, v] = uvFor(point); positions.push(point[0], point[1], half); normals.push(0, 0, 1); uvs.push(u, v); });
+  softened.forEach((point) => {
+    const [u, v] = uvFor(point);
+    positions.push(point[0], point[1], frontZAt(point[0], point[1]));
+    normals.push(...frontNormalAt(point[0], point[1]));
+    uvs.push(u, v);
+  });
   const backCenter = positions.length / 3;
   positions.push(cx, cy, -half); normals.push(0, 0, -1); uvs.push(0.5, 0.5);
   const backStart = positions.length / 3;
@@ -507,7 +530,12 @@ function makeExtrudedContour(contour: Point[], depth: number, softness = 0) {
     const a = softened[i];
     const b = softened[next];
     const [nx, ny] = normalize(b[1] - a[1], -(b[0] - a[0]), 0);
-    positions.push(a[0], a[1], half, a[0], a[1], -half, b[0], b[1], half, b[0], b[1], -half);
+    positions.push(
+      a[0], a[1], frontZAt(a[0], a[1]),
+      a[0], a[1], -half,
+      b[0], b[1], frontZAt(b[0], b[1]),
+      b[0], b[1], -half,
+    );
     normals.push(nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0);
     uvs.push(i / contour.length, 1, i / contour.length, 0, (i + 1) / contour.length, 1, (i + 1) / contour.length, 0);
     const base = sideStart + i * 4;
