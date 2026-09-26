@@ -146,7 +146,7 @@ function boostInitialModel(stage: HTMLElement) {
 }
 
 function synchronizeLegacyFlatSurface(stage: HTMLElement) {
-  const svgs = Array.from(stage.querySelectorAll<SVGElement>(":scope > svg"));
+  const svgs = Array.from(stage.querySelectorAll<SVGElement>("svg"));
   if (!svgs.length) return;
   // The verified 3D renderer is the customer-facing product surface. Do not rely
   // on stylesheet order here: older runtime styles can temporarily resurrect the
@@ -257,8 +257,8 @@ export default function BagBuilderReferenceV4() {
     /* WebGL is the single customer-facing preview surface. Hide every legacy
        SVG preview mounted inside an active 3D stage, including compatibility
        mounts created during the promotion handoff. */
-    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active > svg,
-    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > svg {
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active svg,
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active svg {
       display: none !important;
       opacity: 0 !important;
       visibility: hidden !important;
