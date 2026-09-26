@@ -254,6 +254,16 @@ export default function BagBuilderReferenceV4() {
   // wins over the older V3 runtime style tag without removing compatibility
   // classes that the production browser and touch tests still exercise.
   return <style jsx global>{`
+    /* There must be exactly one customer-facing preview stage. Compatibility
+       controllers may temporarily leave an older stage mounted; it must never
+       remain composited with the canonical live stage or its paint overlays. */
+    .abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage:not([data-abags-live-stage="true"]) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
     /* WebGL is the single customer-facing preview surface. Hide every legacy
        SVG preview mounted inside an active 3D stage, including compatibility
        mounts created during the promotion handoff. */
