@@ -4,7 +4,7 @@
 
    States:
    - waiting / fallback / any unverified state: SVG only
-   - promoting: SVG + WebGL (WebGL composited above SVG, non-interactive)
+   - promoting: WebGL only, compositor-visible but not interactive yet
    - ready: WebGL only, interactive
 
    These rules deliberately carry higher specificity than legacy `.abags-pro3d-active`
@@ -31,7 +31,9 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:none!important;
 }
 
-/* 2) Chromium/Android promotion bridge: compositor-visible but not interactive yet. */
+/* 2) Chromium/Android promotion bridge: show the verified WebGL frame by itself.
+   The old SVG fallback is intentionally removed here; otherwise its flat construction
+   layer can remain visible over the real 3D product on mobile during compositor promotion. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > .abags-fidelity3d-layer{
   display:block!important;
   opacity:1!important;
@@ -46,19 +48,20 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:none!important;
 }
 
-/* Keep SVG underneath during promotion so a rejected frame can fall back without a blank flash. */
+/* Never composite the legacy SVG together with the 3D product during promotion. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > svg{
-  display:block!important;
-  opacity:1!important;
-  visibility:visible!important;
+  display:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
   pointer-events:none!important;
+  transition:none!important;
 }
 
 /* 3) Accepted frame: WebGL is the sole visible product renderer and owns interaction.
    Important: the SVG is removed from layout, not merely made transparent. On Chromium/
-   SwiftShader a transparent promoted SVG layer can retain its stale raster texture above
-   a freshly rendered WebGL surface on narrow/mobile viewports. All non-ready states above
-   explicitly restore display:block, so fallback remains deterministic and reversible. */
+   SwiftShader a transparent SVG layer can retain its stale raster texture above a freshly
+   rendered WebGL surface on narrow/mobile viewports. The fallback state above still restores
+   display:block, so a rejected renderer can return to the deterministic SVG safely. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > svg{
   display:none!important;
   opacity:0!important;
