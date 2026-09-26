@@ -346,9 +346,10 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const backEdge = addRing(1, -1, 0, "bevel");
   const backFace = addRing(inset, -1, bevel, "face");
 
-  const frontBulge = spec.depth * 0.12;
+  const frontBulge = spec.depth * 0.075;
+  const bodyDomeLift = spec.depth * 0.045;
   const frontCenter = positions.length / 3;
-  positions.push(cx, cy, frontFaceZ + frontBulge);
+  positions.push(cx, cy, frontFaceZ + frontBulge + bodyDomeLift);
   normals.push(0, 0, 1);
   uvs.push(0.5, 0.5);
   const backCenter = positions.length / 3;
