@@ -123,3 +123,46 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
     max-height:230px!important;
   }
 }
+
+/* Fidelity Photo-True finish — final studio presentation for the customer renderer. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage.abags-fidelity3d-active{
+  background:
+    radial-gradient(ellipse at 50% 24%,rgba(255,255,255,.96) 0 20%,rgba(255,255,255,.42) 44%,transparent 68%),
+    linear-gradient(180deg,#fbf5ef 0 72%,#ead7c5 72% 100%)!important;
+  overflow:hidden!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-fidelity3d-layer{
+  isolation:isolate!important;
+  transform:translateZ(0)!important;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-fidelity3d-layer::after{
+  content:"";
+  position:absolute;
+  left:18%;
+  right:18%;
+  bottom:9%;
+  height:15%;
+  border-radius:50%;
+  background:rgba(79,55,50,.16);
+  filter:blur(13px);
+  transform:scaleY(.34);
+  pointer-events:none;
+  z-index:-1;
+}
+
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-fidelity3d-canvas{
+  image-rendering:auto!important;
+  transform:translateZ(0)!important;
+}
+
+@media(max-width:980px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-fidelity3d-layer::after{
+    left:20%;
+    right:20%;
+    bottom:7%;
+    height:13%;
+    filter:blur(10px);
+  }
+}
