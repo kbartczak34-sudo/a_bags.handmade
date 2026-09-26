@@ -148,4 +148,4 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
   },
 };
 
-export const ABAGS_FIDELITY_V4_RENDERER_VERSION = "abags-fidelity-v4-agata-1to1";
+export const ABAGS_FIDELITY_V4_RENDERER_VERSION = "abags-fidelity-v4-agata-photo-true-1";
