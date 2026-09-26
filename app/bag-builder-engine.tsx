@@ -184,7 +184,7 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
   const handleTop = topY(config.family);
   const bagColor = config.color || "#EFE6DE";
 
-  return <div className="abags-bag-builder-stage" data-builder-signature={signature} data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
+  return <div className="abags-bag-builder-stage" data-abags-live-stage="true" data-builder-signature={signature} data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
         <filter id="abags-shadow" x="-30%" y="-25%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="16" floodColor="#4C3438" floodOpacity="0.16" /></filter>
