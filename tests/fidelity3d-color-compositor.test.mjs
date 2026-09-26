@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile, readFileSync } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
