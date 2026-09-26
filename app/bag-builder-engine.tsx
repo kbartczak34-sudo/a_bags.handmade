@@ -174,16 +174,17 @@ function ChoiceGroup<T extends string>({ title, step, options, value, onChange, 
 }
 
 function BagPreview({ config }: { config: BagBuilderConfig }) {
+  const supportedFlap = config.family && isAgataBuilderConstructionSupported(config.family, "flaps", config.flap) ? config.flap : "none";
   const body = bodyPath(config.family);
   const metal = hardwareColor(config.hardware);
   const stitch = config.stitch || "classic";
   const hasShape = Boolean(config.family);
   const hasColor = Boolean(config.color);
-  const signature = [config.family, config.color, config.stitch, config.flap, config.handles, config.strap, config.hardware, config.accent].join("|");
+  const signature = [config.family, config.color, config.stitch, supportedFlap, config.handles, config.strap, config.hardware, config.accent].join("|");
   const handleTop = topY(config.family);
   const bagColor = config.color || "#EFE6DE";
 
-  return <div className="abags-bag-builder-stage" data-builder-signature={signature} data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={config.flap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
+  return <div className="abags-bag-builder-stage" data-builder-signature={signature} data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
         <filter id="abags-shadow" x="-30%" y="-25%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="16" floodColor="#4C3438" floodOpacity="0.16" /></filter>
