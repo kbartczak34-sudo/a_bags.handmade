@@ -253,6 +253,7 @@ export default function Home() {
 
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "").trim();
+    const termsAccepted = formData.get("termsAccepted") === "on";
 
     try {
       const response = await fetch("/api/checkout", {
@@ -260,6 +261,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          termsAccepted,
           items: cartItems.map((item) => ({
             id: item.id,
             quantity: item.quantity,
@@ -863,6 +865,13 @@ export default function Home() {
                   </div>
                   <p>Stripe pokaże metody dostępne dla urządzenia i przeglądarki klientki.</p>
                 </fieldset>
+
+                <label className="checkout-terms">
+                  <input type="checkbox" name="termsAccepted" required />
+                  <span>
+                    Potwierdzam zapoznanie się z <a href="/regulamin" target="_blank" rel="noreferrer">Regulaminem sklepu</a> oraz informacjami o <a href="/zwroty-i-reklamacje" target="_blank" rel="noreferrer">odstąpieniu od umowy i reklamacjach</a>.
+                  </span>
+                </label>
 
                 {checkoutError && (
                   <p
