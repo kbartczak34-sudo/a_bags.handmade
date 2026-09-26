@@ -75,7 +75,9 @@ const EMPTY: Config = {
   accent: "none",
 };
 
-const DEFAULT_ROTATION = { x: -0.1, y: 0.56 };
+// Stronger default 3/4 angle on mobile so the physical side wall remains visible
+// instead of making the round body read like a flat printed card.
+const DEFAULT_ROTATION = { x: -0.1, y: 0.72 };
 const DEFAULT_ZOOM = 1.02;
 const MIN_ZOOM = 0.34;
 const MAX_ZOOM = 1.45;
