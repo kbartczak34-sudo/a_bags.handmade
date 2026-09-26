@@ -10,7 +10,7 @@ type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number };
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage";
+const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
