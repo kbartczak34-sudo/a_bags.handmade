@@ -1,4 +1,6 @@
 import { standardShippingAmount } from "../../../../lib/catalog";
+
+const TERMS_VERSION = "2026-08-22";
 import { getOrderSettings } from "../../../../lib/orders";
 import { getProductionSnapshot } from "../../../../lib/production-snapshots";
 import { detectStripeKeyMode, getStripeSecretKey, isStripeLiveWebhookReady, StripeConfigurationError } from "../../../../lib/stripe";
@@ -9,9 +11,11 @@ function parsePayload(value: unknown) {
   if (!isObject(value)) return null;
   const snapshotId = typeof value.snapshotId === "string" ? value.snapshotId.trim() : "";
   const email = typeof value.email === "string" ? value.email.trim() : "";
+  const termsAccepted = value.termsAccepted === true;
   if (!/^ps_[0-9a-f-]{36}$/.test(snapshotId)) return null;
   if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) return null;
-  return { snapshotId, email };
+  if (!termsAccepted) return null;
+  return { snapshotId, email, termsAccepted };
 }
 function publicStripeError(code: string) {
   if (code === "invalid_api_key" || code === "api_key_expired") return "Stripe odrzucił klucz API używany przez sklep.";
@@ -32,7 +36,7 @@ function classifyStripeError(status: number, error: { code?: string; type?: stri
 export async function POST(request: Request) {
   let payload: ReturnType<typeof parsePayload>;
   try { payload = parsePayload(await request.json()); } catch { return json({ error: "Nieprawidłowe dane płatności.", code: "INVALID_JSON" }, 400); }
-  if (!payload) return json({ error: "Wymagany jest istniejący Production Snapshot i prawidłowy adres e-mail." }, 400);
+  if (!payload) return json({ error: "Wymagany jest istniejący Production Snapshot, prawidłowy e-mail oraz potwierdzenie regulaminu." }, 400);
   const snapshot = await getProductionSnapshot(payload.snapshotId);
   if (!snapshot) return json({ error: "Production Snapshot nie istnieje lub wygasł.", code: "PRODUCTION_SNAPSHOT_NOT_FOUND" }, 404);
   const productionPackage = snapshot.package;
@@ -82,9 +86,11 @@ export async function POST(request: Request) {
     form.set("cancel_url", `${origin}/?platnosc=anulowana#kolekcja`);
     form.set("client_reference_id", `abags-${snapshot.id}`);
     form.set("metadata[store]", "a_bags.handmade");
+    form.set("metadata[terms_version]", TERMS_VERSION);
     form.set("metadata[checkout_type]", "CONFIGURATOR_V2");
     form.set("metadata[snapshot_id]", snapshot.id);
     form.set("metadata[production_package_hash]", snapshot.packageHash);
+    form.set("payment_intent_data[metadata][terms_version]", TERMS_VERSION);
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][checkout_type]", "CONFIGURATOR_V2");
     form.set("payment_intent_data[metadata][snapshot_id]", snapshot.id);
