@@ -2,8 +2,10 @@
 
 /* A 3D renderer must be the only visible product layer. The engine SVG stays in the DOM
    as state/accessibility infrastructure, but cannot shine through a transparent canvas. */
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active > svg,
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-canvas3d-active > svg{
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage > svg{
+  /* The SVG is the legacy flat construction preview. The production customizer
+     uses the verified 3D canvas as the sole visible product surface. */
+  display:none!important;
   opacity:0!important;
   visibility:hidden!important;
   pointer-events:none!important;
