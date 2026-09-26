@@ -14,7 +14,9 @@ test("legacy Agata cord renderer is isolated from the authoritative V18 customer
   assert.match(renderer, /type Family/);
   assert.match(renderer, /type Stitch/);
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
-  assert.match(css, /data-abags-agata-cord-webgl/);
+  assert.match(css, /abags-agata-cord-webgl/);
+  assert.match(css, /opacity:0!important/);
+  assert.match(css, /visibility:hidden!important/);
 });
 
 test("legacy cord renderer remains deterministic and Photo-True safe", () => {
