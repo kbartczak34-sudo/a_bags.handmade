@@ -11,8 +11,11 @@
   opacity:.98;
 }
 
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-crochet-flap-density,
 .abags-bag-builder-stage[data-abags-photo-true="active"] > .abags-crochet-flap-density {
   opacity:0!important;
+  visibility:hidden!important;
+  display:none!important;
 }
 
 @media (max-width:620px) {
