@@ -77,7 +77,9 @@ const EMPTY: Config = {
 
 // Stronger default 3/4 angle on mobile so the physical side wall remains visible
 // instead of making the round body read like a flat printed card.
-const DEFAULT_ROTATION = { x: -0.1, y: 0.72 };
+// Calibrated product view: expose the physical side wall immediately on mobile.
+// A positive yaw was still reading too close to front-on on some Chromium devices.
+const DEFAULT_ROTATION = { x: -0.16, y: -0.78 };
 const DEFAULT_ZOOM = 1.02;
 
 function physicalDepth(family: Exclude<Family, "">) {
