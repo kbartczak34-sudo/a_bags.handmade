@@ -239,6 +239,24 @@ async function main() {
     const desktop = await buildBag({ family: "tote", color: "#E4A9B5", stitch: "herringbone" }, "Desktop");
     const desktopBytes = await capture("customizer-desktop-realtime.png");
 
+    // Dedicated visual acceptance for the customer-reported case: a round bag
+    // with a crochet flap must be rendered by the real Fidelity3D mesh, not a
+    // flat compatibility surface.
+    await clearDraftAndReload();
+    await openBuilder();
+    await choose("family", "round");
+    await waitVerified3d("Round family");
+    await choose("color", "#E4A9B5");
+    await waitVerified3d("Round color");
+    await choose("stitch", "classic");
+    await waitVerified3d("Round stitch");
+    await choose("flap", "crochet");
+    const roundCrochetFlap = await waitVerified3d("Round crochet flap");
+    if (roundCrochetFlap.flap !== "crochet") {
+      throw new Error(`Round crochet flap selection was not reflected in the live stage: ${JSON.stringify(roundCrochetFlap)}`);
+    }
+    const roundCrochetFlapBytes = await capture("customizer-desktop-round-crochet-flap-3d.png");
+
     // Regression guard for the exact customer failure mode: Bucket/„Z klapą”
     // must never inherit the old crochet flap from a persisted/compatibility stage.
     await clearDraftAndReload();
