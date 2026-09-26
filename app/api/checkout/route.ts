@@ -8,6 +8,8 @@ import {
   StripeConfigurationError,
 } from "../../../lib/stripe";
 
+const TERMS_VERSION = "2026-08-22";
+
 type RequestedItem = {
   id: string;
   quantity: number;
@@ -38,7 +40,9 @@ function parsePayload(value: unknown) {
   if (!isObject(value) || !Array.isArray(value.items)) return null;
 
   const email = typeof value.email === "string" ? value.email.trim() : "";
+  const termsAccepted = value.termsAccepted === true;
   if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) return null;
+  if (!termsAccepted) return null;
   if (value.items.length === 0 || value.items.length > 12) return null;
 
   const quantities = new Map<string, number>();
@@ -62,7 +66,7 @@ function parsePayload(value: unknown) {
     items.push({ id, quantity });
   }
 
-  return { email, items };
+  return { email, termsAccepted, items };
 }
 
 function productComplianceComplete(product: CatalogProduct) {
@@ -118,7 +122,7 @@ export async function POST(request: Request) {
   } catch {
     return json({ error: "Nieprawidłowe dane zamówienia." }, 400);
   }
-  if (!payload) return json({ error: "Sprawdź koszyk i adres e-mail." }, 400);
+  if (!payload) return json({ error: "Sprawdź koszyk, adres e-mail oraz potwierdzenie regulaminu." }, 400);
 
   let productMap: Awaited<ReturnType<typeof findVisibleProductsByIds>>;
   try {
@@ -238,8 +242,10 @@ export async function POST(request: Request) {
     }).join("");
     form.set("integration_identifier", `abags_checkout_${integrationSuffix}`);
     form.set("metadata[store]", "a_bags.handmade");
+    form.set("metadata[terms_version]", TERMS_VERSION);
     // Payment methods remain dynamically selected by Stripe Checkout. BLIK and cards are controlled in Dashboard.
     form.set("metadata[cart]", cartReference);
+    form.set("payment_intent_data[metadata][terms_version]", TERMS_VERSION);
     form.set("payment_intent_data[metadata][store]", "a_bags.handmade");
     form.set("payment_intent_data[metadata][cart]", cartReference);
 
