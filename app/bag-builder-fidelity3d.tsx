@@ -1007,6 +1007,9 @@ export default function BagBuilderFidelity3D() {
     try {
       rendererRef.current = init(canvas);
       if (rendererRef.current) {
+        canvas.removeAttribute("data-abags-fidelity3d-error");
+        canvas.removeAttribute("data-abags-fidelity3d-frame");
+        canvas.removeAttribute("data-abags-fidelity3d-frame-at");
         setReady(true);
         stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
         stage.setAttribute("data-abags-pro3d-ready", "true");
@@ -1060,6 +1063,7 @@ export default function BagBuilderFidelity3D() {
           stage.removeAttribute("data-abags-pro3d-ready");
           stage.removeAttribute("data-abags-fidelity3d-ready");
         }
+        setRendererEpoch((value) => value + 1);
       }
     };
 
