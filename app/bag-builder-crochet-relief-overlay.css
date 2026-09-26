@@ -68,3 +68,13 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
     transition:none!important;
   }
 }
+
+
+/* The dedicated flap relief canvases are intentionally disabled on the verified
+   Fidelity3D surface; the WebGL stitch shader is the sole flap texture owner. */
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-crochet-flap-relief {
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
