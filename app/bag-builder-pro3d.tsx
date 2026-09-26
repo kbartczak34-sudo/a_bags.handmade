@@ -657,7 +657,7 @@ export default function BagBuilderPro3D() {
 
   useEffect(() => {
     const attach = () => {
-      const next = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
+      const next = document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]");
       setStage((current) => (current === next ? current : next));
     };
     attach();
