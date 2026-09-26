@@ -14,11 +14,11 @@ test("Photo-True is mounted after the reference layout and guarded behind QA mod
   assert.match(exact, /<BagBuilderPhotoTrueExactOnly \/>/);
 });
 
-test("model picker is driven by current real store products and restricted to canonical Exact Live references", () => {
+test("model picker is driven by current real store products and prefers canonical Exact Live references when available", () => {
   assert.match(component, /fetch\("\/api\/products"/);
-  assert.match(component, /filter\(\(product\) => Boolean\(product\.imageUrl\) && Boolean\(exactReferenceForImage\(product\.imageUrl\)\)\)/);
+  assert.match(component, /filter\(\(product\) => Boolean\(product\.imageUrl\) && Boolean\(photoReferenceForImage\(product\.imageUrl\)\)\)/);
   assert.match(component, /EXACT_ATELIER_LIBRARY/);
-  assert.match(component, /exactReferenceForImage/);
+  assert.match(component, /photoReferenceForImage/);
   assert.match(component, /data-photo-product-choice/);
   assert.match(component, /products\.map/);
   assert.doesNotMatch(component, /const FAMILIES/);
@@ -54,9 +54,9 @@ test("photo variants are fetched per selected product and never synthesized when
   assert.doesNotMatch(component, /canvas\.getContext|WebGL|filter:\s*hue-rotate|mix-blend-mode/);
 });
 
-test("canonical Exact Live library is the source of photographic 1:1 eligibility", () => {
-  assert.match(component, /exactReferenceForImage/);
-  assert.match(component, /sourceFile\.toLowerCase\(\) === filename/);
+test("canonical Exact Live library is preferred, while catalog photos remain valid product-photo fallbacks", () => {
+  assert.match(component, /photoReferenceForImage/);
+  assert.match(component, /sourceFile\.toLowerCase\(\) === filename/);\n  assert.match(component, /canonical: true/);\n  assert.match(component, /canonical: false/);\n  assert.match(component, /Zdjęcie produktu z aktualnego katalogu/);
   assert.match(exactLibrary, /EXACT_ATELIER_LIBRARY/);
   assert.equal((exactLibrary.match(/\{ id:/g) || []).length, 19);
 });
