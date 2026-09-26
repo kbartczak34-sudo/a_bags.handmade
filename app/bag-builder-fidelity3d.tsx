@@ -838,6 +838,19 @@ function handleTransform(profile: FamilyProfile, family: Exclude<Family, "">, si
   };
 }
 
+function renderSignature(config: Config) {
+  return [
+    config.family,
+    config.color,
+    config.stitch,
+    config.flap,
+    config.handles,
+    config.strap,
+    config.hardware,
+    config.accent,
+  ].join("|");
+}
+
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
   const { gl, uniforms, meshes } = renderer;
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -852,7 +865,12 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   gl.uniformMatrix4fv(uniforms.projection, false, perspective(Math.PI / 5.3, width / height, 0.1, 100));
   gl.uniformMatrix4fv(uniforms.view, false, translation(0, -0.02, -5.0));
   gl.uniform3fv(uniforms.light, new Float32Array([-0.42, 0.86, 0.92]));
-  if (!config.family) return;
+  if (!config.family) {
+    canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
+    canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
+    canvas.removeAttribute("data-abags-fidelity3d-error");
+    return;
+  }
 
   const profile = PROFILES[config.family];
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
@@ -940,6 +958,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   } else if (config.accent === "charm") {
     drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.sideX * 0.92, -0.03, profile.frontZ + 0.09], [0.1, 0.15, 0.06])), "#b87880", 4, 0);
   }
+
+  canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
+  canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
+  canvas.removeAttribute("data-abags-fidelity3d-error");
 }
 
 export default function BagBuilderFidelity3D() {
@@ -1022,11 +1044,36 @@ export default function BagBuilderFidelity3D() {
     const renderer = rendererRef.current;
     const canvas = canvasRef.current;
     if (!renderer || !canvas) return;
-    let frame = requestAnimationFrame(() => draw(renderer, canvas, config, rotation, zoom));
-    const redraw = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => draw(renderer, canvas, config, rotation, zoom)); };
+
+    const renderFrame = () => {
+      if (rendererRef.current !== renderer || canvasRef.current !== canvas) return;
+      try {
+        draw(renderer, canvas, config, rotation, zoom);
+      } catch (error) {
+        rendererRef.current = null;
+        canvas.removeAttribute("data-abags-fidelity3d-frame");
+        canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+        canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
+        setReady(false);
+        if (stage) {
+          stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+          stage.removeAttribute("data-abags-pro3d-ready");
+          stage.removeAttribute("data-abags-fidelity3d-ready");
+        }
+      }
+    };
+
+    let frame = requestAnimationFrame(renderFrame);
+    const redraw = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(renderFrame);
+    };
     window.addEventListener("resize", redraw);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", redraw); };
-  }, [config, rotation, zoom, ready]);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", redraw);
+    };
+  }, [config, rotation, zoom, ready, stage]);
 
   const label = useMemo(() => config.family ? "Interaktywny model 3D A-Bags z kalibrowaną głębokością" : "Wybierz fason, aby rozpocząć model 3D", [config.family]);
   if (!stage) return null;
