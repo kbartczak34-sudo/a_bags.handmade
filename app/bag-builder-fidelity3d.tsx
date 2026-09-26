@@ -75,7 +75,7 @@ const EMPTY: Config = {
 };
 
 const DEFAULT_ROTATION = { x: -0.1, y: 0.56 };
-const DEFAULT_ZOOM = 0.8;
+const DEFAULT_ZOOM = 0.88;
 const MIN_ZOOM = 0.34;
 const MAX_ZOOM = 1.45;
 
@@ -328,12 +328,13 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const backEdge = addRing(1, -1, 0, "bevel");
   const backFace = addRing(inset, -1, bevel, "face");
 
+  const frontBulge = spec.depth * 0.075;
   const frontCenter = positions.length / 3;
-  positions.push(cx, cy, frontFaceZ);
+  positions.push(cx, cy, frontFaceZ + frontBulge);
   normals.push(0, 0, 1);
   uvs.push(0.5, 0.5);
   const backCenter = positions.length / 3;
-  positions.push(cx, cy, backFaceZ);
+  positions.push(cx, cy, backFaceZ - spec.depth * 0.025);
   normals.push(0, 0, -1);
   uvs.push(0.5, 0.5);
 
@@ -667,20 +668,53 @@ uniform mat4 uProjection,uView,uModel;
 uniform float uRelief,uStitch;
 varying vec3 vNormal,vWorld;
 varying vec2 vUv;
-float knit(vec2 uv,float m){
-  if(m<.5){float a=sin((uv.x*1.15+uv.y*.7)*112.0);float b=sin((uv.x*.58-uv.y)*56.0);return a*.52+b*.22;}
-  if(m<1.5){vec2 p=fract(uv*vec2(19.0,18.0));return .82-smoothstep(.05,.27,min(abs(p.x-p.y),abs(1.0-p.x-p.y)));}
-  if(m<2.5){vec2 p=fract(uv*17.0);float x=1.0-smoothstep(.1,.34,abs(p.x-.5));float y=1.0-smoothstep(.1,.34,abs(p.y-.5));return max(x,y);}
-  return sin(uv.x*70.0+sin(uv.y*34.0)*3.2)*.5+sin(uv.y*45.0)*.22;
+
+float smoothLoop(float x,float width){
+  float d=abs(fract(x)-.5);
+  return 1.0-smoothstep(.08,width,d);
 }
+
+float knit(vec2 uv,float m){
+  vec2 p;
+  float row;
+  if(m<.5){
+    // Classic crochet: compact horizontal loops with a subtle stagger.
+    row=uv.y*54.0+sin(uv.x*8.0)*.22;
+    p=fract(vec2(uv.x*31.0+floor(row)*.5,row));
+    float loop=1.0-smoothstep(.08,.34,abs(p.x-.5));
+    float crossing=1.0-smoothstep(.03,.18,abs(p.y-.52));
+    return loop*.58+crossing*.26;
+  }
+  if(m<1.5){
+    // Herringbone: interlocking chevrons, not a flat diamond grid.
+    p=fract(uv*vec2(23.0,25.0));
+    float diag=abs(fract(p.x+p.y)-.5);
+    float anti=abs(fract(p.x-p.y)-.5);
+    return 1.0-smoothstep(.07,.24,min(diag,anti));
+  }
+  if(m<2.5){
+    // Basket stitch: alternating over/under bands.
+    p=fract(uv*vec2(16.0,18.0));
+    float warp=1.0-smoothstep(.16,.38,abs(p.x-.5));
+    float weft=1.0-smoothstep(.16,.38,abs(p.y-.5));
+    return max(warp*(.72+.28*step(.5,fract(uv.y*9.0))),weft*(.72+.28*step(.5,fract(uv.x*8.0))));
+  }
+  // Shell stitch: repeated scallops with a woven secondary strand.
+  row=uv.y*24.0;
+  p=fract(vec2(uv.x*28.0,row));
+  float shell=1.0-smoothstep(.06,.42,abs(length(p-vec2(.5,.32))-.34));
+  float rib=1.0-smoothstep(.05,.17,abs(p.x-.5));
+  return shell*.7+rib*.22;
+}
+
 void main(){
   float h=knit(aUv,uStitch)*uRelief;
-  float eps=.0035;
+  float eps=.0028;
   float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
   float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
-  vec3 reliefNormal=normalize(vec3(-hx*uRelief*1.8,-hy*uRelief*1.8,1.0));
+  vec3 reliefNormal=normalize(vec3(-hx*uRelief*2.2,-hy*uRelief*2.2,1.0));
   float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.72));
+  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.82));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
@@ -695,30 +729,66 @@ varying vec3 vNormal,vWorld;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial,uStitch;
+
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float yarn(vec2 uv,float m){
+  vec2 p;
   float a;
-  if(m<.5)a=.56+.24*sin((uv.x*1.15+uv.y*.7)*112.0)+.1*sin(uv.x*220.0);
-  else if(m<1.5){vec2 p=fract(uv*vec2(19.0,18.0));a=.4+.5*(1.0-smoothstep(.06,.24,min(abs(p.x-p.y),abs(1.0-p.x-p.y))));}
-  else if(m<2.5){vec2 p=fract(uv*17.0);float gx=1.0-smoothstep(.12,.34,abs(p.x-.5));float gy=1.0-smoothstep(.12,.34,abs(p.y-.5));a=.36+.48*max(gx,gy);}
-  else a=.5+.29*sin(uv.x*70.0+sin(uv.y*34.0)*3.2)+.1*sin(uv.y*45.0);
-  return clamp(a,.08,1.0);
+  if(m<.5){
+    p=fract(vec2(uv.x*31.0+floor(uv.y*54.0)*.5,uv.y*54.0));
+    a=.42+.34*(1.0-smoothstep(.06,.34,abs(p.x-.5)))+.16*sin(p.y*6.2831);
+  } else if(m<1.5){
+    p=fract(uv*vec2(23.0,25.0));
+    a=.38+.5*(1.0-smoothstep(.06,.24,min(abs(fract(p.x+p.y)-.5),abs(fract(p.x-p.y)-.5))));
+  } else if(m<2.5){
+    p=fract(uv*vec2(16.0,18.0));
+    a=.4+.42*max(1.0-smoothstep(.14,.38,abs(p.x-.5)),1.0-smoothstep(.14,.38,abs(p.y-.5)));
+  } else {
+    p=fract(uv*vec2(28.0,24.0));
+    a=.44+.38*(1.0-smoothstep(.08,.4,abs(length(p-vec2(.5,.32))-.34)));
+  }
+  float micro=sin((uv.x*311.0+uv.y*179.0))*sin((uv.x*97.0-uv.y*131.0));
+  return clamp(a+.055*micro,.10,.96);
 }
+
 void main(){
-  vec3 n=normalize(vNormal),l=normalize(uLight),v=normalize(vec3(0.0,.2,5.4)-vWorld),h=normalize(l+v);
-  float ndl=max(dot(n,l),0.0),ndh=max(dot(n,h),0.0);
-  float rough=.9,metal=0.0,detail=1.0;
-  if(uMaterial<.5){detail=.7+.46*yarn(vUv,uStitch)+.035*(hash(floor(vUv*vec2(190.0,170.0)))-.5);rough=.95;}
-  else if(uMaterial<1.5){detail=.84+.13*sin(vUv.y*118.0+sin(vUv.x*18.0)*4.2);rough=.38;}
-  else if(uMaterial<2.5){detail=.9+.055*(hash(floor(vUv*130.0))-.5)+.04*sin(vUv.y*52.0);rough=.56;}
-  else if(uMaterial<3.5){detail=.72+.24*sin(vUv.x*72.0)*sin(vUv.y*38.0);rough=.8;}
-  else{metal=.96;rough=.12;detail=1.0;}
+  vec3 n=normalize(vNormal);
+  vec3 l=normalize(uLight);
+  vec3 fill=normalize(vec3(.55,.30,.82));
+  vec3 v=normalize(vec3(0.0,.10,5.2)-vWorld);
+  vec3 h=normalize(l+v);
+  float ndl=max(dot(n,l),0.0);
+  float fillLight=max(dot(n,fill),0.0);
+  float ndh=max(dot(n,h),0.0);
+  float facing=max(dot(n,v),0.0);
+  float rough=.88,metal=0.0,detail=1.0;
+
+  if(uMaterial<.5){
+    detail=.78+.32*yarn(vUv,uStitch)+.025*(hash(floor(vUv*vec2(260.0,240.0)))-.5);
+    rough=.94;
+  } else if(uMaterial<1.5){
+    detail=.88+.10*sin(vUv.y*118.0+sin(vUv.x*18.0)*3.0);
+    rough=.34;
+  } else if(uMaterial<2.5){
+    detail=.88+.065*(hash(floor(vUv*150.0))-.5)+.045*sin(vUv.y*52.0);
+    rough=.52;
+  } else if(uMaterial<3.5){
+    detail=.76+.18*sin(vUv.x*72.0)*sin(vUv.y*38.0);
+    rough=.78;
+  } else {
+    metal=.97; rough=.14; detail=1.0;
+  }
+
   vec3 base=uColor*detail;
-  float spec=pow(ndh,mix(88.0,8.0,rough))*mix(.08,.85,metal);
-  float rim=pow(1.0-max(dot(n,v),0.0),2.0);
-  float sideShade=.8+.2*max(n.z,0.0);
-  vec3 color=base*(.28+.84*ndl)*sideShade+vec3(spec)+base*.075*(1.0-ndl)+vec3(.07)*rim;
-  gl_FragColor=vec4(pow(color,vec3(.95)),1.0);
+  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
+  float rim=pow(1.0-facing,2.7);
+  float cavity=.92+.08*pow(1.0-facing,1.5);
+  float illumination=.18+.72*ndl+.18*fillLight;
+  vec3 color=base*illumination*cavity+vec3(spec)+base*.035*rim;
+
+  // A restrained warm atelier bounce keeps pale cords from washing out.
+  color+=base*vec3(.035,.024,.018);
+  gl_FragColor=vec4(pow(max(color,0.0),vec3(.95)),1.0);
 }`;
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
@@ -880,7 +950,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#e8ddcc";
   const stitch = stitchId(config.stitch);
-  const relief = config.color && config.stitch ? 0.029 : 0.006;
+  const relief = config.color && config.stitch ? 0.021 : 0.004;
   drawMesh(renderer, meshes[config.family], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
@@ -912,7 +982,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const zOffset = profile.topDepth * 0.46;
     for (const side of [-1, 1]) {
       const transform = handleTransform(profile, config.family, side);
-      for (const z of [-zOffset, zOffset]) {
+      for (const z of [-zOffset * 0.72, zOffset * 0.72]) {
         drawMesh(
           renderer,
           mesh,
@@ -933,7 +1003,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
-  drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, config.flap !== "none" ? profile.lockY : -0.47, profile.frontZ + 0.15], [0.105, 0.105, 0.07])), metal, 4, 0);
+  drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, config.flap !== "none" ? profile.lockY : -0.47, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
 
   if (config.strap !== "none") {
     for (const side of [-1, 1]) {
