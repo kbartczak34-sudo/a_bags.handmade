@@ -317,9 +317,23 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         ? depthAt(family, y) * 0.5 - zInset + softness.z
         : -depthAt(family, y) * 0.5 + zInset + softness.z * 0.38;
       const radial = normalize(x - cx, y - cy, 0);
-      const nz = mode === "bevel" ? zSign * 0.72 : zSign;
-      const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
-      normals.push(...normalize(radial[0] * tangent, radial[1] * tangent, nz));
+      let normal: [number, number, number];
+      if (mode === "face" && zSign > 0) {
+        // The front of a soft crochet bag is gently convex, not a paper-thin
+        // plane. Match the normal field to the same shallow dome used by the
+        // center vertex so the selected yarn catches light across the body.
+        const xn = (x - cx) / Math.max(0.001, spec.rx);
+        const yn = (y - cy) / Math.max(0.001, spec.ry);
+        const radialField = clamp(1 - xn * xn - yn * yn, 0, 1);
+        const bulge = spec.depth * 0.12;
+        const slope = 2 * bulge * Math.pow(Math.max(0, radialField), 0.55);
+        normal = normalize(-xn * slope, -yn * slope, 1);
+      } else {
+        const nz = mode === "bevel" ? zSign * 0.72 : zSign;
+        const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
+        normal = normalize(radial[0] * tangent, radial[1] * tangent, nz);
+      }
+      normals.push(...normal);
       positions.push(x, y, z);
       const [u, v] = uvFor(point);
       uvs.push(u, v);
@@ -332,7 +346,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const backEdge = addRing(1, -1, 0, "bevel");
   const backFace = addRing(inset, -1, bevel, "face");
 
-  const frontBulge = spec.depth * 0.075;
+  const frontBulge = spec.depth * 0.12;
   const frontCenter = positions.length / 3;
   positions.push(cx, cy, frontFaceZ + frontBulge);
   normals.push(0, 0, 1);
