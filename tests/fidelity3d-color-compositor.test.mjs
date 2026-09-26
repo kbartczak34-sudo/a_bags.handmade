@@ -73,6 +73,21 @@ test("renderer publishes a verified frame signature and recovers from draw failu
   assert.match(renderer, /if \(renderError !== gl\.NO_ERROR\) throw new Error/);
 });
 
+test("V4 family contract stays finite and within WebGL index limits", () => {
+  const spec = read("lib/abags-fidelity-v4-family-spec.ts");
+  for (const family of ["tote", "round", "bucket", "mini"]) {
+    assert.match(spec, new RegExp(family + ":\\s*\\{"));
+  }
+  assert.doesNotMatch(spec, /NaN|Infinity/);
+  const renderer = read("app/bag-builder-fidelity3d.tsx");
+  assert.match(renderer, /new Uint16Array\(data\.indices\)/);
+  assert.match(renderer, /samples = 96/);
+  assert.match(renderer, /const rows = 8/);
+  assert.match(renderer, /const cols = 10/);
+  assert.match(renderer, /links = 34/);
+  assert.match(renderer, /count: data\.indices\.length/);
+});
+
 test("customer Fidelity3D renderer consumes the same V4 family geometry contract", () => {
   assert.match(renderer, /ABAGS_FIDELITY_V4_FAMILY_SPECS/);
   assert.match(renderer, /Object.fromEntries/);
