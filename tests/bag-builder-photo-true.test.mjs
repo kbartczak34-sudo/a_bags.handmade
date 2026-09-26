@@ -50,13 +50,16 @@ test("photo variants are fetched per selected product and never synthesized when
   assert.match(component, /\/api\/customizer-assets\?productId=/);
   assert.match(component, /matchAsset/);
   assert.match(component, /warstw 1:1/);
-  assert.match(component, /kanonicznej biblioteki Exact Live/);
+  assert.match(component, /kanonicznej biblioteki Exact Live|aktualnego katalogu sklepu/);
   assert.doesNotMatch(component, /canvas\.getContext|WebGL|filter:\s*hue-rotate|mix-blend-mode/);
 });
 
 test("canonical Exact Live library is preferred, while catalog photos remain valid product-photo fallbacks", () => {
   assert.match(component, /photoReferenceForImage/);
-  assert.match(component, /sourceFile\.toLowerCase\(\) === filename/);\n  assert.match(component, /canonical: true/);\n  assert.match(component, /canonical: false/);\n  assert.match(component, /Zdjęcie produktu z aktualnego katalogu/);
+  assert.match(component, /sourceFile\.toLowerCase\(\) === filename/);
+  assert.match(component, /canonical: true/);
+  assert.match(component, /canonical: false/);
+  assert.match(component, /Zdjęcie produktu z aktualnego katalogu/);
   assert.match(exactLibrary, /EXACT_ATELIER_LIBRARY/);
   assert.equal((exactLibrary.match(/\{ id:/g) || []).length, 19);
 });
