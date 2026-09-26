@@ -58,3 +58,11 @@ test("snapshot route re-resolves the production BOM and persists its package has
   assert.equal(bomResolver.includes("productionPackageHash"), true);
   assert.equal(bomResolver.includes("BOM_VALIDATED"), true);
 });
+
+
+test("configurator checkout requires explicit terms acceptance and records the terms version", () => {
+  const checkout = read("app/api/configurator/checkout/route.ts");
+  assert.match(checkout, /const TERMS_VERSION = "2026-08-22"/);
+  assert.match(checkout, /value\.termsAccepted === true/);
+  assert.match(checkout, /metadata\[terms_version\]/);
+});
