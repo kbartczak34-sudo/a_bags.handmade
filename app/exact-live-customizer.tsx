@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from "react";
 import "./bag-builder-reference-v4.css";
 import "./bag-builder-reference-v4-final.css";
