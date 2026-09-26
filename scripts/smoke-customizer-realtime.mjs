@@ -239,6 +239,33 @@ async function main() {
     const desktop = await buildBag({ family: "tote", color: "#E4A9B5", stitch: "herringbone" }, "Desktop");
     const desktopBytes = await capture("customizer-desktop-realtime.png");
 
+    // Regression guard for the exact customer failure mode: Bucket/„Z klapą”
+    // must never inherit the old crochet flap from a persisted/compatibility stage.
+    await clearDraftAndReload();
+    await openBuilder();
+    await choose("family", "bucket");
+    await waitVerified3d("Bucket family");
+    await choose("color", "#E4A9B5");
+    await waitVerified3d("Bucket color");
+    await choose("stitch", "classic");
+    const bucket = await waitVerified3d("Bucket stitch");
+    const bucketOverlayState = await evaluate(`(() => {
+      const dialog=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
+      const stage=dialog?.querySelector('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+      if(!stage)return null;
+      const selectors=['.abags-crochet-flap-density','.abags-crochet-flap-relief','.abags-crochet-relief-surface','.abags-flap-realism'];
+      const visible=selectors.flatMap((selector)=>[...stage.querySelectorAll(selector)].filter((node)=>{
+        const s=getComputedStyle(node),r=node.getBoundingClientRect();
+        return s.display!=='none'&&s.visibility!=='hidden'&&Number.parseFloat(s.opacity||'1')>.05&&r.width>2&&r.height>2;
+      }).map((node)=>node.className));
+      return { flap:stage.dataset.flap||'', family:stage.dataset.family||'', visibleFlapOverlays:visible };
+    })()`);
+    if (!bucket || bucket.flap !== "none" || bucketOverlayState?.flap !== "none" || bucketOverlayState?.visibleFlapOverlays?.length) {
+      throw new Error(`Bucket inherited an unsupported flap/overlay: ${JSON.stringify({ bucket, bucketOverlayState })}`);
+    }
+
+    const desktopBucketBytes = await capture("customizer-desktop-bucket-no-flap.png");
+
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     await clearDraftAndReload();
