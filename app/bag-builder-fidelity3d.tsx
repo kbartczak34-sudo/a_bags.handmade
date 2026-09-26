@@ -1124,6 +1124,16 @@ export default function BagBuilderFidelity3D() {
         stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
         stage.setAttribute("data-abags-pro3d-ready", "true");
         stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
+        // The legacy SVG is a fallback surface only. Hide it at the renderer
+        // boundary as well as via CSS so mobile Chromium cannot composite the
+        // old preview over the live WebGL model.
+        stage.querySelectorAll<SVGElement>("svg").forEach((svg) => {
+          svg.dataset.abagsLegacySurfaceSuppressed = "true";
+          svg.style.setProperty("display", "none", "important");
+          svg.style.setProperty("opacity", "0", "important");
+          svg.style.setProperty("visibility", "hidden", "important");
+          svg.style.setProperty("pointer-events", "none", "important");
+        });
       }
     } catch (error) {
       rendererRef.current = null;
