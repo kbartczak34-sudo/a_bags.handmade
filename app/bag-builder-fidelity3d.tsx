@@ -290,6 +290,7 @@ function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
   const softness = (0.022 + spec.ry * 0.018) * familyFactor;
   const sagY = -softness * center * lower;
+  const depthScale = family === "round" ? 1.34 : 1;
   const bulgeZ = spec.depth * depthScale * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
   return { y: sagY, z: bulgeZ };
 }
