@@ -79,8 +79,8 @@ const EMPTY: Config = {
 // instead of making the round body read like a flat printed card.
 // Calibrated product view: expose the physical side wall immediately on mobile.
 // A positive yaw was still reading too close to front-on on some Chromium devices.
-const DEFAULT_ROTATION = { x: -0.16, y: -0.78 };
-const DEFAULT_ZOOM = 1.02;
+const DEFAULT_ROTATION = { x: -0.12, y: -1.02 };
+const DEFAULT_ZOOM = 0.96;
 
 function physicalDepth(family: Exclude<Family, "">) {
   const calibrated = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].depth;
@@ -850,8 +850,7 @@ void main(){
     metal=.97; rough=.14; detail=1.0;
   }
 
-  vec3 base=uColor*detail;
-  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
+  // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
   float rim=pow(1.0-facing,2.7);
   float cavity=.92+.08*pow(1.0-facing,1.5);
   float illumination=.18+.72*ndl+.18*fillLight;
