@@ -24,3 +24,11 @@ test("store checkout uses the fixed Polish delivery fee without a free-shipping 
   assert.match(checkout, /shipping_options\[0\]\[shipping_rate_data\]\[fixed_amount\]\[currency\]/);
   assert.match(checkout, /shipping_options\[0\]\[shipping_rate_data\]\[display_name\].*Dostawa w Polsce/);
 });
+
+
+test("checkout requires explicit terms acceptance and records the terms version", () => {
+  const checkout = read("app/api/checkout/route.ts");
+  assert.match(checkout, /const TERMS_VERSION = "2026-08-22"/);
+  assert.match(checkout, /value\.termsAccepted === true/);
+  assert.match(checkout, /metadata\[terms_version\]/);
+});
