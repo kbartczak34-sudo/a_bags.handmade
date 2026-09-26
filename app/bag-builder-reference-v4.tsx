@@ -288,6 +288,25 @@ export default function BagBuilderReferenceV4() {
       visibility: hidden !important;
       pointer-events: none !important;
     }
+    /* Canonical 3D compositor guard.
+       Fidelity3D is the customer-facing model. Material/finish compatibility canvases may
+       remain mounted for deterministic renderer contracts, but they must never replace the
+       spatial model with a screen-space or secondary silhouette. */
+    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"][data-abags-final3d="ready"] > .abags-fidelity3d-layer > .abags-agata-cord-webgl,
+    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"][data-abags-final3d="ready"] > .abags-fidelity3d-layer > .abags-crochet-relief-surface,
+    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"][data-abags-final3d="ready"] > .abags-fidelity3d-layer > .abags-basket-weave-surface {
+      display: block !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"][data-abags-final3d="ready"] > .abags-fidelity3d-layer > .abags-fidelity3d-canvas {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: none !important;
+    }
+
     .abags-reference-layout-v4 .abags-builder-heading { order: 0 !important; }
     .abags-reference-layout-v4 .abags-builder-group { order: 10 !important; }
     .abags-reference-layout-v4 [data-v4-core-summary] { order: 60 !important; }
