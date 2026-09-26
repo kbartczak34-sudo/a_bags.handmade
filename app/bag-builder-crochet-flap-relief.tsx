@@ -216,7 +216,7 @@ export default function BagBuilderCrochetFlapRelief() {
 
   useEffect(() => {
     const find = () => {
-      const next = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage[data-abags-live-stage="true"]");
+      const next = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage[data-abags-live-stage=\"true\"]");
       setStage((current) => current === next ? current : next);
     };
     find();
