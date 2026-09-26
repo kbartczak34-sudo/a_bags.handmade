@@ -145,6 +145,28 @@ function boostInitialModel(stage: HTMLElement) {
   for (let index = 0; index < clicks; index += 1) plus.click();
 }
 
+function synchronizeLegacyFlatSurface(stage: HTMLElement) {
+  const svg = stage.querySelector<SVGElement>(":scope > svg");
+  if (!svg) return;
+  // The verified 3D renderer is the customer-facing product surface. Do not rely
+  // on stylesheet order here: older runtime styles can temporarily resurrect the
+  // legacy SVG fallback above WebGL on Android/Chromium compositor frames.
+  const has3dSurface = stage.classList.contains("abags-pro3d-active") || stage.classList.contains("abags-fidelity3d-active");
+  if (has3dSurface) {
+    svg.style.setProperty("display", "none", "important");
+    svg.style.setProperty("opacity", "0", "important");
+    svg.style.setProperty("visibility", "hidden", "important");
+    svg.style.setProperty("pointer-events", "none", "important");
+    svg.dataset.abagsLegacySurfaceSuppressed = "true";
+  } else if (svg.dataset.abagsLegacySurfaceSuppressed === "true") {
+    svg.style.removeProperty("display");
+    svg.style.removeProperty("opacity");
+    svg.style.removeProperty("visibility");
+    svg.style.removeProperty("pointer-events");
+    delete svg.dataset.abagsLegacySurfaceSuppressed;
+  }
+}
+
 function sync(dialog: HTMLElement) {
   const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
   if (!stage) return;
@@ -155,6 +177,7 @@ function sync(dialog: HTMLElement) {
   ensurePreviewMeta(dialog);
   ensureSubgroupLabels(dialog);
   synchronizeGroups(dialog, stage);
+  synchronizeLegacyFlatSurface(stage);
   tagCoreSummary(dialog);
   boostInitialModel(stage);
 }
@@ -196,7 +219,7 @@ export default function BagBuilderReferenceV4() {
       attributes: true,
       attributeFilter: [
         "data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent",
-        "data-abags-pro3d-ready", "disabled", "data-abags-ref-step",
+        "data-abags-pro3d-ready", "data-abags-final3d", "data-abags-fidelity3d-ready", "disabled", "data-abags-ref-step",
       ],
     });
     document.addEventListener("click", onClick, true);
@@ -212,6 +235,13 @@ export default function BagBuilderReferenceV4() {
         delete dialog.dataset.abagsReferenceV4;
         delete dialog.dataset.v4Step;
         dialog.querySelectorAll(".abags-v4-header-tool,.abags-v4-preview-meta,.abags-v4-subgroup-label").forEach((node) => node.remove());
+        dialog.querySelectorAll<SVGElement>(".abags-bag-builder-stage > svg[data-abags-legacy-surface-suppressed='true']").forEach((svg) => {
+          svg.style.removeProperty("display");
+          svg.style.removeProperty("opacity");
+          svg.style.removeProperty("visibility");
+          svg.style.removeProperty("pointer-events");
+          delete svg.dataset.abagsLegacySurfaceSuppressed;
+        });
       });
     };
   }, []);
