@@ -8,6 +8,7 @@ type Product = { id: string; name: string; detail: string; stitchType: string; i
 type Category = "color" | "stitch" | "flap" | "handles" | "strap" | "hardware" | "accent";
 type Asset = { productId: string; category: Category; variant: string; imageUrl: string; updatedAt: string };
 type Config = { family: string; color: string; stitch: string; flap: string; handles: string; strap: string; hardware: string; accent: string };
+type PhotoReference = { id: string; sourceFile: string; label: string; canonical: boolean };
 
 const STORAGE_KEY = "abags-photo-true-v1";
 const LAYER_ORDER: Category[] = ["color", "stitch", "flap", "handles", "strap", "hardware", "accent"];
@@ -29,10 +30,19 @@ function readConfig(stage: HTMLElement): Config {
   return { family: stage.dataset.family || "", color: (stage.dataset.color || "").toUpperCase(), stitch: stage.dataset.stitch || "", flap: stage.dataset.flap || "none", handles: stage.dataset.handles || "none", strap: stage.dataset.strap || "none", hardware: stage.dataset.hardware || "gold", accent: stage.dataset.accent || "none" };
 }
 function sameConfig(a: Config, b: Config) { return (Object.keys(a) as Array<keyof Config>).every((key) => a[key] === b[key]); }
-function exactReferenceForImage(imageUrl: string | null) {
+function photoReferenceForImage(imageUrl: string | null): PhotoReference | null {
   if (!imageUrl) return null;
-  try { const pathname = new URL(imageUrl, window.location.origin).pathname; const filename = decodeURIComponent(pathname.split("/").pop() || "").toLowerCase(); return EXACT_ATELIER_LIBRARY.find((item) => item.sourceFile.toLowerCase() === filename) ?? null; }
-  catch { const filename = imageUrl.split("?")[0].split("/").pop()?.toLowerCase() || ""; return EXACT_ATELIER_LIBRARY.find((item) => item.sourceFile.toLowerCase() === filename) ?? null; }
+  let filename = "";
+  try {
+    const pathname = new URL(imageUrl, window.location.origin).pathname;
+    filename = decodeURIComponent(pathname.split("/").pop() || "").toLowerCase();
+  } catch {
+    filename = imageUrl.split("?")[0].split("/").pop()?.toLowerCase() || "";
+  }
+  if (!filename) return null;
+  const canonical = EXACT_ATELIER_LIBRARY.find((item) => item.sourceFile.toLowerCase() === filename);
+  if (canonical) return { id: canonical.id, sourceFile: canonical.sourceFile, label: canonical.label, canonical: true };
+  return { id: `catalog-photo-${filename}`, sourceFile: filename, label: "Zdjęcie produktu z aktualnego katalogu", canonical: false };
 }
 function inferLegacyFamily(product: Product) { const text = `${product.name} ${product.detail} ${product.stitchType}`.toLowerCase(); if (/\bmini\b|ma[łl]a|small|kopert|crossbody/.test(text)) return "mini"; if (/kube[łl]|bucket|worek|workowa/.test(text)) return "bucket"; if (/okr[aą]g|p[oó][łl]okr[aą]g|round|half.?moon|p[oó][łl]ksi[eę][żz]yc/.test(text)) return "round"; return "tote"; }
 function aliases(category: Category, value: string) { if (!value) return []; if (category === "color") return COLOR_ALIASES[value.toUpperCase()] ?? []; return VALUE_ALIASES[category][value] ?? []; }
@@ -51,7 +61,7 @@ export default function BagBuilderPhotoTrue() {
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/products", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => { const payload = await response.json() as { products?: Product[] }; if (!response.ok || !Array.isArray(payload.products)) throw new Error("Nie udało się wczytać modeli A-Bags."); return payload.products.filter((product) => Boolean(product.imageUrl) && Boolean(exactReferenceForImage(product.imageUrl))); })
+      .then(async (response) => { const payload = await response.json() as { products?: Product[] }; if (!response.ok || !Array.isArray(payload.products)) throw new Error("Nie udało się wczytać modeli A-Bags."); return payload.products.filter((product) => Boolean(product.imageUrl) && Boolean(photoReferenceForImage(product.imageUrl))); })
       .then((items) => { setProducts(items); let saved = ""; try { saved = window.localStorage.getItem(STORAGE_KEY) || ""; } catch {} const initial = items.some((item) => item.id === saved) ? saved : items[0]?.id || ""; setSelectedId((current) => current || initial); })
       .catch(() => setProducts([]));
     return () => controller.abort();
@@ -71,7 +81,7 @@ export default function BagBuilderPhotoTrue() {
   const selected = useMemo(() => products.find((product) => product.id === selectedId) ?? null, [products, selectedId]);
 
   useEffect(() => {
-    if (!stage || !selected?.imageUrl) return; const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage"); if (!liveStage || liveStage !== stage) return; const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4"); if (!dialog) return; const family = inferLegacyFamily(selected); const exactReference = exactReferenceForImage(selected.imageUrl); if (!exactReference) return;
+    if (!stage || !selected?.imageUrl) return; const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage"); if (!liveStage || liveStage !== stage) return; const dialog = liveStage.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4"); if (!dialog) return; const family = inferLegacyFamily(selected); const exactReference = photoReferenceForImage(selected.imageUrl); if (!exactReference) return;
     liveStage.dataset.abagsPhotoTrue = "active"; liveStage.dataset.photoProductId = selected.id; liveStage.dataset.photoProductName = selected.name; liveStage.dataset.photoProductImageUrl = selected.imageUrl; liveStage.dataset.photoTrueReferenceId = exactReference.id; liveStage.dataset.photoTrueReferenceSource = exactReference.sourceFile; dialog.dataset.abagsPhotoTrue = "active"; dialog.dataset.photoProductId = selected.id;
     try { window.localStorage.setItem(STORAGE_KEY, selected.id); } catch {} if (liveStage.dataset.family !== family) clickLegacyFamily(family);
     return () => { liveStage.removeAttribute("data-abags-photo-true"); liveStage.removeAttribute("data-photo-product-id"); liveStage.removeAttribute("data-photo-product-name"); liveStage.removeAttribute("data-photo-product-image-url"); liveStage.removeAttribute("data-photo-true-reference-id"); liveStage.removeAttribute("data-photo-true-reference-source"); if (dialog.dataset.photoProductId === selected.id) { dialog.removeAttribute("data-abags-photo-true"); dialog.removeAttribute("data-photo-product-id"); } };
@@ -95,7 +105,7 @@ export default function BagBuilderPhotoTrue() {
     image.onload = syncReady; if (image.complete) syncReady(); return () => { image.onload = null; };
   }, [selected, stage]);
 
-  const exactReference = useMemo(() => exactReferenceForImage(selected?.imageUrl ?? null), [selected]);
+  const exactReference = useMemo(() => photoReferenceForImage(selected?.imageUrl ?? null), [selected]);
   const rendered = useMemo(() => { const base = selected?.imageUrl || ""; const layers = LAYER_ORDER.map((category) => matchAsset(assets, category, config[category])).filter((asset): asset is Asset => Boolean(asset)); return { base, layers }; }, [assets, config, selected]);
   const missingLayers = useMemo(() => LAYER_ORDER.filter((category) => config[category] !== "none" && !matchAsset(assets, category, config[category])), [assets, config]);
   if (!mount || !selected || !exactReference) return null;
@@ -105,11 +115,11 @@ export default function BagBuilderPhotoTrue() {
       <div className="abags-photo-true-stage" aria-label="Rzeczywiste zdjęcie produktu 1:1">
         <img className="abags-photo-true-base" src={selected.imageUrl || ""} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
         {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-layer abags-photo-true-layer-${layer.category}`} src={layer.imageUrl} alt="" aria-hidden="true" />)}
-        <span className="abags-photo-true-badge">PHOTO-TRUE 1:1</span>
+        <span className="abags-photo-true-badge">{exactReference.canonical ? "PHOTO-TRUE 1:1" : "ZDJĘCIE PRODUKTU"}</span>
       </div>
-      <div className="abags-photo-true-note">Rzeczywiste zdjęcie referencyjne: {exactReference.sourceFile}. Tryb fotograficzny pokazuje wyłącznie produkty z kanonicznej biblioteki Exact Live. Zdjęcie nie jest fałszowane ani zastępowane syntetycznym renderem.{missingLayers.length ? ` Brak warstwy 1:1: ${missingLayers.join(", ")}.` : ""}{assetError ? ` ${assetError}` : ""}</div>
+      <div className="abags-photo-true-note">Rzeczywiste zdjęcie produktu: {exactReference.sourceFile}. {exactReference.canonical ? "Zdjęcie pochodzi z kanonicznej biblioteki Exact Live." : "Zdjęcie pochodzi bezpośrednio z aktualnego katalogu sklepu."} Zdjęcie nie jest zastępowane syntetycznym renderem.{missingLayers.length ? ` Brak warstwy 1:1: ${missingLayers.join(", ")}.` : ""}{assetError ? ` ${assetError}` : ""}</div>
       <div className="abags-photo-models-grid" role="list">
-        {products.map((product) => { const reference = exactReferenceForImage(product.imageUrl); if (!reference) return null; return (
+        {products.map((product) => { const reference = photoReferenceForImage(product.imageUrl); if (!reference) return null; return (
           <button key={product.id} type="button" data-photo-product-choice={product.id} aria-pressed={product.id === selectedId} onClick={() => setSelectedId(product.id)} title={reference.label}>
             <img src={product.imageUrl || ""} alt={product.name} loading="eager" /><span>{product.name}</span>
           </button>
