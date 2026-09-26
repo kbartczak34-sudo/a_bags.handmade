@@ -75,7 +75,7 @@ const EMPTY: Config = {
 };
 
 const DEFAULT_ROTATION = { x: -0.1, y: 0.56 };
-const DEFAULT_ZOOM = 0.88;
+const DEFAULT_ZOOM = 1.02;
 const MIN_ZOOM = 0.34;
 const MAX_ZOOM = 1.45;
 
