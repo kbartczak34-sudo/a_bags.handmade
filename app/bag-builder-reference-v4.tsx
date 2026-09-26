@@ -146,24 +146,28 @@ function boostInitialModel(stage: HTMLElement) {
 }
 
 function synchronizeLegacyFlatSurface(stage: HTMLElement) {
-  const svg = stage.querySelector<SVGElement>(":scope > svg");
-  if (!svg) return;
+  const svgs = Array.from(stage.querySelectorAll<SVGElement>(":scope > svg"));
+  if (!svgs.length) return;
   // The verified 3D renderer is the customer-facing product surface. Do not rely
   // on stylesheet order here: older runtime styles can temporarily resurrect the
   // legacy SVG fallback above WebGL on Android/Chromium compositor frames.
+  // Suppress every direct SVG fallback, not just the first one: compatibility
+  // layers can mount more than one legacy preview during the promotion handoff.
   const has3dSurface = stage.classList.contains("abags-pro3d-active") || stage.classList.contains("abags-fidelity3d-active");
-  if (has3dSurface) {
-    svg.style.setProperty("display", "none", "important");
-    svg.style.setProperty("opacity", "0", "important");
-    svg.style.setProperty("visibility", "hidden", "important");
-    svg.style.setProperty("pointer-events", "none", "important");
-    svg.dataset.abagsLegacySurfaceSuppressed = "true";
-  } else if (svg.dataset.abagsLegacySurfaceSuppressed === "true") {
-    svg.style.removeProperty("display");
-    svg.style.removeProperty("opacity");
-    svg.style.removeProperty("visibility");
-    svg.style.removeProperty("pointer-events");
-    delete svg.dataset.abagsLegacySurfaceSuppressed;
+  for (const svg of svgs) {
+    if (has3dSurface) {
+      svg.style.setProperty("display", "none", "important");
+      svg.style.setProperty("opacity", "0", "important");
+      svg.style.setProperty("visibility", "hidden", "important");
+      svg.style.setProperty("pointer-events", "none", "important");
+      svg.dataset.abagsLegacySurfaceSuppressed = "true";
+    } else if (svg.dataset.abagsLegacySurfaceSuppressed === "true") {
+      svg.style.removeProperty("display");
+      svg.style.removeProperty("opacity");
+      svg.style.removeProperty("visibility");
+      svg.style.removeProperty("pointer-events");
+      delete svg.dataset.abagsLegacySurfaceSuppressed;
+    }
   }
 }
 
