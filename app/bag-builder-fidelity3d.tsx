@@ -1041,6 +1041,7 @@ export default function BagBuilderFidelity3D() {
     return () => {
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+      rendererRef.current = null;
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
