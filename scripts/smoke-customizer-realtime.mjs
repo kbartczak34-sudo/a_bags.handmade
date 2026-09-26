@@ -255,6 +255,18 @@ async function main() {
     if (roundCrochetFlap.flap !== "crochet") {
       throw new Error(`Round crochet flap selection was not reflected in the live stage: ${JSON.stringify(roundCrochetFlap)}`);
     }
+    const roundFlapOverlays = await evaluate(`(() => {
+      const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+      if(!stage)return null;
+      const selectors=['.abags-flap-realism','.abags-crochet-flap-density','.abags-crochet-flap-relief'];
+      return selectors.flatMap((selector)=>[...stage.querySelectorAll(selector)].filter((node)=>{
+        const s=getComputedStyle(node),r=node.getBoundingClientRect();
+        return s.display!=='none'&&s.visibility!=='hidden'&&Number.parseFloat(s.opacity||'1')>.05&&r.width>2&&r.height>2;
+      }).map((node)=>String(node.className||'')));
+    })()`);
+    if (roundFlapOverlays?.length) {
+      throw new Error(`A flat screen-space flap overlay is still visible above Fidelity3D: ${JSON.stringify(roundFlapOverlays)}`);
+    }
     const roundCrochetFlapBytes = await capture("customizer-desktop-round-crochet-flap-3d.png");
 
     // Regression guard for the exact customer failure mode: Bucket/„Z klapą”
