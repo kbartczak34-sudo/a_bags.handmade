@@ -67,6 +67,7 @@ test("renderer publishes a verified frame signature and recovers from draw failu
   assert.match(renderer, /canvas\.dataset\.abagsFidelity3dError = error instanceof Error/);
   assert.match(renderer, /setRendererEpoch\(\(value\) => value \+ 1\)/);
   assert.match(renderer, /rendererRef\.current !== renderer \|\| canvasRef\.current !== canvas/);
+  assert.match(renderer, /rendererRef\.current = null;/);
   assert.match(renderer, /if \(gl\.isContextLost\(\)\) throw new Error\("webgl-context-lost"\)/);
   assert.match(renderer, /const renderError = gl\.getError\(\)/);
   assert.match(renderer, /if \(renderError !== gl\.NO_ERROR\) throw new Error/);
