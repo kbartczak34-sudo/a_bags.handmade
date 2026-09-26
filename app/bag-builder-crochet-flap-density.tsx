@@ -11,7 +11,7 @@ type Point3 = [number, number, number];
 type Point2 = { x: number; y: number; scale: number };
 type Bounds = { left: number; right: number; top: number; bottom: number };
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage";
+const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
 const DENSITY_VERSION = "crochet-flap-density-v1-solid-cord";
