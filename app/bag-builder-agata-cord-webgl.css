@@ -1,7 +1,8 @@
-/* Photo-calibrated A-Bags cord renderer.
-   The verified Fidelity3D renderer remains alive as the geometry / interaction / frame-verification
-   authority. Once Agata WebGL has produced a verified frame, it becomes the visible cord material
-   owner so independent stitch models cannot stack into artificial vertical bands. */
+/* The verified Fidelity3D renderer is the sole customer-facing product surface.
+   The previous Agata WebGL promotion made the front face read like a flat printed card:
+   its extrusion was still 3D geometry, but it visually covered the calibrated rounded
+   Fidelity3D body that the customer expects to see. Keep Agata Cord mounted for compatibility
+   and telemetry, but never composite it over the canonical model. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage > .abags-fidelity3d-layer > .abags-agata-cord-webgl{
   position:absolute!important;
@@ -19,52 +20,45 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   image-rendering:auto!important;
 }
 
+/* Hard guard: even after the final-3D readiness marker, Agata Cord must stay out of the
+   composited product. The native Fidelity3D canvas owns silhouette, depth, flap and lighting. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+.abags-bag-builder-stage[data-abags-final3d="ready"]
 > .abags-fidelity3d-layer > .abags-agata-cord-webgl{
-  opacity:1!important;
-  visibility:visible!important;
+  display:block!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
 }
 
-/* Verification floor.
-   The native Fidelity canvas must remain in the visible compositing tree because production QA
-   verifies that its calibrated WebGL framebuffer is still the live 3D geometry authority.
-   A 0.06 opacity is intentionally just above that verifier threshold. The opaque Agata canvas is
-   stacked above it at z-index:2 and therefore remains the customer-visible base material.
-   Do not use display:none or visibility:hidden here: both would break renderer lifecycle/QA. */
+/* Canonical 3D product surface: restore full native Fidelity3D visibility.
+   This is the surface that carries the calibrated convex body, hinged flap geometry,
+   handles/strap, hardware, depth and interactive 3/4/Bok views. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
+.abags-bag-builder-stage[data-abags-final3d="ready"]
 > .abags-fidelity3d-layer > .abags-fidelity3d-canvas{
   display:block!important;
-  opacity:.06!important;
-  visibility:visible!important;
-}
-
-/* Agata WebGL owns the generic stitch topology and analytical height normals. The legacy crochet
-   canvas used a second full-height construction, so even low opacity created doubled bands. */
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
-> .abags-fidelity3d-layer > .abags-crochet-relief-surface{
-  opacity:0!important;
-  visibility:visible!important;
-  mix-blend-mode:soft-light!important;
-}
-
-/* Basket V6 rebuilds the body from short physical cord segments with alternating under-cord gaps.
-   Keep its canvas hidden while empty and promote it only after the exact V6 readiness marker is
-   published on the same active stage. Agata WebGL remains the deterministic fallback underneath. */
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"]
-> .abags-fidelity3d-layer > .abags-basket-weave-surface{
-  opacity:0!important;
-  visibility:visible!important;
-  mix-blend-mode:normal!important;
-}
-
-body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-stitch="basket"][data-abags-agata-cord-webgl="agata-cord-webgl-v1-photo-calibrated"][data-abags-basket-weave-finish="basket-cord-weave-v6-segmented-relief"]
-> .abags-fidelity3d-layer > .abags-basket-weave-surface{
   opacity:1!important;
   visibility:visible!important;
-  mix-blend-mode:normal!important;
+  pointer-events:none!important;
+}
+
+/* Native Fidelity3D already owns the crochet relief. Do not place a second full-height
+   stitch surface over the model. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"]
+> .abags-fidelity3d-layer > .abags-crochet-relief-surface{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* The segmented basket compatibility surface is likewise not a second product silhouette.
+   The native renderer remains the single source of truth for the customer preview. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-abags-final3d="ready"]
+> .abags-fidelity3d-layer > .abags-basket-weave-surface{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
 }
