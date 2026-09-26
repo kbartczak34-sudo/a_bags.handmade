@@ -967,7 +967,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     drawMesh(
       renderer,
       config.strap === "chain" ? meshes[config.family + "Chain"] : meshes.strap,
-      multiply(root, matrix([0, attachment.y - 0.02, -profile.topDepth * 0.58], [strapScale, 0.92, 1])),
+      multiply(root, matrix([0, attachment.y - 0.02, -profile.topDepth * 0.88], [strapScale * 0.72, 0.84, 1])),
       strapColor,
       material,
       stitch,
