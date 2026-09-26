@@ -112,6 +112,7 @@ export default function BagBuilderCheckoutHandoff() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [commerceReady, setCommerceReady] = useState(false);
   const [commercePrice, setCommercePrice] = useState<number | null>(null);
   const [commerceStatus, setCommerceStatus] = useState("unavailable");
@@ -216,6 +217,10 @@ export default function BagBuilderCheckoutHandoff() {
   const startCheckout = async () => {
     const normalizedEmail = email.trim();
     if (!ready || pending) return;
+    if (!termsAccepted) {
+      setError("Potwierdź zapoznanie się z regulaminem i informacjami o zwrotach oraz reklamacjach.");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setError("Podaj poprawny adres e-mail, aby bezpiecznie rozpocząć zamówienie.");
       return;
@@ -271,7 +276,7 @@ export default function BagBuilderCheckoutHandoff() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify({ snapshotId: snapshot.snapshotId, email: normalizedEmail }),
+        body: JSON.stringify({ snapshotId: snapshot.snapshotId, email: normalizedEmail, termsAccepted }),
       });
       const checkout = await checkoutResponse.json() as CheckoutResponse;
       if (!checkoutResponse.ok || !checkout.url) {
@@ -335,6 +340,10 @@ export default function BagBuilderCheckoutHandoff() {
           />
         </label>
       )}
+      {ready && <label className="checkout-terms abags-builder-terms">
+        <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} disabled={pending} />
+        <span>Potwierdzam zapoznanie się z <a href="/regulamin" target="_blank" rel="noreferrer">Regulaminem sklepu</a> oraz <a href="/zwroty-i-reklamacje" target="_blank" rel="noreferrer">informacjami o zwrotach i reklamacjach</a>.</span>
+      </label>}
       <small>Sznurek poliestrowy z Pimiotki · płatność Stripe / BLIK po pełnej walidacji projektu.</small>
       {error && <p id="abags-configurator-checkout-error" role="alert">{error}</p>}
       {ready && <button type="button" onClick={() => void startCheckout()} disabled={pending}>{pending ? "Waliduję i przygotowuję Stripe…" : `Kup ten projekt · ${money.format((displayPrice ?? 0) / 100)} →`}</button>}
