@@ -670,3 +670,69 @@
     height: 51px !important;
   }
 }
+
+
+/* Android handset guard: Chrome may expose ~1024 CSS px in Desktop-site mode.
+   ExactLiveCustomizer adds .abags-mobile-forced for coarse/touch viewports. */
+@media (pointer: coarse) and (max-width: 1100px) {
+  body.abags-vc-open .abags-vc-layer-root:has(.abags-mobile-forced){position:fixed!important;inset:0!important;z-index:2147483000!important;display:flex!important;align-items:stretch!important;justify-content:stretch!important;width:100vw!important;height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#fffaf7!important;isolation:isolate!important}
+  body.abags-vc-open .abags-vc-layer-root:has(.abags-mobile-forced)>.abags-vc-backdrop{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#fffaf7!important;backdrop-filter:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced{position:relative!important;inset:auto!important;flex:1 1 auto!important;width:100vw!important;min-width:100vw!important;max-width:100vw!important;height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;margin:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;background:#fffaf7!important;box-shadow:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-header{flex:0 0 52px!important;min-height:52px!important;height:52px!important;padding:0 92px 0 54px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(255,250,247,.98)!important;border-bottom:1px solid rgba(90,66,69,.08)!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-header>div:first-child{width:auto!important;text-align:center!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-header h2,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-v3-title,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-v3-subtitle,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-v3-wordmark{display:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-header .eyebrow,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-v3-eyebrow{display:block!important;margin:0!important;font:800 8px/1 var(--font-sans)!important;letter-spacing:.1em!important;white-space:nowrap!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-layout{flex:1 1 0!important;min-height:0!important;height:calc(100dvh - 52px)!important;max-height:none!important;display:flex!important;flex-direction:column!important;overflow-x:hidden!important;overflow-y:auto!important;background:#fffaf7!important;scrollbar-width:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-layout::-webkit-scrollbar{display:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-preview-column{order:1!important;display:block!important;flex:0 0 auto!important;min-width:0!important;padding:0!important;overflow:visible!important;background:#fffaf7!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-preview{width:100%!important;height:264px!important;min-height:264px!important;max-height:264px!important;margin:0!important;border:0!important;border-radius:0 0 24px 24px!important;overflow:hidden!important;background:radial-gradient(ellipse at 50% 43%,rgba(255,255,255,.98) 0 25%,rgba(255,249,245,.9) 48%,rgba(244,226,211,.78) 74%,rgba(234,210,192,.9) 100%)!important;box-shadow:0 10px 26px rgba(72,48,52,.08)!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage.abags-pro3d-active,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage.abags-canvas3d-active,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage.abags-fidelity3d-active{width:100%!important;height:264px!important;min-height:264px!important;max-height:264px!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-ref-step-rail,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-ref-layers,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-ref-trust,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-ref-inspirations{display:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-exact-live-mount{order:2!important;display:block!important;min-width:0!important;padding:0!important;border:0!important;overflow:visible!important;background:transparent!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-controls{position:relative!important;z-index:30!important;display:flex!important;min-width:0!important;margin:-14px 8px 0!important;padding:17px 12px calc(24px + env(safe-area-inset-bottom))!important;border:1px solid rgba(78,61,65,.08)!important;border-radius:24px 24px 0 0!important;background:rgba(255,253,251,.99)!important;box-shadow:0 -8px 26px rgba(72,48,52,.06)!important;overflow:visible!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-heading{display:grid!important;grid-template-columns:1fr auto!important;gap:10px!important;align-items:end!important;margin:0 0 8px!important;padding:0 2px 9px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-heading h3{font:500 21px/1.02 var(--font-display)!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-heading p:last-child{display:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group .abags-builder-options{display:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="1"] .abags-builder-group[data-v4-key="family"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="2"] .abags-builder-group[data-v4-key="color"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="3"] .abags-builder-group[data-v4-key="stitch"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="4"] .abags-builder-group[data-v4-key="flap"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="5"] .abags-builder-group[data-v4-key="handles"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="5"] .abags-builder-group[data-v4-key="strap"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="6"] .abags-builder-group[data-v4-key="hardware"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="6"] .abags-builder-group[data-v4-key="accent"] .abags-builder-options{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;padding:0 0 8px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="2"] .abags-builder-group[data-v4-key="color"] .abags-builder-options,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced[data-v4-step="6"] .abags-builder-group[data-v4-key="hardware"] .abags-builder-options{display:flex!important;overflow-x:auto!important;scrollbar-width:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group{margin:0!important;padding:0!important;border:0!important;border-bottom:1px solid rgba(78,61,65,.08)!important;background:transparent!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group legend{width:100%!important;min-height:41px!important;height:41px!important;padding:0 1px!important;display:flex!important;align-items:center!important;gap:8px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group legend>span{width:22px!important;height:22px!important;flex:0 0 22px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group legend::after{font-size:13px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group.is-v3-secondary legend{display:none!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-options>button{min-width:0!important;min-height:64px!important;height:64px!important;padding:7px!important;border-radius:12px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-option-copy strong{font-size:9px!important;line-height:1.2!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-option-copy small{font-size:7px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group[data-v4-key="family"] .abags-builder-options>button{min-height:82px!important;height:82px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-group[data-v4-key="family"] .abags-ref-family-photo{height:54px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-summary{margin:9px 0 0!important;padding:10px!important;border-radius:13px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-actions{position:sticky!important;bottom:0!important;z-index:60!important;display:grid!important;grid-template-columns:1fr!important;gap:7px!important;margin:9px -12px calc(-24px - env(safe-area-inset-bottom))!important;padding:9px 12px calc(11px + env(safe-area-inset-bottom))!important;border-top:1px solid rgba(78,61,65,.08)!important;background:rgba(255,253,251,.98)!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-actions>a{min-height:46px!important;height:46px!important;border-radius:14px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-actions>button{min-height:40px!important;height:40px!important;border-radius:12px!important}
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-builder-actions>button:first-child{display:none!important}
+}
+@media (pointer: coarse) and (max-width: 420px){
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-vc-preview,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage.abags-pro3d-active,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-mobile-forced .abags-bag-builder-stage.abags-canvas3d-active{height:246px!important;min-height:246px!important;max-height:246px!important}
+}
