@@ -166,3 +166,326 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
     filter:blur(10px);
   }
 }
+
+
+/* 2026 customer UI pass — mobile atelier surface.
+   Keep the real product renderer untouched; polish the surrounding product-selection experience. */
+@media (max-width: 980px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 {
+    background: #fbf8f5 !important;
+    color: #4d3b3f !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header {
+    height: 62px !important;
+    min-height: 62px !important;
+    flex-basis: 62px !important;
+    padding: 0 82px 0 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(255,252,249,.98) !important;
+    border-bottom: 1px solid rgba(86,65,70,.10) !important;
+    box-shadow: 0 5px 20px rgba(73,50,55,.05) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header > div:first-child {
+    width: auto !important;
+    max-width: 58vw !important;
+    text-align: center !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header .eyebrow {
+    margin: 0 !important;
+    font: 800 8px/1 var(--font-sans) !important;
+    letter-spacing: .18em !important;
+    color: #624b51 !important;
+    white-space: nowrap !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header h2,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v3-subtitle {
+    display: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v4-header-tool {
+    z-index: 1002 !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-layout {
+    background: #fbf8f5 !important;
+  }
+
+  /* Real-photo presentation: give the product a quiet studio surface rather than a framed card. */
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-vc-preview-column {
+    padding: 12px 12px 10px !important;
+    background: #fbf8f5 !important;
+    border-bottom: 1px solid rgba(86,65,70,.08) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-vc-preview {
+    width: 100% !important;
+    max-width: none !important;
+    height: 350px !important;
+    min-height: 350px !important;
+    max-height: 350px !important;
+    border: 1px solid rgba(94,72,76,.09) !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    background: #f5ece5 !important;
+    box-shadow: 0 16px 38px rgba(83,58,62,.08) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-photo-true-stage {
+    background:
+      radial-gradient(circle at 50% 24%, rgba(255,255,255,.98) 0 15%, rgba(255,255,255,.46) 39%, transparent 68%),
+      linear-gradient(180deg,#fbf5ef 0%,#f4e7dc 74%,#ead6c4 100%) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-photo-true-base {
+    filter: saturate(1.03) contrast(1.025) drop-shadow(0 18px 19px rgba(68,46,51,.12)) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-photo-true-badge {
+    left: 12px !important;
+    top: 12px !important;
+    bottom: auto !important;
+    padding: 7px 10px !important;
+    border-color: rgba(91,69,74,.09) !important;
+    background: rgba(255,252,249,.88) !important;
+    color: #674e54 !important;
+    font-size: 7px !important;
+    letter-spacing: .12em !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-photo-true-note {
+    display: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-exact-live-mount {
+    background: #fbf8f5 !important;
+    border: 0 !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls {
+    padding: 14px 14px calc(28px + env(safe-area-inset-bottom)) !important;
+    background: #fbf8f5 !important;
+    scrollbar-width: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-heading {
+    margin: 0 0 10px !important;
+    padding: 2px 2px 11px !important;
+    grid-template-columns: auto minmax(0,1fr) !important;
+    gap: 10px !important;
+    border-bottom: 1px solid rgba(86,65,70,.09) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-heading > span {
+    min-width: 38px !important;
+    padding: 8px 8px !important;
+    background: #f1dfe1 !important;
+    color: #9b6570 !important;
+    font: 850 10px/1 var(--font-sans) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-heading h3 {
+    font-size: 23px !important;
+    line-height: 1.02 !important;
+    letter-spacing: -.025em !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-heading p:last-child {
+    margin-top: 4px !important;
+    font-size: 8px !important;
+    line-height: 1.4 !important;
+    color: #927d82 !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group {
+    margin: 0 0 9px !important;
+    padding: 0 0 10px !important;
+    border: 1px solid rgba(89,67,72,.10) !important;
+    border-radius: 17px !important;
+    background: rgba(255,253,251,.96) !important;
+    box-shadow: 0 7px 20px rgba(75,51,56,.035) !important;
+    overflow: hidden !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend {
+    width: 100% !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 13px !important;
+    margin: 0 !important;
+    background: linear-gradient(180deg,#fffdfb,#fcf7f4) !important;
+    border-bottom: 1px solid rgba(89,67,72,.075) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend::before {
+    font-size: 8px !important;
+    letter-spacing: .13em !important;
+    color: #8c757a !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend::after {
+    color: #5b4449 !important;
+    font-size: 12px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend > span {
+    width: 24px !important;
+    height: 24px !important;
+    flex-basis: 24px !important;
+    border-color: rgba(184,120,128,.25) !important;
+    background: #fff !important;
+    color: #a66a75 !important;
+    font-size: 8px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options {
+    gap: 8px !important;
+    padding: 10px 10px 2px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button {
+    min-height: 68px !important;
+    height: auto !important;
+    padding: 10px 11px !important;
+    border: 1px solid rgba(89,67,72,.11) !important;
+    border-radius: 13px !important;
+    background: #fff !important;
+    color: #574247 !important;
+    box-shadow: none !important;
+    transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button:active {
+    transform: scale(.985) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button.is-active {
+    border-color: #bd7b87 !important;
+    background: #fff8f8 !important;
+    box-shadow: 0 0 0 2px rgba(189,123,135,.12), 0 8px 18px rgba(104,72,78,.06) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button.is-fidelity-incompatible {
+    opacity: .34 !important;
+    filter: grayscale(.25) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-option-copy {
+    gap: 3px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-option-copy strong {
+    font: 750 9px/1.2 var(--font-sans) !important;
+    letter-spacing: -.005em !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-option-copy small {
+    display: block !important;
+    margin-top: 2px !important;
+    color: #9a858a !important;
+    font: 550 7px/1.35 var(--font-sans) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-swatch {
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+    border: 2px solid rgba(255,255,255,.9) !important;
+    box-shadow: 0 0 0 1px rgba(89,67,72,.12), inset 0 1px 2px rgba(255,255,255,.35) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-v4-subgroup-label {
+    margin: 9px 12px 0 !important;
+    padding: 0 !important;
+    color: #8d767b !important;
+    font: 800 7px/1 var(--font-sans) !important;
+    letter-spacing: .14em !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 [data-abags-builder-commerce] {
+    margin: 5px 0 9px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-live-price {
+    min-height: 64px !important;
+    padding: 10px 14px !important;
+    border: 1px solid rgba(89,67,72,.10) !important;
+    border-radius: 16px !important;
+    background: #fffdfb !important;
+    box-shadow: 0 7px 20px rgba(75,51,56,.035) !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-live-price span {
+    color: #927c81 !important;
+    font: 800 7px/1 var(--font-sans) !important;
+    letter-spacing: .12em !important;
+    text-transform: uppercase !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-live-price strong {
+    color: #49363b !important;
+    font: 500 21px/1 var(--font-display), Georgia, serif !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 0 4px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-actions > a {
+    min-height: 48px !important;
+    border-radius: 14px !important;
+    background: #cf8793 !important;
+    box-shadow: 0 10px 22px rgba(185,105,119,.17) !important;
+    font: 800 9px/1 var(--font-sans) !important;
+    letter-spacing: .01em !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-actions > button[data-builder-save-state] {
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1px solid rgba(89,67,72,.12) !important;
+    color: #5b4449 !important;
+    font: 750 9px/1 var(--font-sans) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4[data-abags-photo-true="active"] .abags-vc-preview {
+    height: 320px !important;
+    min-height: 320px !important;
+    max-height: 320px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 7px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button {
+    min-height: 64px !important;
+    padding: 9px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-option-copy strong {
+    font-size: 8px !important;
+  }
+}
