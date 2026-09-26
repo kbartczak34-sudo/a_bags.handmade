@@ -1019,14 +1019,24 @@ export default function BagBuilderFidelity3D() {
         stage.setAttribute("data-abags-pro3d-ready", "true");
         stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
       }
-    } catch {
+    } catch (error) {
       rendererRef.current = null;
+      canvas.removeAttribute("data-abags-fidelity3d-frame");
+      canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+      canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "renderer-init-failed";
       setReady(false);
+      stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+      stage.removeAttribute("data-abags-pro3d-ready");
+      stage.removeAttribute("data-abags-fidelity3d-ready");
     }
 
     const handleContextLost = (event: Event) => {
       event.preventDefault();
       setReady(false);
+      rendererRef.current = null;
+      canvas.removeAttribute("data-abags-fidelity3d-frame");
+      canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+      canvas.dataset.abagsFidelity3dError = "webgl-context-lost";
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
