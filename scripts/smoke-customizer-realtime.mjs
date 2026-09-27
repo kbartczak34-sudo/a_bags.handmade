@@ -212,6 +212,10 @@ async function main() {
 
       await choose("family", family);
       const afterFamily = await waitVerified3d(`${label} after family`);
+      if (outputDir) {
+        writeFileSync(join(outputDir, `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-after-family-state.json`), JSON.stringify(afterFamily, null, 2));
+        await capture(`${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-after-family-live.png`);
+      }
       if (afterFamily.signature === initialSignature || afterFamily.family !== family) throw new Error(`${label} family selection did not create verified 3D.`);
 
       await choose("color", color);
