@@ -1154,11 +1154,22 @@ export default function BagBuilderFidelity3D() {
   }, [stage]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || rendererRef.current || !stage) return;
-    try {
-      rendererRef.current = init(canvas);
-      if (rendererRef.current) {
+    if (!stage) return;
+    let disposed = false;
+    let retryFrame = 0;
+    let stageObserver: MutationObserver | null = null;
+
+    const initialize = () => {
+      if (disposed || rendererRef.current) return;
+      const canvas = canvasRef.current ?? stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
+      if (!canvas) {
+        retryFrame = window.requestAnimationFrame(initialize);
+        return;
+      }
+      canvasRef.current = canvas;
+      try {
+        rendererRef.current = init(canvas);
+        if (!rendererRef.current) throw new Error("webgl-unavailable");
         canvas.removeAttribute("data-abags-fidelity3d-error");
         canvas.removeAttribute("data-abags-fidelity3d-frame");
         canvas.removeAttribute("data-abags-fidelity3d-frame-at");
@@ -1166,9 +1177,6 @@ export default function BagBuilderFidelity3D() {
         stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
         stage.setAttribute("data-abags-pro3d-ready", "true");
         stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-        // The legacy SVG is a fallback surface only. Hide it at the renderer
-        // boundary as well as via CSS so mobile Chromium cannot composite the
-        // old preview over the live WebGL model.
         stage.querySelectorAll<SVGElement>("svg").forEach((svg) => {
           svg.dataset.abagsLegacySurfaceSuppressed = "true";
           svg.style.setProperty("display", "none", "important");
@@ -1176,44 +1184,56 @@ export default function BagBuilderFidelity3D() {
           svg.style.setProperty("visibility", "hidden", "important");
           svg.style.setProperty("pointer-events", "none", "important");
         });
+      } catch (error) {
+        rendererRef.current = null;
+        canvas.removeAttribute("data-abags-fidelity3d-frame");
+        canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+        canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "renderer-init-failed";
+        setReady(false);
+        stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+        stage.removeAttribute("data-abags-pro3d-ready");
+        stage.removeAttribute("data-abags-fidelity3d-ready");
+        retryFrame = window.requestAnimationFrame(initialize);
       }
-    } catch (error) {
+    };
+
+    initialize();
+    stageObserver = new MutationObserver(initialize);
+    stageObserver.observe(stage, { childList: true, subtree: true });
+
+    return () => {
+      disposed = true;
+      if (retryFrame) window.cancelAnimationFrame(retryFrame);
+      stageObserver?.disconnect();
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.removeEventListener("webglcontextlost", handleContextLost);
+        canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+      }
       rendererRef.current = null;
-      canvas.removeAttribute("data-abags-fidelity3d-frame");
-      canvas.removeAttribute("data-abags-fidelity3d-frame-at");
-      canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "renderer-init-failed";
-      setReady(false);
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
-    }
+    };
 
-    const handleContextLost = (event: Event) => {
+    function handleContextLost(event: Event) {
       event.preventDefault();
       setReady(false);
       rendererRef.current = null;
-      canvas.removeAttribute("data-abags-fidelity3d-frame");
-      canvas.removeAttribute("data-abags-fidelity3d-frame-at");
-      canvas.dataset.abagsFidelity3dError = "webgl-context-lost";
+      const canvas = canvasRef.current;
+      canvas?.removeAttribute("data-abags-fidelity3d-frame");
+      canvas?.removeAttribute("data-abags-fidelity3d-frame-at");
+      if (canvas) canvas.dataset.abagsFidelity3dError = "webgl-context-lost";
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
-    };
-    const handleContextRestored = () => {
+      retryFrame = window.requestAnimationFrame(initialize);
+    }
+
+    function handleContextRestored() {
       rendererRef.current = null;
       setRendererEpoch((value) => value + 1);
-    };
-    canvas.addEventListener("webglcontextlost", handleContextLost);
-    canvas.addEventListener("webglcontextrestored", handleContextRestored);
-
-    return () => {
-      canvas.removeEventListener("webglcontextlost", handleContextLost);
-      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
-      rendererRef.current = null;
-      stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
-      stage.removeAttribute("data-abags-pro3d-ready");
-      stage.removeAttribute("data-abags-fidelity3d-ready");
-    };
+    }
   }, [stage, rendererEpoch]);
 
   useEffect(() => {
