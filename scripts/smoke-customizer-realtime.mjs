@@ -296,6 +296,28 @@ async function main() {
 
     const desktopBucketBytes = await capture("customizer-desktop-bucket-no-flap.png");
 
+    // Capture the exact mobile construction that the customer is reporting as a
+    // flat/sticker-like preview. This is deliberately a round + crochet-flap case
+    // so the artifact proves which surface is actually visible on Android/Chromium.
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+    await clearDraftAndReload();
+    await openBuilder();
+    await choose("family", "round");
+    await waitVerified3d("Mobile round family");
+    await choose("color", "#E4A9B5");
+    await waitVerified3d("Mobile round color");
+    await choose("stitch", "classic");
+    await waitVerified3d("Mobile round stitch");
+    await choose("flap", "crochet");
+    const mobileRoundCrochet = await waitVerified3d("Mobile round crochet flap");
+    const mobileRoundState = await stageState();
+    if (!mobileRoundState?.canvasVisible || !mobileRoundState?.fidelityVisible || mobileRoundState?.svgVisible) {
+      throw new Error(`Mobile round/crochet compositor state is not canonical Fidelity3D: ${JSON.stringify(mobileRoundState)}`);
+    }
+    writeFileSync(join(outputDir, "mobile-round-crochet-state.json"), JSON.stringify(mobileRoundState, null, 2));
+    await capture("customizer-mobile-round-crochet-fidelity3d.png");
+
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     await clearDraftAndReload();
