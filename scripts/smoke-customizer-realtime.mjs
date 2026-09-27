@@ -109,11 +109,11 @@ async function main() {
       const opened = await evaluate(`(() => { const b=[...document.querySelectorAll('button')].find((n)=>n.textContent?.includes('Uruchom konfigurator')); if(!b)return false; b.click(); return true; })()`);
       if (!opened) throw new Error("Could not open the realtime customizer.");
       await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4'))", "realtime builder dialog");
-      await waitFor("Boolean(document.querySelector('.abags-bag-builder-stage'))", "realtime construction stage");
+      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]'))", "realtime construction stage");
     };
     const stageState = async () => evaluate(`(() => {
       const d=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
-      const s=d?.querySelector('.abags-bag-builder-stage');
+      const s=d?.querySelector('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
       if(!d||!s)return null;
       const svg=s.querySelector(':scope > svg');
       const canvas=s.querySelector('.abags-fidelity3d-canvas');
@@ -181,11 +181,11 @@ async function main() {
         if(!b || b.disabled)return false; b.click(); return true;
       })()`);
       if (!clicked) throw new Error(`Could not select ${key}=${value}.`);
-      await waitFor(`document.querySelector('.abags-bag-builder-stage')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`, `${key}=${value}`);
+      await waitFor(`document.querySelector('.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`, `${key}=${value}`);
     };
     const waitVerified3d = async (label) => {
       try {
-        await waitFor(`(() => { const s=document.querySelector('.abags-bag-builder-stage'); return s?.dataset.abagsFinal3d==='ready' && s.dataset.abagsFinal3dSignature===s.dataset.builderSignature; })()`, `${label} verified 3D`, 15_000);
+        await waitFor(`(() => { const s=document.querySelector('.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]'); return s?.dataset.abagsFinal3d==='ready' && s.dataset.abagsFinal3dSignature===s.dataset.builderSignature; })()`, `${label} verified 3D`, 15_000);
       } catch (error) {
         const state = await stageState();
         const safeLabel = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
