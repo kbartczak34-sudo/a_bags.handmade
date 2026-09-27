@@ -176,6 +176,17 @@ jobs:
           ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
         run: node scripts/smoke-customizer-realtime.mjs
 
+      - name: Upload exact realtime compositor visual QA
+        if: always() && steps.deploy.conclusion == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: realtime-compositor-exact-${{ github.run_number }}
+          path: |
+            artifacts/customizer-realtime/customizer-mobile-round-crochet-fidelity3d.png
+            artifacts/customizer-realtime/mobile-round-crochet-state.json
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Verify desktop customer close integrity
         id: close_integrity
         if: steps.deploy.conclusion == 'success' && steps.smoke.conclusion == 'success' && steps.realtime.conclusion == 'success'
