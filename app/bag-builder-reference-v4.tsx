@@ -153,7 +153,7 @@ function synchronizeLegacyFlatSurface(stage: HTMLElement) {
   // legacy SVG fallback above WebGL on Android/Chromium compositor frames.
   // Suppress every direct SVG fallback, not just the first one: compatibility
   // layers can mount more than one legacy preview during the promotion handoff.
-  const has3dSurface = stage.classList.contains("abags-pro3d-active") || stage.classList.contains("abags-fidelity3d-active");
+  const has3dSurface = stage.classList.contains("abags-pro3d-active") || stage.classList.contains("abags-fidelity3d-active") || stage.classList.contains("abags-premium-canvas3d-active");
   for (const svg of svgs) {
     if (has3dSurface) {
       svg.style.setProperty("display", "none", "important");
@@ -287,6 +287,31 @@ export default function BagBuilderReferenceV4() {
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
+    }
+
+    /* WebGL fallback: Premium Canvas3D is itself a perspective 3D renderer.
+       When WebGL is unavailable on a mobile/WebView device, never leave the
+       legacy flat SVG composited above it. The canvas must become the sole
+       customer-facing product surface, exactly like Fidelity3D. */
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active > :not(.abags-premium-canvas3d-layer) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active > .abags-premium-canvas3d-layer {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 50 !important;
+      pointer-events: auto !important;
+    }
+    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active > .abags-premium-canvas3d-layer > .abags-premium-canvas3d-canvas {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: 100% !important;
+      height: 100% !important;
     }
     /* Canonical 3D compositor guard.
        Fidelity3D is the customer-facing model. Material/finish compatibility canvases may
