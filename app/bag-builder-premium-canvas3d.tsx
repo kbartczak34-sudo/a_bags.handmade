@@ -358,7 +358,7 @@ export default function BagBuilderPremiumCanvas3D() {
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
 
   useEffect(() => {
-    const find = () => setStage((current) => { const next = document.querySelector<HTMLElement>(".abags-bag-builder-stage"); return current === next ? current : next; });
+    const find = () => setStage((current) => { const next = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]"); return current === next ? current : next; });
     find(); const observer = new MutationObserver(find); observer.observe(document.body, { childList: true, subtree: true }); return () => observer.disconnect();
   }, []);
 
