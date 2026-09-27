@@ -109,7 +109,7 @@ async function main() {
       const opened = await evaluate(`(() => { const b=[...document.querySelectorAll('button')].find((n)=>n.textContent?.includes('Uruchom konfigurator')); if(!b)return false; b.click(); return true; })()`);
       if (!opened) throw new Error("Could not open the realtime customizer.");
       await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4'))", "realtime builder dialog");
-      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]'))", "realtime construction stage");
+      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\'true\']'))", "realtime construction stage");
     };
     const stageState = async () => evaluate(`(() => {
       const d=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
