@@ -79,8 +79,8 @@ const EMPTY: Config = {
 // instead of making the round body read like a flat printed card.
 // Calibrated product view: expose the physical side wall immediately on mobile.
 // A positive yaw was still reading too close to front-on on some Chromium devices.
-const DEFAULT_ROTATION = { x: -0.12, y: -1.02 };
-const DEFAULT_ZOOM = 0.96;
+const DEFAULT_ROTATION = { x: -0.20, y: -1.18 };
+const DEFAULT_ZOOM = 0.90;
 
 function physicalDepth(family: Exclude<Family, "">) {
   const calibrated = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].depth;
@@ -98,10 +98,10 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
     return [family, {
       bodyY: spec.bodyY,
       topY: spec.topY,
-      frontZ: spec.depth * (family === "round" ? 1.34 : 1) / 2,
-      baseDepth: spec.depth * (family === "round" ? 1.34 : 1),
-      topDepth: spec.depth * (family === "round" ? 1.34 : 1) * 0.92,
-      bottomDepth: spec.depth * (family === "round" ? 1.34 : 1) * 1.12,
+      frontZ: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1) / 2,
+      baseDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1),
+      topDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1) * 0.92,
+      bottomDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1) * 1.12,
       width: spec.rx,
       handleScale: spec.handleScale[0],
       handleScaleY: spec.handleScale[1],
@@ -279,7 +279,7 @@ function depthAt(family: Exclude<Family, "">, y: number) {
   const edge = Math.abs(normalizedY);
   const belly = 1 + Math.sin((1 - edge) * Math.PI * 0.5) * (0.035 + spec.depth * 0.035);
   const topCompression = 1 - Math.max(0, normalizedY) * 0.04;
-  const depthScale = family === "round" ? 1.34 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
   return spec.depth * depthScale * belly * topCompression;
 }
 
@@ -292,7 +292,7 @@ function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
   const softness = (0.022 + spec.ry * 0.018) * familyFactor;
   const sagY = -softness * center * lower;
-  const depthScale = family === "round" ? 1.34 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
   const bulgeZ = spec.depth * depthScale * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
   return { y: sagY, z: bulgeZ };
 }
@@ -313,7 +313,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const depthScale = family === "round" ? 1.34 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
   const bodyDepth = spec.depth * depthScale;
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
