@@ -184,6 +184,8 @@ jobs:
           path: |
             artifacts/customizer-realtime/customizer-mobile-round-crochet-fidelity3d.png
             artifacts/customizer-realtime/mobile-round-crochet-state.json
+            artifacts/customizer-realtime/desktop-after-family-live.png
+            artifacts/customizer-realtime/desktop-after-family-state.json
           if-no-files-found: warn
           retention-days: 7
 
