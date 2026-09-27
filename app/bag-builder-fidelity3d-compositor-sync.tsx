@@ -104,7 +104,7 @@ export default function BagBuilderFidelity3DCompositorSync() {
       // into `promoting` only after a verified non-empty product framebuffer exists.
     };
 
-    const findStage = () => attach(document.querySelector<HTMLElement>(".abags-bag-builder-stage"));
+    const findStage = () => attach(document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]"));
     findStage();
     bodyObserver = new MutationObserver(findStage);
     bodyObserver.observe(document.body, { childList: true, subtree: true });
