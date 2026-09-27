@@ -282,7 +282,7 @@ export default function BagBuilderReferenceV4() {
        SVG preview mounted inside an active 3D stage, including compatibility
        mounts created during the promotion handoff. */
     .abags-reference-layout-v4 .abags-bag-builder-stage.abags-pro3d-active svg,
-    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active svg {
+    /* Final compositor rule: once Fidelity3D is ready, it is the ONLY product surface.\n       Do not let a photo/compatibility layer sit above the WebGL canvas on Android Chromium.\n       The old final3d flag was not emitted by the current Fidelity3D component, so key this\n       guard directly off the renderer-ready class that is actually set at runtime. */\n    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > :not(.abags-fidelity3d-layer) {\n      display: none !important;\n      visibility: hidden !important;\n      opacity: 0 !important;\n      pointer-events: none !important;\n    }\n    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > .abags-fidelity3d-layer {\n      display: block !important;\n      visibility: visible !important;\n      opacity: 1 !important;\n      z-index: 50 !important;\n      pointer-events: auto !important;\n    }\n    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > .abags-fidelity3d-layer > .abags-fidelity3d-canvas {\n      display: block !important;\n      visibility: visible !important;\n      opacity: 1 !important;\n    }\n\n    .abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active svg {
       display: none !important;
       opacity: 0 !important;
       visibility: hidden !important;
