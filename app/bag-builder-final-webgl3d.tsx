@@ -104,7 +104,7 @@ function draw(renderer:Renderer,canvas:HTMLCanvasElement,config:Config,rotation:
   }
   gl.finish();
 }
-function currentStage(){return document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? document.querySelector<HTMLElement>(".abags-bag-builder-stage");}
+function currentStage(){return document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? document.querySelector<HTMLElement>(".abags-bag-builder-stage");}
 export default function BagBuilderFinalWebGL3D(){
   const[portalTarget,setPortalTarget]=useState<HTMLElement|null>(null),[config,setConfig]=useState<Config>(EMPTY),[rotation,setRotation]=useState(DEFAULT_ROTATION),[zoom,setZoom]=useState(DEFAULT_ZOOM),[view,setViewState]=useState<"front"|"three"|"side">("three");
   const canvasRef=useRef<HTMLCanvasElement|null>(null),rendererRef=useRef<Renderer|null>(null),pointers=useRef(new Map<number,{x:number;y:number}>()),drag=useRef<{x:number;y:number;rx:number;ry:number}|null>(null),pinch=useRef<{distance:number;zoom:number}|null>(null);
