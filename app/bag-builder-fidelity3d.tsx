@@ -1218,6 +1218,7 @@ export default function BagBuilderFidelity3D() {
 
     function handleContextLost(event: Event) {
       event.preventDefault();
+      if (!stage) return;
       setReady(false);
       rendererRef.current = null;
       const canvas = canvasRef.current;
