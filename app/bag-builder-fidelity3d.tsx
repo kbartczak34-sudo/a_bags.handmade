@@ -1016,12 +1016,12 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const body = config.color || "#e8ddcc";
   const stitch = stitchId(config.stitch || "classic");
   const relief = config.color && config.stitch ? 0.021 : 0.004;
-  drawMesh(renderer, meshes[previewFamily], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
+  drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
   const interiorColor = darken(openingColor, 0.58);
-  drawMesh(renderer, meshes[previewFamily + "Interior"], root, interiorColor, 0, stitch, 0);
-  drawMesh(renderer, meshes[previewFamily + "Rim"], root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
+  drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, 0, stitch, 0);
+  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
@@ -1031,7 +1031,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const strapScale = config.strap === "chain" ? profile.handleScale * 0.96 : profile.handleScale;
     drawMesh(
       renderer,
-      config.strap === "chain" ? meshes[previewFamily + "Chain"] : meshes.strap,
+      config.strap === "chain" ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain) : meshes.strap,
       multiply(root, matrix([0, attachment.y - 0.02, -profile.topDepth * 0.88], [strapScale * 0.72, 0.84, 1])),
       strapColor,
       material,
