@@ -1006,20 +1006,15 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   gl.uniformMatrix4fv(uniforms.projection, false, perspective(Math.PI / 5.3, width / height, 0.1, 100));
   gl.uniformMatrix4fv(uniforms.view, false, translation(0, -0.02, -5.0));
   gl.uniform3fv(uniforms.light, new Float32Array([-0.42, 0.86, 0.92]));
-  if (!config.family) {
-    const renderError = gl.getError();
-  if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
-  if (gl.isContextLost()) throw new Error("webgl-context-lost");
-  canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
-    canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
-    canvas.removeAttribute("data-abags-fidelity3d-error");
-    return;
-  }
-
-  const profile = PROFILES[config.family];
+  // Keep the construction state empty in the controls, but never leave the 3D
+  // stage visually empty. Before the customer chooses a family, render a neutral
+  // atelier base model; as soon as a family/color/stitch is selected, the same
+  // WebGL surface switches to the live configuration.
+  const previewFamily = config.family || "tote";
+  const profile = PROFILES[previewFamily];
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#e8ddcc";
-  const stitch = stitchId(config.stitch);
+  const stitch = stitchId(config.stitch || "classic");
   const relief = config.color && config.stitch ? 0.021 : 0.004;
   drawMesh(renderer, meshes[config.family], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
