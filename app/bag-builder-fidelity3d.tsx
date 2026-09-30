@@ -1010,7 +1010,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // stage visually empty. Before the customer chooses a family, render a neutral
   // atelier base model; as soon as a family/color/stitch is selected, the same
   // WebGL surface switches to the live configuration.
-  const renderFamily = config.family || "tote";
+  const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#e8ddcc";
