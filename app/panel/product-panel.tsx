@@ -93,7 +93,7 @@ function canvasToBlob(
 }
 
 async function prepareImageForUpload(file: File): Promise<File> {
-  if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+  if (file.type && !ACCEPTED_IMAGE_TYPES.has(file.type)) {
     throw new Error("Wybierz zdjęcie w formacie JPG, PNG lub WEBP.");
   }
   if (file.size > MAX_SOURCE_IMAGE_BYTES) {
@@ -389,6 +389,7 @@ export default function ProductPanel() {
                       setError("");
                       if (
                         selectedFile &&
+                        selectedFile.type &&
                         !ACCEPTED_IMAGE_TYPES.has(selectedFile.type)
                       ) {
                         setError("Wybierz zdjęcie w formacie JPG, PNG lub WEBP.");
