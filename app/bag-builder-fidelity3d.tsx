@@ -1072,7 +1072,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   if (config.strap !== "none") {
     for (const side of [-1, 1]) {
-      const attachment = familyAttachment(profile, previewFamily);
+      const attachment = familyAttachment(profile, renderFamily);
       const x = side * attachment.x;
       drawMesh(
         renderer,
