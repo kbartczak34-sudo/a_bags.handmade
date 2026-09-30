@@ -1098,6 +1098,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.sideX * 0.92, -0.03, profile.frontZ + 0.09], [0.1, 0.15, 0.06])), "#b87880", 4, 0);
   }
 
+  const renderError = gl.getError();
+  if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
+  if (gl.isContextLost()) throw new Error("webgl-context-lost");
+
   canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
   canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
   canvas.removeAttribute("data-abags-fidelity3d-error");
