@@ -1016,22 +1016,22 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const body = config.color || "#e8ddcc";
   const stitch = stitchId(config.stitch || "classic");
   const relief = config.color && config.stitch ? 0.021 : 0.004;
-  drawMesh(renderer, meshes[config.family], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
+  drawMesh(renderer, meshes[previewFamily], multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
   const interiorColor = darken(openingColor, 0.58);
-  drawMesh(renderer, meshes[config.family + "Interior"], root, interiorColor, 0, stitch, 0);
-  drawMesh(renderer, meshes[config.family + "Rim"], root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
+  drawMesh(renderer, meshes[previewFamily + "Interior"], root, interiorColor, 0, stitch, 0);
+  drawMesh(renderer, meshes[previewFamily + "Rim"], root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const material = config.strap === "chain" ? 4 : config.strap === "leather" ? 2 : 3;
-    const attachment = familyAttachment(profile, config.family);
+    const attachment = familyAttachment(profile, previewFamily);
     const strapScale = config.strap === "chain" ? profile.handleScale * 0.96 : profile.handleScale;
     drawMesh(
       renderer,
-      config.strap === "chain" ? meshes[config.family + "Chain"] : meshes.strap,
+      config.strap === "chain" ? meshes[previewFamily + "Chain"] : meshes.strap,
       multiply(root, matrix([0, attachment.y - 0.02, -profile.topDepth * 0.88], [strapScale * 0.72, 0.84, 1])),
       strapColor,
       material,
@@ -1046,7 +1046,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const mesh = config.handles.startsWith("wood") ? meshes.woodHandle : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.46;
     for (const side of [-1, 1]) {
-      const transform = handleTransform(profile, config.family, side);
+      const transform = handleTransform(profile, previewFamily, side);
       for (const z of [-zOffset * 0.72, zOffset * 0.72]) {
         drawMesh(
           renderer,
@@ -1072,7 +1072,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   if (config.strap !== "none") {
     for (const side of [-1, 1]) {
-      const attachment = familyAttachment(profile, config.family);
+      const attachment = familyAttachment(profile, previewFamily);
       const x = side * attachment.x;
       drawMesh(
         renderer,
