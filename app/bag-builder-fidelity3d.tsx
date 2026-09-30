@@ -1010,8 +1010,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // stage visually empty. Before the customer chooses a family, render a neutral
   // atelier base model; as soon as a family/color/stitch is selected, the same
   // WebGL surface switches to the live configuration.
-  const previewFamily = config.family || "tote";
-  const profile = PROFILES[previewFamily];
+  const renderFamily = config.family || "tote";
+  const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#e8ddcc";
   const stitch = stitchId(config.stitch || "classic");
@@ -1027,7 +1027,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const material = config.strap === "chain" ? 4 : config.strap === "leather" ? 2 : 3;
-    const attachment = familyAttachment(profile, previewFamily);
+    const attachment = familyAttachment(profile, renderFamily);
     const strapScale = config.strap === "chain" ? profile.handleScale * 0.96 : profile.handleScale;
     drawMesh(
       renderer,
@@ -1046,7 +1046,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const mesh = config.handles.startsWith("wood") ? meshes.woodHandle : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.46;
     for (const side of [-1, 1]) {
-      const transform = handleTransform(profile, previewFamily, side);
+      const transform = handleTransform(profile, renderFamily, side);
       for (const z of [-zOffset * 0.72, zOffset * 0.72]) {
         drawMesh(
           renderer,
