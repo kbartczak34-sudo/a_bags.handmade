@@ -20,8 +20,6 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
-node "${script_dir}/patch-admin-mobile-upload.mjs"
-
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \
