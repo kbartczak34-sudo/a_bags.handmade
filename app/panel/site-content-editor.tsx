@@ -109,7 +109,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
 }
 
 async function prepareImageForUpload(file: File): Promise<File> {
-  if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+  if (file.type && !ACCEPTED_IMAGE_TYPES.has(file.type)) {
     throw new Error("Wybierz zdjęcie w formacie JPG, PNG lub WEBP.");
   }
   if (file.size > MAX_SOURCE_IMAGE_BYTES) {
@@ -385,7 +385,7 @@ export default function SiteContentEditor() {
                       onChange={(event) => {
                         const file = event.target.files?.[0] ?? null;
                         setError("");
-                        if (file && !ACCEPTED_IMAGE_TYPES.has(file.type)) {
+                        if (file && file.type && !ACCEPTED_IMAGE_TYPES.has(file.type)) {
                           setError("Wybierz zdjęcie w formacie JPG, PNG lub WEBP.");
                           clearImageFile();
                           return;
