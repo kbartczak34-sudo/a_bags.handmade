@@ -1296,6 +1296,21 @@ export default function BagBuilderFidelity3D() {
 
   return createPortal(
     <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d>
+      {!config.family && (
+        <div className="abags-neutral-3d" aria-hidden="true">
+          <div className="abags-neutral-3d-shadow" />
+          <div className="abags-neutral-3d-object">
+            <div className="abags-neutral-3d-front">
+              <span className="abags-neutral-3d-stitch" />
+              <span className="abags-neutral-3d-lock" />
+            </div>
+            <div className="abags-neutral-3d-side" />
+            <div className="abags-neutral-3d-top" />
+            <div className="abags-neutral-3d-handle abags-neutral-3d-handle-left" />
+            <div className="abags-neutral-3d-handle abags-neutral-3d-handle-right" />
+          </div>
+        </div>
+      )}
       <canvas
         ref={(node) => {
           canvasRef.current = node;
