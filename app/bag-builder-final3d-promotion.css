@@ -124,7 +124,13 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   display:block!important;
   opacity:1!important;
   visibility:visible!important;
-  z-index:999!important;
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  overflow:visible!important;
+  z-index:2147483000!important;
 }
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage:not([data-family]) > .abags-fidelity3d-layer > .abags-neutral-3d,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-family=""] > .abags-fidelity3d-layer > .abags-neutral-3d{
