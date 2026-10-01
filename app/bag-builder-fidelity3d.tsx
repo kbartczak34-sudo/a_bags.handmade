@@ -1116,6 +1116,7 @@ export default function BagBuilderFidelity3D() {
   const [rendererEpoch, setRendererEpoch] = useState(0);
   const [view, setViewState] = useState<"front" | "three" | "side">("three");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvasNode, setCanvasNode] = useState<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
@@ -1160,7 +1161,7 @@ export default function BagBuilderFidelity3D() {
 
     const initialize = () => {
       if (disposed || rendererRef.current) return;
-      const canvas = canvasRef.current ?? stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
+      const canvas = canvasNode ?? canvasRef.current ?? stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
       if (!canvas) {
         retryFrame = window.requestAnimationFrame(initialize);
         return;
@@ -1241,7 +1242,7 @@ export default function BagBuilderFidelity3D() {
       rendererRef.current = null;
       setRendererEpoch((value) => value + 1);
     }
-  }, [stage, rendererEpoch]);
+  }, [stage, rendererEpoch, canvasNode]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -1296,7 +1297,10 @@ export default function BagBuilderFidelity3D() {
   return createPortal(
     <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d>
       <canvas
-        ref={canvasRef}
+        ref={(node) => {
+          canvasRef.current = node;
+          setCanvasNode(node);
+        }}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
         aria-label={label}
         onPointerDown={(event) => {
