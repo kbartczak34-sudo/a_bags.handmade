@@ -118,6 +118,10 @@ async function main() {
       const svg=s.querySelector(':scope > svg');
       const canvas=s.querySelector('.abags-fidelity3d-canvas');
       const fidelity=s.querySelector('.abags-fidelity3d-layer');
+      const neutral=s.querySelector('.abags-neutral-3d');
+      const neutralStyle=neutral?getComputedStyle(neutral):null;
+      const neutralRect=neutral?.getBoundingClientRect();
+      const neutralVisible=Boolean(neutral && neutralStyle && neutralRect && neutralStyle.display!=='none' && neutralStyle.visibility!=='hidden' && Number.parseFloat(neutralStyle.opacity||'1')>.05 && neutralRect.width>20 && neutralRect.height>20);
       const viewControls=s.querySelector('.abags-fidelity3d-view-controls');
       const zoomControls=s.querySelector('.abags-fidelity3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
@@ -166,7 +170,7 @@ async function main() {
         rendererFrame:s.dataset.abagsFidelity3dFrame||'', rendererFrameAt:s.dataset.abagsFidelity3dFrameAt||'', rendererError:s.dataset.abagsFidelity3dError||'',
         photoTrue:Boolean(d.querySelector('.abags-photo-true-base')) || d.dataset.abagsPhotoTrue==='active' || s.dataset.abagsPhotoTrue==='active',
         readyProductChoices:d.querySelectorAll('[data-photo-product-choice]').length,
-        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, activeView, webgl,
+        svgPresent:Boolean(svg), svgVisible, canvasPresent:Boolean(canvas), canvasVisible, fidelityVisible, neutralPresent:Boolean(neutral), neutralVisible, activeView, webgl,
         fidelityControlNamespace:Boolean(viewControls&&zoomControls), legacyControlCount, visibleLegacy3dChips,
         viewControls:viewRect?{width:Math.round(viewRect.width),height:Math.round(viewRect.height),top:Math.round(viewRect.top),left:Math.round(viewRect.left)}:null,
         zoomControls:zoomRect?{width:Math.round(zoomRect.width),height:Math.round(zoomRect.height),top:Math.round(zoomRect.top),left:Math.round(zoomRect.left)}:null,
@@ -317,6 +321,14 @@ async function main() {
     // Capture the exact mobile construction that the customer is reporting as a
     // flat/sticker-like preview. This is deliberately a round + crochet-flap case
     // so the artifact proves which surface is actually visible on Android/Chromium.
+    await clearDraftAndReload();
+    await openBuilder();
+    const mobileEmpty = await stageState();
+    if (!mobileEmpty?.dialogVisible || mobileEmpty.family || mobileEmpty.color || mobileEmpty.stitch || !mobileEmpty.neutralPresent || !mobileEmpty.neutralVisible) {
+      throw new Error(`Mobile empty construction is blank or not visible: ${JSON.stringify(mobileEmpty)}`);
+    }
+    writeFileSync(join(outputDir, "mobile-empty-neutral-state.json"), JSON.stringify(mobileEmpty, null, 2));
+    await capture("customizer-mobile-empty-neutral.png");
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     await clearDraftAndReload();
