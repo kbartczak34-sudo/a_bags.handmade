@@ -277,9 +277,9 @@ async function main() {
     await openBuilder();
     await chooseByTouch("family","round");
     await chooseByTouch("color","#E4A9B5");
-    const zoomBefore=await evaluate('(() => { const input=document.querySelector(".abags-pro3d-zoom input[type="range"]'); return input?Number(input.value):null; })()');
+    const zoomBefore=await evaluate("(() => { const input=document.querySelector('.abags-pro3d-zoom input[type=\"range\"]'); return input?Number(input.value):null; })()");
     await tapSelector('.abags-pro3d-zoom button[aria-label="Oddal model"]',"mobile zoom out");
-    const zoomAfter=await evaluate('(() => { const input=document.querySelector(".abags-pro3d-zoom input[type="range"]'); return input?Number(input.value):null; })()');
+    const zoomAfter=await evaluate("(() => { const input=document.querySelector('.abags-pro3d-zoom input[type=\"range\"]'); return input?Number(input.value):null; })()");
     if(!(Number.isFinite(zoomBefore)&&Number.isFinite(zoomAfter)&&zoomAfter<zoomBefore)) throw new Error('Mobile zoom did not change: before='+zoomBefore+' after='+zoomAfter);
     await send("Emulation.setDeviceMetricsOverride",{width:1440,height:900,deviceScaleFactor:1,mobile:false});
     await clearDraftAndReload();
