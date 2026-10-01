@@ -1275,7 +1275,7 @@ export default function BagBuilderFidelity3D() {
       rendererRef.current = null;
       setRendererEpoch((value) => value + 1);
     }
-  }, [stage, rendererEpoch, canvasNode]);
+  }, [stage, rendererEpoch]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
