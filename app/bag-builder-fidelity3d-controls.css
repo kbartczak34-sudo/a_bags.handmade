@@ -128,17 +128,17 @@
     height:38px;
     min-height:38px;
     max-height:38px;
-    grid-template-columns:28px minmax(48px,1fr) 28px 42px;
+    grid-template-columns:38px minmax(80px,1fr) 38px 54px;
     gap:3px;
     padding:3px 4px;
     transform:none;
   }
 
   .abags-fidelity3d-zoom button{
-    height:28px;
+    height:32px;
     min-height:28px;
-    max-height:28px;
-    padding:0 4px;
+    max-height:32px;
+    padding:0 7px;
   }
 
   .abags-fidelity3d-zoom button:last-child{
@@ -147,5 +147,48 @@
 
   .abags-fidelity3d-zoom input[type="range"]{
     height:28px;
+  }
+}
+
+
+/* Final mobile zoom-control geometry: all six React controls remain tappable.
+   The previous 4-column grid collapsed the labels/buttons into an overflowed row. */
+@media(max-width:620px){
+  .abags-fidelity3d-zoom{
+    display:grid!important;
+    grid-template-columns:38px minmax(72px,1fr) 38px 54px!important;
+    align-items:center!important;
+    gap:4px!important;
+    width:calc(100% - 16px)!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:42px!important;
+    min-height:42px!important;
+    padding:4px!important;
+    overflow:visible!important;
+    z-index:220!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+  .abags-fidelity3d-zoom>span{
+    display:none!important;
+  }
+  .abags-fidelity3d-zoom button{
+    display:block!important;
+    width:100%!important;
+    min-width:38px!important;
+    height:32px!important;
+    min-height:32px!important;
+    padding:0!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+  .abags-fidelity3d-zoom input[type="range"]{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    height:32px!important;
+    pointer-events:auto!important;
+    touch-action:pan-x!important;
   }
 }
