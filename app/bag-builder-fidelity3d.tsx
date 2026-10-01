@@ -1013,7 +1013,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
-  const body = config.color || "#e8ddcc";
+  const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
   const relief = config.color && config.stitch ? 0.021 : 0.004;
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
