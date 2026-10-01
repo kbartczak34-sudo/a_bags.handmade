@@ -40,7 +40,7 @@
 .abags-neutral-3d{
   position:absolute;
   inset:0;
-  z-index:4;
+  z-index:0!important;
   display:grid;
   place-items:center;
   pointer-events:none;
@@ -160,4 +160,29 @@
 }
 @media(max-width:420px){
   .abags-neutral-3d-object{min-width:175px;min-height:205px;transform:translateY(-2%) rotateX(-7deg) rotateY(-20deg) scale(.92)}
+}
+
+
+/* FINAL COMPOSITOR FIX: the spatial fallback is only a safety layer.
+   WebGL must remain visible while the verification controller samples it. */
+.abags-bag-builder-stage .abags-fidelity3d-layer{
+  isolation:isolate!important;
+}
+.abags-bag-builder-stage .abags-neutral-3d{
+  z-index:0!important;
+}
+.abags-bag-builder-stage .abags-fidelity3d-canvas{
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+.abags-bag-builder-stage .abags-fidelity3d-layer .abags-pro3d-view-controls,
+.abags-bag-builder-stage .abags-fidelity3d-layer .abags-pro3d-zoom{
+  z-index:5!important;
 }
