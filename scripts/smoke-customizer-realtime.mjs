@@ -179,6 +179,23 @@ async function main() {
         dialogVisible:style.display!=='none' && style.visibility!=='hidden' && rect.width>1 && rect.height>1,
       };
     })()`);
+    const tapSelector = async (selector, label) => {
+      const point = await evaluate('(() => { const el=document.querySelector('+JSON.stringify(selector)+'); if(!el)return null; const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
+      if(!point) throw new Error('Could not locate tappable target: '+label);
+      await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:point.x,y:point.y,radiusX:1,radiusY:1,force:1,id:1}],modifiers:0});
+      await sleep(80);
+      await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[],modifiers:0});
+      await sleep(120);
+    };
+
+    const chooseByTouch = async (key, value) => {
+      const selector='button[data-builder-key='+JSON.stringify(key)+'][data-builder-value='+JSON.stringify(value)+']';
+      const targetState=await evaluate('(() => { const b=document.querySelector('+JSON.stringify(selector)+'); if(!b)return null; const r=b.getBoundingClientRect(); const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return {disabled:b.disabled,elementHit:top===b||Boolean(top?.closest&&top.closest("button[data-builder-key]")===b),tag:top?.tagName||"",text:top?.textContent?.trim()||""}; })()');
+      if(!targetState||targetState.disabled) throw new Error('Touch target unavailable for '+key+'='+value+': '+JSON.stringify(targetState));
+      if(!targetState.elementHit) throw new Error('Touch target is covered for '+key+'='+value+': '+JSON.stringify(targetState));
+      await tapSelector(selector,key+'='+value);
+      await waitFor('document.querySelector(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\\"true\\"]")?.dataset['+JSON.stringify(key)+']==='+JSON.stringify(value),'touch '+key+'='+value);
+    };
     const choose = async (key, value) => {
       const clicked = await evaluate(`(() => {
         const b=[...document.querySelectorAll('button[data-builder-key=${JSON.stringify(key)}]')].find((n)=>n.dataset.builderValue===${JSON.stringify(value)});
@@ -255,6 +272,19 @@ async function main() {
     await send("Page.enable");
 
     await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await send("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await clearDraftAndReload();
+    await openBuilder();
+    await chooseByTouch("family","round");
+    await chooseByTouch("color","#E4A9B5");
+    const zoomBefore=await evaluate('(() => { const input=document.querySelector(".abags-pro3d-zoom input[type="range"]'); return input?Number(input.value):null; })()');
+    await tapSelector('.abags-pro3d-zoom button[aria-label="Oddal model"]',"mobile zoom out");
+    const zoomAfter=await evaluate('(() => { const input=document.querySelector(".abags-pro3d-zoom input[type="range"]'); return input?Number(input.value):null; })()');
+    if(!(Number.isFinite(zoomBefore)&&Number.isFinite(zoomAfter)&&zoomAfter<zoomBefore)) throw new Error('Mobile zoom did not change: before='+zoomBefore+' after='+zoomAfter);
+    await send("Emulation.setDeviceMetricsOverride",{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    await clearDraftAndReload();
+    await openBuilder();
+
     await waitFor("document.readyState === 'complete'", "desktop initial load");
     await clearDraftAndReload();
     await openBuilder();
