@@ -1352,11 +1352,11 @@ export default function BagBuilderFidelity3D() {
       </div>
 
       <div className="abags-pro3d-zoom" aria-label="Zoom modelu 3D">
-        <button type="button" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setZoom((value) => clamp(value - 0.10, MIN_ZOOM, MAX_ZOOM)); }} aria-label="Oddal model">−</button>
+        <button type="button" onClick={() => setZoom((value) => clamp(value - 0.10, MIN_ZOOM, MAX_ZOOM))} aria-label="Oddal model">−</button>
         <span>ODDAL</span>
         <input type="range" min={34} max={145} step={1} value={Math.round(zoom * 100)} onChange={(event) => setZoom(clamp(Number(event.currentTarget.value) / 100, MIN_ZOOM, MAX_ZOOM))} aria-label="Skala modelu 3D" />
         <span>PRZYBLIŻ</span>
-        <button type="button" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setZoom((value) => clamp(value + 0.10, MIN_ZOOM, MAX_ZOOM)); }} aria-label="Przybliż model">+</button>
+        <button type="button" onClick={() => setZoom((value) => clamp(value + 0.10, MIN_ZOOM, MAX_ZOOM))} aria-label="Przybliż model">+</button>
         <button type="button" className="abags-pro3d-reset" onClick={() => { setRotation(DEFAULT_ROTATION); setViewState("three"); setZoom(DEFAULT_ZOOM); }}>{Math.round(zoom * 100)}%</button>
       </div>
 
