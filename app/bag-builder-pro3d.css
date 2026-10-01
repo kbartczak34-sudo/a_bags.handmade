@@ -212,3 +212,28 @@
   .abags-pro3d-view-controls button{min-width:42px;padding:0 7px;font-size:6.5px}
   .abags-pro3d-chip{max-width:72%;overflow:hidden;text-overflow:ellipsis}
 }
+
+
+/* FINAL COMPOSITOR FIX: the spatial fallback is only a safety layer.
+   WebGL must remain visible while the verification controller samples it. */
+.abags-bag-builder-stage .abags-fidelity3d-layer{
+  isolation:isolate!important;
+}
+.abags-bag-builder-stage .abags-neutral-3d{
+  z-index:0!important;
+}
+.abags-bag-builder-stage .abags-fidelity3d-canvas{
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+.abags-bag-builder-stage .abags-fidelity3d-layer .abags-pro3d-view-controls,
+.abags-bag-builder-stage .abags-fidelity3d-layer .abags-pro3d-zoom{
+  z-index:5!important;
+}
