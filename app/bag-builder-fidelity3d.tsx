@@ -1176,6 +1176,10 @@ export default function BagBuilderFidelity3D() {
         stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
         stage.setAttribute("data-abags-pro3d-ready", "true");
         stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
+        // The fidelity renderer is the canonical customer-facing 3D surface.
+        // Publish the same readiness marker consumed by the existing promotion CSS/contract,
+        // otherwise the contract immediately demotes this canvas back to the legacy SVG layer.
+        stage.setAttribute("data-abags-final3d", "ready");
         stage.querySelectorAll<SVGElement>("svg").forEach((svg) => {
           svg.dataset.abagsLegacySurfaceSuppressed = "true";
           svg.style.setProperty("display", "none", "important");
@@ -1192,6 +1196,7 @@ export default function BagBuilderFidelity3D() {
         stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
         stage.removeAttribute("data-abags-pro3d-ready");
         stage.removeAttribute("data-abags-fidelity3d-ready");
+        stage.removeAttribute("data-abags-final3d");
         retryFrame = window.requestAnimationFrame(initialize);
       }
     };
@@ -1213,6 +1218,7 @@ export default function BagBuilderFidelity3D() {
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
+      stage.removeAttribute("data-abags-final3d");
     };
 
     function handleContextLost(event: Event) {
@@ -1227,6 +1233,7 @@ export default function BagBuilderFidelity3D() {
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
+      stage.removeAttribute("data-abags-final3d");
       retryFrame = window.requestAnimationFrame(initialize);
     }
 
@@ -1255,6 +1262,7 @@ export default function BagBuilderFidelity3D() {
           stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
           stage.removeAttribute("data-abags-pro3d-ready");
           stage.removeAttribute("data-abags-fidelity3d-ready");
+          stage.removeAttribute("data-abags-final3d");
         }
         setRendererEpoch((value) => value + 1);
       }
