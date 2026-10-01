@@ -189,6 +189,9 @@ async function main() {
       } catch (error) {
         const state = await stageState();
         const safeLabel = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        if (outputDir) {
+          try { writeFileSync(join(outputDir, `customizer-${safeLabel || "verification"}-failure-state.json`), JSON.stringify(state, null, 2)); } catch {}
+        }
         try { await capture(`customizer-${safeLabel || "verification"}-failure.png`); } catch {}
         throw new Error(`${label} verification timeout. State: ${JSON.stringify(state)}. ${error instanceof Error ? error.message : String(error)}`);
       }
