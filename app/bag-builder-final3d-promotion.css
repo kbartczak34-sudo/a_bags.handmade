@@ -13,7 +13,7 @@
 /* 0) Empty construction must never be visually blank. Keep the neutral spatial model visible
    while WebGL is warming up or unavailable. Customer selections remain empty. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] > .abags-fidelity3d-layer{
+.abags-bag-builder-stage:not([data-family]) > .abags-fidelity3d-layer{
   display:block!important;
   opacity:1!important;
   visibility:visible!important;
@@ -21,25 +21,25 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   z-index:270!important;
 }
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] > .abags-fidelity3d-layer > .abags-fidelity3d-canvas{
+.abags-bag-builder-stage:not([data-family]) > .abags-fidelity3d-layer > .abags-fidelity3d-canvas{
   opacity:0!important;
   visibility:hidden!important;
   pointer-events:none!important;
 }
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] .abags-neutral-3d{
+.abags-bag-builder-stage:not([data-family]) .abags-neutral-3d{
   display:grid!important;
   opacity:1!important;
   visibility:visible!important;
 }
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] .abags-pro3d-view-controls,
+.abags-bag-builder-stage:not([data-family]) .abags-pro3d-view-controls,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] .abags-pro3d-zoom,
+.abags-bag-builder-stage:not([data-family]) .abags-pro3d-zoom,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] .abags-pro3d-chip,
+.abags-bag-builder-stage:not([data-family]) .abags-pro3d-chip,
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
-.abags-bag-builder-stage[data-family=""] .abags-pro3d-hint{
+.abags-bag-builder-stage:not([data-family]) .abags-pro3d-hint{
   display:none!important;
 }
 
