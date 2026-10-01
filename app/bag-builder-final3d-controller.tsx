@@ -276,7 +276,7 @@ export default function BagBuilderFinal3DController() {
 
       const firstPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
       recordPixels(firstPixels);
-      if (!firstPixels.ok) {
+      if (!firstPixels.ok && !isNeutralEmptyConstruction) {
         retryOrFallback(attempt, firstPixels.reason);
         return;
       }
@@ -312,7 +312,7 @@ export default function BagBuilderFinal3DController() {
 
           const finalPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
           recordPixels(finalPixels);
-          if (!finalPixels.ok) {
+          if (!finalPixels.ok && !isNeutralEmptyConstruction) {
             retryOrFallback(attempt, finalPixels.reason);
             return;
           }
