@@ -77,7 +77,7 @@ const FALLBACKS: BagBuilderDraftConfig = {
   accent: "none",
 };
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage";
+const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-engine-stage='true']";
 const DRAFT_STORAGE_KEY = "abags-bag-builder-v3";
 const OBSERVED_ATTRIBUTES = [
   "data-family",
