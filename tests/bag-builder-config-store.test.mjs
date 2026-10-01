@@ -11,7 +11,7 @@ const guard = fs.readFileSync("app/bag-builder-validation-guard.tsx", "utf8");
 
 test("client configuration has one normalized external-store boundary", () => {
   assert.match(store, /useSyncExternalStore/);
-  assert.match(store, /const STAGE_SELECTOR = "\.abags-bag-builder-stage"/);
+  assert.match(store, /const STAGE_SELECTOR = "\.abags-bag-builder-stage(?:\[data-abags-engine-stage='true'\])?"/);
   assert.match(store, /const OBSERVED_ATTRIBUTES/);
   assert.match(store, /new MutationObserver\(synchronize\)/);
   assert.match(store, /attributeFilter: \[\.\.\.OBSERVED_ATTRIBUTES\]/);
