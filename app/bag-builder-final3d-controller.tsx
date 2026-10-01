@@ -251,16 +251,8 @@ export default function BagBuilderFinal3DController() {
     validate = (attempt = 0) => {
       clearPending();
       if (!stage) return;
-      if (!stage.dataset.family) {
-        stage.dataset.abagsFinal3d = "waiting-for-family";
-        stage.dataset.abagsFinal3dReason = "choose-family";
-        stage.classList.remove("abags-final3d-ready");
-        stage.removeAttribute("data-abags-final3d-signature");
-        clearPixelDiagnostics();
-        return;
-      }
-
       const expectedSignature = signature(stage);
+      const isNeutralEmptyConstruction = !stage.dataset.family;
       const canvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
       const rendererError = stage.dataset.abagsFidelity3dError || "";
       const rendererReady = stage.dataset.abagsFidelity3dReady || "";
@@ -290,7 +282,9 @@ export default function BagBuilderFinal3DController() {
       }
 
       stage.dataset.abagsFinal3d = "promoting";
-      stage.dataset.abagsFinal3dReason = "showing-current-v3-product-frame";
+      stage.dataset.abagsFinal3dReason = isNeutralEmptyConstruction
+        ? "showing-neutral-empty-construction-frame"
+        : "showing-current-v3-product-frame";
       stage.dataset.abagsFinal3dSignature = expectedSignature;
       stage.classList.add("abags-final3d-ready");
 
@@ -324,7 +318,9 @@ export default function BagBuilderFinal3DController() {
           }
 
           stage.dataset.abagsFinal3d = "ready";
-          stage.dataset.abagsFinal3dReason = finalPixels.reason;
+          stage.dataset.abagsFinal3dReason = isNeutralEmptyConstruction
+            ? "neutral-empty-construction"
+            : finalPixels.reason;
           stage.dataset.abagsFinal3dSignature = currentSignature;
           stage.classList.add("abags-final3d-ready");
         });
