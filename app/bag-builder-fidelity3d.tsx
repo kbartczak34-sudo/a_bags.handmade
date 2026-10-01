@@ -1126,9 +1126,10 @@ export default function BagBuilderFidelity3D() {
     const find = () => setStage((current) => {
       const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active");
       const next =
-        dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']") ??
+        dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage='true']") ??
+        dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage='true']") ??
         dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage") ??
-        document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage='true']");
+        document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage='true']");
       return current === next ? current : next;
     });
     find();
