@@ -70,8 +70,11 @@ import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
+const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-01-r3";
+
 export default function ExactLiveCustomizer() {
   useEffect(() => {
+    document.documentElement.dataset.abagsCustomizerRuntimeBuild = ABAGS_CUSTOMIZER_RUNTIME_BUILD;
     const syncMobileViewport = () => {
       const touchDevice = window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(hover: none)").matches;
       const handsetViewport = window.innerWidth <= 1100;
