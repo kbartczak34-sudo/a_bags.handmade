@@ -1172,20 +1172,19 @@ export default function BagBuilderFidelity3D() {
         const nextRenderer = init(canvas);
         if (!nextRenderer) throw new Error("webgl-unavailable");
         rendererRef.current = nextRenderer;
-        // Paint the first frame synchronously during initialization. The previous
-        // implementation waited for a separate effect; on production desktop that
-        // could leave a perfectly valid WebGL context at its default 300x150 size
-        // with no frame ever promoted to the customer.
-        draw(nextRenderer, canvas, readConfig(stage), DEFAULT_ROTATION, DEFAULT_ZOOM);
-        canvas.removeAttribute("data-abags-fidelity3d-error");
+
+        // Activate the customer-facing layer BEFORE measuring/drawing. Otherwise
+        // the canvas can be measured at its fallback 300x150 size while the layer
+        // is still hidden by the legacy-surface CSS.
         setReady(true);
         stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
         stage.setAttribute("data-abags-pro3d-ready", "true");
         stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-        // The fidelity renderer is the canonical customer-facing 3D surface.
-        // Publish the same readiness marker consumed by the existing promotion CSS/contract,
-        // otherwise the contract immediately demotes this canvas back to the legacy SVG layer.
         stage.setAttribute("data-abags-final3d", "ready");
+        stage.setAttribute(
+          "data-abags-final3d-reason",
+          stage.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction",
+        );
         stage.querySelectorAll<SVGElement>("svg").forEach((svg) => {
           svg.dataset.abagsLegacySurfaceSuppressed = "true";
           svg.style.setProperty("display", "none", "important");
@@ -1193,6 +1192,27 @@ export default function BagBuilderFidelity3D() {
           svg.style.setProperty("visibility", "hidden", "important");
           svg.style.setProperty("pointer-events", "none", "important");
         });
+
+        const paint = () => {
+          if (disposed || rendererRef.current !== nextRenderer || canvasRef.current !== canvas) return;
+          try {
+            const rect = stage.getBoundingClientRect();
+            if (rect.width < 40 || rect.height < 40) {
+              requestAnimationFrame(paint);
+              return;
+            }
+            draw(nextRenderer, canvas, readConfig(stage), rotation, zoom);
+          } catch (error) {
+            rendererRef.current = null;
+            canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
+            setReady(false);
+            stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+            stage.removeAttribute("data-abags-pro3d-ready");
+            stage.removeAttribute("data-abags-fidelity3d-ready");
+            stage.removeAttribute("data-abags-final3d");
+          }
+        };
+        requestAnimationFrame(paint);
       } catch (error) {
         rendererRef.current = null;
         canvas.removeAttribute("data-abags-fidelity3d-frame");
