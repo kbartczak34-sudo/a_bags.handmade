@@ -205,10 +205,21 @@ async function main() {
     };
     const buildBag = async ({ family, color, stitch }, label) => {
       const empty = await stageState();
-      if (!empty?.dialogVisible || empty.photoTrue || empty.readyProductChoices !== 0 || !empty.svgPresent || !empty.svgVisible || empty.family || empty.color || empty.stitch) {
+      if (!empty?.dialogVisible || empty.photoTrue || empty.readyProductChoices !== 0 || empty.family || empty.color || empty.stitch) {
         throw new Error(`${label} did not start from the safe empty construction: ${JSON.stringify(empty)}`);
       }
-      const initialSignature = empty.signature;
+
+      // Empty construction is intentionally a neutral 3D atelier tote, not a blank stage.
+      // Verify the same customer-facing WebGL surface before the first real configuration choice.
+      const emptyReady = await waitVerified3d(`${label} empty neutral`);
+      if (emptyReady.family || emptyReady.color || emptyReady.stitch) {
+        throw new Error(`${label} neutral empty frame inherited a customer selection: ${JSON.stringify(emptyReady)}`);
+      }
+      if (outputDir) {
+        writeFileSync(join(outputDir, `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-empty-state.json`), JSON.stringify(emptyReady, null, 2));
+        await capture(`${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-empty-live.png`);
+      }
+      const initialSignature = emptyReady.signature;
 
       await choose("family", family);
       const afterFamily = await waitVerified3d(`${label} after family`);
