@@ -1169,11 +1169,15 @@ export default function BagBuilderFidelity3D() {
       }
       canvasRef.current = canvas;
       try {
-        rendererRef.current = init(canvas);
-        if (!rendererRef.current) throw new Error("webgl-unavailable");
+        const nextRenderer = init(canvas);
+        if (!nextRenderer) throw new Error("webgl-unavailable");
+        rendererRef.current = nextRenderer;
+        // Paint the first frame synchronously during initialization. The previous
+        // implementation waited for a separate effect; on production desktop that
+        // could leave a perfectly valid WebGL context at its default 300x150 size
+        // with no frame ever promoted to the customer.
+        draw(nextRenderer, canvas, readConfig(stage), DEFAULT_ROTATION, DEFAULT_ZOOM);
         canvas.removeAttribute("data-abags-fidelity3d-error");
-        canvas.removeAttribute("data-abags-fidelity3d-frame");
-        canvas.removeAttribute("data-abags-fidelity3d-frame-at");
         setReady(true);
         stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
         stage.setAttribute("data-abags-pro3d-ready", "true");
@@ -1206,11 +1210,19 @@ export default function BagBuilderFidelity3D() {
     initialize();
     stageObserver = new MutationObserver(initialize);
     stageObserver.observe(stage, { childList: true, subtree: true });
+    const resizeObserver = new ResizeObserver(() => {
+      const renderer = rendererRef.current;
+      const canvas = canvasRef.current;
+      if (!renderer || !canvas) return;
+      try { draw(renderer, canvas, readConfig(stage), rotation, zoom); } catch { /* normal redraw effect handles recovery */ }
+    });
+    resizeObserver.observe(stage);
 
     return () => {
       disposed = true;
       if (retryFrame) window.cancelAnimationFrame(retryFrame);
       stageObserver?.disconnect();
+      resizeObserver.disconnect();
       const canvas = canvasRef.current;
       if (canvas) {
         canvas.removeEventListener("webglcontextlost", handleContextLost);
