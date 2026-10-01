@@ -165,7 +165,7 @@ function ChoiceGroup<T extends string>({ title, step, options, value, onChange, 
   return <fieldset className={`abags-builder-group${compact ? " is-compact" : ""}`} disabled={disabled}>
     <legend><span>{String(step).padStart(2, "0")}</span>{title}</legend>
     <div className="abags-builder-options">
-      {options.map((option) => <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} data-builder-key={dataKey} data-builder-value={option.value}>
+      {options.map((option) => <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} onPointerUp={() => onChange(option.value)} data-builder-key={dataKey} data-builder-value={option.value}>
         {option.swatch && <span className="abags-builder-swatch" style={{ background: option.swatch }} aria-hidden="true" />}
         <span className="abags-builder-option-copy"><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>
       </button>)}
