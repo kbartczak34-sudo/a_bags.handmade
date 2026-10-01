@@ -115,6 +115,32 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 }
 
 
+/* Spatial fallback safety net: never expose an empty product stage on mobile.
+   The fallback is hidden automatically once Fidelity3D reaches the verified ready state. */
+.abags-bag-builder-stage .abags-neutral-3d{
+  display:grid!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+  z-index:80!important;
+}
+.abags-bag-builder-stage[data-abags-final3d="ready"] .abags-neutral-3d{
+  display:none!important;
+}
+.abags-bag-builder-stage[data-abags-final3d="promoting"] .abags-neutral-3d{
+  display:none!important;
+}
+.abags-bag-builder-stage .abags-neutral-3d-object{
+  transform:translateY(-3%) rotateX(-7deg) rotateY(-22deg);
+}
+@media(max-width:620px){
+  .abags-bag-builder-stage .abags-neutral-3d-object{
+    width:min(56vw,280px)!important;
+    height:min(64vw,320px)!important;
+    min-width:185px!important;
+    min-height:215px!important;
+  }
+}
 /* FINAL EMPTY-STATE OVERRIDE */
 /* The compositor intentionally hides the WebGL layer while renderer-not-ready.
    In the empty construction state we must keep the neutral spatial model visible
