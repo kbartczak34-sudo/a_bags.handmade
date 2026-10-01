@@ -1346,6 +1346,46 @@ export default function BagBuilderFidelity3D() {
         ref={(node) => {
           canvasRef.current = node;
           setCanvasNode(node);
+          if (!node || rendererRef.current) return;
+          const host = node.closest<HTMLElement>(".abags-bag-builder-stage");
+          if (!host) return;
+          setStage((current) => current ?? host);
+          try {
+            const nextRenderer = init(node);
+            if (!nextRenderer) throw new Error("webgl-unavailable");
+            rendererRef.current = nextRenderer;
+            host.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
+            host.setAttribute("data-abags-pro3d-ready", "true");
+            host.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
+            host.setAttribute("data-abags-final3d", "ready");
+            host.setAttribute("data-abags-final3d-reason", host.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction");
+            host.querySelectorAll<SVGElement>("svg").forEach((svg) => {
+              svg.dataset.abagsLegacySurfaceSuppressed = "true";
+              svg.style.setProperty("display", "none", "important");
+              svg.style.setProperty("opacity", "0", "important");
+              svg.style.setProperty("visibility", "hidden", "important");
+              svg.style.setProperty("pointer-events", "none", "important");
+            });
+            requestAnimationFrame(() => {
+              if (rendererRef.current !== nextRenderer || canvasRef.current !== node) return;
+              try {
+                draw(nextRenderer, node, readConfig(host), DEFAULT_ROTATION, DEFAULT_ZOOM);
+                setReady(true);
+              } catch (error) {
+                node.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
+                rendererRef.current = null;
+                host.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+                host.removeAttribute("data-abags-pro3d-ready");
+                host.removeAttribute("data-abags-fidelity3d-ready");
+                host.removeAttribute("data-abags-final3d");
+                setReady(false);
+              }
+            });
+          } catch (error) {
+            node.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "renderer-init-failed";
+            rendererRef.current = null;
+            setReady(false);
+          }
         }}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
         aria-label={label}
