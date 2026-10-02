@@ -154,3 +154,17 @@
 .abags-bag-builder-stage .abags-fidelity3d-layer .abags-pro3d-zoom{
   z-index:5!important;
 }
+
+
+/* FINAL TOUCH HIT-TEST FIX
+   The mobile V4 header can overlap the vertically scrolling builder controls.
+   Its visual surface must not intercept touches intended for an option underneath;
+   only the actual header action buttons remain interactive. */
+@media (max-width: 980px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header {
+    pointer-events:none!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-header > button {
+    pointer-events:auto!important;
+  }
+}
