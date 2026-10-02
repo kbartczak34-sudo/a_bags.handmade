@@ -168,3 +168,44 @@
     pointer-events:auto!important;
   }
 }
+
+
+/* FINAL BUILDER HIT-TEST FIX
+   Builder option controls must remain real DOM hit targets even when the V4 dialog
+   contains composited preview/compatibility layers. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls{
+  position:relative!important;
+  z-index:600!important;
+  pointer-events:auto!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group{
+  position:relative!important;
+  z-index:610!important;
+  pointer-events:auto!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group legend{
+  position:relative!important;
+  z-index:611!important;
+  pointer-events:auto!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options{
+  position:relative!important;
+  z-index:612!important;
+  pointer-events:auto!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button{
+  position:relative!important;
+  z-index:613!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  cursor:pointer!important;
+}
+@media(max-width:980px){
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls{
+    z-index:600!important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-options button{
+    min-height:43px!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+}
