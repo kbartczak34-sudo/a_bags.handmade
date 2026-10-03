@@ -79,8 +79,8 @@ const EMPTY: Config = {
 // instead of making the round body read like a flat printed card.
 // Calibrated product view: expose the physical side wall immediately on mobile.
 // A positive yaw was still reading too close to front-on on some Chromium devices.
-const DEFAULT_ROTATION = { x: -0.20, y: -1.18 };
-const DEFAULT_ZOOM = 0.68;
+const DEFAULT_ROTATION = { x: -0.12, y: -0.62 };
+const DEFAULT_ZOOM = 0.72;
 
 function physicalDepth(family: Exclude<Family, "">) {
   const calibrated = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].depth;
@@ -1173,25 +1173,14 @@ export default function BagBuilderFidelity3D() {
         if (!nextRenderer) throw new Error("webgl-unavailable");
         rendererRef.current = nextRenderer;
 
-        // Activate the customer-facing layer BEFORE measuring/drawing. Otherwise
-        // the canvas can be measured at its fallback 300x150 size while the layer
-        // is still hidden by the legacy-surface CSS.
-        setReady(true);
-        stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
-        stage.setAttribute("data-abags-pro3d-ready", "true");
-        stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-        stage.setAttribute("data-abags-final3d", "ready");
-        stage.setAttribute(
-          "data-abags-final3d-reason",
-          stage.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction",
-        );
-        stage.querySelectorAll<SVGElement>("svg").forEach((svg) => {
-          svg.dataset.abagsLegacySurfaceSuppressed = "true";
-          svg.style.setProperty("display", "none", "important");
-          svg.style.setProperty("opacity", "0", "important");
-          svg.style.setProperty("visibility", "hidden", "important");
-          svg.style.setProperty("pointer-events", "none", "important");
-        });
+        // Keep the deterministic fallback visible while WebGL is being prepared.
+        // A valid WebGL context alone is not evidence that the customer can see a
+        // rendered product. The renderer is promoted only after draw() succeeds.
+        stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+        stage.removeAttribute("data-abags-pro3d-ready");
+        stage.removeAttribute("data-abags-fidelity3d-ready");
+        stage.removeAttribute("data-abags-final3d");
+        setReady(false);
 
         const paint = () => {
           if (disposed || rendererRef.current !== nextRenderer || canvasRef.current !== canvas) return;
@@ -1202,6 +1191,19 @@ export default function BagBuilderFidelity3D() {
               return;
             }
             draw(nextRenderer, canvas, readConfig(stage), rotation, zoom);
+
+            // Promotion happens only after a successful framebuffer write.
+            // This prevents Android/Chromium from hiding the SVG fallback when
+            // WebGL initialized but the first visible frame was still blank.
+            stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
+            stage.setAttribute("data-abags-pro3d-ready", "true");
+            stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
+            stage.setAttribute("data-abags-final3d", "ready");
+            stage.setAttribute(
+              "data-abags-final3d-reason",
+              stage.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction",
+            );
+            setReady(true);
           } catch (error) {
             rendererRef.current = null;
             canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
@@ -1346,47 +1348,9 @@ export default function BagBuilderFidelity3D() {
         ref={(node) => {
           canvasRef.current = node;
           setCanvasNode(node);
-          if (!node || rendererRef.current) return;
+          if (!node) return;
           const host = node.closest<HTMLElement>(".abags-bag-builder-stage");
-          if (!host) return;
-          setStage((current) => current ?? host);
-          try {
-            const nextRenderer = init(node);
-            if (!nextRenderer) throw new Error("webgl-unavailable");
-            rendererRef.current = nextRenderer;
-            requestAnimationFrame(() => {
-              if (rendererRef.current !== nextRenderer || canvasRef.current !== node) return;
-              try {
-                draw(nextRenderer, node, readConfig(host), DEFAULT_ROTATION, DEFAULT_ZOOM);
-
-                // Promote WebGL only after the first frame has rendered successfully.
-                // Creating a WebGL context is not proof that the framebuffer contains a
-                // visible product. Keeping the SVG fallback visible until this point
-                // prevents a blank customer stage on Chromium/Android.
-                host.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
-                host.setAttribute("data-abags-pro3d-ready", "true");
-                host.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-                host.setAttribute("data-abags-final3d", "ready");
-                host.setAttribute(
-                  "data-abags-final3d-reason",
-                  host.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction",
-                );
-                setReady(true);
-              } catch (error) {
-                node.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
-                rendererRef.current = null;
-                host.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
-                host.removeAttribute("data-abags-pro3d-ready");
-                host.removeAttribute("data-abags-fidelity3d-ready");
-                host.removeAttribute("data-abags-final3d");
-                setReady(false);
-              }
-            });
-          } catch (error) {
-            node.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "renderer-init-failed";
-            rendererRef.current = null;
-            setReady(false);
-          }
+          if (host) setStage((current) => current ?? host);
         }}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
         aria-label={label}
