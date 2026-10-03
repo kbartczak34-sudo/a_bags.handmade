@@ -1354,18 +1354,23 @@ export default function BagBuilderFidelity3D() {
             const nextRenderer = init(node);
             if (!nextRenderer) throw new Error("webgl-unavailable");
             rendererRef.current = nextRenderer;
-            host.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
-            host.setAttribute("data-abags-pro3d-ready", "true");
-            host.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-            host.setAttribute("data-abags-final3d", "ready");
-            host.setAttribute("data-abags-final3d-reason", host.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction");
-            // Keep the deterministic SVG fallback visible until the final compositor
-            // verifier promotes a real WebGL framebuffer to data-abags-final3d="ready".
-            // Hiding it here creates a blank stage if WebGL initializes but fails pixel validation.
             requestAnimationFrame(() => {
               if (rendererRef.current !== nextRenderer || canvasRef.current !== node) return;
               try {
                 draw(nextRenderer, node, readConfig(host), DEFAULT_ROTATION, DEFAULT_ZOOM);
+
+                // Promote WebGL only after the first frame has rendered successfully.
+                // Creating a WebGL context is not proof that the framebuffer contains a
+                // visible product. Keeping the SVG fallback visible until this point
+                // prevents a blank customer stage on Chromium/Android.
+                host.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
+                host.setAttribute("data-abags-pro3d-ready", "true");
+                host.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
+                host.setAttribute("data-abags-final3d", "ready");
+                host.setAttribute(
+                  "data-abags-final3d-reason",
+                  host.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction",
+                );
                 setReady(true);
               } catch (error) {
                 node.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
