@@ -1359,13 +1359,9 @@ export default function BagBuilderFidelity3D() {
             host.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
             host.setAttribute("data-abags-final3d", "ready");
             host.setAttribute("data-abags-final3d-reason", host.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction");
-            host.querySelectorAll<SVGElement>("svg").forEach((svg) => {
-              svg.dataset.abagsLegacySurfaceSuppressed = "true";
-              svg.style.setProperty("display", "none", "important");
-              svg.style.setProperty("opacity", "0", "important");
-              svg.style.setProperty("visibility", "hidden", "important");
-              svg.style.setProperty("pointer-events", "none", "important");
-            });
+            // Keep the deterministic SVG fallback visible until the final compositor
+            // verifier promotes a real WebGL framebuffer to data-abags-final3d="ready".
+            // Hiding it here creates a blank stage if WebGL initializes but fails pixel validation.
             requestAnimationFrame(() => {
               if (rendererRef.current !== nextRenderer || canvasRef.current !== node) return;
               try {
