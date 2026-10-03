@@ -408,6 +408,7 @@ export default function BagBuilderFinal3DController() {
 
     const findStage = () => attachStage(
       document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage=\"true\"]") ??
+      document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ??
       document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage=\"true\"]") ??
       document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]"),
     );
