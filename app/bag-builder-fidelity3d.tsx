@@ -1034,7 +1034,9 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     // 1.62-unit strap mesh rise far above the preview viewport, so only its
     // right vertical leg remained visible as a detached burgundy bar.
     const strapScaleX = Math.max(0.08, attachment.x / 1.18);
-    const strapScaleY = profile.handleScale * 0.34;
+    // The mesh's raw arch is intentionally wide/tall. Scale it from the actual
+    // ring span and keep the rise compact enough to remain a shoulder strap.
+    const strapScaleY = profile.handleScale * 0.30;
     drawMesh(
       renderer,
       config.strap === "chain" ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain) : meshes.strap,
