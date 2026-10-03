@@ -71,6 +71,13 @@ test("descendant UI and fallback renderer mutations cannot cancel promotion", ()
   assert.doesNotMatch(observeBlock, /subtree:\s*true/, "stage observer must remain scoped to stage attributes");
 });
 
+
+test("Fidelity renderer does not hide the deterministic SVG fallback before verifier promotion", () => {
+  assert.doesNotMatch(controller, /svg\\.style\\.setProperty\\(\"display\", \"none\", \"important\"\\)/);
+  assert.doesNotMatch(controller, /svg\\.style\\.setProperty\\(\"visibility\", \"hidden\", \"important\"\\)/);
+  assert.match(promotionCss, /data-abags-final3d=\"ready\"[\\s\\S]*> svg\\{[\\s\\S]*display:none!important;/);
+});
+
 test("real configuration and renderer health mutations still retrigger final 3D validation", () => {
   for (const attribute of [
     "data-family", "data-color", "data-stitch", "data-flap", "data-handles",
