@@ -1028,24 +1028,20 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const material = config.strap === "chain" ? 4 : config.strap === "leather" ? 2 : 3;
     const attachment = familyAttachment(profile, renderFamily);
-    // The shoulder strap is an arch whose endpoints must land exactly on the
-    // two hardware rings. The previous fixed X scale made the arch wider than
-    // the ring spacing on the tote/round profiles, leaving one long vertical
-    // segment visibly floating beside the bag on mobile.
-    const strapHalfWidth = config.strap === "chain"
-      ? attachment.x
-      : attachment.x;
-    const strapScaleX = Math.max(0.08, strapHalfWidth / 1.18);
-    const strapScaleY = config.strap === "chain"
-      ? profile.handleScale * 0.84
-      : profile.handleScale * 0.92;
+    // The shoulder strap is a compact arch anchored to the two side rings.
+    // Keep its rise proportional to the physical bag rather than using the old
+    // handle-height multiplier: the previous 0.84/0.92 multiplier made the
+    // 1.62-unit strap mesh rise far above the preview viewport, so only its
+    // right vertical leg remained visible as a detached burgundy bar.
+    const strapScaleX = Math.max(0.08, attachment.x / 1.18);
+    const strapScaleY = profile.handleScale * 0.45;
     drawMesh(
       renderer,
       config.strap === "chain" ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain) : meshes.strap,
       multiply(
         root,
         matrix(
-          [0, attachment.y - 0.02, -profile.topDepth * 0.52],
+          [0, attachment.y - 0.02, -profile.topDepth * 0.18],
           [strapScaleX, strapScaleY, 1],
         ),
       ),
