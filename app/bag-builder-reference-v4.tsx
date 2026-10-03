@@ -183,7 +183,9 @@ function sync(dialog: HTMLElement) {
   synchronizeGroups(dialog, stage);
   synchronizeLegacyFlatSurface(stage);
   tagCoreSummary(dialog);
-  boostInitialModel(stage);
+  // Do not auto-zoom the live product on mobile. The canonical renderer
+  // owns its own calibrated framing; forcing the legacy zoom control to ~108%
+  // clips the handles/top edge on narrow Android viewports.
 }
 
 export default function BagBuilderReferenceV4() {
