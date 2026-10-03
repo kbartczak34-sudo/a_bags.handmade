@@ -1034,14 +1034,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     // 1.62-unit strap mesh rise far above the preview viewport, so only its
     // right vertical leg remained visible as a detached burgundy bar.
     const strapScaleX = Math.max(0.08, attachment.x / 1.18);
-    const strapScaleY = profile.handleScale * 0.45;
+    const strapScaleY = profile.handleScale * 0.34;
     drawMesh(
       renderer,
       config.strap === "chain" ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain) : meshes.strap,
       multiply(
         root,
         matrix(
-          [0, attachment.y - 0.02, -profile.topDepth * 0.18],
+          [0, attachment.y - 0.02, attachment.z],
           [strapScaleX, strapScaleY, 1],
         ),
       ),
