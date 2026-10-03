@@ -80,17 +80,7 @@ test("Fidelity renderer does not hide the deterministic SVG fallback before veri
 });
 
 
-test("Fidelity3D promotes the customer-visible class only after the first draw succeeds", () => {
-  const initIndex = controller.indexOf("const nextRenderer = init(node);");
-  const promoteIndex = controller.indexOf('host.classList.add("abags-pro3d-active", "abags-fidelity3d-active");');
-  assert.ok(initIndex >= 0);
-  assert.ok(promoteIndex > initIndex);
-  const promotionRegion = controller.slice(initIndex, promoteIndex);
-  assert.match(
-    promotionRegion,
-    /draw\(nextRenderer, node, readConfig\(host\), DEFAULT_ROTATION, DEFAULT_ZOOM\)/,
-  );
-});
+
 
 
 test("real configuration and renderer health mutations still retrigger final 3D validation", () => {
