@@ -1212,10 +1212,8 @@ export default function BagBuilderFidelity3D() {
             stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
             stage.setAttribute("data-abags-pro3d-ready", "true");
             stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-            stage.dataset.abagsFinal3d = "waiting-for-verifier";
-            stage.dataset.abagsFinal3dReason = stage.dataset.family
-              ? "renderer-frame-awaiting-pixel-verifier"
-              : "neutral-empty-construction";
+            // Final customer-visible state is owned exclusively by Final3DController.
+            // The renderer publishes only its own framebuffer-readiness metadata.
             stage.classList.remove("abags-final3d-ready");
             setReady(true);
           } catch (error) {
