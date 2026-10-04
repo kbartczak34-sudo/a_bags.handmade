@@ -105,6 +105,6 @@ test("Fidelity3D renderer never self-promotes final visibility before the verifi
 
 test("only the final verifier grants customer-visible Fidelity3D state", () => {
   assert.match(controller, /stage\.classList\.add\("abags-final3d-ready", "abags-fidelity3d-active"\)/);
-  assert.match(controller, /stage\\.dataset\\.abagsFinal3d = \"ready\"/);
-  assert.match(controller, /stage\\.dataset\\.abagsFinal3dSignature = currentSignature/);
+  assert.match(controller, /stage\.dataset\.abagsFinal3d = "ready"/);
+  assert.match(controller, /stage\.dataset\.abagsFinal3dSignature = currentSignature/);
 });

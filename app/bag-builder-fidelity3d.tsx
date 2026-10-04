@@ -1193,7 +1193,6 @@ export default function BagBuilderFidelity3D() {
         stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
         stage.removeAttribute("data-abags-pro3d-ready");
         stage.removeAttribute("data-abags-fidelity3d-ready");
-        stage.removeAttribute("data-abags-final3d");
         setReady(false);
 
         const paint = () => {
@@ -1223,7 +1222,6 @@ export default function BagBuilderFidelity3D() {
             stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
             stage.removeAttribute("data-abags-pro3d-ready");
             stage.removeAttribute("data-abags-fidelity3d-ready");
-            stage.removeAttribute("data-abags-final3d");
           }
         };
         requestAnimationFrame(paint);
@@ -1236,7 +1234,6 @@ export default function BagBuilderFidelity3D() {
         stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
         stage.removeAttribute("data-abags-pro3d-ready");
         stage.removeAttribute("data-abags-fidelity3d-ready");
-        stage.removeAttribute("data-abags-final3d");
         retryFrame = window.requestAnimationFrame(initialize);
       }
     };
@@ -1266,7 +1263,6 @@ export default function BagBuilderFidelity3D() {
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
-      stage.removeAttribute("data-abags-final3d");
     };
 
     function handleContextLost(event: Event) {
@@ -1281,7 +1277,6 @@ export default function BagBuilderFidelity3D() {
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
-      stage.removeAttribute("data-abags-final3d");
       retryFrame = window.requestAnimationFrame(initialize);
     }
 
@@ -1310,7 +1305,6 @@ export default function BagBuilderFidelity3D() {
           stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
           stage.removeAttribute("data-abags-pro3d-ready");
           stage.removeAttribute("data-abags-fidelity3d-ready");
-          stage.removeAttribute("data-abags-final3d");
         }
         setRendererEpoch((value) => value + 1);
       }
