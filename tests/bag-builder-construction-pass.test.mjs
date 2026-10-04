@@ -44,3 +44,17 @@ test("construction overlay remains available as a non-interactive calibration fa
   assert.match(css, /abags-pro3d-active/);
   assert.match(css, /abags-canvas3d-active/);
 });
+
+
+test("customer builder exposes only family-compatible accessory choices and activates each choice once", async () => {
+  const source = await read("app/bag-builder-engine.tsx");
+  assert.match(source, /const familyStraps = useMemo/);
+  assert.match(source, /const familyAccents = useMemo/);
+  assert.match(source, /isAgataBuilderConstructionSupported\(config\.family, "straps"/);
+  assert.match(source, /isAgataBuilderConstructionSupported\(config\.family, "accents"/);
+  assert.doesNotMatch(source, /onPointerUp=\{\(\) => onChange\(option\.value\)\}/);
+  assert.match(source, /onClick=\{\(\) => onChange\(option\.value\)\}/);
+  assert.match(source, /next\.handles = "none"/);
+  assert.match(source, /next\.strap = "none"/);
+  assert.match(source, /next\.accent = "none"/);
+});
