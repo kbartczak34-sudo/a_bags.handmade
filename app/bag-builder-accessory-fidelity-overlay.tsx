@@ -74,26 +74,18 @@ function path3d(ctx: CanvasRenderingContext2D, points: Point3[], width: number, 
   return started;
 }
 
-function strapArc(family: Exclude<Family, "">, strap: Config["strap"]) {
+function strapArc(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  // Mirror the authoritative WebGL strap transform exactly. The previous overlay
-  // used ringY + 1.25*ry, while WebGL used attachmentY + scaled raw arch height;
-  // that mismatch produced the detached vertical burgundy leg seen in production.
-  const attachmentX = spec.rx * spec.attachmentWidthFactor;
-  const attachmentY = spec.topY + spec.attachmentYOffset;
-  const attachmentZ = (spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1)) / 2 * spec.attachmentZFactor;
-  const strapScaleX = Math.max(0.08, attachmentX / 1.18);
-  const strapScaleY = spec.handleScale[0] * 0.30;
-  const rawRx = strap === "chain" ? spec.rx * spec.chain[0] : 1.18;
-  const rawRy = strap === "chain" ? spec.ry * spec.chain[1] : 1.62;
-  const depth = strap === "chain" ? 0 : 0;
+  const archHeight = Math.max(0.78, spec.ry * 1.25);
+  const baseZ = spec.depth / 2 + 0.055;
+  const depthBow = Math.max(ABAGS_ACCESSORY_VISUAL.strapDepthBowMin, spec.depth * ABAGS_ACCESSORY_VISUAL.strapDepthBowRatio);
   return Array.from({ length: 49 }, (_, index) => {
     const t = index / 48;
     const angle = Math.PI - t * Math.PI;
     return [
-      rawRx * strapScaleX * Math.cos(angle),
-      attachmentY + rawRy * strapScaleY * Math.sin(angle),
-      attachmentZ + depth,
+      spec.sideAnchor * Math.cos(angle),
+      spec.ringY + archHeight * Math.sin(angle),
+      baseZ + depthBow * Math.sin(angle),
     ] as Point3;
   });
 }
@@ -111,7 +103,7 @@ function flapContour(family: Exclude<Family, "">) {
 
 function drawStrap(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family || config.strap === "none") return;
-  const arc = strapArc(config.family as Exclude<Family, "">, config.strap);
+  const arc = strapArc(config.family as Exclude<Family, "">);
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
 
   if (config.strap === "chain") {
