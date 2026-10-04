@@ -12,8 +12,11 @@ type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
 type Point2 = { x: number; y: number; scale: number };
 
-const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
-const DEFAULT_ZOOM = 0.94;
+// Keep the first paint identical to the canonical WebGL renderer. The live transform is
+// subsequently overwritten by the renderer event/dataset, but these defaults must never
+// produce a visibly detached accessory during the first mobile frame.
+const DEFAULT_ROTATION: Rotation = { x: -0.12, y: -0.62 };
+const DEFAULT_ZOOM = 0.72;
 
 function readConfig(stage: HTMLElement): Config {
   return {
@@ -35,30 +38,37 @@ function hardwareColor(value: string) {
 }
 
 function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
+  // This projection intentionally mirrors BagBuilderFidelity3D's WebGL transform:
+  // root = scale(zoom) * rotX(rotation.x) * rotY(rotation.y)
+  // view = translation(0, -0.02, -5.0)
+  // projection = perspective(Math.PI / 5.3, aspect, 0.1, 100)
+  // Keeping the matrix order, camera distance and FOV identical is what makes the
+  // 2D accessory compositor physically lock to the WebGL body on narrow screens.
   const aspect = width / Math.max(1, height);
-  const narrow = aspect < 0.82;
-  const fit = narrow ? 0.92 : aspect < 1.15 ? 0.97 : 1;
-  const rootScale = zoom * fit;
-  const cameraZ = narrow ? -6.45 : aspect < 1.15 ? -5.85 : -5.25;
-  const verticalOffset = narrow ? -0.08 : -0.03;
-  let [x, y, z] = point.map((value) => value * rootScale) as Point3;
+  let [x, y, z] = point.map((value) => value * zoom) as Point3;
+
+  // WebGL matrix multiplication applies rotY first, then rotX.
+  const cy = Math.cos(rotation.y);
+  const sy = Math.sin(rotation.y);
+  [x, z] = [x * cy + z * sy, -x * sy + z * cy];
 
   const cx = Math.cos(rotation.x);
   const sx = Math.sin(rotation.x);
   [y, z] = [y * cx - z * sx, y * sx + z * cx];
-  const cy = Math.cos(rotation.y);
-  const sy = Math.sin(rotation.y);
-  [x, z] = [x * cy + z * sy, -x * sy + z * cy + cameraZ];
-  y += verticalOffset;
+
+  // Same view matrix as the canonical WebGL renderer.
+  y -= 0.02;
+  z -= 5.0;
   if (z >= -0.08) return null;
 
-  const f = 1 / Math.tan((Math.PI / 5.15) / 2);
+  // Same perspective matrix as the canonical WebGL renderer.
+  const f = 1 / Math.tan((Math.PI / 5.3) / 2);
   const ndcX = (x * f / aspect) / -z;
   const ndcY = (y * f) / -z;
   return {
     x: (ndcX * 0.5 + 0.5) * width,
     y: (0.5 - ndcY * 0.5) * height,
-    scale: Math.max(0.25, Math.min(2.2, (f / -z) * rootScale)),
+    scale: Math.max(0.25, Math.min(2.2, (f / -z) * zoom)),
   };
 }
 
