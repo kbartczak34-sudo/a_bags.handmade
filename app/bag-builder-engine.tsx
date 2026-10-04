@@ -108,8 +108,17 @@ function readDraft(): BagBuilderConfig {
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<BagBuilderConfig>;
     const next = { ...EMPTY, ...parsed };
+    if (next.family && !isAgataBuilderHandleSupported(next.family, next.handles)) {
+      next.handles = "none";
+    }
     if (next.family && !isAgataBuilderConstructionSupported(next.family, "flaps", next.flap)) {
       next.flap = "none";
+    }
+    if (next.family && !isAgataBuilderConstructionSupported(next.family, "straps", next.strap)) {
+      next.strap = "none";
+    }
+    if (next.family && !isAgataBuilderConstructionSupported(next.family, "accents", next.accent)) {
+      next.accent = "none";
     }
     return next;
   } catch {
