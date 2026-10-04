@@ -34,7 +34,7 @@ test("accessory overlay camera follows the canonical WebGL transform", () => {
 
 
 test("accessory projection matches WebGL matrix order, view and FOV", () => {
-    assert.match(overlay, /const DEFAULT_ROTATION: Rotation = \\{ x: -0\\.12, y: -0\\.62 \\};/);
+      assert.match(overlay, /DEFAULT_ROTATION: Rotation = \{ x: -0\.12, y: -0\.62 \}/);
   assert.match(overlay, /const DEFAULT_ZOOM = 0\.72/);
   assert.match(overlay, /WebGL matrix multiplication applies rotY first, then rotX/);
   assert.match(overlay, /z -= 5\.0/);
