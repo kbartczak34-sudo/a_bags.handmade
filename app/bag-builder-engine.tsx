@@ -165,7 +165,7 @@ function ChoiceGroup<T extends string>({ title, step, options, value, onChange, 
   return <fieldset className={`abags-builder-group${compact ? " is-compact" : ""}`} disabled={disabled}>
     <legend><span>{String(step).padStart(2, "0")}</span>{title}</legend>
     <div className="abags-builder-options">
-      {options.map((option) => <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} onPointerUp={() => onChange(option.value)} data-builder-key={dataKey} data-builder-value={option.value}>
+      {options.map((option) => <button key={option.value} type="button" className={value === option.value ? "is-active" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} data-builder-key={dataKey} data-builder-value={option.value}>
         {option.swatch && <span className="abags-builder-swatch" style={{ background: option.swatch }} aria-hidden="true" />}
         <span className="abags-builder-option-copy"><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>
       </button>)}
@@ -276,9 +276,17 @@ export default function BagBuilderEngine() {
   const canSave = Boolean(config.family && config.color && config.stitch);
   const familyHandles = useMemo(() => config.family ? HANDLES.filter((item) => isAgataBuilderHandleSupported(config.family, item.value)) : HANDLES, [config.family]);
   const familyFlaps = useMemo(() => config.family ? FLAPS.filter((item) => isAgataBuilderConstructionSupported(config.family, "flaps", item.value)) : FLAPS, [config.family]);
+  const familyStraps = useMemo(() => config.family ? STRAPS.filter((item) => isAgataBuilderConstructionSupported(config.family, "straps", item.value)) : STRAPS, [config.family]);
+  const familyAccents = useMemo(() => config.family ? ACCENTS.filter((item) => isAgataBuilderConstructionSupported(config.family, "accents", item.value)) : ACCENTS, [config.family]);
   const supportedFlap = config.family && isAgataBuilderConstructionSupported(config.family, "flaps", config.flap) ? config.flap : "none";
+  const supportedStrap = config.family && isAgataBuilderConstructionSupported(config.family, "straps", config.strap) ? config.strap : "none";
+  const supportedAccent = config.family && isAgataBuilderConstructionSupported(config.family, "accents", config.accent) ? config.accent : "none";
 
-  const reset = () => { setConfig(EMPTY); window.localStorage.removeItem(DRAFT_KEY); setSaved(false); };
+  const reset = () => {
+    setConfig(EMPTY);
+    window.localStorage.removeItem(DRAFT_KEY);
+    setSaved(false);
+  };
   const save = () => {
     if (!canSave) return;
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
@@ -287,7 +295,7 @@ export default function BagBuilderEngine() {
 
   if (!mount || !preview) return null;
 
-  const message = config.family ? `Dzień dobry! Chciałabym zamówić torebkę zaprojektowaną w A-Bags Bag Builder. Fason: ${labelFor(FAMILIES, config.family)}. Kolor sznurka: ${labelFor(COLORS, config.color)}. Ścieg szydełkowy: ${labelFor(STITCHES, config.stitch)}. Klapa: ${labelFor(FLAPS, supportedFlap)}. Uchwyty: ${labelFor(HANDLES, config.handles)}. Pasek: ${labelFor(STRAPS, config.strap)}. Okucia: ${labelFor(HARDWARE, config.hardware)}. Detal: ${labelFor(ACCENTS, config.accent)}. Materiał: sznurek poliestrowy z Pimiotki. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym zaprojektować własną torebkę A-Bags.";
+  const message = config.family ? `Dzień dobry! Chciałabym zamówić torebkę zaprojektowaną w A-Bags Bag Builder. Fason: ${labelFor(FAMILIES, config.family)}. Kolor sznurka: ${labelFor(COLORS, config.color)}. Ścieg szydełkowy: ${labelFor(STITCHES, config.stitch)}. Klapa: ${labelFor(FLAPS, supportedFlap)}. Uchwyty: ${labelFor(HANDLES, config.handles)}. Pasek: ${labelFor(STRAPS, supportedStrap)}. Okucia: ${labelFor(HARDWARE, config.hardware)}. Detal: ${labelFor(ACCENTS, supportedAccent)}. Materiał: sznurek poliestrowy z Pimiotki. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym zaprojektować własną torebkę A-Bags.";
 
   return <>
     {createPortal(<section className="abags-exact-live abags-builder-controls" aria-labelledby="abags-builder-title" data-abags-exact-workspace="controls">
@@ -297,9 +305,9 @@ export default function BagBuilderEngine() {
       <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
       <ChoiceGroup title="Klapa" step={4} options={familyFlaps} value={supportedFlap} onChange={(value) => update("flap", value)} disabled={!canCustomize} dataKey="flap" />
       <ChoiceGroup title="Uchwyty" step={5} options={familyHandles} value={config.handles} onChange={(value) => update("handles", value)} disabled={!canCustomize} dataKey="handles" />
-      <ChoiceGroup title="Pasek" step={6} options={STRAPS} value={config.strap} onChange={(value) => update("strap", value)} disabled={!canCustomize} dataKey="strap" />
+      <ChoiceGroup title="Pasek" step={6} options={familyStraps} value={supportedStrap} onChange={(value) => update("strap", value)} disabled={!canCustomize} dataKey="strap" />
       <ChoiceGroup title="Okucia" step={7} options={HARDWARE} value={config.hardware} onChange={(value) => update("hardware", value)} disabled={!canCustomize} compact dataKey="hardware" />
-      <ChoiceGroup title="Detal / ozdoba" step={8} options={ACCENTS} value={config.accent} onChange={(value) => update("accent", value)} disabled={!canCustomize} dataKey="accent" />
+      <ChoiceGroup title="Detal / ozdoba" step={8} options={familyAccents} value={supportedAccent} onChange={(value) => update("accent", value)} disabled={!canCustomize} dataKey="accent" />
       <div className="abags-builder-summary" aria-live="polite"><div><strong>Twój projekt</strong><span>{saved ? "zapisany lokalnie ✓" : canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i ścieg szydełkowy"}</span></div><p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p><small>Personalizacja jest wyceniana indywidualnie po potwierdzeniu projektu.</small></div>
       <div className="abags-exact-live-actions abags-builder-actions" data-builder-saved={saved ? "true" : "false"}>
         <button type="button" onClick={reset}>Wyczyść</button>
