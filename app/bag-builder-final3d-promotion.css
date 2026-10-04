@@ -81,13 +81,16 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:none!important;
 }
 
-/* Never composite the legacy SVG together with the 3D product during promotion. */
+/* During promotion the WebGL frame is still provisional. Keep the deterministic
+   SVG underneath it so a mobile compositor/context hiccup can never produce a blank
+   customer viewport. The SVG is removed only after the controller reaches READY. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="promoting"] > svg{
-  display:none!important;
-  opacity:0!important;
-  visibility:hidden!important;
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
   pointer-events:none!important;
   transition:none!important;
+  z-index:250!important;
 }
 
 /* 3) Accepted frame: WebGL is the sole visible product renderer and owns interaction.
