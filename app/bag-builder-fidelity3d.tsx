@@ -1287,6 +1287,19 @@ export default function BagBuilderFidelity3D() {
   }, [stage, rendererEpoch]);
 
   useEffect(() => {
+    if (!stage) return;
+    // The accessory compositor is a separate 2D projection layer. Publish the exact
+    // WebGL camera transform so straps/handles/accents stay locked to the 3D model
+    // during initial render, rotation and pinch/wheel zoom.
+    stage.dataset.abagsFidelity3dRotationX = String(rotation.x);
+    stage.dataset.abagsFidelity3dRotationY = String(rotation.y);
+    stage.dataset.abagsFidelity3dZoom = String(zoom);
+    stage.dispatchEvent(new CustomEvent("abags:fidelity3d-transform", {
+      detail: { rotation: { x: rotation.x, y: rotation.y }, zoom },
+    }));
+  }, [rotation, zoom, stage]);
+
+  useEffect(() => {
     const renderer = rendererRef.current;
     const canvas = canvasRef.current;
     if (!renderer || !canvas) return;
