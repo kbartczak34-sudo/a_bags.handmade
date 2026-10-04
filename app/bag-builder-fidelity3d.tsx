@@ -1209,14 +1209,14 @@ export default function BagBuilderFidelity3D() {
             // Promotion happens only after a successful framebuffer write.
             // This prevents Android/Chromium from hiding the SVG fallback when
             // WebGL initialized but the first visible frame was still blank.
-            stage.classList.add("abags-pro3d-active", "abags-fidelity3d-active");
+            stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
             stage.setAttribute("data-abags-pro3d-ready", "true");
             stage.setAttribute("data-abags-fidelity3d-ready", ABAGS_FIDELITY_V4_RENDERER_VERSION);
-            stage.setAttribute("data-abags-final3d", "ready");
-            stage.setAttribute(
-              "data-abags-final3d-reason",
-              stage.dataset.family ? "showing-current-v3-product-frame" : "neutral-empty-construction",
-            );
+            stage.dataset.abagsFinal3d = "waiting-for-verifier";
+            stage.dataset.abagsFinal3dReason = stage.dataset.family
+              ? "renderer-frame-awaiting-pixel-verifier"
+              : "neutral-empty-construction";
+            stage.classList.remove("abags-final3d-ready");
             setReady(true);
           } catch (error) {
             rendererRef.current = null;
