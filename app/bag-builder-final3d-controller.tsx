@@ -221,7 +221,7 @@ export default function BagBuilderFinal3DController() {
       if (!stage) return;
       stage.dataset.abagsFinal3d = "fallback";
       stage.dataset.abagsFinal3dReason = reason.slice(0, 120);
-      stage.classList.remove("abags-final3d-ready");
+      stage.classList.remove("abags-final3d-ready", "abags-fidelity3d-active", "abags-pro3d-active");
       stage.removeAttribute("data-abags-final3d-signature");
       clearPixelDiagnostics();
     };
@@ -286,10 +286,10 @@ export default function BagBuilderFinal3DController() {
         ? "showing-neutral-empty-construction-frame"
         : "showing-current-v3-product-frame";
       stage.dataset.abagsFinal3dSignature = expectedSignature;
-      stage.classList.add("abags-final3d-ready");
+      stage.classList.remove("abags-final3d-ready");
 
       // Force both the adaptive camera redraw and a browser compositor commit before the
-      // verified WebGL surface becomes the sole visible customer renderer.
+      // verifier grants the final visible state to the WebGL surface.
       window.dispatchEvent(new Event("resize"));
       frame = window.requestAnimationFrame(() => {
         frame = 0;
@@ -322,7 +322,7 @@ export default function BagBuilderFinal3DController() {
             ? "neutral-empty-construction"
             : finalPixels.reason;
           stage.dataset.abagsFinal3dSignature = currentSignature;
-          stage.classList.add("abags-final3d-ready");
+          stage.classList.add("abags-final3d-ready", "abags-fidelity3d-active");
         });
       });
     };
