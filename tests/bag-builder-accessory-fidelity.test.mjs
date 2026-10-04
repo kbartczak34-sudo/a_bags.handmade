@@ -18,3 +18,15 @@ test("accessory calibration remains deterministic", () => {
   assert.match(overlay, /data-abags-accessory-fidelity/);
   assert.doesNotMatch(overlay, /Math\.random/);
 });
+
+
+test("accessory overlay camera follows the canonical WebGL transform", () => {
+  assert.match(fidelity, /data-abags-fidelity3d-rotation-x/);
+  assert.match(fidelity, /data-abags-fidelity3d-rotation-y/);
+  assert.match(fidelity, /data-abags-fidelity3d-zoom/);
+  assert.match(fidelity, /abags:fidelity3d-transform/);
+  assert.match(overlay, /data-abags-fidelity3d-rotation-x/);
+  assert.match(overlay, /data-abags-fidelity3d-rotation-y/);
+  assert.match(overlay, /data-abags-fidelity3d-zoom/);
+  assert.match(overlay, /abags:fidelity3d-transform/);
+});
