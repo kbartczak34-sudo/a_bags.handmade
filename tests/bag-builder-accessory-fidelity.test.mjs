@@ -22,9 +22,9 @@ test("accessory calibration remains deterministic", () => {
 
 
 test("accessory overlay camera follows the canonical WebGL transform", () => {
-  assert.match(fidelity3d, /abagsFidelity3dRotationX/);
-  assert.match(fidelity3d, /abagsFidelity3dRotationY/);
-  assert.match(fidelity3d, /abagsFidelity3dZoom/);
+  assert.match(fidelity3d, /setAttribute\("data-abags-fidelity3d-rotation-x"/);
+  assert.match(fidelity3d, /setAttribute\("data-abags-fidelity3d-rotation-y"/);
+  assert.match(fidelity3d, /setAttribute\("data-abags-fidelity3d-zoom"/);
   assert.match(fidelity3d, /abags:fidelity3d-transform/);
   assert.match(overlay, /data-abags-fidelity3d-rotation-x/);
   assert.match(overlay, /data-abags-fidelity3d-rotation-y/);
