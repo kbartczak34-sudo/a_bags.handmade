@@ -286,7 +286,7 @@ export default function BagBuilderFinal3DController() {
         ? "showing-neutral-empty-construction-frame"
         : "showing-current-v3-product-frame";
       stage.dataset.abagsFinal3dSignature = expectedSignature;
-      stage.classList.remove("abags-final3d-ready");
+      stage.classList.remove("abags-final3d-ready", "abags-fidelity3d-active");
 
       // Force both the adaptive camera redraw and a browser compositor commit before the
       // verifier grants the final visible state to the WebGL surface.
@@ -346,7 +346,7 @@ export default function BagBuilderFinal3DController() {
       if (stage) {
         stage.dataset.abagsFinal3d = "waiting-for-renderer";
         stage.dataset.abagsFinal3dReason = "context-restored";
-        stage.classList.remove("abags-final3d-ready");
+        stage.classList.remove("abags-final3d-ready", "abags-fidelity3d-active");
         stage.removeAttribute("data-abags-final3d-signature");
       }
       validate();
@@ -422,7 +422,7 @@ export default function BagBuilderFinal3DController() {
       stageObserver?.disconnect();
       bodyObserver?.disconnect();
       if (stage) {
-        stage.classList.remove("abags-final3d-ready");
+        stage.classList.remove("abags-final3d-ready", "abags-fidelity3d-active");
         stage.removeAttribute("data-abags-final3d");
         stage.removeAttribute("data-abags-final3d-reason");
         stage.removeAttribute("data-abags-final3d-signature");
