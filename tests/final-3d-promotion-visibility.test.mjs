@@ -95,7 +95,7 @@ test("real configuration and renderer health mutations still retrigger final 3D 
 
 test("Fidelity3D renderer never self-promotes final visibility before the verifier", async () => {
   const renderer = await readFile(new URL("../app/bag-builder-fidelity3d.tsx", import.meta.url), "utf8");
-  const drawIndex = renderer.indexOf("draw(nextRenderer, canvas, readConfig(stage), rotation, zoom);");
+  const drawIndex = renderer.indexOf("draw(nextRenderer, canvas, currentConfig, rotation, zoom);");
   assert.ok(drawIndex >= 0, "canonical renderer paint call must remain present");
   const paintTail = renderer.slice(drawIndex, drawIndex + 1900);
   assert.doesNotMatch(paintTail, /stage\\.classList\\.add\\(\"abags-pro3d-active\", \"abags-fidelity3d-active\"\\)/);
