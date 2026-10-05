@@ -221,6 +221,7 @@ export default function BagBuilderFinal3DController() {
       if (!stage) return;
       stage.dataset.abagsFinal3d = "fallback";
       stage.dataset.abagsFinal3dReason = reason.slice(0, 120);
+      stage.dataset.abagsFinal3dBlockedSignature = signature(stage);
       stage.classList.remove("abags-final3d-ready", "abags-fidelity3d-active", "abags-pro3d-active");
       // A renderer can successfully draw into WebGL and still fail the final
       // compositor/readPixels acceptance on Android Chromium. In that case the
@@ -398,6 +399,15 @@ export default function BagBuilderFinal3DController() {
       stageObserver = new MutationObserver((records) => {
         bindCanvasEvents();
         if (shouldIgnorePaintMetadata(records)) return;
+        const configChanged = records.some((record) => record.type === "attributes" && [
+          "data-family", "data-color", "data-stitch", "data-flap",
+          "data-handles", "data-strap", "data-hardware", "data-accent",
+        ].includes(record.attributeName || ""));
+        if (configChanged && stage?.dataset.abagsFinal3d === "fallback") {
+          stage.removeAttribute("data-abags-final3d");
+          stage.removeAttribute("data-abags-final3d-reason");
+          stage.removeAttribute("data-abags-final3d-blocked-signature");
+        }
         validate();
       });
 
@@ -433,6 +443,7 @@ export default function BagBuilderFinal3DController() {
         stage.removeAttribute("data-abags-final3d");
         stage.removeAttribute("data-abags-final3d-reason");
         stage.removeAttribute("data-abags-final3d-signature");
+        stage.removeAttribute("data-abags-final3d-blocked-signature");
         clearPixelDiagnostics();
       }
     };
