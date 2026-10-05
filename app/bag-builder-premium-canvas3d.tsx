@@ -249,7 +249,10 @@ function drawPremium(canvas: HTMLCanvasElement, config: Config, rotation: { x: n
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#c8cdd3" : config.hardware === "black" ? "#2a292b" : "#b99555";
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4739" : "#9b7681";
-    const strap = arch(w * 1.08, h * 0.40, h * 1.88, -d * 1.08, 68);
+    // Keep the fallback shoulder strap physically tied to the upper side anchors.
+    // The previous 1.08×1.88 arch was much taller than the bag and, after perspective
+    // projection, its right leg appeared as a detached vertical bar on desktop/mobile.
+    const strap = arch(w * 0.88, h * 0.76, h * 1.30, d * 0.90, 68);
     ctx.save(); ctx.shadowColor = "rgba(45,29,32,.12)"; ctx.shadowBlur = 4;
     stroke3d(ctx, strap, width, height, rotation, zoom, strapColor, config.strap === "chain" ? 4.2 : 7.2, 0.72, config.strap === "chain" ? [2.2, 4] : []); ctx.restore();
   }
@@ -321,7 +324,10 @@ function drawPremium(canvas: HTMLCanvasElement, config: Config, rotation: { x: n
   const lock = project({ x: 0, y: config.flap !== "none" ? h * 0.18 : -h * 0.48, z: d + 0.17 }, width, height, rotation, zoom);
   drawMetal(ctx, lock.x, lock.y, Math.max(3.2, 5.4 * zoom * lock.scale * 1.6), metal);
   if (config.strap !== "none") {
-    [-1, 1].forEach((side) => { const p = project({ x: side * w * 0.88, y: h * 0.43, z: d * 0.72 }, width, height, rotation, zoom); drawMetal(ctx, p.x, p.y, Math.max(2.5, 4.1 * zoom * p.scale * 1.55), metal, true); });
+    [-1, 1].forEach((side) => {
+      const p = project({ x: side * w * 0.88, y: h * 0.76, z: d * 0.90 }, width, height, rotation, zoom);
+      drawMetal(ctx, p.x, p.y, Math.max(2.5, 4.1 * zoom * p.scale * 1.55), metal, true);
+    });
   }
 
   // Small woven brand plate.
