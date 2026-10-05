@@ -330,11 +330,9 @@ function paint(backCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, st
   const front = prepareCanvas(frontCanvas, stage);
   if (!back || !front || !config.family) return;
 
-  // Depth ownership: straps/chains sit behind the bag body; flap finishing and hanging
-  // accents sit above the WebGL body. This avoids both flat stickers and duplicate geometry.
-  back.ctx.save();
-  drawStrap(back.ctx, config, back.width, back.height, rotation, zoom);
-  back.ctx.restore();
+  // Strap/chain geometry is owned by the WebGL renderer.
+  // Do not paint a second projected strap here: the legacy 2D overlay uses a
+  // different coordinate system and can leave a detached vertical leg beside the bag.
 
   front.ctx.save();
   drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
