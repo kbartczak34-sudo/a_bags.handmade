@@ -111,65 +111,6 @@ function flapContour(family: Exclude<Family, "">) {
   });
 }
 
-function drawStrap(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
-  if (!config.family || config.strap === "none") return;
-  const arc = strapArc(config.family as Exclude<Family, "">);
-  const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
-
-  if (config.strap === "chain") {
-    const hardware = hardwareColor(config.hardware);
-    const linkCount = ABAGS_ACCESSORY_VISUAL.chainLinks;
-    for (let index = 0; index < linkCount; index += 1) {
-      const arcIndex = Math.round((index / (linkCount - 1)) * (arc.length - 1));
-      const center = project(arc[arcIndex], width, height, rotation, zoom);
-      if (!center) continue;
-      const next = project(arc[Math.min(arc.length - 1, arcIndex + 1)], width, height, rotation, zoom) ?? center;
-      const angle = Math.atan2(next.y - center.y, next.x - center.x) + (index % 2 ? Math.PI / 2 : 0);
-      ctx.save();
-      ctx.translate(center.x, center.y);
-      ctx.rotate(angle);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 5.4 * scale * center.scale, 3.2 * scale * center.scale, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = hardware;
-      ctx.lineWidth = Math.max(1.2, 1.45 * scale * center.scale);
-      ctx.stroke();
-      ctx.restore();
-    }
-    // Real A-Bags chain references use a comfortable leather shoulder section.
-    if (path3d(ctx, arc.slice(18, 31), width, height, rotation, zoom)) {
-      ctx.strokeStyle = "#76503D";
-      ctx.lineCap = "round";
-      ctx.lineWidth = Math.max(4, 6.5 * scale);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,.26)";
-      ctx.lineWidth = Math.max(1, 1.2 * scale);
-      ctx.stroke();
-    }
-    return;
-  }
-
-  if (!path3d(ctx, arc, width, height, rotation, zoom)) return;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  if (config.strap === "leather") {
-    ctx.strokeStyle = "#704A3B";
-    ctx.lineWidth = Math.max(5, 9 * scale);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255,255,255,.20)";
-    ctx.lineWidth = Math.max(1, 1.5 * scale);
-    ctx.stroke();
-  } else {
-    ctx.strokeStyle = "#8A666C";
-    ctx.lineWidth = Math.max(6, 10 * scale);
-    ctx.stroke();
-    ctx.setLineDash([...ABAGS_ACCESSORY_VISUAL.wovenDash]);
-    ctx.strokeStyle = "#EBD9C7";
-    ctx.lineWidth = Math.max(2, 3.2 * scale);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-}
-
 function drawFlapDetail(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family || config.flap === "none") return;
   const family = config.family as Exclude<Family, "">;
