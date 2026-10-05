@@ -1212,7 +1212,20 @@ export default function BagBuilderFidelity3D() {
               requestAnimationFrame(paint);
               return;
             }
-            draw(nextRenderer, canvas, readConfig(stage), rotation, zoom);
+            const currentConfig = readConfig(stage);
+            draw(nextRenderer, canvas, currentConfig, rotation, zoom);
+
+            // Once the final controller has rejected this exact configuration, do not
+            // immediately re-advertise WebGL readiness on every redraw. That race would
+            // disable the Premium Canvas3D fallback and recreate a blank mobile stage.
+            const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature || "";
+            if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(currentConfig)) {
+              stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
+              stage.removeAttribute("data-abags-pro3d-ready");
+              stage.removeAttribute("data-abags-fidelity3d-ready");
+              setReady(false);
+              return;
+            }
 
             // Promotion happens only after a successful framebuffer write.
             // This prevents Android/Chromium from hiding the SVG fallback when
