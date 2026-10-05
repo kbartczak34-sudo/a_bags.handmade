@@ -57,3 +57,10 @@ test("fallback stack now uses the premium renderer and preserves touch rescue", 
   assert.match(fallback, /BagBuilderPremiumCanvas3D/);
   assert.match(fallback, /BagBuilderCanvas3DTouchRescue/);
 });
+
+test("premium fallback can be forced by the final verifier", () => {
+  assert.match(premium, /finalState = stage\.dataset\.abagsFinal3d/);
+  assert.match(premium, /forceFallback = finalState === "fallback"/);
+  assert.match(premium, /abags-premium-canvas3d-active/);
+  assert.match(premium, /"data-abags-final3d"/);
+});
