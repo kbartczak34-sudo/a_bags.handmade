@@ -374,15 +374,35 @@ export default function BagBuilderPremiumCanvas3D() {
     if (!stage) return;
     let timer = 0;
     const syncMode = () => {
-      if (stage.getAttribute("data-abags-pro3d-ready") === "true") {
-        window.clearTimeout(timer); setEnabled(false); stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active"); stage.removeAttribute("data-abags-canvas3d-ready");
+      const finalState = stage.dataset.abagsFinal3d || "";
+      const forceFallback = finalState === "fallback";
+      const webglReady = stage.getAttribute("data-abags-pro3d-ready") === "true";
+
+      // When the final verifier rejects WebGL on a constrained mobile browser,
+      // promote the interactive perspective fallback immediately. Waiting for the
+      // old timer leaves a blank window and can race with a stale readiness flag.
+      if (forceFallback) {
+        window.clearTimeout(timer);
+        setEnabled(true);
+        stage.classList.add("abags-canvas3d-active", "abags-premium-canvas3d-active");
+        stage.setAttribute("data-abags-canvas3d-ready", "premium-v2");
+      } else if (webglReady) {
+        window.clearTimeout(timer);
+        setEnabled(false);
+        stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active");
+        stage.removeAttribute("data-abags-canvas3d-ready");
       } else {
-        window.clearTimeout(timer); timer = window.setTimeout(() => {
-          if (stage.getAttribute("data-abags-pro3d-ready") !== "true") { setEnabled(true); stage.classList.add("abags-canvas3d-active", "abags-premium-canvas3d-active"); stage.setAttribute("data-abags-canvas3d-ready", "premium-v2"); }
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          if (stage.dataset.abagsFinal3d !== "fallback" && stage.getAttribute("data-abags-pro3d-ready") !== "true") {
+            setEnabled(true);
+            stage.classList.add("abags-canvas3d-active", "abags-premium-canvas3d-active");
+            stage.setAttribute("data-abags-canvas3d-ready", "premium-v2");
+          }
         }, 650);
       }
     };
-    syncMode(); const observer = new MutationObserver(syncMode); observer.observe(stage, { attributes: true, attributeFilter: ["data-abags-pro3d-ready"] });
+    syncMode(); const observer = new MutationObserver(syncMode); observer.observe(stage, { attributes: true, attributeFilter: ["data-abags-pro3d-ready", "data-abags-final3d"] });
     return () => { window.clearTimeout(timer); observer.disconnect(); stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active"); stage.removeAttribute("data-abags-canvas3d-ready"); };
   }, [stage]);
 
