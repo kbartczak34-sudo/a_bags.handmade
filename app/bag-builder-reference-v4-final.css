@@ -3,12 +3,21 @@
 /* A 3D renderer must be the only visible product layer. The engine SVG stays in the DOM
    as state/accessibility infrastructure, but cannot shine through a transparent canvas. */
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage > svg{
-  /* The SVG is the legacy flat construction preview. The production customizer
-     uses the verified 3D canvas as the sole visible product surface. */
+  /* Keep the deterministic construction preview available until the 3D verifier
+     has accepted a frame. This prevents a blank mobile stage during WebGL startup
+     or fallback handoff. Once a 3D surface is actually active, hide the SVG. */
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > svg,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-premium-canvas3d-active > svg,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="promoting"] > svg,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-final3d="ready"] > svg{
   display:none!important;
   opacity:0!important;
   visibility:hidden!important;
-  pointer-events:none!important;
 }
 
 /* The approved reference is product-first. 3D remains fully interactive by drag/pinch,
