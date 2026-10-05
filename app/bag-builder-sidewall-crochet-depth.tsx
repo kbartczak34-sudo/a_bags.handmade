@@ -31,11 +31,11 @@ const MIN_SIDE_VISIBILITY = 0.22;
 
 function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
   const aspect = width / Math.max(1, height);
-  const narrow = aspect < 0.82;
-  const fit = narrow ? 0.92 : aspect < 1.15 ? 0.97 : 1;
-  const rootScale = zoom * fit;
-  const cameraZ = narrow ? -6.45 : aspect < 1.15 ? -5.85 : -5.25;
-  const verticalOffset = narrow ? -0.08 : -0.03;
+  // Mirror Fidelity3D's canonical camera exactly. This overlay is only a texture
+  // pass on the existing side wall; it must never use its own mobile camera fit.
+  const rootScale = zoom;
+  const cameraZ = -5.0;
+  const verticalOffset = -0.02;
   let [x, y, z] = point.map((value) => value * rootScale) as Point3;
 
   const cx = Math.cos(rotation.x);
@@ -56,7 +56,9 @@ function project(point: Point3, width: number, height: number, rotation: Rotatio
 
 function halfWidthAtY(spec: FidelityV4FamilySpec, y: number) {
   const relativeY = Math.min(0.997, Math.abs(y / spec.ry));
-  const base = spec.rx * Math.pow(Math.max(0.0001, 1 - Math.pow(relativeY, spec.power)), 1 / spec.power);
+  // Match familyContour() in Fidelity3D: x = rx * (1 - y²)^(1/power),
+  // then apply the same linear taper used by the canonical body.
+  const base = spec.rx * Math.pow(Math.max(0.0001, 1 - relativeY * relativeY), 1 / spec.power);
   return base * (1 + spec.taper * (y / spec.ry));
 }
 
@@ -78,8 +80,10 @@ function projectedSideSurface(
 
   // Positive yaw exposes the negative-X wall to the camera; negative yaw exposes +X.
   const sign: -1 | 1 = yaw >= 0 ? -1 : 1;
-  const frontZ = spec.depth / 2 - spec.bevel * 0.52;
-  const rearZ = -spec.depth / 2 + spec.bevel * 0.52;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
+  const physicalDepth = spec.depth * depthScale;
+  const frontZ = physicalDepth / 2 - spec.bevel * 0.52;
+  const rearZ = -physicalDepth / 2 + spec.bevel * 0.52;
   const yMin = -spec.ry * 0.90;
   const yMax = spec.ry * 0.89;
   const count = family === "round" ? 46 : 42;
