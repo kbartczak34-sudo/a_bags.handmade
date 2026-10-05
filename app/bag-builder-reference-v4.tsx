@@ -289,6 +289,16 @@ export default function BagBuilderReferenceV4() {
       pointer-events: none !important;
     }
 
+    /* Legacy V23 is mounted globally for Photo-True QA, but its renderer uses an
+       older screen-space accessory projection. Never composite it into customer
+       V4 realtime previews; Fidelity3D is the sole customer product surface. */
+    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"] > .abags-photoreal-v23-canvas {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
     /* WebGL is the single customer-facing preview surface. Hide every legacy
        SVG preview mounted inside an active 3D stage, including compatibility
        mounts created during the promotion handoff. */
