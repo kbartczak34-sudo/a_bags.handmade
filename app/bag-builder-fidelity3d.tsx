@@ -917,7 +917,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
       woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
-      strap: createMesh(gl, makeArchTube(1.18, 1.62, 0, 0.043, 84, 12, false)),
+      toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
+      roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
+      bucketStrap: createMesh(gl, familyShoulderStrapMesh("bucket")),
+      miniStrap: createMesh(gl, familyShoulderStrapMesh("mini")),
       toteChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[4])),
       roundChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.round.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[4])),
       bucketChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[4])),
@@ -963,6 +966,18 @@ function familyAttachment(profile: FamilyProfile, family: Exclude<Family, "">) {
     y: profile.topY + spec.attachmentYOffset,
     z: profile.frontZ * spec.attachmentZFactor,
   };
+}
+
+function familyShoulderStrapMesh(family: Exclude<Family, "">) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  // Build the shoulder strap in the same coordinate space as the family rings.
+  // The old generic 1.18 × 1.62 arch was later scaled into place; on narrow
+  // Chromium viewports that produced a long detached vertical leg because the
+  // projected arch no longer matched the actual attachment span. Generate the
+  // arch at the calibrated span instead, with a deliberately compact rise.
+  const span = spec.rx * spec.attachmentWidthFactor;
+  const rise = clamp(spec.ry * 0.48, 0.28, 0.44);
+  return makeArchTube(span, rise, 0, 0.043, 84, 12, false);
 }
 
 function handleTransform(profile: FamilyProfile, family: Exclude<Family, "">, side: number) {
@@ -1028,23 +1043,17 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const material = config.strap === "chain" ? 4 : config.strap === "leather" ? 2 : 3;
     const attachment = familyAttachment(profile, renderFamily);
-    // The shoulder strap is a compact arch anchored to the two side rings.
-    // Keep its rise proportional to the physical bag rather than using the old
-    // handle-height multiplier: the previous 0.84/0.92 multiplier made the
-    // 1.62-unit strap mesh rise far above the preview viewport, so only its
-    // right vertical leg remained visible as a detached burgundy bar.
-    const strapScaleX = Math.max(0.08, attachment.x / 1.18);
-    // The mesh's raw arch is intentionally wide/tall. Scale it from the actual
-    // ring span and keep the rise compact enough to remain a shoulder strap.
-    const strapScaleY = profile.handleScale * 0.30;
+    const strapMesh = config.strap === "chain"
+      ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain)
+      : meshes[renderFamily + "Strap"];
     drawMesh(
       renderer,
-      config.strap === "chain" ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain) : meshes.strap,
+      strapMesh,
       multiply(
         root,
         matrix(
-          [0, attachment.y - 0.02, attachment.z],
-          [strapScaleX, strapScaleY, 1],
+          [0, attachment.y - 0.02, attachment.z + 0.035],
+          [1, 1, 1],
         ),
       ),
       strapColor,
