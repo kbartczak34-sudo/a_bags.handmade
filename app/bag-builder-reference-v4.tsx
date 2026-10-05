@@ -270,13 +270,22 @@ export default function BagBuilderReferenceV4() {
        Auxiliary paint/photoreal compatibility surfaces are not allowed to become
        a second product silhouette on top of it. They may still run for telemetry,
        but the live stage exposes only the canonical WebGL model. */
-    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"] > svg,
+    /* Keep the deterministic SVG visible until Fidelity3D has actually rendered a
+       verified framebuffer. The previous unconditional SVG suppression made Android
+       show a completely blank preview whenever WebGL initialization/readback failed. */
     .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"] > canvas:not(.abags-fidelity3d-canvas),
     .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"] > .abags-photoreal-layer,
     .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"] > .abags-pro3d-layer:not(.abags-fidelity3d-layer) {
       display: none !important;
       visibility: hidden !important;
       opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .abags-reference-layout-v4 .abags-bag-builder-stage[data-abags-live-stage="true"]:not(.abags-fidelity3d-active) > svg {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
       pointer-events: none !important;
     }
 
