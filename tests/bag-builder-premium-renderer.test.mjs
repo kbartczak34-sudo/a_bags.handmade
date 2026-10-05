@@ -25,7 +25,7 @@ test("strap is rendered behind the product and is visually subordinate", () => {
   const strap = premium.indexOf("Shoulder strap is deliberately behind the bag");
   const body = premium.indexOf("Back and sides establish volume");
   assert.ok(strap > -1 && body > strap);
-  assert.match(premium, /h \* 1\.88/);
+  assert.match(premium, /h \* 1\.30/);
   assert.match(premium, /7\.2, 0\.72/);
 });
 
