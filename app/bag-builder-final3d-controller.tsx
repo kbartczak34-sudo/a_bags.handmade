@@ -222,6 +222,13 @@ export default function BagBuilderFinal3DController() {
       stage.dataset.abagsFinal3d = "fallback";
       stage.dataset.abagsFinal3dReason = reason.slice(0, 120);
       stage.classList.remove("abags-final3d-ready", "abags-fidelity3d-active", "abags-pro3d-active");
+      // A renderer can successfully draw into WebGL and still fail the final
+      // compositor/readPixels acceptance on Android Chromium. In that case the
+      // Premium Canvas3D fallback must be allowed to take over; leaving the
+      // provisional pro3d-ready flag set permanently disabled that fallback and,
+      // together with the V4 SVG suppression, produced a completely blank stage.
+      stage.removeAttribute("data-abags-pro3d-ready");
+      stage.removeAttribute("data-abags-fidelity3d-ready");
       stage.removeAttribute("data-abags-final3d-signature");
       clearPixelDiagnostics();
     };
