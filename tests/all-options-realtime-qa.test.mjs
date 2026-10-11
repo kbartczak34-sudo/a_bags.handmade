@@ -78,3 +78,12 @@ test("CDP live-stage selectors quote nested CSS attribute values safely", () => 
   const escapedQuote = String.fromCharCode(92) + '"';
   assert.ok(qa.includes(`document.querySelector(${escapedQuote}.abags-vc-dialog`));
 });
+
+test("live renderer readiness timeout captures actual stage and WebGL state", () => {
+  assert.match(qa, /3d-ready-timeout\.png/);
+  assert.match(qa, /3d-ready-timeout\.json/);
+  assert.match(qa, /stageCount:candidates\.length/);
+  assert.match(qa, /rendererErrorNodes:/);
+  assert.match(qa, /gl:gl\?\{lost:gl\.isContextLost\(\),buffer:/);
+  assert.match(qa, /final3dReason:/);
+});
