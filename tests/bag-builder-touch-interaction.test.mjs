@@ -17,7 +17,7 @@ test("canonical Fidelity3D canvas remains interactive after final promotion", ()
 });
 
 test("V4 compositor does not disable input on the verified 3D canvas", () => {
-  const readyBlock = layout.match(/\\.abags-bag-builder-stage\\[data-abags-live-stage="true"\\]\\[data-abags-final3d="ready"\\] > \\.abags-fidelity3d-layer > \\.abags-fidelity3d-canvas \\{[^}]+\\}/)?.[0] ?? "";
+  const readyBlock = layout.match(/\.abags-bag-builder-stage\[data-abags-live-stage="true"\]\[data-abags-final3d="ready"\] > \.abags-fidelity3d-layer > \.abags-fidelity3d-canvas \{[^}]+\}/)?.[0] ?? "";
   assert.match(readyBlock, /pointer-events: auto !important/);
   assert.match(readyBlock, /touch-action: none !important/);
   assert.doesNotMatch(readyBlock, /pointer-events: none !important/);
