@@ -263,7 +263,7 @@ async function main() {
     };
 
     const waitReady = async (label) => {
-      await waitFor(`(() => {
+      const readinessExpression = `() => {
         const stage=document.querySelector(".abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']");
         const accessories=stage?.querySelectorAll('.abags-accessory-fidelity-canvas');
         return stage?.dataset.abagsFinal3d==='ready' &&
@@ -271,7 +271,52 @@ async function main() {
           stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature &&
           accessories?.length===2 &&
           !stage.dataset.abagsFidelity3dError;
-      })()`, `${label} verified final realtime composition`, 20_000);
+      }`;
+      try {
+        await waitFor(`(${readinessExpression})()`, `${label} verified final realtime composition`, 20_000);
+      } catch (error) {
+        const diagnostics = await evaluate(`(() => {
+          const dialog=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
+          const selectors=[
+            '.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]',
+            '.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage',
+            '.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage'
+          ];
+          const candidates=[...new Set(selectors.flatMap(selector=>[...document.querySelectorAll(selector)]))];
+          const describe=(stage)=>{
+            const canvas=stage.querySelector('.abags-fidelity3d-canvas');
+            let gl=null;
+            try{gl=canvas?.getContext('webgl')||null}catch{}
+            const rect=canvas?.getBoundingClientRect();
+            const attrs=Object.fromEntries([...stage.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value]));
+            return {
+              className:stage.className, attrs,
+              rect:(()=>{const r=stage.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})(),
+              children:[...stage.children].map(n=>({tag:n.tagName,className:n.className?.baseVal||n.className||'',width:n.width||0,height:n.height||0})),
+              canvas:canvas?{
+                width:canvas.width,height:canvas.height,rect:rect?{x:rect.x,y:rect.y,width:rect.width,height:rect.height}:null,
+                style:getComputedStyle(canvas).cssText||'',display:getComputedStyle(canvas).display,opacity:getComputedStyle(canvas).opacity,
+                attrs:Object.fromEntries([...canvas.attributes].map(a=>[a.name,a.value])),
+                gl:gl?{lost:gl.isContextLost(),buffer:[gl.drawingBufferWidth,gl.drawingBufferHeight],program:Boolean(gl.getParameter(gl.CURRENT_PROGRAM)),error:gl.getError()}:null
+              }:null,
+              accessories:[...stage.querySelectorAll('.abags-accessory-fidelity-canvas')].map(n=>({depth:n.dataset.accessoryDepth,width:n.width,height:n.height,rect:(()=>{const r=n.getBoundingClientRect();return {width:r.width,height:r.height}})()}))
+            };
+          };
+          return {
+            href:location.href,readyState:document.readyState,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},
+            runtimeBuild:document.documentElement.dataset.abagsCustomizerRuntimeBuild||'',
+            dialog:dialog?{className:dialog.className,display:getComputedStyle(dialog).display}:null,
+            stageCount:candidates.length,stages:candidates.slice(0,8).map(describe),
+            allBuilderStages:[...document.querySelectorAll('.abags-bag-builder-stage')].slice(0,8).map(describe),
+            rendererErrorNodes:[...document.querySelectorAll('[data-abags-fidelity3d-error]')].map(n=>({tag:n.tagName,className:n.className?.baseVal||n.className||'',error:n.dataset.abagsFidelity3dError||''})),
+            buttons:[...document.querySelectorAll('button[data-builder-key]')].slice(0,24).map(n=>({key:n.dataset.builderKey,value:n.dataset.builderValue,disabled:n.disabled,pressed:n.getAttribute('aria-pressed')}))
+          };
+        })()`);
+        const shot=await send("Page.captureScreenshot",{format:"png",fromSurface:true,captureBeyondViewport:false});
+        await writeFile(path.join(qaDir,"3d-ready-timeout.png"),Buffer.from(shot.data,"base64"));
+        await writeFile(path.join(qaDir,"3d-ready-timeout.json"),JSON.stringify(diagnostics,null,2));
+        throw new Error(`${label} realtime readiness failed: ${error instanceof Error?error.message:String(error)}; diagnostics=${JSON.stringify(diagnostics)}`);
+      }
       await sleep(220);
       const current = await state();
       if (!current || current.photoTrue === "active") throw new Error(`${label}: customer realtime mode was replaced by Photo-True.`);
