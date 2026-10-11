@@ -160,10 +160,49 @@ async function main() {
     };
 
     const waitReady = async (label) => {
-      await waitFor(`(() => {
-        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
-        return stage?.dataset.abagsFinal3d==='ready' && stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature;
-      })()`, `${label} ready Fidelity3D`, 20_000);
+      try {
+        await waitFor(`() => {
+          const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
+          return Boolean(stage && stage.dataset.abagsFinal3d==='ready' && stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature);
+        }`, `${label} ready Fidelity3D`, 20_000);
+      } catch (error) {
+        const diagnostics = await evaluate(`(() => {
+          const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
+          const canvas=stage?.querySelector('.abags-fidelity3d-canvas');
+          const gl=canvas?.getContext('webgl');
+          let opaqueSamples=0, sampleError='';
+          if(gl && !gl.isContextLost() && gl.drawingBufferWidth>=16 && gl.drawingBufferHeight>=16){
+            const pixel=new Uint8Array(4);
+            for(let row=0;row<9;row+=1)for(let column=0;column<9;column+=1){
+              const x=Math.min(gl.drawingBufferWidth-1,Math.floor(gl.drawingBufferWidth*(.08+.84*column/8)));
+              const y=Math.min(gl.drawingBufferHeight-1,Math.floor(gl.drawingBufferHeight*(.08+.84*row/8)));
+              gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+              if(pixel[3]>24)opaqueSamples+=1;
+            }
+            sampleError=String(gl.getError());
+          }
+          const rect=canvas?.getBoundingClientRect();
+          return {
+            stage:stage?{
+              className:stage.className,
+              family:stage.dataset.family||'',color:stage.dataset.color||'',stitch:stage.dataset.stitch||'',
+              final3d:stage.dataset.abagsFinal3d||'',reason:stage.dataset.abagsFinal3dReason||'',
+              finalSignature:stage.dataset.abagsFinal3dSignature||'',builderSignature:stage.dataset.builderSignature||'',
+              rendererReady:stage.dataset.abagsFidelity3dReady||'',rendererFrame:stage.dataset.abagsFidelity3dFrame||'',
+              rendererError:stage.dataset.abagsFidelity3dError||'',blockedSignature:stage.dataset.abagsFinal3dBlockedSignature||'',
+              pixels:stage.dataset.abagsFinal3dPixels||'',chroma:stage.dataset.abagsFinal3dChroma||'',
+              hueMatches:stage.dataset.abagsFinal3dHueMatches||'',expectedHue:stage.dataset.abagsFinal3dExpectedHue||'',
+              averageHueDelta:stage.dataset.abagsFinal3dAverageHueDelta||''
+            }:null,
+            canvas:canvas?{width:canvas.width,height:canvas.height,rect:rect?{width:rect.width,height:rect.height}:null,
+              opacity:getComputedStyle(canvas).opacity,display:getComputedStyle(canvas).display,
+              contextLost:gl?gl.isContextLost():null,buffer:gl?{width:gl.drawingBufferWidth,height:gl.drawingBufferHeight}:null,
+              hasProgram:gl?Boolean(gl.getParameter(gl.CURRENT_PROGRAM)):false,opaqueSamples,sampleError}:null,
+            viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio}
+          };
+        })()`);
+        throw new Error(`${label} Fidelity3D readiness failed: ${error instanceof Error ? error.message : String(error)}; diagnostics=${JSON.stringify(diagnostics)}`);
+      }
       await sleep(250);
     };
 
