@@ -71,3 +71,10 @@ test("production QA rejects Mini construction choices not present in Agata evide
   assert.match(qa, /bounded to real Agata component evidence/);
   assert.match(qa, /incompatible .* incorrectly selectable/);
 });
+test("CDP live-stage selectors quote nested CSS attribute values safely", () => {
+  const invalid = "document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']')";
+  assert.equal(qa.includes(invalid), false, "nested apostrophes must not terminate the JavaScript selector string");
+  assert.equal((qa.match(/data-abags-live-stage='true'/g) || []).length, 4);
+  const escapedQuote = String.fromCharCode(92) + '"';
+  assert.ok(qa.includes(`document.querySelector(${escapedQuote}.abags-vc-dialog`));
+});
