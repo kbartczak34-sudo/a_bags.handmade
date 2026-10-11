@@ -225,3 +225,16 @@ test("Fidelity3D uStitch uniform uses identical precision in both WebGL shader s
   assert.doesNotMatch(vertex, /uniform float uRelief,uStitch/);
   assert.doesNotMatch(fragment, /uniform float uMaterial,uStitch/);
 });
+
+
+test("same-signature fallback does not block recovery from missing renderer readiness", () => {
+  const paintStart = renderer.indexOf("const paint = () =>");
+  const guardStart = renderer.indexOf("const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature", paintStart);
+  const publishStart = renderer.indexOf("publishFrameMetadata(stage, canvas, currentConfig);", guardStart);
+  assert.ok(paintStart >= 0 && guardStart > paintStart && publishStart > guardStart);
+  const guard = renderer.slice(guardStart, publishStart);
+  assert.match(guard, /fallbackReason = stage\.dataset\.abagsFinal3dReason \|\| ""/);
+  assert.match(guard, /fallbackReason\.startsWith\("renderer-not-ready:"\)/);
+  assert.match(guard, /!recoverableReadinessFallback/);
+  assert.match(guard, /Keep the block for actual canvas\/pixel acceptance failures/);
+});
