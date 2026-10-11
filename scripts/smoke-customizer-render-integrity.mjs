@@ -161,10 +161,10 @@ async function main() {
 
     const waitReady = async (label) => {
       try {
-        await waitFor(`() => {
+        await waitFor(`(() => {
           const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
           return Boolean(stage && stage.dataset.abagsFinal3d==='ready' && stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature);
-        }`, `${label} ready Fidelity3D`, 20_000);
+        })()`, `${label} ready Fidelity3D`, 20_000);
       } catch (error) {
         const diagnostics = await evaluate(`(() => {
           const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
