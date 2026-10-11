@@ -1006,6 +1006,28 @@ function renderSignature(config: Config) {
   ].join("|");
 }
 
+// The verifier owns the stage, while draw() owns the WebGL canvas. Publish the
+// canvas proof onto the stage that Final3DController actually inspects.
+function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, config: Config) {
+  const frameSignature = canvas.dataset.abagsFidelity3dFrame || renderSignature(config);
+  const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature || "";
+  if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(config)) return;
+
+  stage.dataset.abagsFidelity3dFrame = frameSignature;
+  stage.dataset.abagsFidelity3dFrameAt = canvas.dataset.abagsFidelity3dFrameAt || String(Date.now());
+  stage.removeAttribute("data-abags-fidelity3d-error");
+}
+
+function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message.slice(0, 160) : fallback;
+  canvas.removeAttribute("data-abags-fidelity3d-frame");
+  canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+  canvas.dataset.abagsFidelity3dError = message;
+  stage.removeAttribute("data-abags-fidelity3d-frame");
+  stage.removeAttribute("data-abags-fidelity3d-frame-at");
+  stage.dataset.abagsFidelity3dError = message;
+}
+
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
   const { gl, uniforms, meshes } = renderer;
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
@@ -1215,9 +1237,8 @@ export default function BagBuilderFidelity3D() {
             const currentConfig = readConfig(stage);
             draw(nextRenderer, canvas, currentConfig, rotation, zoom);
 
-            // Once the final controller has rejected this exact configuration, do not
-            // immediately re-advertise WebGL readiness on every redraw. That race would
-            // disable the Premium Canvas3D fallback and recreate a blank mobile stage.
+            // If this exact frame was already rejected, do not publish new proof that
+            // would re-trigger promotion and recreate the blank-stage race.
             const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature || "";
             if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(currentConfig)) {
               stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
@@ -1226,6 +1247,8 @@ export default function BagBuilderFidelity3D() {
               setReady(false);
               return;
             }
+
+            publishFrameMetadata(stage, canvas, currentConfig);
 
             // Promotion happens only after a successful framebuffer write.
             // This prevents Android/Chromium from hiding the SVG fallback when
@@ -1239,7 +1262,7 @@ export default function BagBuilderFidelity3D() {
             setReady(true);
           } catch (error) {
             rendererRef.current = null;
-            canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
+            publishRendererError(stage, canvas, error, "render-failed");
             setReady(false);
             stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
             stage.removeAttribute("data-abags-pro3d-ready");
@@ -1249,9 +1272,7 @@ export default function BagBuilderFidelity3D() {
         requestAnimationFrame(paint);
       } catch (error) {
         rendererRef.current = null;
-        canvas.removeAttribute("data-abags-fidelity3d-frame");
-        canvas.removeAttribute("data-abags-fidelity3d-frame-at");
-        canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "renderer-init-failed";
+        publishRendererError(stage, canvas, error, "renderer-init-failed");
         setReady(false);
         stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
         stage.removeAttribute("data-abags-pro3d-ready");
@@ -1267,7 +1288,13 @@ export default function BagBuilderFidelity3D() {
       const renderer = rendererRef.current;
       const canvas = canvasRef.current;
       if (!renderer || !canvas) return;
-      try { draw(renderer, canvas, readConfig(stage), rotation, zoom); } catch { /* normal redraw effect handles recovery */ }
+      try {
+        const currentConfig = readConfig(stage);
+        draw(renderer, canvas, currentConfig, rotation, zoom);
+        publishFrameMetadata(stage, canvas, currentConfig);
+      } catch (error) {
+        publishRendererError(stage, canvas, error, "resize-render-failed");
+      }
     });
     resizeObserver.observe(stage);
 
@@ -1293,9 +1320,7 @@ export default function BagBuilderFidelity3D() {
       setReady(false);
       rendererRef.current = null;
       const canvas = canvasRef.current;
-      canvas?.removeAttribute("data-abags-fidelity3d-frame");
-      canvas?.removeAttribute("data-abags-fidelity3d-frame-at");
-      if (canvas) canvas.dataset.abagsFidelity3dError = "webgl-context-lost";
+      if (canvas) publishRendererError(stage, canvas, new Error("webgl-context-lost"), "webgl-context-lost");
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
@@ -1330,11 +1355,15 @@ export default function BagBuilderFidelity3D() {
       if (rendererRef.current !== renderer || canvasRef.current !== canvas) return;
       try {
         draw(renderer, canvas, config, rotation, zoom);
+        if (stage) publishFrameMetadata(stage, canvas, config);
       } catch (error) {
         rendererRef.current = null;
-        canvas.removeAttribute("data-abags-fidelity3d-frame");
-        canvas.removeAttribute("data-abags-fidelity3d-frame-at");
-        canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
+        if (stage) publishRendererError(stage, canvas, error, "render-failed");
+        else {
+          canvas.removeAttribute("data-abags-fidelity3d-frame");
+          canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+          canvas.dataset.abagsFidelity3dError = error instanceof Error ? error.message.slice(0, 160) : "render-failed";
+        }
         setReady(false);
         if (stage) {
           stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
