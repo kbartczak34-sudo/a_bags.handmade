@@ -1242,7 +1242,17 @@ export default function BagBuilderFidelity3D() {
             // If this exact frame was already rejected, do not publish new proof that
             // would re-trigger promotion and recreate the blank-stage race.
             const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature || "";
-            if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(currentConfig)) {
+            const fallbackReason = stage.dataset.abagsFinal3dReason || "";
+            // A fallback caused only by missing ready metadata is transient: the
+            // controller can run before this first successful paint. Allow the
+            // renderer to publish its current frame and readiness so validation
+            // can retry. Keep the block for actual canvas/pixel acceptance failures.
+            const recoverableReadinessFallback = fallbackReason.startsWith("renderer-not-ready:");
+            if (
+              stage.dataset.abagsFinal3d === "fallback" &&
+              blockedSignature === renderSignature(currentConfig) &&
+              !recoverableReadinessFallback
+            ) {
               stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
               stage.removeAttribute("data-abags-pro3d-ready");
               stage.removeAttribute("data-abags-fidelity3d-ready");
