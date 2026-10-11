@@ -145,3 +145,11 @@ test("Bag Builder has responsive mobile styles", () => {
   assert.match(builderStyles, /@media\(max-width:620px\)/);
   assert.match(builderStyles, /@media\(max-width:420px\)/);
 });
+test("personalization portal waits for the collection and recovers when hydration replaces it", () => {
+  assert.match(entry, /const observer = new MutationObserver\(attach\)/);
+  assert.match(entry, /observer\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+  assert.match(entry, /mount\?\.isConnected && mount\.previousElementSibling === collection/);
+  assert.match(entry, /collection\.insertAdjacentElement\("afterend", mount\)/);
+  assert.match(entry, /if \(mount\?\.isConnected\) setHost\(mount\)/);
+  assert.match(entry, /observer\.disconnect\(\)/);
+});

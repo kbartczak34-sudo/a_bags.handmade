@@ -127,7 +127,29 @@ async function main() {
     };
 
     const openBuilder = async () => {
-      await waitFor("Boolean(document.querySelector('#personalizacja'))", "personalization entry");
+      try {
+        await waitFor("Boolean(document.querySelector('#personalizacja'))", "personalization entry", 20_000);
+      } catch (error) {
+        const diagnostics = await evaluate(`(() => {
+          const collection=document.getElementById('kolekcja');
+          const mount=document.querySelector('.abags-personalization-entry-mount');
+          return {
+            href:location.href,readyState:document.readyState,title:document.title,
+            collectionExists:Boolean(collection),collectionConnected:Boolean(collection?.isConnected),
+            collectionParent:collection?.parentElement?.className||'',
+            portalMountExists:Boolean(mount),portalMountConnected:Boolean(mount?.isConnected),
+            entryCount:document.querySelectorAll('#personalizacja').length,
+            builderButtonCount:[...document.querySelectorAll('button')].filter(node=>node.textContent?.includes('Uruchom konfigurator')).length,
+            runtimeBuild:document.documentElement.dataset.abagsCustomizerRuntimeBuild||'',
+            bodyText:(document.body.innerText||'').slice(0,1800),
+            scripts:[...document.scripts].map(script=>script.src).filter(Boolean).slice(-12)
+          };
+        })()`);
+        const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+        await writeFile(path.join(qaDir, "personalization-entry-failure.png"), Buffer.from(shot.data, "base64"));
+        await writeFile(path.join(qaDir, "personalization-entry-failure.json"), JSON.stringify(diagnostics, null, 2));
+        throw new Error(`Personalization entry missing after hydration wait: ${error instanceof Error ? error.message : String(error)}; diagnostics=${JSON.stringify(diagnostics)}`);
+      }
       const opened = await evaluate(`(() => {
         const button=[...document.querySelectorAll('button')].find((node)=>node.textContent?.includes('Uruchom konfigurator'));
         if(!button)return false;

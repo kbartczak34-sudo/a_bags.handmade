@@ -38,7 +38,39 @@ export default function PersonalizationEntry() {
   const contact = usePublicContact(); const [host, setHost] = useState<HTMLElement | null>(null); const [open, setOpen] = useState(false); const [products, setProducts] = useState<Product[]>([]); const [config, setConfig] = useState<Config>(restoreDraft); const [assets, setAssets] = useState<CustomizerAsset[]>([]); const [assetsProductId, setAssetsProductId] = useState(""); const [saved, setSaved] = useState(false); const [showBase, setShowBase] = useState(false); const dialogRef = useRef<HTMLElement | null>(null); const restoreFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => { const controller = new AbortController(); fetch("/api/products", { cache: "no-store", signal: controller.signal }).then(async (response) => response.ok ? response.json() : Promise.reject(new Error("products unavailable"))).then((data: { products?: Product[] }) => { const items = Array.isArray(data.products) ? data.products : []; setProducts(items); if (!items.length) return; setConfig((current) => { if (current.productId && items.some((item) => item.id === current.productId)) return current; const first = items[0]; return { ...current, productId: first.id, stitch: first.stitchType ? slug(first.stitchType) : current.stitch }; }); }).catch(() => { if (!controller.signal.aborted) setProducts([]); }); return () => controller.abort(); }, []);
   useEffect(() => { if (!config.productId) return; const requestedProductId = config.productId; const controller = new AbortController(); fetch(`/api/customizer-assets?productId=${encodeURIComponent(requestedProductId)}`, { cache: "no-store", signal: controller.signal }).then(async (response) => { const data = await response.json(); if (!response.ok || !Array.isArray(data.assets)) throw new Error("customizer assets unavailable"); return data.assets as CustomizerAsset[]; }).then((items) => { if (!controller.signal.aborted) { setAssets(items); setAssetsProductId(requestedProductId); } }).catch(() => { if (!controller.signal.aborted) { setAssets([]); setAssetsProductId(requestedProductId); } }); return () => controller.abort(); }, [config.productId]);
-  useEffect(() => { const collection = document.getElementById("kolekcja"); if (!collection?.parentElement) return; const mount = document.createElement("div"); mount.className = "abags-personalization-entry-mount"; collection.insertAdjacentElement("afterend", mount); const frame = window.requestAnimationFrame(() => setHost(mount)); return () => { window.cancelAnimationFrame(frame); mount.remove(); }; }, []);
+  useEffect(() => {
+    let mount: HTMLDivElement | null = null;
+    let frame = 0;
+
+    // The page and the root-layout client components can hydrate in different
+    // orders. Keep retrying until the collection exists, and reattach the portal
+    // host if a later storefront render replaces the collection subtree.
+    const attach = () => {
+      const collection = document.getElementById("kolekcja");
+      if (!collection?.parentElement) return;
+      if (mount?.isConnected && mount.previousElementSibling === collection) return;
+
+      mount ??= document.createElement("div");
+      mount.className = "abags-personalization-entry-mount";
+      collection.insertAdjacentElement("afterend", mount);
+
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        if (mount?.isConnected) setHost(mount);
+      });
+    };
+
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
+    attach();
+
+    return () => {
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+      mount?.remove();
+    };
+  }, []);
   useEffect(() => { const openCustomizer = () => setOpen(true); const legacyButtons = new Set<HTMLButtonElement>(); const legacyHandler = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); setOpen(true); }; const enhance = () => { const desktop = document.querySelector(".desktop-navigation"); if (desktop) createNavigationLink(desktop, openCustomizer); const mobile = document.getElementById("mobile-navigation"); if (mobile) createNavigationLink(mobile, openCustomizer, true); const legacy = findLegacyConfiguratorButton(); if (legacy && !legacy.dataset.abagsVisualCustomizer) { legacy.dataset.abagsVisualCustomizer = "true"; legacy.addEventListener("click", legacyHandler, { capture: true }); legacyButtons.add(legacy); } }; enhance(); const observer = new MutationObserver(enhance); observer.observe(document.body, { childList: true, subtree: true }); return () => { observer.disconnect(); legacyButtons.forEach((button) => { button.removeEventListener("click", legacyHandler, { capture: true }); delete button.dataset.abagsVisualCustomizer; }); document.querySelectorAll("[data-abags-personalize-link]").forEach((link) => link.remove()); }; }, []);
   useEffect(() => { if (!open) return; restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; document.body.classList.add("abags-vc-open"); const frame = window.requestAnimationFrame(() => dialogRef.current?.focus()); const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); return; } if (event.key !== "Tab" || !dialogRef.current) return; const focusables = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')); if (!focusables.length) { event.preventDefault(); dialogRef.current.focus(); return; } const first = focusables[0], last = focusables[focusables.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }; window.addEventListener("keydown", onKey); return () => { window.cancelAnimationFrame(frame); document.body.classList.remove("abags-vc-open"); window.removeEventListener("keydown", onKey); restoreFocusRef.current?.focus(); }; }, [open]);
 
