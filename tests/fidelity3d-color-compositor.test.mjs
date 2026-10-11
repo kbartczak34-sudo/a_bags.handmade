@@ -67,7 +67,7 @@ test("renderer publishes a verified frame signature and recovers from draw failu
   assert.match(renderer, /canvas\.dataset\.abagsFidelity3dFrame = renderSignature\(config\)/);
   assert.match(renderer, /canvas\.dataset\.abagsFidelity3dFrameAt = String\(Date\.now\(\)\)/);
   assert.match(renderer, /canvas\.removeAttribute\("data-abags-fidelity3d-error"\)/);
-  assert.match(renderer, /canvas\.dataset\.abagsFidelity3dError = error instanceof Error/);
+  assert.match(renderer, /canvas\.dataset\.abagsFidelity3dError = message/);
   assert.match(renderer, /setRendererEpoch\(\(value\) => value \+ 1\)/);
   assert.match(renderer, /rendererRef\.current !== renderer \|\| canvasRef\.current !== canvas/);
   assert.match(renderer, /rendererRef\.current = null;/);
@@ -200,7 +200,7 @@ test("Fidelity3D invalidates stale frame metadata on init failure and WebGL cont
   assert.match(renderer, /} catch \(error\) \{[\s\S]*canvas\.removeAttribute\("data-abags-fidelity3d-frame"\)/);
   assert.match(renderer, /canvas\.removeAttribute\("data-abags-fidelity3d-frame-at"\)/);
   assert.match(renderer, /publishRendererError\(stage, canvas, error, "renderer-init-failed"\)/);
-  assert.match(renderer, /rendererRef\.current = null;[\s\S]*canvas\.dataset\.abagsFidelity3dError = "webgl-context-lost"/);
+  assert.match(renderer, /rendererRef\.current = null;[\s\S]*publishRendererError\(stage, canvas, new Error\("webgl-context-lost"\), "webgl-context-lost"\)/);
 });
 
 
