@@ -71,3 +71,11 @@ test("production QA rejects Mini construction choices not present in Agata evide
   assert.match(qa, /bounded to real Agata component evidence/);
   assert.match(qa, /incompatible .* incorrectly selectable/);
 });
+test("CDP live-stage selectors quote nested CSS attribute values safely", () => {
+  assert.doesNotMatch(
+    qa,
+    /document\\.querySelector\\('\.abags-vc-dialog[^\\n`]*\\[data-abags-live-stage='true'\\]'/,
+  );
+  assert.match(qa, /data-abags-live-stage='true'/);
+  assert.match(qa, /document\\.querySelector\\(\\\"\\.abags-vc-dialog/);
+});
