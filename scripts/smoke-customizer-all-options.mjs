@@ -291,6 +291,9 @@ async function main() {
             const attrs=Object.fromEntries([...stage.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value]));
             return {
               className:stage.className, attrs,
+              final3d:stage.dataset.abagsFinal3d||"", final3dReason:stage.dataset.abagsFinal3dReason||"",
+              final3dSignature:stage.dataset.abagsFinal3dSignature||"", builderSignature:stage.dataset.builderSignature||"",
+              rendererFrame:stage.dataset.abagsFidelity3dFrame||"", rendererReady:stage.dataset.abagsFidelity3dReady||"",
               rect:(()=>{const r=stage.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})(),
               children:[...stage.children].map(n=>({tag:n.tagName,className:n.className?.baseVal||n.className||'',width:n.width||0,height:n.height||0})),
               canvas:canvas?{
