@@ -9,7 +9,7 @@ test("post-deploy acceptance failures cannot be hidden by continue-on-error", ()
     assert.match(workflow, new RegExp(`steps\\.${step}\\.outcome`), `workflow must use outcome for ${step}`);
     assert.doesNotMatch(workflow, new RegExp(`steps\\.${step}\\.conclusion`), `workflow must not mask the ${step} failure`);
   }
-  assert.match(workflow, /RENDER_OUTCOME: \$\{\{ steps\.render_integrity\.outcome \}\}/);
+  assert.match(workflow, /RENDER_INTEGRITY_OUTCOME: \$\{\{ steps\.render_integrity\.outcome \}\}/);
   assert.match(workflow, /MOBILE_OUTCOME: \$\{\{ steps\.pro3d\.outcome \}\}/);
 });
 
