@@ -58,3 +58,14 @@ test("sidewall pass is event driven, Photo-True safe and non-interactive on mobi
   assert.match(css, /z-index:7!important/);
   assert.match(css, /@media \(max-width:620px\)/);
 });
+
+test("sidewall projection matches Fidelity3D yaw-then-pitch camera without detached screen-space geometry", () => {
+  const yaw = sidewall.indexOf("const cy = Math.cos(rotation.y)");
+  const pitch = sidewall.indexOf("const cx = Math.cos(rotation.x)");
+  assert.ok(yaw >= 0 && pitch > yaw, "Y rotation must precede X rotation as in the WebGL model matrix");
+  assert.match(sidewall, /\[x, z\] = \[x \* cy \+ z \* sy, -x \* sy \+ z \* cy\]/);
+  assert.match(sidewall, /\[y, z\] = \[y \* cx - z \* sx, y \* sx \+ z \* cx\]/);
+  assert.match(sidewall, /y \+= verticalOffset;\s*z \+= cameraZ;/);
+  assert.match(sidewall, /Math\.PI \/ 5\.3/);
+  assert.doesNotMatch(sidewall, /Math\.PI \/ 5\.15/);
+});

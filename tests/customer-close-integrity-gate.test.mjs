@@ -25,7 +25,7 @@ test("production deploy blocks on the close integrity gate before render integri
   const render = workflow.indexOf("id: render_integrity");
   assert.ok(close >= 0 && render > close);
   assert.match(workflow, /run: node scripts\/smoke-customizer-close-integrity\.mjs/);
-  assert.match(workflow, /steps\.close_integrity\.conclusion == 'success'/);
+  assert.match(workflow, /steps\.close_integrity\.outcome == 'success'/);
   assert.match(workflow, /CLOSE_INTEGRITY_OUTCOME:/);
   assert.match(workflow, /Fail when desktop customer close integrity fails/);
 });

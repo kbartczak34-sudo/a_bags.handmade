@@ -38,16 +38,22 @@ function project(point: Point3, width: number, height: number, rotation: Rotatio
   const verticalOffset = -0.02;
   let [x, y, z] = point.map((value) => value * rootScale) as Point3;
 
+  // Fidelity3D applies rotY first, then rotX, then the view translation.
+  // Keep this pass on the exact same camera: otherwise the projected side-wall
+  // can drift outside the body and appear as a detached vertical strip on mobile.
+  const cy = Math.cos(rotation.y);
+  const sy = Math.sin(rotation.y);
+  [x, z] = [x * cy + z * sy, -x * sy + z * cy];
+
   const cx = Math.cos(rotation.x);
   const sx = Math.sin(rotation.x);
   [y, z] = [y * cx - z * sx, y * sx + z * cx];
-  const cy = Math.cos(rotation.y);
-  const sy = Math.sin(rotation.y);
-  [x, z] = [x * cy + z * sy, -x * sy + z * cy + cameraZ];
+
   y += verticalOffset;
+  z += cameraZ;
   if (z >= -0.08) return null;
 
-  const f = 1 / Math.tan((Math.PI / 5.15) / 2);
+  const f = 1 / Math.tan((Math.PI / 5.3) / 2);
   return {
     x: ((((x * f / aspect) / -z) * 0.5) + 0.5) * width,
     y: (0.5 - (((y * f) / -z) * 0.5)) * height,
