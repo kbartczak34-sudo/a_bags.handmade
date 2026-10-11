@@ -212,3 +212,16 @@ test("renderer publishes canvas frame proof onto the stage consumed by Final3DCo
   assert.match(controller, /const frameSignature = stage\.dataset\.abagsFidelity3dFrame \|\| ""/);
   assert.match(renderer, /stage\.dataset\.abagsFidelity3dError = message/);
 });
+
+test("Fidelity3D uStitch uniform uses identical precision in both WebGL shader stages", () => {
+  const vertexStart = renderer.indexOf("const VERTEX = `");
+  const fragmentStart = renderer.indexOf("const FRAGMENT = `");
+  const compileStart = renderer.indexOf("function compile(");
+  assert.ok(vertexStart >= 0 && fragmentStart > vertexStart && compileStart > fragmentStart);
+  const vertex = renderer.slice(vertexStart, fragmentStart);
+  const fragment = renderer.slice(fragmentStart, compileStart);
+  assert.match(vertex, /uniform mediump float uStitch;/);
+  assert.match(fragment, /uniform mediump float uStitch;/);
+  assert.doesNotMatch(vertex, /uniform float uRelief,uStitch/);
+  assert.doesNotMatch(fragment, /uniform float uMaterial,uStitch/);
+});

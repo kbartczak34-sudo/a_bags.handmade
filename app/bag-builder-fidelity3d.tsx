@@ -736,7 +736,8 @@ attribute vec3 aPosition;
 attribute vec3 aNormal;
 attribute vec2 aUv;
 uniform mat4 uProjection,uView,uModel;
-uniform float uRelief,uStitch;
+uniform float uRelief;
+uniform mediump float uStitch;
 varying vec3 vNormal,vWorld;
 varying vec2 vUv;
 
@@ -799,7 +800,8 @@ precision mediump float;
 varying vec3 vNormal,vWorld;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
-uniform float uMaterial,uStitch;
+uniform float uMaterial;
+uniform mediump float uStitch;
 
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float yarn(vec2 uv,float m){
