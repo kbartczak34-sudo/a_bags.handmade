@@ -440,7 +440,7 @@ export default function BagBuilderReferenceV4() {
         pointer-events: auto !important;
       }
       .abags-reference-layout-v4 .abags-pro3d-zoom {
-        opacity: 0 !important;
+        opacity: 1 !important;
         pointer-events: auto !important;
       }
 
