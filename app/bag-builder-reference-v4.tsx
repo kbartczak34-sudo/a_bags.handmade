@@ -350,7 +350,9 @@ export default function BagBuilderReferenceV4() {
       display: block !important;
       opacity: 1 !important;
       visibility: visible !important;
-      pointer-events: none !important;
+      pointer-events: auto !important;
+      touch-action: none !important;
+      cursor: grab;
     }
 
     .abags-reference-layout-v4 .abags-builder-heading { order: 0 !important; }
@@ -365,7 +367,7 @@ export default function BagBuilderReferenceV4() {
     .abags-reference-layout-v4 .abags-builder-actions { order: 90 !important; }
 
     .abags-reference-layout-v4 .abags-pro3d-zoom {
-      opacity: 0 !important;
+      opacity: 1 !important;
       pointer-events: auto !important;
     }
 
@@ -438,7 +440,7 @@ export default function BagBuilderReferenceV4() {
         pointer-events: auto !important;
       }
       .abags-reference-layout-v4 .abags-pro3d-zoom {
-        opacity: 0 !important;
+        opacity: 1 !important;
         pointer-events: auto !important;
       }
 

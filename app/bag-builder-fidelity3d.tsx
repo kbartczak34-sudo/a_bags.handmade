@@ -1394,6 +1394,7 @@ export default function BagBuilderFidelity3D() {
           if (host) setStage((current) => current ?? host);
         }}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
+        style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
         aria-label={label}
         onPointerDown={(event) => {
           event.preventDefault();

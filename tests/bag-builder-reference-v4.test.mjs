@@ -71,7 +71,7 @@ test("mobile V4 hides technical summary noise until Podsumowanie", () => {
 });
 
 test("V4 late runtime styles neutralize legacy zoom and oversized header buttons", () => {
-  assert.match(v4, /\.abags-reference-layout-v4 \.abags-pro3d-zoom \{[\s\S]*?opacity: 0 !important/);
+  assert.match(v4, /\.abags-reference-layout-v4 \.abags-pro3d-zoom \{[\s\S]*?opacity: 1 !important/);
   assert.match(v4, /> button\.abags-v4-menu/);
   assert.match(v4, /> button\.abags-v4-share/);
   assert.match(v4, /width: 32px !important/);
