@@ -85,5 +85,5 @@ test("live renderer readiness timeout captures actual stage and WebGL state", ()
   assert.match(qa, /stageCount:candidates\.length/);
   assert.match(qa, /rendererErrorNodes:/);
   assert.match(qa, /gl:gl\?\{lost:gl\.isContextLost\(\),buffer:/);
-  assert.match(qa, /data-abags-final3d-reason/);
+  assert.match(qa, /final3dReason:/);
 });
