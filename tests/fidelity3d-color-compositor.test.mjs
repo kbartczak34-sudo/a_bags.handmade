@@ -199,7 +199,7 @@ test("Fidelity3D segmented chain has a closed local radial basis", () => {
 test("Fidelity3D invalidates stale frame metadata on init failure and WebGL context loss", () => {
   assert.match(renderer, /} catch \(error\) \{[\s\S]*canvas\.removeAttribute\("data-abags-fidelity3d-frame"\)/);
   assert.match(renderer, /canvas\.removeAttribute\("data-abags-fidelity3d-frame-at"\)/);
-  assert.match(renderer, /canvas\.dataset\.abagsFidelity3dError = error instanceof Error \? error\.message\.slice\(0, 160\) : "renderer-init-failed"/);
+  assert.match(renderer, /publishRendererError\(stage, canvas, error, "renderer-init-failed"\)/);
   assert.match(renderer, /rendererRef\.current = null;[\s\S]*canvas\.dataset\.abagsFidelity3dError = "webgl-context-lost"/);
 });
 
