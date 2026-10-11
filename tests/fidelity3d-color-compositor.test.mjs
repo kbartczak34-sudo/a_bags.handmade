@@ -202,3 +202,13 @@ test("Fidelity3D invalidates stale frame metadata on init failure and WebGL cont
   assert.match(renderer, /canvas\.dataset\.abagsFidelity3dError = error instanceof Error \? error\.message\.slice\(0, 160\) : "renderer-init-failed"/);
   assert.match(renderer, /rendererRef\.current = null;[\s\S]*canvas\.dataset\.abagsFidelity3dError = "webgl-context-lost"/);
 });
+
+
+test("renderer publishes canvas frame proof onto the stage consumed by Final3DController", () => {
+  assert.match(renderer, /function publishFrameMetadata\(stage: HTMLElement, canvas: HTMLCanvasElement, config: Config\)/);
+  assert.match(renderer, /stage\.dataset\.abagsFidelity3dFrame = frameSignature/);
+  assert.match(renderer, /stage\.dataset\.abagsFidelity3dFrameAt = canvas\.dataset\.abagsFidelity3dFrameAt/);
+  assert.match(renderer, /publishFrameMetadata\(stage, canvas, currentConfig\)/);
+  assert.match(controller, /const frameSignature = stage\.dataset\.abagsFidelity3dFrame \|\| ""/);
+  assert.match(renderer, /stage\.dataset\.abagsFidelity3dError = message/);
+});
