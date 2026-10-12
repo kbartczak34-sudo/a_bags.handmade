@@ -25,3 +25,11 @@ test("production browser acceptance checks cannot be silently ignored", () => {
     assert.doesNotMatch(step[1], /continue-on-error:\s*true/, `workflow step ${id} must fail the run when it fails`);
   }
 });
+
+test("automatic pink preview cannot remain behind the real 3D renderer", () => {
+  const reference = readFileSync(new URL("../app/bag-builder-reference-v4.tsx", import.meta.url), "utf8");
+  assert.match(reference, /\.abags-vc-preview:has\(\.abags-bag-builder-stage\.abags-fidelity3d-active\)::before/);
+  assert.match(reference, /\.abags-vc-preview:has\(\.abags-bag-builder-stage\.abags-fidelity3d-active\)::after/);
+  assert.match(reference, /attributeFilter: \[[\s\S]*"class"/);
+  assert.match(reference, /"data-abags-canvas3d-ready"/);
+});
