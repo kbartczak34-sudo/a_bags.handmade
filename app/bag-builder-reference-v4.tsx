@@ -145,6 +145,29 @@ function boostInitialModel(stage: HTMLElement) {
   for (let index = 0; index < clicks; index += 1) plus.click();
 }
 
+function synchronizeBaseProductPhoto(dialog: HTMLElement, stage: HTMLElement) {
+  const preview = stage.closest<HTMLElement>(".abags-vc-preview");
+  const base = preview?.querySelector<HTMLImageElement>(".abags-vc-base");
+  if (!base) return;
+  const has3dSurface =
+    stage.classList.contains("abags-pro3d-active") ||
+    stage.classList.contains("abags-fidelity3d-active") ||
+    stage.classList.contains("abags-premium-canvas3d-active");
+  if (has3dSurface) {
+    base.style.setProperty("display", "none", "important");
+    base.style.setProperty("visibility", "hidden", "important");
+    base.style.setProperty("opacity", "0", "important");
+    base.style.setProperty("pointer-events", "none", "important");
+    base.dataset.abags3dBaseSuppressed = "true";
+  } else if (base.dataset.abags3dBaseSuppressed === "true") {
+    base.style.removeProperty("display");
+    base.style.removeProperty("visibility");
+    base.style.removeProperty("opacity");
+    base.style.removeProperty("pointer-events");
+    delete base.dataset.abags3dBaseSuppressed;
+  }
+}
+
 function synchronizeLegacyFlatSurface(stage: HTMLElement) {
   const svgs = Array.from(stage.querySelectorAll<SVGElement>("svg"));
   if (!svgs.length) return;
@@ -182,6 +205,7 @@ function sync(dialog: HTMLElement) {
   ensureSubgroupLabels(dialog);
   synchronizeGroups(dialog, stage);
   synchronizeLegacyFlatSurface(stage);
+  synchronizeBaseProductPhoto(dialog, stage);
   tagCoreSummary(dialog);
   // Do not auto-zoom the live product on mobile. The canonical renderer
   // owns its own calibrated framing; forcing the legacy zoom control to ~108%
@@ -242,6 +266,13 @@ export default function BagBuilderReferenceV4() {
         delete dialog.dataset.abagsReferenceV4;
         delete dialog.dataset.v4Step;
         dialog.querySelectorAll(".abags-v4-header-tool,.abags-v4-preview-meta,.abags-v4-subgroup-label").forEach((node) => node.remove());
+        dialog.querySelectorAll<HTMLImageElement>(".abags-vc-base[data-abags-3d-base-suppressed='true']").forEach((base) => {
+          base.style.removeProperty("display");
+          base.style.removeProperty("visibility");
+          base.style.removeProperty("opacity");
+          base.style.removeProperty("pointer-events");
+          delete base.dataset.abags3dBaseSuppressed;
+        });
         dialog.querySelectorAll<SVGElement>(".abags-bag-builder-stage > svg[data-abags-legacy-surface-suppressed='true']").forEach((svg) => {
           svg.style.removeProperty("display");
           svg.style.removeProperty("opacity");
