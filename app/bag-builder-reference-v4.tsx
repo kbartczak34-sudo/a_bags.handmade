@@ -145,7 +145,7 @@ function boostInitialModel(stage: HTMLElement) {
   for (let index = 0; index < clicks; index += 1) plus.click();
 }
 
-function synchronizeBaseProductPhoto(dialog: HTMLElement, stage: HTMLElement) {
+function synchronizeBaseProductPhoto(stage: HTMLElement) {
   const preview = stage.closest<HTMLElement>(".abags-vc-preview");
   const base = preview?.querySelector<HTMLImageElement>(".abags-vc-base");
   if (!base) return;
@@ -205,7 +205,7 @@ function sync(dialog: HTMLElement) {
   ensureSubgroupLabels(dialog);
   synchronizeGroups(dialog, stage);
   synchronizeLegacyFlatSurface(stage);
-  synchronizeBaseProductPhoto(dialog, stage);
+  synchronizeBaseProductPhoto(stage);
   tagCoreSummary(dialog);
   // Do not auto-zoom the live product on mobile. The canonical renderer
   // owns its own calibrated framing; forcing the legacy zoom control to ~108%
