@@ -224,8 +224,9 @@ export default function BagBuilderReferenceV4() {
       subtree: true,
       attributes: true,
       attributeFilter: [
+        "class",
         "data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent",
-        "data-abags-pro3d-ready", "data-abags-final3d", "data-abags-fidelity3d-ready", "disabled", "data-abags-ref-step",
+        "data-abags-pro3d-ready", "data-abags-final3d", "data-abags-fidelity3d-ready", "data-abags-canvas3d-ready", "disabled", "data-abags-ref-step",
       ],
     });
     document.addEventListener("click", onClick, true);
@@ -287,6 +288,21 @@ export default function BagBuilderReferenceV4() {
       visibility: visible !important;
       opacity: 1 !important;
       pointer-events: none !important;
+    }
+
+    /* The old automatic preview is painted by .abags-vc-preview::before/after,
+       not by the stage SVG. Those pseudo-layers look like a pink suitcase and
+       remain visible behind the real WebGL model unless explicitly disabled.
+       They must disappear whenever any real 3D surface owns the preview. */
+    .abags-reference-layout-v4 .abags-vc-preview:has(.abags-bag-builder-stage.abags-fidelity3d-active)::before,
+    .abags-reference-layout-v4 .abags-vc-preview:has(.abags-bag-builder-stage.abags-fidelity3d-active)::after,
+    .abags-reference-layout-v4 .abags-vc-preview:has(.abags-bag-builder-stage.abags-premium-canvas3d-active)::before,
+    .abags-reference-layout-v4 .abags-vc-preview:has(.abags-bag-builder-stage.abags-premium-canvas3d-active)::after,
+    .abags-reference-layout-v4 .abags-vc-preview:has(.abags-bag-builder-stage.abags-pro3d-active)::before,
+    .abags-reference-layout-v4 .abags-vc-preview:has(.abags-bag-builder-stage.abags-pro3d-active)::after {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
     }
 
     /* Legacy V23 is mounted globally for Photo-True QA, but its renderer uses an
