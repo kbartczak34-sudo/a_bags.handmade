@@ -80,7 +80,7 @@ const EMPTY: Config = {
 // Calibrated product view: expose the physical side wall immediately on mobile.
 // A positive yaw was still reading too close to front-on on some Chromium devices.
 const DEFAULT_ROTATION = { x: -0.12, y: -0.62 };
-const DEFAULT_ZOOM = 0.72;
+const DEFAULT_ZOOM = 0.60;
 
 function physicalDepth(family: Exclude<Family, "">) {
   const calibrated = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].depth;
@@ -1172,7 +1172,16 @@ export default function BagBuilderFidelity3D() {
   useEffect(() => {
     const find = () => setStage((current) => {
       const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active");
+      // The renderer must read configuration from the exact stage that owns its
+      // canvas. Several legacy/final-stage wrappers can coexist during promotion;
+      // choosing an unrelated engine-stage makes the swatch UI and WebGL model
+      // drift apart (e.g. purple selected while the bag stays pink).
+      const canvas =
+        dialog?.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas") ??
+        document.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
+      const canvasStage = canvas?.closest<HTMLElement>(".abags-bag-builder-stage") ?? null;
       const next =
+        canvasStage ??
         dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage='true']") ??
         dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage='true']") ??
         dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage") ??
