@@ -759,21 +759,21 @@ float knit(vec2 uv,float m){
   }
   if(m<1.5){
     // Herringbone: interlocking chevrons, not a flat diamond grid.
-    p=fract(uv*vec2(23.0,25.0));
+    p=fract(uv*vec2(15.0,18.0));
     float diag=abs(fract(p.x+p.y)-.5);
     float anti=abs(fract(p.x-p.y)-.5);
     return 1.0-smoothstep(.07,.24,min(diag,anti));
   }
   if(m<2.5){
     // Basket stitch: alternating over/under bands.
-    p=fract(uv*vec2(16.0,18.0));
+    p=fract(uv*vec2(11.0,13.0));
     float warp=1.0-smoothstep(.16,.38,abs(p.x-.5));
     float weft=1.0-smoothstep(.16,.38,abs(p.y-.5));
     return max(warp*(.72+.28*step(.5,fract(uv.y*9.0))),weft*(.72+.28*step(.5,fract(uv.x*8.0))));
   }
   // Shell stitch: repeated scallops with a woven secondary strand.
-  row=uv.y*24.0;
-  p=fract(vec2(uv.x*28.0,row));
+  row=uv.y*17.0;
+  p=fract(vec2(uv.x*19.0,row));
   float shell=1.0-smoothstep(.06,.42,abs(length(p-vec2(.5,.32))-.34));
   float rib=1.0-smoothstep(.05,.17,abs(p.x-.5));
   return shell*.7+rib*.22;
@@ -1054,13 +1054,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
-  const relief = config.color && config.stitch ? 0.012 : 0.0045;
+  const relief = config.color && config.stitch ? 0.016 : 0.006;
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
   const interiorColor = darken(openingColor, 0.58);
   drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, 0, stitch, 0);
-  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.007 : 0.003);
+  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.009 : 0.004);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
