@@ -50,7 +50,8 @@ test("final verifier accepts only the shared Agata renderer contract with real f
   assert.match(controller, /drawingBufferWidth < 16/);
   assert.match(controller, /function inspectVisiblePixels/);
   assert.match(controller, /gl\.readPixels/);
-  assert.match(controller, /opaqueSamples >= 5/);
+  assert.match(controller, /productPixelThreshold/);
+  assert.match(controller, /productPixelsOk = opaqueSamples >= productPixelThreshold/);
   assert.match(controller, /framebuffer-empty-/);
   assert.match(controller, /abagsFinal3dPixels/);
   assert.match(controller, /abagsFidelity3dFrame/);
