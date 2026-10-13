@@ -286,8 +286,11 @@ async function main() {
     await clearDraftAndReload();
     await openBuilder();
     await chooseByTouch("family","round");
+    await waitVerified3d("mobile after family");
     await chooseByTouch("color","#E4A9B5");
+    await waitVerified3d("mobile after color");
     const zoomBefore=await evaluate("(() => { const input=document.querySelector('.abags-pro3d-zoom input[type=\"range\"]'); return input?Number(input.value):null; })()");
+    if (!Number.isFinite(zoomBefore)) throw new Error("Mobile 3D zoom control did not mount after verified model render: "+JSON.stringify(await stageState()));
     await tapSelector('.abags-pro3d-zoom button[aria-label="Oddal model"]',"mobile zoom out");
     const zoomAfter=await evaluate("(() => { const input=document.querySelector('.abags-pro3d-zoom input[type=\"range\"]'); return input?Number(input.value):null; })()");
     if(!(Number.isFinite(zoomBefore)&&Number.isFinite(zoomAfter)&&zoomAfter<zoomBefore)) throw new Error('Mobile zoom did not change: before='+zoomBefore+' after='+zoomAfter);
