@@ -784,9 +784,9 @@ void main(){
   float eps=.0028;
   float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
   float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
-  vec3 reliefNormal=normalize(vec3(-hx*uRelief*2.2,-hy*uRelief*2.2,1.0));
+  vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
   float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.82));
+  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.42));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
@@ -1054,13 +1054,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
-  const relief = config.color && config.stitch ? 0.021 : 0.004;
+  const relief = config.color && config.stitch ? 0.0038 : 0.0018;
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
   const interiorColor = darken(openingColor, 0.58);
   drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, 0, stitch, 0);
-  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.012 : 0.004);
+  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.0028 : 0.0014);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
@@ -1111,7 +1111,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? "#7c5034" : config.flap === "suede-burgundy" ? "#803248" : body;
     const material = config.flap === "crochet" ? 0 : 2;
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.045], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.018 : 0);
+    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.045], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.0035 : 0);
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
@@ -1136,7 +1136,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   if (config.accent === "tassel") {
     drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.accentX, profile.accentY + 0.03, profile.frontZ + 0.07], [0.075, 0.075, 0.055])), metal, 4, 0);
-    drawMesh(renderer, meshes.cone, multiply(root, matrix([profile.accentX, profile.accentY - 0.27, profile.frontZ + 0.06], [0.95, 1.05, 0.95])), body, 0, stitch, 0.01);
+    drawMesh(renderer, meshes.cone, multiply(root, matrix([profile.accentX, profile.accentY - 0.27, profile.frontZ + 0.06], [0.95, 1.05, 0.95])), body, 0, stitch, 0.002);
   } else if (config.accent === "scarf") {
     drawMesh(renderer, meshes.ribbon, multiply(root, matrix([profile.accentX + 0.08, profile.accentY + 0.06, profile.frontZ + 0.12], [0.82, 1, 1], [0, 0, 0.52])), "#e9a8b7", 3, 0);
     drawMesh(renderer, meshes.ribbon, multiply(root, matrix([profile.accentX + 0.18, profile.accentY - 0.04, profile.frontZ + 0.13], [0.72, 1, 1], [0, 0, -0.5])), "#c8718a", 3, 0);
