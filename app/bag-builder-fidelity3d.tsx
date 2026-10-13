@@ -751,8 +751,8 @@ float knit(vec2 uv,float m){
   float row;
   if(m<.5){
     // Classic crochet: compact horizontal loops with a subtle stagger.
-    row=uv.y*54.0+sin(uv.x*8.0)*.22;
-    p=fract(vec2(uv.x*31.0+floor(row)*.5,row));
+    row=uv.y*30.0+sin(uv.x*4.0)*.10;
+    p=fract(vec2(uv.x*18.0+floor(row)*.5,row));
     float loop=1.0-smoothstep(.08,.34,abs(p.x-.5));
     float crossing=1.0-smoothstep(.03,.18,abs(p.y-.52));
     return loop*.58+crossing*.26;
@@ -780,13 +780,13 @@ float knit(vec2 uv,float m){
 }
 
 void main(){
-  float h=knit(aUv,uStitch)*uRelief*.22;
+  float h=knit(aUv,uStitch)*uRelief*.48;
   float eps=.0028;
   float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
   float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
   vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
   float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.08));
+  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.24));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
@@ -808,7 +808,7 @@ float yarn(vec2 uv,float m){
   vec2 p;
   float a;
   if(m<.5){
-    p=fract(vec2(uv.x*31.0+floor(uv.y*54.0)*.5,uv.y*54.0));
+    p=fract(vec2(uv.x*18.0+floor(uv.y*30.0)*.5,uv.y*30.0));
     a=.42+.34*(1.0-smoothstep(.06,.34,abs(p.x-.5)))+.16*sin(p.y*6.2831);
   } else if(m<1.5){
     p=fract(uv*vec2(23.0,25.0));
@@ -837,7 +837,7 @@ void main(){
   float rough=.88,metal=0.0,detail=1.0;
 
   if(uMaterial<.5){
-    detail=.78+.32*yarn(vUv,uStitch)+.025*(hash(floor(vUv*vec2(260.0,240.0)))-.5);
+    detail=.62+.58*yarn(vUv,uStitch)+.045*(hash(floor(vUv*vec2(180.0,150.0)))-.5);
     rough=.94;
   } else if(uMaterial<1.5){
     detail=.91+.035*sin(vUv.x*18.0+sin(vUv.y*5.0)*.7)+.018*sin(vUv.x*47.0+vUv.y*3.0)+.012*(hash(floor(vUv*vec2(90.0,34.0)))-.5);
@@ -1054,13 +1054,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
-  const relief = config.color && config.stitch ? 0.0038 : 0.0018;
+  const relief = config.color && config.stitch ? 0.012 : 0.0045;
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
   const interiorColor = darken(openingColor, 0.58);
   drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, 0, stitch, 0);
-  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.0028 : 0.0014);
+  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.007 : 0.003);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
@@ -1102,7 +1102,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
           handleColor,
           material,
           stitch,
-          config.handles === "crochet" ? 0.018 : 0,
+          config.handles === "crochet" ? 0.008 : 0,
         );
       }
     }
