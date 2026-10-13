@@ -780,13 +780,13 @@ float knit(vec2 uv,float m){
 }
 
 void main(){
-  float h=knit(aUv,uStitch)*uRelief;
+  float h=knit(aUv,uStitch)*uRelief*.22;
   float eps=.0028;
   float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
   float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
   vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
   float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.42));
+  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.08));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
