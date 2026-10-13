@@ -153,15 +153,15 @@ test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures
   assert.match(renderer, /frontFaceZ \+ frontBulge/);
   assert.match(renderer, /float fillLight=max\(dot\(n,fill\),0\.0\)/);
   assert.match(renderer, /A restrained warm atelier bounce/);
-  assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.021 : 0\.004/);
+  assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.0038 : 0\.0018/);
 });
 
 test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
-  assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief/);
+  assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief\*\.22/);
   assert.match(renderer, /float hx=\(knit\(aUv\+vec2\(eps,0\.0\),uStitch\)-knit\(aUv-vec2\(eps,0\.0\),uStitch\)\)/);
   assert.match(renderer, /float hy=\(knit\(aUv\+vec2\(0\.0,eps\),uStitch\)-knit\(aUv-vec2\(0\.0,eps\),uStitch\)\)/);
   assert.match(renderer, /vec3 reliefNormal=normalize/);
-  assert.match(renderer, /mix\(aNormal,reliefNormal,frontFace\*\.82\)/);
+  assert.match(renderer, /mix\(aNormal,reliefNormal,frontFace\*\.08\)/);
 });
 
 
