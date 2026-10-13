@@ -402,6 +402,21 @@ export default function BagBuilderReferenceV4() {
       cursor: grab;
     }
 
+    /* Configuration controls must always own their touch hit-test on mobile.
+       The live 3D preview is a separate visual surface and must never cover a builder
+       button with its stacking context. */ 
+    .abags-reference-layout-v4 .abags-builder-group {
+      position: relative !important;
+      z-index: 60 !important;
+      pointer-events: auto !important;
+    }
+    .abags-reference-layout-v4 .abags-builder-group button[data-builder-key] {
+      position: relative !important;
+      z-index: 61 !important;
+      pointer-events: auto !important;
+      touch-action: manipulation !important;
+    }
+
     .abags-reference-layout-v4 .abags-builder-heading { order: 0 !important; }
     .abags-reference-layout-v4 .abags-builder-group { order: 10 !important; }
     .abags-reference-layout-v4 [data-v4-core-summary] { order: 60 !important; }
