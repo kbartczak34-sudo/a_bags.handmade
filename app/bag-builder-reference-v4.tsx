@@ -567,7 +567,40 @@ export default function BagBuilderReferenceV4() {
       }
       .abags-reference-layout-v4 .abags-pro3d-zoom {
         opacity: 1 !important;
+        visibility: visible !important;
+        display: flex !important;
         pointer-events: auto !important;
+        position: absolute !important;
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 8px !important;
+        width: auto !important;
+        max-width: calc(100% - 16px) !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        gap: 5px !important;
+        justify-content: space-between !important;
+        overflow: visible !important;
+        z-index: 80 !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom button {
+        flex: 0 0 28px !important;
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 30px !important;
+        padding: 0 !important;
+        touch-action: manipulation !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom input[type="range"] {
+        flex: 1 1 auto !important;
+        min-width: 24px !important;
+        width: auto !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom > span {
+        flex: 0 1 auto !important;
+        min-width: 0 !important;
+        white-space: nowrap !important;
+        font-size: 9px !important;
       }
 
       .abags-reference-layout-v4 [data-builder-material] { display: none !important; }
