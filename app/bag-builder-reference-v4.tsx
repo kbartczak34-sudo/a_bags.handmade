@@ -241,6 +241,26 @@ export default function BagBuilderReferenceV4() {
       }, 90);
     };
 
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== "touch") return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest<HTMLButtonElement>("button[data-builder-key]")) return;
+      const dialog = target?.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4")
+        || document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active");
+      if (!dialog) return;
+      const button = [...dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key]")].find((candidate) => {
+        if (candidate.disabled) return false;
+        const rect = candidate.getBoundingClientRect();
+        return event.clientX >= rect.left && event.clientX <= rect.right
+          && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      });
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      button.click();
+      requestSync();
+    };
+
     const onTouchEnd = (event: TouchEvent) => {
       const touch = event.changedTouches[0];
       if (!touch) return;
@@ -274,12 +294,14 @@ export default function BagBuilderReferenceV4() {
       ],
     });
     document.addEventListener("click", onClick, true);
+    document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("touchend", onTouchEnd, { capture: true, passive: false });
     window.addEventListener("resize", requestSync);
 
     return () => {
       observer.disconnect();
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("touchend", onTouchEnd, true);
       window.removeEventListener("resize", requestSync);
       if (frame) window.cancelAnimationFrame(frame);
