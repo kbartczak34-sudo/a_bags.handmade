@@ -189,7 +189,7 @@ async function main() {
     };
 
     const chooseByTouch = async (key, value) => {
-      const selector='button[data-builder-key='+JSON.stringify(key)+'][data-builder-value='+JSON.stringify(value)+']';
+      const selector='.abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active button[data-builder-key='+JSON.stringify(key)+'][data-builder-value='+JSON.stringify(value)+']';
       const targetState=await evaluate('(() => { const b=document.querySelector('+JSON.stringify(selector)+'); if(!b)return null; const r=b.getBoundingClientRect(); const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return {disabled:b.disabled,elementHit:top===b||Boolean(top?.closest&&top.closest("button[data-builder-key]")===b),tag:top?.tagName||"",text:top?.textContent?.trim()||""}; })()');
       if(!targetState||targetState.disabled) throw new Error('Touch target unavailable for '+key+'='+value+': '+JSON.stringify(targetState));
       // Android Chromium can report the builder section as elementFromPoint() for a
