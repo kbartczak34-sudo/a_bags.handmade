@@ -925,7 +925,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
-      woodHandle: createMesh(gl, makeArchTube(0.46, 0.27, 0, 0.029, 84, 14, false)),
+      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.034, 96, 16, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
       roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
@@ -1101,12 +1101,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const isWoodHandle = config.handles.startsWith("wood");
     const mesh = isWoodHandle ? meshes.woodHandle : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.30;
-    const handleSides = isWoodHandle ? [0] : [-1, 1];
+    // Wooden handles are two separate rigid ring handles attached at the
+    // left/right top corners, not two depth copies of one oversized arch.
+    const handleSides = [-1, 1];
     for (const side of handleSides) {
       const transform = isWoodHandle
-        ? { x: 0, y: profile.topY + 0.07, scaleX: profile.width * 0.78, scaleY: Math.max(0.18, profile.handleScaleY * 0.48) }
+        ? { x: side * profile.width * 0.29, y: profile.topY + 0.035, scaleX: profile.width * 0.34, scaleY: Math.max(0.20, profile.handleScaleY * 0.56) }
         : handleTransform(profile, renderFamily, side);
-      const depthPlanes = isWoodHandle ? [-zOffset, zOffset] : [-zOffset * 0.72, zOffset * 0.72];
+      const depthPlanes = isWoodHandle ? [zOffset * 0.72] : [-zOffset * 0.72, zOffset * 0.72];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
