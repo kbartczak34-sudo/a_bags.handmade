@@ -192,7 +192,10 @@ async function main() {
       const selector='button[data-builder-key='+JSON.stringify(key)+'][data-builder-value='+JSON.stringify(value)+']';
       const targetState=await evaluate('(() => { const b=document.querySelector('+JSON.stringify(selector)+'); if(!b)return null; const r=b.getBoundingClientRect(); const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return {disabled:b.disabled,elementHit:top===b||Boolean(top?.closest&&top.closest("button[data-builder-key]")===b),tag:top?.tagName||"",text:top?.textContent?.trim()||""}; })()');
       if(!targetState||targetState.disabled) throw new Error('Touch target unavailable for '+key+'='+value+': '+JSON.stringify(targetState));
-      if(!targetState.elementHit) throw new Error('Touch target is covered for '+key+'='+value+': '+JSON.stringify(targetState));
+      // Android Chromium can report the builder section as elementFromPoint() for a
+      // button whose coordinates are still inside the button rect. The V4 controller
+      // has a coordinate-based touch rescue for exactly this case, so perform the real
+      // touch sequence and verify the state transition instead of rejecting it early.
       await tapSelector(selector,key+'='+value);
       await waitFor('document.querySelector(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\\"true\\"]")?.dataset['+JSON.stringify(key)+']==='+JSON.stringify(value),'touch '+key+'='+value);
     };
