@@ -119,16 +119,16 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
    height cropped the stage even when the WebGL canvas was taller. */
 @media (max-width: 620px) {
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview {
-    height: clamp(290px, 24vh, 360px) !important;
-    min-height: 290px !important;
-    max-height: 360px !important;
+    height: clamp(330px, 34vh, 430px) !important;
+    min-height: 330px !important;
+    max-height: 430px !important;
     overflow: hidden !important;
   }
 
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage {
     height: 100% !important;
-    min-height: 290px !important;
-    max-height: 360px !important;
+    min-height: 330px !important;
+    max-height: 430px !important;
   }
 
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage.abags-fidelity3d-active > .abags-fidelity3d-layer,
