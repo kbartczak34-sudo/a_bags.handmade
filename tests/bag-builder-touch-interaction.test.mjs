@@ -23,6 +23,14 @@ test("V4 compositor does not disable input on the verified 3D canvas", () => {
   assert.doesNotMatch(readyBlock, /pointer-events: none !important/);
 });
 
+test("mobile builder options have a pointer-based touch rescue", () => {
+  assert.match(layout, /const onPointerDown = \(event: PointerEvent\)/);
+  assert.match(layout, /event\.pointerType !== "touch"/);
+  assert.match(layout, /getBoundingClientRect\(\)/);
+  assert.match(layout, /button\.click\(\)/);
+  assert.match(layout, /document\.addEventListener\("pointerdown", onPointerDown, true\)/);
+});
+
 test("visible zoom controls are available to the customer", () => {
   const zoomBlock = layout.match(/\.abags-reference-layout-v4 \.abags-pro3d-zoom \{[^}]+\}/)?.[0] ?? "";
   assert.match(zoomBlock, /opacity: 1 !important/);
