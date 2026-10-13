@@ -23,6 +23,13 @@ test("V4 compositor does not disable input on the verified 3D canvas", () => {
   assert.doesNotMatch(readyBlock, /pointer-events: none !important/);
 });
 
+test("mobile builder options delegate section clicks to the option under the click coordinates", () => {
+  assert.match(layout, /let button = target\?\.closest<HTMLButtonElement>\("button\[data-builder-key\]"\) \|\| null/);
+  assert.match(layout, /event\.clientX >= rect\.left/);
+  assert.match(layout, /event\.clientY >= rect\.top/);
+  assert.match(layout, /button\.click\(\)/);
+});
+
 test("mobile builder options have a pointer-based touch rescue", () => {
   assert.match(layout, /const onPointerDown = \(event: PointerEvent\)/);
   assert.match(layout, /event\.pointerType !== "touch"/);

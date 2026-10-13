@@ -227,7 +227,27 @@ export default function BagBuilderReferenceV4() {
 
     const onClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
-      const button = target?.closest<HTMLButtonElement>("button[data-builder-key]");
+      let button = target?.closest<HTMLButtonElement>("button[data-builder-key]") || null;
+
+      if (!button) {
+        const dialog = target?.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4")
+          || document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active");
+        if (dialog) {
+          button = [...dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key]")].find((candidate) => {
+            if (candidate.disabled) return false;
+            const rect = candidate.getBoundingClientRect();
+            return event.clientX >= rect.left && event.clientX <= rect.right
+              && event.clientY >= rect.top && event.clientY <= rect.bottom;
+          }) || null;
+          if (button) {
+            event.preventDefault();
+            event.stopPropagation();
+            button.click();
+            return;
+          }
+        }
+      }
+
       if (!button || button.disabled) return;
       const dialog = button.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4");
       const stage = dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage");
