@@ -40,5 +40,6 @@ test("production realtime acceptance exercises only isolated Fidelity3D view con
   assert.match(smoke, /legacyControlCount/);
   assert.match(smoke, /viewControls\.height > 44/);
   assert.match(smoke, /zoomControls\.height > 48/);
-  assert.doesNotMatch(smoke, /querySelectorAll\('\.abags-pro3d-view-controls button'\)/);
+  assert.match(smoke, /fidelityLayer\?\.querySelectorAll\('\.abags-pro3d-view-controls button'\)/);
+  assert.match(smoke, /const viewControls=fidelityLayer\?\.querySelector\('\.abags-pro3d-view-controls'\)/);
 });
