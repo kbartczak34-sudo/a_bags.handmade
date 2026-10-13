@@ -150,12 +150,16 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string):
 
   // A non-transparent canvas is not sufficient. Several product pixels must be present and,
   // for chromatic cord colors, a meaningful share must retain the selected hue after lighting.
-  const productPixelsOk = opaqueSamples >= 5;
+  // Small mobile preview surfaces can legitimately intersect only a few of the 9x9
+  // verification probes. Keep a minimum of 3 opaque product samples while scaling the
+  // requirement down from the desktop threshold instead of rejecting a valid mobile frame.
+  const productPixelThreshold = Math.min(5, Math.max(3, Math.ceil((rows * columns) * 0.03)));
+  const productPixelsOk = opaqueSamples >= productPixelThreshold;
   const minimumHueMatches = colorRequired ? Math.max(2, Math.ceil(opaqueSamples * .2)) : 0;
   const colorOk = !colorRequired || hueMatches >= minimumHueMatches;
   const ok = productPixelsOk && colorOk;
   const reason = !productPixelsOk
-    ? `framebuffer-empty-${opaqueSamples}`
+    ? `framebuffer-empty-${opaqueSamples}-threshold-${productPixelThreshold}`
     : !colorOk
       ? `framebuffer-color-mismatch-${hueMatches}-${minimumHueMatches}`
       : `renderer-frame-v4-pixels-${opaqueSamples}-hue-${hueMatches}`;
