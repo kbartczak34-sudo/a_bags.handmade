@@ -122,8 +122,9 @@ async function main() {
       const neutralStyle=neutral?getComputedStyle(neutral):null;
       const neutralRect=neutral?.getBoundingClientRect();
       const neutralVisible=Boolean(neutral && neutralStyle && neutralRect && neutralStyle.display!=='none' && neutralStyle.visibility!=='hidden' && Number.parseFloat(neutralStyle.opacity||'1')>.05 && neutralRect.width>20 && neutralRect.height>20);
-      const viewControls=s.querySelector('.abags-fidelity3d-view-controls');
-      const zoomControls=s.querySelector('.abags-fidelity3d-zoom');
+      const fidelityLayer=s.querySelector('.abags-fidelity3d-layer');
+      const viewControls=fidelityLayer?.querySelector('.abags-pro3d-view-controls');
+      const zoomControls=fidelityLayer?.querySelector('.abags-pro3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
       const svgRect=svg?.getBoundingClientRect();
       const canvasStyle=canvas?getComputedStyle(canvas):null;
@@ -138,7 +139,7 @@ async function main() {
       const canvasVisible=Boolean(canvas && canvasStyle && canvasRect && canvasStyle.display!=='none' && canvasStyle.visibility!=='hidden' && Number.parseFloat(canvasStyle.opacity||'1')>.05 && canvasRect.width>20 && canvasRect.height>20);
       const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
       const activeView=[...s.querySelectorAll('.abags-fidelity3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
-      const legacyControlCount=s.querySelectorAll('.abags-fidelity3d-layer .abags-pro3d-view-controls, .abags-fidelity3d-layer .abags-pro3d-zoom').length;
+      const legacyControlCount=s.querySelectorAll('.abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-view-controls, .abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-zoom, .abags-fidelity3d-layer .abags-fidelity3d-view-controls, .abags-fidelity3d-layer .abags-fidelity3d-zoom').length;
       const legacyChipSelector='.abags-canvas3d-chip, .abags-webgl3d-chip, .abags-real3d-chip, .abags-pro3d-chip';
       const visibleLegacy3dChips=[...s.querySelectorAll(legacyChipSelector)].filter((node)=>{
         const chipStyle=getComputedStyle(node);
