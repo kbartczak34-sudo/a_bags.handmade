@@ -266,11 +266,17 @@ export default function BagBuilderFinal3DController() {
       const rendererReady = stage.dataset.abagsFidelity3dReady || "";
       const frameSignature = stage.dataset.abagsFidelity3dFrame || "";
 
-      if (!canvas || rendererError || rendererReady !== REQUIRED_RENDERER || frameSignature !== expectedSignature) {
+      // The frame metadata is the renderer's authoritative proof that draw() actually
+      // produced the current configuration. The ready attribute is advisory and can be
+      // lost during stage promotion/hydration even while the WebGL framebuffer is valid.
+      // Reject explicit renderer-version mismatches, but do not reject a valid current
+      // frame merely because the readiness attribute is temporarily absent.
+      const rendererVersionMismatch = Boolean(rendererReady && rendererReady !== REQUIRED_RENDERER);
+      if (!canvas || rendererError || rendererVersionMismatch || frameSignature !== expectedSignature) {
         const reason = rendererError
           ? `renderer-error:${rendererError}`
-          : rendererReady !== REQUIRED_RENDERER
-            ? `renderer-not-ready:${rendererReady || "missing"}`
+          : rendererVersionMismatch
+            ? `renderer-not-ready:${rendererReady}`
             : "current-frame-not-drawn";
         retryOrFallback(attempt, reason);
         return;
