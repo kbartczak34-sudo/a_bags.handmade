@@ -917,7 +917,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
-      woodHandle: createMesh(gl, makeArchTube(0.73, 0.76, 0, 0.064, 82, 14, true)),
+      woodHandle: createMesh(gl, makeArchTube(0.56, 0.38, 0, 0.036, 72, 12, false)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
       roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
@@ -1088,10 +1088,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (config.handles !== "none") {
-    const handleColor = config.handles === "wood-light" ? "#c99b63" : config.handles === "wood-dark" ? "#61331f" : body;
+    const handleColor = config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const mesh = config.handles.startsWith("wood") ? meshes.woodHandle : meshes.crochetHandle;
-    const zOffset = profile.topDepth * 0.46;
+    const zOffset = profile.topDepth * 0.34;
     for (const side of [-1, 1]) {
       const transform = handleTransform(profile, renderFamily, side);
       for (const z of [-zOffset * 0.72, zOffset * 0.72]) {
