@@ -145,7 +145,7 @@ test("Fidelity3D accessories use family-specific physical attachment points", ()
 });
 
 test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures and a convex handmade front", () => {
-  assert.match(renderer, /Classic crochet: compact horizontal loops/);
+  assert.match(renderer, /5 mm polyester cord: rounded, interlocking crochet loops/);
   assert.match(renderer, /Herringbone: interlocking chevrons/);
   assert.match(renderer, /Basket stitch: alternating over\/under bands/);
   assert.match(renderer, /Shell stitch: repeated scallops/);
