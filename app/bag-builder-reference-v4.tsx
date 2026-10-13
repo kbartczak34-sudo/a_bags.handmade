@@ -241,6 +241,26 @@ export default function BagBuilderReferenceV4() {
       }, 90);
     };
 
+    const onTouchEnd = (event: TouchEvent) => {
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest<HTMLButtonElement>("button[data-builder-key]")) return;
+      const dialog = target?.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4")
+        || document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active");
+      if (!dialog) return;
+      const button = [...dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key]")].find((candidate) => {
+        if (candidate.disabled) return false;
+        const rect = candidate.getBoundingClientRect();
+        return touch.clientX >= rect.left && touch.clientX <= rect.right
+          && touch.clientY >= rect.top && touch.clientY <= rect.bottom;
+      });
+      if (!button) return;
+      event.preventDefault();
+      button.click();
+      requestSync();
+    };
+
     requestSync();
     const observer = new MutationObserver(requestSync);
     observer.observe(document.body, {
@@ -254,11 +274,13 @@ export default function BagBuilderReferenceV4() {
       ],
     });
     document.addEventListener("click", onClick, true);
+    document.addEventListener("touchend", onTouchEnd, { capture: true, passive: false });
     window.addEventListener("resize", requestSync);
 
     return () => {
       observer.disconnect();
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("touchend", onTouchEnd, true);
       window.removeEventListener("resize", requestSync);
       if (frame) window.cancelAnimationFrame(frame);
       document.querySelectorAll<HTMLElement>(".abags-reference-layout-v4").forEach((dialog) => {
