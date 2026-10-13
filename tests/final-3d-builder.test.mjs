@@ -84,8 +84,8 @@ test("production acceptance requires the completed interactive WebGL surface", (
   assert.match(smoke, /FINAL 3D BUILDER PASS/);
 });
 test("a valid current frame can promote even when readiness metadata is transiently missing", () => {
-  assert.match(controller, /const rendererVersionMismatch = Boolean\\(rendererReady && rendererReady !== REQUIRED_RENDERER\\)/);
-  assert.match(controller, /!canvas \\|\\| rendererError \\|\\| rendererVersionMismatch \\|\\| frameSignature !== expectedSignature/);
+  assert.match(controller, /const rendererVersionMismatch = Boolean\(rendererReady && rendererReady !== REQUIRED_RENDERER\)/);
+  assert.match(controller, /!canvas \|\| rendererError \|\| rendererVersionMismatch \|\| frameSignature !== expectedSignature/);
   assert.match(controller, /rendererVersionMismatch/);
   assert.match(controller, /renderer-not-ready:/);
 });
