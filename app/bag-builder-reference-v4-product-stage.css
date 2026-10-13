@@ -53,3 +53,63 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
   background:#f4e3d5!important;
 }
+
+
+/* Mobile acceptance fix: keep the 3D model fully inside the preview and make
+   zoom controls fit the viewport. The canonical canvas and legacy control layer
+   use different class names, so target both instead of relying on one cascade. */
+@media (max-width: 620px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage.abags-fidelity3d-active {
+    min-height: 430px !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage.abags-fidelity3d-active .abags-fidelity3d-canvas {
+    touch-action: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 10px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    grid-template-columns: 34px minmax(0, 1fr) 34px 48px !important;
+    gap: 6px !important;
+    padding: 4px !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom > span,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom > span {
+    display: none !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom input[type="range"],
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom input[type="range"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom button,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom button {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}

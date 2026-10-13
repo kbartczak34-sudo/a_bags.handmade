@@ -162,7 +162,6 @@ jobs:
       - name: Smoke test deployed production
         id: smoke
         if: steps.deploy.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
         run: bash scripts/smoke-production.sh
@@ -170,7 +169,6 @@ jobs:
       - name: Browser test customer realtime builder from empty construction
         id: realtime
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
           ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
@@ -192,7 +190,6 @@ jobs:
       - name: Verify desktop customer close integrity
         id: close_integrity
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
           ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
@@ -201,7 +198,6 @@ jobs:
       - name: Verify realtime render integrity on the composited surface
         id: render_integrity
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
           ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
@@ -210,7 +206,6 @@ jobs:
       - name: Verify accessory anchoring across customer 3D views
         id: anchor_integrity
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
           ABAGS_REALTIME_QA_DIR: artifacts/customizer-realtime
@@ -228,7 +223,6 @@ jobs:
       - name: Browser test Photo-True V5 and capture real-product visual QA
         id: customizer
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
           ABAGS_VISUAL_QA_DIR: artifacts/customizer-v5
@@ -246,7 +240,6 @@ jobs:
       - name: Mobile Photo-True real-product interaction test
         id: pro3d
         if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success' && steps.realtime.outcome == 'success' && steps.close_integrity.outcome == 'success' && steps.render_integrity.outcome == 'success' && steps.anchor_integrity.outcome == 'success' && steps.customizer.outcome == 'success'
-        continue-on-error: true
         env:
           ABAGS_PRODUCTION_URL: https://abagshandmade.pl
         run: node scripts/smoke-photo-true-mobile.mjs
