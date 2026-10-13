@@ -138,7 +138,7 @@ async function main() {
       const svgVisible=Boolean(svg && svgStyle && svgRect && svgStyle.display!=='none' && svgStyle.visibility!=='hidden' && Number.parseFloat(svgStyle.opacity||'1')>.05 && svgRect.width>20 && svgRect.height>20);
       const canvasVisible=Boolean(canvas && canvasStyle && canvasRect && canvasStyle.display!=='none' && canvasStyle.visibility!=='hidden' && Number.parseFloat(canvasStyle.opacity||'1')>.05 && canvasRect.width>20 && canvasRect.height>20);
       const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
-      const activeView=[...s.querySelectorAll('.abags-fidelity3d-view-controls button')].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
+      const activeView=[...(fidelityLayer?.querySelectorAll('.abags-pro3d-view-controls button')||[])].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
       const legacyControlCount=s.querySelectorAll('.abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-view-controls, .abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-zoom, .abags-fidelity3d-layer .abags-fidelity3d-view-controls, .abags-fidelity3d-layer .abags-fidelity3d-zoom').length;
       const legacyChipSelector='.abags-canvas3d-chip, .abags-webgl3d-chip, .abags-real3d-chip, .abags-pro3d-chip';
       const visibleLegacy3dChips=[...s.querySelectorAll(legacyChipSelector)].filter((node)=>{
