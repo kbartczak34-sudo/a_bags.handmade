@@ -840,8 +840,8 @@ void main(){
     detail=.78+.32*yarn(vUv,uStitch)+.025*(hash(floor(vUv*vec2(260.0,240.0)))-.5);
     rough=.94;
   } else if(uMaterial<1.5){
-    detail=.88+.10*sin(vUv.y*118.0+sin(vUv.x*18.0)*3.0);
-    rough=.34;
+    detail=.91+.035*sin(vUv.x*18.0+sin(vUv.y*5.0)*.7)+.018*sin(vUv.x*47.0+vUv.y*3.0)+.012*(hash(floor(vUv*vec2(90.0,34.0)))-.5);
+    rough=.43;
   } else if(uMaterial<2.5){
     detail=.88+.065*(hash(floor(vUv*150.0))-.5)+.045*sin(vUv.y*52.0);
     rough=.52;
@@ -917,7 +917,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
-      woodHandle: createMesh(gl, makeArchTube(0.56, 0.38, 0, 0.036, 72, 12, false)),
+      woodHandle: createMesh(gl, makeArchTube(0.46, 0.27, 0, 0.029, 84, 14, false)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
       roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
