@@ -571,15 +571,15 @@ export default function BagBuilderReferenceV4() {
         display: flex !important;
         pointer-events: auto !important;
         position: absolute !important;
-        left: 8px !important;
+        left: auto !important;
         right: 8px !important;
         bottom: 8px !important;
-        width: auto !important;
+        width: 184px !important;
         max-width: calc(100% - 16px) !important;
         min-width: 0 !important;
         box-sizing: border-box !important;
-        gap: 5px !important;
-        justify-content: space-between !important;
+        gap: 4px !important;
+        justify-content: flex-end !important;
         overflow: visible !important;
         z-index: 80 !important;
       }
@@ -597,10 +597,17 @@ export default function BagBuilderReferenceV4() {
         width: auto !important;
       }
       .abags-reference-layout-v4 .abags-pro3d-zoom > span {
-        flex: 0 1 auto !important;
-        min-width: 0 !important;
-        white-space: nowrap !important;
-        font-size: 9px !important;
+        display: none !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom input[type="range"] {
+        flex: 0 1 58px !important;
+        width: 58px !important;
+        min-width: 42px !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom .abags-pro3d-reset {
+        flex: 0 0 34px !important;
+        min-width: 34px !important;
+        width: 34px !important;
       }
 
       .abags-reference-layout-v4 [data-builder-material] { display: none !important; }
