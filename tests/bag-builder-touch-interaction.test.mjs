@@ -30,8 +30,8 @@ test("visible zoom controls are available to the customer", () => {
 });
 
 test("mobile builder options have a coordinate-based touch rescue when hit testing lands on a section", () => {
-  assert.match(reference, /const onTouchEnd = \(event: TouchEvent\)/);
-  assert.match(reference, /getBoundingClientRect\(\)/);
-  assert.match(reference, /button\.click\(\)/);
-  assert.match(reference, /touchend/);
+  assert.match(layout, /const onTouchEnd = \(event: TouchEvent\)/);
+  assert.match(layout, /getBoundingClientRect\(\)/);
+  assert.match(layout, /button\.click\(\)/);
+  assert.match(layout, /touchend/);
 });
