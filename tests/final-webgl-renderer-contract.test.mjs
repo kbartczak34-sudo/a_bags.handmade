@@ -44,3 +44,7 @@ test("final 3D controller never promotes a stale signature to ready", () => {
   assert.match(controller, /stage\.dataset\.abagsFinal3d = \"ready\"/);
   assert.match(controller, /stage\.dataset\.abagsFinal3dSignature = currentSignature/);
 });
+
+test("Fidelity3D preserves the WebGL framebuffer for post-present verification", () => {
+  assert.match(renderer, /preserveDrawingBuffer:\s*true/);
+});

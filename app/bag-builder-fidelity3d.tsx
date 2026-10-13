@@ -886,7 +886,7 @@ function createMesh(gl: WebGLRenderingContext, data: { positions: number[]; norm
 }
 
 function init(canvas: HTMLCanvasElement): Renderer | null {
-  const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: false });
+  const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true });
   if (!gl) return null;
   const program = gl.createProgram();
   if (!program) return null;
