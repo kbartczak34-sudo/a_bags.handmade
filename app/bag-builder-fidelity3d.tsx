@@ -1098,11 +1098,16 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.handles !== "none") {
     const handleColor = config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
-    const mesh = config.handles.startsWith("wood") ? meshes.woodHandle : meshes.crochetHandle;
-    const zOffset = profile.topDepth * 0.34;
-    for (const side of [-1, 1]) {
-      const transform = handleTransform(profile, renderFamily, side);
-      for (const z of [-zOffset * 0.72, zOffset * 0.72]) {
+    const isWoodHandle = config.handles.startsWith("wood");
+    const mesh = isWoodHandle ? meshes.woodHandle : meshes.crochetHandle;
+    const zOffset = profile.topDepth * 0.30;
+    const handleSides = isWoodHandle ? [0] : [-1, 1];
+    for (const side of handleSides) {
+      const transform = isWoodHandle
+        ? { x: 0, y: profile.topY + 0.07, scaleX: profile.width * 0.78, scaleY: Math.max(0.18, profile.handleScaleY * 0.48) }
+        : handleTransform(profile, renderFamily, side);
+      const depthPlanes = isWoodHandle ? [-zOffset, zOffset] : [-zOffset * 0.72, zOffset * 0.72];
+      for (const z of depthPlanes) {
         drawMesh(
           renderer,
           mesh,
@@ -1110,7 +1115,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
           handleColor,
           material,
           stitch,
-          config.handles === "crochet" ? 0.008 : 0,
+          isWoodHandle ? 0 : 0.008,
         );
       }
     }
