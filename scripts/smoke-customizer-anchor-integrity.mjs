@@ -169,7 +169,7 @@ async function main() {
         return true;
       })()`);
       if (!opened) throw new Error("Could not open the realtime customizer.");
-      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]'))", "customer realtime stage");
+      await waitFor(`Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]'))`, "customer realtime stage");
       await waitFor("document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas').length===2", "two accessory depth canvases");
     };
 
