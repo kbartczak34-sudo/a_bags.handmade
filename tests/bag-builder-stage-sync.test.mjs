@@ -12,7 +12,7 @@ test("Fidelity3D follows the stage that owns the visible canvas", () => {
   assert.match(renderer, /const next =\s*liveStage\s*\?\?/);
   assert.match(renderer, /attributes: true/);
   assert.match(renderer, /attributeFilter: \["class", "data-abags-live-stage", "data-abags-engine-stage"\]/);
-  assert.match(renderer, /const DEFAULT_ZOOM = 0\.60/);
+  assert.match(renderer, /const DEFAULT_ZOOM = 0\.92/);
 });
 
 test("mobile preview controls fit the viewport without clipping the range", () => {
