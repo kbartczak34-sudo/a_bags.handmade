@@ -574,13 +574,17 @@ export default function BagBuilderReferenceV4() {
         left: auto !important;
         right: 8px !important;
         bottom: 8px !important;
-        width: 184px !important;
+        width: 148px !important;
         max-width: calc(100% - 16px) !important;
         min-width: 0 !important;
         box-sizing: border-box !important;
         gap: 4px !important;
         justify-content: flex-end !important;
-        overflow: visible !important;
+        overflow: hidden !important;
+        padding: 3px 5px !important;
+        border-radius: 18px !important;
+        background: rgba(255,250,247,.94) !important;
+        box-shadow: 0 2px 10px rgba(86,54,61,.10) !important;
         z-index: 80 !important;
       }
       .abags-reference-layout-v4 .abags-pro3d-zoom button {
@@ -590,6 +594,14 @@ export default function BagBuilderReferenceV4() {
         height: 30px !important;
         padding: 0 !important;
         touch-action: manipulation !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom > span {
+        display: none !important;
+      }
+      .abags-reference-layout-v4 .abags-pro3d-zoom input[type="range"] {
+        width: 58px !important;
+        min-width: 0 !important;
+        flex: 1 1 58px !important;
       }
       .abags-reference-layout-v4 .abags-pro3d-zoom input[type="range"] {
         flex: 1 1 auto !important;
