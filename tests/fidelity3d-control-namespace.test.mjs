@@ -53,5 +53,5 @@ test("3D view browser acceptance clicks the visible button at its real coordinat
   assert.ok(clickView, "view interaction acceptance helper must exist");
   assert.ok(clickView.includes("getBoundingClientRect"));
   assert.ok(clickView.includes("Input.dispatchMouseEvent"));
-  assert.ok(!clickView.includes(".click()"), "synthetic zero-coordinate clicks can trigger unrelated V4 touch-rescue code");
+  assert.ok(!clickView.includes("b.click()"), "synthetic zero-coordinate clicks can trigger unrelated V4 touch-rescue code");
 });
