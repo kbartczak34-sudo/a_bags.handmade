@@ -39,3 +39,14 @@ test("Cloudflare production deploy blocks later acceptance when accessory anchor
   assert.match(workflow, /Fail when accessory anchor integrity fails/);
   assert.match(workflow, /steps\.anchor_integrity\.outcome == 'success'/);
 });
+
+test("anchor acceptance uses a real visible pointer interaction instead of a zero-coordinate synthetic click", async () => {
+  const probe = await readFile(probePath, "utf8");
+  assert.match(probe, /Input\.dispatchMouseEvent/);
+  assert.match(probe, /Input\.dispatchTouchEvent/);
+  assert.match(probe, /abags-fidelity3d-layer \.abags-fidelity3d-view-controls button/);
+  assert.match(probe, /abagsFidelity3dRotationX/);
+  assert.match(probe, /abagsFidelity3dRotationY/);
+  const viewClick = probe.slice(probe.indexOf("const clickView ="), probe.indexOf("const anchorEvidence ="));
+  assert.doesNotMatch(viewClick, /button\.click\(\);/);
+});
