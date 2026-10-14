@@ -21,7 +21,7 @@ type SideSurface = {
   visibility: number;
 };
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
+const STAGE_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
@@ -397,7 +397,7 @@ export default function BagBuilderSidewallCrochetDepth() {
     };
     findLayer();
     const observer = new MutationObserver(findLayer);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
     return () => observer.disconnect();
   }, []);
 
