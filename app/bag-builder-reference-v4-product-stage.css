@@ -379,3 +379,32 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
+
+/* The CSS mannequin is an empty-state fallback only. It must be removed from the
+   composited scene once Fidelity3D has a verified frame; otherwise the fallback's
+   pink body, top panel, handles and sidewall remain visible behind the real bag. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage.abags-fidelity3d-active .abags-fidelity3d-layer .abags-neutral-3d,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage.abags-pro3d-active .abags-fidelity3d-layer .abags-neutral-3d,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage[data-abags-final3d="promoting"] .abags-fidelity3d-layer .abags-neutral-3d,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage[data-abags-final3d="ready"] .abags-fidelity3d-layer .abags-neutral-3d {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* A configured V4 dialog is rendered by Fidelity3D, not the retired V23 canvas.
+   Leaving that canvas in the same stage creates a second product and unanchored
+   strap/handle geometry. The SVG neutral construction remains the safe fallback
+   until the canonical renderer is ready. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage > .abags-photoreal-v23-canvas {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
