@@ -1117,7 +1117,12 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
         scaleX: profile.width * 0.62,
         scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
       };
-      const depthPlanes = [-profile.topDepth * 0.78, profile.topDepth * 0.78];
+      // Seat both rigid rings immediately outside the front/back rim. The
+      // previous 0.78 depth factor pushed the rear loop too far outwards:
+      // at the customer's 3/4 yaw it became a detached wooden fragment.
+      // 0.56 still clears the physical side wall of all four families and
+      // preserves two separate rings when the customer turns to the side.
+      const depthPlanes = [-profile.topDepth * 0.56, profile.topDepth * 0.56];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
