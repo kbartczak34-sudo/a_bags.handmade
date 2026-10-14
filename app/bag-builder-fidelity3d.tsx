@@ -1234,7 +1234,16 @@ export default function BagBuilderFidelity3D() {
     });
     find();
     const observer = new MutationObserver(find);
-    observer.observe(document.body, { childList: true, subtree: true });
+    // The live preview is promoted by changing stage attributes, not always by
+    // inserting/removing DOM nodes. Observe those transitions as well as portal
+    // mounts so the WebGL layer, neutral fallback and interactive controls move
+    // together into the currently active customer stage on mobile.
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"],
+    });
     return () => observer.disconnect();
   }, []);
 
