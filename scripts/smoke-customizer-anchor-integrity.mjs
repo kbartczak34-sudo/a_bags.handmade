@@ -171,6 +171,7 @@ async function main() {
       if (!opened) throw new Error("Could not open the realtime customizer.");
       await waitFor(`Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]'))`, "customer realtime stage");
       await waitFor("document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas').length===2", "two accessory depth canvases");
+      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"] .abags-accessory-material-finish-back'))", "projected strap accessory canvas");
     };
 
     const choose = async (key, value) => {
@@ -222,7 +223,7 @@ async function main() {
     const anchorEvidence = async () => evaluate(`(() => {
       const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
       const canvas=stage?.querySelector('.abags-fidelity3d-canvas');
-      const back=stage?.querySelector('.abags-accessory-fidelity-back');
+      const back=stage?.querySelector('.abags-accessory-material-finish-back');
       const front=stage?.querySelector('.abags-accessory-fidelity-front');
       if(!(canvas instanceof HTMLCanvasElement) || !(back instanceof HTMLCanvasElement) || !(front instanceof HTMLCanvasElement))return null;
       const gl=canvas.getContext('webgl');
