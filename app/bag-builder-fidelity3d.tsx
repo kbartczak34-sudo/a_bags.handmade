@@ -1212,15 +1212,23 @@ export default function BagBuilderFidelity3D() {
       // canvas. Several legacy/final-stage wrappers can coexist during promotion;
       // choosing an unrelated engine-stage makes the swatch UI and WebGL model
       // drift apart (e.g. purple selected while the bag stays pink).
+      // The active customer stage is authoritative. A stale canvas may briefly
+      // survive in a hidden compatibility stage during mobile family replacement;
+      // selecting its parent first portals the live renderer into the wrong stage
+      // and disconnects the controls/configuration from the visible builder.
+      const liveStage =
+        dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']") ??
+        dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage='true']");
       const canvas =
         dialog?.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas") ??
         document.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
       const canvasStage = canvas?.closest<HTMLElement>(".abags-bag-builder-stage") ?? null;
       const next =
-        canvasStage ??
+        liveStage ??
         dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage='true']") ??
         dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage='true']") ??
         dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage") ??
+        canvasStage ??
         document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage='true']");
       return current === next ? current : next;
     });
