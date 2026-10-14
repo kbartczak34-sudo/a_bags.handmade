@@ -434,14 +434,16 @@ export default function BagBuilderFinal3DController() {
     };
 
     const findStage = () => attachStage(
-      document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage=\"true\"]") ??
       document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ??
-      document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage=\"true\"]") ??
-      document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]"),
+      document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage=\"true\"]") ??
+      document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ??
+      document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage[data-abags-engine-stage=\"true\"]") ??
+      document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ??
+      document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-engine-stage=\"true\"]"),
     );
     findStage();
     bodyObserver = new MutationObserver(findStage);
-    bodyObserver.observe(document.body, { childList: true, subtree: true });
+    bodyObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
 
     return () => {
       clearPending();
