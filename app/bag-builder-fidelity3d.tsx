@@ -1152,7 +1152,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
-  drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, config.flap !== "none" ? profile.lockY : -0.47, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
+  // Closure hardware is only present when a flap/closure is selected.
+  if (config.flap !== "none") {
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
+  }
 
   if (config.strap !== "none") {
     for (const side of [-1, 1]) {
@@ -1169,18 +1172,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     }
   }
 
-  drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, -0.61, profile.frontZ + 0.08], [0.17, 0.047, 0.025])), config.hardware === "silver" ? "#cbd0d5" : "#b48a47", config.hardware === "black" ? 2 : 4, 0);
-
-  if (config.accent === "tassel") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.accentX, profile.accentY + 0.03, profile.frontZ + 0.07], [0.075, 0.075, 0.055])), metal, 4, 0);
-    drawMesh(renderer, meshes.cone, multiply(root, matrix([profile.accentX, profile.accentY - 0.27, profile.frontZ + 0.06], [0.95, 1.05, 0.95])), body, 0, stitch, 0.002);
-  } else if (config.accent === "scarf") {
-    drawMesh(renderer, meshes.ribbon, multiply(root, matrix([profile.accentX + 0.08, profile.accentY + 0.06, profile.frontZ + 0.12], [0.82, 1, 1], [0, 0, 0.52])), "#e9a8b7", 3, 0);
-    drawMesh(renderer, meshes.ribbon, multiply(root, matrix([profile.accentX + 0.18, profile.accentY - 0.04, profile.frontZ + 0.13], [0.72, 1, 1], [0, 0, -0.5])), "#c8718a", 3, 0);
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.accentX + 0.13, profile.accentY + 0.02, profile.frontZ + 0.16], [0.09, 0.075, 0.05])), "#8c5666", 3, 0);
-  } else if (config.accent === "charm") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.sideX * 0.92, -0.03, profile.frontZ + 0.09], [0.1, 0.15, 0.06])), "#b87880", 4, 0);
-  }
+  // Optional ornaments are drawn only by the synchronized accessory compositor.
+  // Rendering them here as well created doubled bows/charms; this renderer owns
+  // the bag body, flap, handles, shoulder strap and strap attachment hardware.
+  // Do not add unconditional decorative hardware to an otherwise plain bag.
 
   const renderError = gl.getError();
   if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
