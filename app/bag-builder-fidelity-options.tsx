@@ -15,7 +15,12 @@ const FIDELITY_KEYS: Record<BuilderKey, AgataBuilderConstructionKey> = {
 const KEYS = Object.keys(FIDELITY_KEYS) as BuilderKey[];
 
 function syncFidelityOptions() {
-  const stage = document.querySelector<HTMLElement>(".abags-bag-builder-stage");
+  const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active");
+  const stage = dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage]") ??
+    dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage") ??
+    dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage]") ??
+    document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage]") ??
+    document.querySelector<HTMLElement>(".abags-bag-builder-stage");
   const controls = document.querySelector<HTMLElement>(".abags-builder-controls");
   if (!stage || !controls) return;
 
@@ -66,7 +71,7 @@ export default function BagBuilderFidelityOptions() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-family", "data-flap", "data-handles", "data-strap", "data-accent"],
+      attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage", "data-family", "data-flap", "data-handles", "data-strap", "data-accent"],
     });
 
     return () => {
