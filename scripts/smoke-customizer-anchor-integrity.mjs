@@ -227,8 +227,12 @@ async function main() {
       }
       await waitFor(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
-        const button=[...(stage?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])]
-          .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
+        const button=[...(stage?.querySelectorAll('.abags-fidelity3d-layer .abags-fidelity3d-view-controls button, .abags-fidelity3d-layer .abags-pro3d-view-controls button')||[])]
+          .find((node)=> {
+            if(node.textContent?.trim()!==${JSON.stringify(label)})return false;
+            const r=node.getBoundingClientRect(),s=getComputedStyle(node);
+            return r.width>10&&r.height>10&&s.display!=='none'&&s.visibility!=='hidden';
+          });
         const x=Number(stage?.dataset.abagsFidelity3dRotationX);
         const y=Number(stage?.dataset.abagsFidelity3dRotationY);
         return button?.getAttribute('aria-pressed')==='true' &&
