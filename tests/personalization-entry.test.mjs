@@ -148,7 +148,8 @@ test("Bag Builder has responsive mobile styles", () => {
 test("personalization portal mounts after the collection or a stable page fallback and recovers during hydration", () => {
   assert.match(entry, /const observer = new MutationObserver\(attach\)/);
   assert.match(entry, /observer\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
-  assert.match(entry, /const anchor = collection\?\.parentElement[\s\S]*?document\.querySelector\("#top"\) \?\? document\.querySelector\("main"\)/);\n  assert.match(entry, /mount\?\.isConnected && mount\.previousElementSibling === anchor/);
+  assert.match(entry, /const anchor = collection\?\.parentElement[\s\S]*?document\.querySelector\("#top"\) \?\? document\.querySelector\("main"\)/);
+  assert.match(entry, /mount\?\.isConnected && mount\.previousElementSibling === anchor/);
   assert.match(entry, /anchor\.insertAdjacentElement\("afterend", mount\)/);
   assert.match(entry, /if \(mount\?\.isConnected\) setHost\(mount\)/);
   assert.match(entry, /observer\.disconnect\(\)/);
