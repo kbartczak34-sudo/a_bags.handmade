@@ -207,7 +207,7 @@ async function main() {
       })()`);
       if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
       await waitFor(`(() => {
-        const stage=document.querySelector('.abags-bag-builder-stage');
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
         const button=[...document.querySelectorAll('.abags-fidelity3d-view-controls button')]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
         const x=Number(stage?.dataset.abagsFidelity3dRotationX);
