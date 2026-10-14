@@ -131,8 +131,8 @@ async function main() {
       const neutralStyle=neutral?getComputedStyle(neutral):null;
       const neutralRect=neutral?.getBoundingClientRect();
       const neutralVisible=Boolean(neutral && neutralStyle && neutralRect && neutralStyle.display!=='none' && neutralStyle.visibility!=='hidden' && Number.parseFloat(neutralStyle.opacity||'1')>.05 && neutralRect.width>20 && neutralRect.height>20);
-      const viewControls=fidelityLayer?.querySelector('.abags-fidelity3d-view-controls, .abags-pro3d-view-controls');
-      const zoomControls=fidelityLayer?.querySelector('.abags-fidelity3d-zoom, .abags-pro3d-zoom');
+      const viewControls=fidelityLayer?.querySelector('.abags-fidelity3d-view-controls, .abags-pro3d-view-controls') || d.querySelector('.abags-fidelity3d-view-controls, .abags-pro3d-view-controls');
+      const zoomControls=fidelityLayer?.querySelector('.abags-fidelity3d-zoom, .abags-pro3d-zoom') || d.querySelector('.abags-fidelity3d-zoom, .abags-pro3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
       const svgRect=svg?.getBoundingClientRect();
       const canvasStyle=canvas?getComputedStyle(canvas):null;
