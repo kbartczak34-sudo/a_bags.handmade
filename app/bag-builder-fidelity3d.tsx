@@ -1152,7 +1152,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
-  drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, config.flap !== "none" ? profile.lockY : -0.47, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
+  // Closure hardware is only present when a flap/closure is selected.
+  if (config.flap !== "none") {
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
+  }
 
   if (config.strap !== "none") {
     for (const side of [-1, 1]) {
