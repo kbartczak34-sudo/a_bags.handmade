@@ -17,7 +17,7 @@ test("rim seating remains outside the bag shell for every family profile", () =>
   for (const [family, factor] of Object.entries(depthMultipliers)) {
     const block = specs.match(new RegExp(`\\b${family}: \\{([\\s\\S]*?)\\n  \\},`))?.[1];
     assert.ok(block, `missing ${family} spec`);
-    const depth = Number(block.match(/\\bdepth:\\s*([0-9.]+)/)?.[1]);
+    const depth = Number(block.match(/depth:\s*([0-9.]+)/)?.[1]);
     const bodyHalfDepth = depth * factor / 2;
     const handleDepth = depth * factor * 0.92 * 0.56;
     assert.ok(handleDepth > bodyHalfDepth, `${family}: wooden ring sits inside the front/back face`);
