@@ -122,7 +122,8 @@ async function main() {
       const neutralStyle=neutral?getComputedStyle(neutral):null;
       const neutralRect=neutral?.getBoundingClientRect();
       const neutralVisible=Boolean(neutral && neutralStyle && neutralRect && neutralStyle.display!=='none' && neutralStyle.visibility!=='hidden' && Number.parseFloat(neutralStyle.opacity||'1')>.05 && neutralRect.width>20 && neutralRect.height>20);
-      const fidelityLayer=s.querySelector('.abags-fidelity3d-layer');
+      // On mobile the active renderer can briefly be outside the queried stage during family replacement.
+      const fidelityLayer=s.querySelector('.abags-fidelity3d-layer') || document.querySelector('.abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active .abags-fidelity3d-layer');
       const viewControls=fidelityLayer?.querySelector('.abags-pro3d-view-controls');
       const zoomControls=fidelityLayer?.querySelector('.abags-pro3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
