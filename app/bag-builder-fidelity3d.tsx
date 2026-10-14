@@ -1475,7 +1475,44 @@ export default function BagBuilderFidelity3D() {
   };
 
   return createPortal(
-    <div className="abags-pro3d-layer abags-fidelity3d-layer" data-abags-pro3d data-abags-fidelity3d>
+    <div
+      className="abags-pro3d-layer abags-fidelity3d-layer"
+      data-abags-pro3d
+      data-abags-fidelity3d
+      onPointerDown={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("button, input, select, textarea, .abags-pro3d-view-controls, .abags-pro3d-zoom, .abags-fidelity3d-view-controls, .abags-fidelity3d-zoom")) return;
+        event.preventDefault();
+        pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        if (pointers.current.size >= 2) { pinch.current = { distance: distance(), zoom }; drag.current = null; }
+        else drag.current = { x: event.clientX, y: event.clientY, rx: rotation.x, ry: rotation.y };
+      }}
+      onPointerMove={(event) => {
+        if (!pointers.current.has(event.pointerId)) return;
+        event.preventDefault();
+        pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pointers.current.size >= 2 && pinch.current) {
+          const next = distance();
+          if (pinch.current.distance > 0) setZoom(clamp(pinch.current.zoom * (next / pinch.current.distance), MIN_ZOOM, MAX_ZOOM));
+          return;
+        }
+        if (!drag.current) return;
+        setViewState("three");
+        setRotation({
+          x: clamp(drag.current.rx + (event.clientY - drag.current.y) * 0.008, -0.72, 0.56),
+          y: drag.current.ry + (event.clientX - drag.current.x) * 0.012,
+        });
+      }}
+      onPointerUp={(event) => { pointers.current.delete(event.pointerId); if (pointers.current.size < 2) pinch.current = null; if (!pointers.current.size) drag.current = null; }}
+      onPointerCancel={(event) => { pointers.current.delete(event.pointerId); pinch.current = null; drag.current = null; }}
+      onWheel={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("button, input, select, textarea, .abags-pro3d-view-controls, .abags-pro3d-zoom, .abags-fidelity3d-view-controls, .abags-fidelity3d-zoom")) return;
+        event.preventDefault();
+        setZoom((value) => clamp(value - event.deltaY * 0.0008, MIN_ZOOM, MAX_ZOOM));
+      }}
+    >
       <div className="abags-neutral-3d" aria-hidden="true">
           <div className="abags-neutral-3d-shadow" />
           <div className="abags-neutral-3d-object">
@@ -1500,32 +1537,7 @@ export default function BagBuilderFidelity3D() {
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
         style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
         aria-label={label}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-          event.currentTarget.setPointerCapture?.(event.pointerId);
-          if (pointers.current.size >= 2) { pinch.current = { distance: distance(), zoom }; drag.current = null; }
-          else drag.current = { x: event.clientX, y: event.clientY, rx: rotation.x, ry: rotation.y };
-        }}
-        onPointerMove={(event) => {
-          if (!pointers.current.has(event.pointerId)) return;
-          event.preventDefault();
-          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-          if (pointers.current.size >= 2 && pinch.current) {
-            const next = distance();
-            if (pinch.current.distance > 0) setZoom(clamp(pinch.current.zoom * (next / pinch.current.distance), MIN_ZOOM, MAX_ZOOM));
-            return;
-          }
-          if (!drag.current) return;
-          setViewState("three");
-          setRotation({
-            x: clamp(drag.current.rx + (event.clientY - drag.current.y) * 0.008, -0.72, 0.56),
-            y: drag.current.ry + (event.clientX - drag.current.x) * 0.012,
-          });
-        }}
-        onPointerUp={(event) => { pointers.current.delete(event.pointerId); if (pointers.current.size < 2) pinch.current = null; if (!pointers.current.size) drag.current = null; }}
-        onPointerCancel={(event) => { pointers.current.delete(event.pointerId); pinch.current = null; drag.current = null; }}
-        onWheel={(event) => { event.preventDefault(); setZoom((value) => clamp(value - event.deltaY * 0.0008, MIN_ZOOM, MAX_ZOOM)); }}
+
       />
 
       <div className="abags-pro3d-chip">MODEL ATELIER 3D · REALNE PROPORCJE</div>

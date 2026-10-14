@@ -14,6 +14,14 @@ test("canonical Fidelity3D canvas remains interactive after final promotion", ()
   assert.match(renderer, /pointers\.current\.size >= 2/);
   assert.match(renderer, /onWheel=\{\(event\) =>/);
   assert.match(renderer, /setZoom\(clamp/);
+  const layerMarker = renderer.indexOf('className="abags-pro3d-layer abags-fidelity3d-layer"');
+  const layerEnd = renderer.indexOf('<div className="abags-neutral-3d"', layerMarker);
+  assert.ok(layerMarker >= 0 && layerEnd > layerMarker);
+  assert.ok(renderer.slice(layerMarker, layerEnd).includes("onPointerDown={(event) =>"), "gesture handlers must be attached to the hit-tested 3D layer");
+  const canvasStart = renderer.indexOf("<canvas", layerEnd);
+  const canvasEnd = renderer.indexOf("/>", canvasStart);
+  assert.ok(canvasStart >= 0 && canvasEnd > canvasStart);
+  assert.doesNotMatch(renderer.slice(canvasStart, canvasEnd), /onPointerDown=|onPointerMove=|onWheel=/, "canvas must not be the only gesture hit target");
 });
 
 test("V4 compositor does not disable input on the verified 3D canvas", () => {
