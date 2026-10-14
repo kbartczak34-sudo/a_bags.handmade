@@ -142,7 +142,9 @@ async function main() {
       throw new Error(`Timed out waiting for ${label}. Last value: ${JSON.stringify(value)}`);
     };
 
+    let mobileViewport = false;
     const setViewport = async (viewport) => {
+      mobileViewport = Boolean(viewport.mobile);
       await send("Emulation.setDeviceMetricsOverride", viewport);
       await send("Emulation.setTouchEmulationEnabled", viewport.mobile ? { enabled: true, maxTouchPoints: 5 } : { enabled: false });
     };
@@ -199,15 +201,30 @@ async function main() {
 
     const clickView = async (label) => {
       const expected = label === "Przód" ? [-0.02, 0] : label === "Bok" ? [-0.07, Math.PI / 2] : [-0.12, -0.62];
-      const clicked = await evaluate(`(() => {
+      // Use a real positioned pointer event, not HTMLElement.click() at (0,0).
+      // Fidelity3D's touch rescue and legacy hidden controls can otherwise make a
+      // synthetic click report success without reaching the visible React control.
+      const point = await evaluate(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
-        const button=[...(stage?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])]
-          .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
-        if(!button)return false;
-        button.click();
-        return true;
+        const controls=[...(stage?.querySelectorAll('.abags-fidelity3d-layer .abags-fidelity3d-view-controls button, .abags-fidelity3d-layer .abags-pro3d-view-controls button')||[])];
+        const button=controls.find((node)=>{
+          if(node.textContent?.trim()!==${JSON.stringify(label)})return false;
+          const r=node.getBoundingClientRect(), s=getComputedStyle(node);
+          return r.width>10&&r.height>10&&s.display!=='none'&&s.visibility!=='hidden'&&Number.parseFloat(s.opacity||'1')>0.05;
+        });
+        if(!button)return null;
+        const r=button.getBoundingClientRect();
+        return {x:r.left+r.width/2,y:r.top+r.height/2};
       })()`);
-      if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
+      if (!point) throw new Error(`Could not locate visible Fidelity3D view ${label}.`);
+      if (mobileViewport) {
+        await send("Input.dispatchTouchEvent", {type:"touchStart",touchPoints:[{x:point.x,y:point.y,id:1}]});
+        await send("Input.dispatchTouchEvent", {type:"touchEnd",touchPoints:[]});
+      } else {
+        await send("Input.dispatchMouseEvent", {type:"mouseMoved",x:point.x,y:point.y});
+        await send("Input.dispatchMouseEvent", {type:"mousePressed",x:point.x,y:point.y,button:"left",clickCount:1});
+        await send("Input.dispatchMouseEvent", {type:"mouseReleased",x:point.x,y:point.y,button:"left",clickCount:1});
+      }
       await waitFor(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
         const button=[...(stage?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])]
@@ -216,7 +233,7 @@ async function main() {
         const y=Number(stage?.dataset.abagsFidelity3dRotationY);
         return button?.getAttribute('aria-pressed')==='true' &&
           Math.abs(x-(${expected[0]}))<0.002 && Math.abs(y-(${expected[1]}))<0.002;
-      })()`, `${label} authoritative transform`);
+      })()`, `${label} authoritative transform`, 15_000);
       await sleep(180);
     };
 
