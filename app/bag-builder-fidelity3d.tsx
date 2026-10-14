@@ -752,15 +752,17 @@ float knit(vec2 uv,float m){
   float row;
   if(m<.5){
     // 5 mm polyester cord: rounded, interlocking crochet loops rather than a printed grid.
-    row=uv.y*17.0+sin(uv.x*2.4)*.035;
-    p=fract(vec2(uv.x*12.0+floor(row)*.5,row));
+    row=uv.y*17.0+sin(uv.x*5.1)*.055;
+    float stagger=mod(floor(row),2.0)*.5;
+    p=fract(vec2(uv.x*12.0+stagger+sin(row*.71)*.065,row));
     vec2 loopUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
     float loopRadius=length(loopUv);
-    float loop=1.0-smoothstep(.18,.34,abs(loopRadius-.285));
-    float bridge=1.0-smoothstep(.045,.15,abs(p.y-.5));
-    float overlap=step(.5,fract(uv.x*6.0+floor(row)*.5));
-    float cord=loop*.76+bridge*(.12+.12*overlap);
-    return clamp(cord,0.0,1.0);
+    float loop=1.0-smoothstep(.12,.27,abs(loopRadius-.285));
+    float bridge=1.0-smoothstep(.045,.13,abs(p.y-.53));
+    float overlap=step(.5,fract(uv.x*6.0+stagger));
+    float cord=loop*.90+bridge*(.14+.11*overlap);
+    float yarnVariation=.94+.06*sin(uv.x*119.0+uv.y*83.0);
+    return clamp(cord*yarnVariation,0.0,1.0);
   }
   if(m<1.5){
     // Herringbone: interlocking chevrons, not a flat diamond grid.
