@@ -36,7 +36,7 @@ test("view synchronization prefers the Fidelity3D zoom namespace", () => {
 });
 
 test("production realtime acceptance exercises only isolated Fidelity3D view controls", () => {
-  assert.match(smoke, /\.abags-fidelity3d-view-controls button/);
+  assert.match(smoke, /\.abags-pro3d-view-controls button/);
   assert.match(smoke, /legacyControlCount/);
   assert.match(smoke, /viewControls\.height > 44/);
   assert.match(smoke, /zoomControls\.height > 48/);
