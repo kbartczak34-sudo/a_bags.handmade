@@ -122,7 +122,7 @@ async function main() {
       // rather than mixing a stale canvas with a different layer's controls.
       const allFidelityLayers=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active .abags-fidelity3d-layer')];
       const fidelityLayer=
-        allFidelityLayers.find((layer)=>layer.querySelector('.abags-fidelity3d-canvas') && layer.querySelector('.abags-pro3d-view-controls') && layer.querySelector('.abags-pro3d-zoom'))
+        allFidelityLayers.find((layer)=>layer.querySelector('.abags-fidelity3d-canvas') && layer.querySelector('.abags-fidelity3d-view-controls, .abags-pro3d-view-controls') && layer.querySelector('.abags-fidelity3d-zoom, .abags-pro3d-zoom'))
         || allFidelityLayers.find((layer)=>layer.querySelector('.abags-fidelity3d-canvas'))
         || s.querySelector('.abags-fidelity3d-layer');
       const canvas=fidelityLayer?.querySelector('.abags-fidelity3d-canvas') || s.querySelector('.abags-fidelity3d-canvas');
@@ -131,8 +131,8 @@ async function main() {
       const neutralStyle=neutral?getComputedStyle(neutral):null;
       const neutralRect=neutral?.getBoundingClientRect();
       const neutralVisible=Boolean(neutral && neutralStyle && neutralRect && neutralStyle.display!=='none' && neutralStyle.visibility!=='hidden' && Number.parseFloat(neutralStyle.opacity||'1')>.05 && neutralRect.width>20 && neutralRect.height>20);
-      const viewControls=fidelityLayer?.querySelector('.abags-pro3d-view-controls');
-      const zoomControls=fidelityLayer?.querySelector('.abags-pro3d-zoom');
+      const viewControls=fidelityLayer?.querySelector('.abags-fidelity3d-view-controls, .abags-pro3d-view-controls');
+      const zoomControls=fidelityLayer?.querySelector('.abags-fidelity3d-zoom, .abags-pro3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
       const svgRect=svg?.getBoundingClientRect();
       const canvasStyle=canvas?getComputedStyle(canvas):null;
@@ -146,8 +146,8 @@ async function main() {
       const svgVisible=Boolean(svg && svgStyle && svgRect && svgStyle.display!=='none' && svgStyle.visibility!=='hidden' && Number.parseFloat(svgStyle.opacity||'1')>.05 && svgRect.width>20 && svgRect.height>20);
       const canvasVisible=Boolean(canvas && canvasStyle && canvasRect && canvasStyle.display!=='none' && canvasStyle.visibility!=='hidden' && Number.parseFloat(canvasStyle.opacity||'1')>.05 && canvasRect.width>20 && canvasRect.height>20);
       const fidelityVisible=Boolean(fidelity && fidelityStyle && fidelityRect && fidelityStyle.display!=='none' && fidelityStyle.visibility!=='hidden' && Number.parseFloat(fidelityStyle.opacity||'1')>.05 && fidelityRect.width>20 && fidelityRect.height>20);
-      const activeView=[...(fidelityLayer?.querySelectorAll('.abags-pro3d-view-controls button')||[])].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
-      const legacyControlCount=s.querySelectorAll('.abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-view-controls, .abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-zoom, .abags-fidelity3d-layer .abags-fidelity3d-view-controls, .abags-fidelity3d-layer .abags-fidelity3d-zoom').length;
+      const activeView=[...(fidelityLayer?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])].find((b)=>b.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'';
+      const legacyControlCount=s.querySelectorAll('.abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-view-controls, .abags-pro3d-layer:not(.abags-fidelity3d-layer) .abags-pro3d-zoom, .abags-fidelity3d-layer .abags-pro3d-view-controls, .abags-fidelity3d-layer .abags-pro3d-zoom').length;
       const legacyChipSelector='.abags-canvas3d-chip, .abags-webgl3d-chip, .abags-real3d-chip, .abags-pro3d-chip';
       const visibleLegacy3dChips=[...s.querySelectorAll(legacyChipSelector)].filter((node)=>{
         const chipStyle=getComputedStyle(node);
@@ -242,7 +242,7 @@ async function main() {
       return state;
     };
     const clickView = async (label) => {
-      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-pro3d-view-controls button')].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
+      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button)].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
       if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
       await waitFor(`[...document.querySelectorAll('.abags-pro3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
     };
