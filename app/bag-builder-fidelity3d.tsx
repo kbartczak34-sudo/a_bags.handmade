@@ -1104,14 +1104,17 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const isWoodHandle = config.handles.startsWith("wood");
     const mesh = isWoodHandle ? meshes.woodHandle : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.30;
-    // Wooden handles are two separate rigid ring handles attached at the
-    // left/right top corners, not two depth copies of one oversized arch.
-    const handleSides = [-1, 1];
-    for (const side of handleSides) {
-      const transform = isWoodHandle
-        ? { x: side * profile.width * 0.29, y: profile.topY + 0.035, scaleX: profile.width * 0.34, scaleY: Math.max(0.20, profile.handleScaleY * 0.56) }
-        : handleTransform(profile, renderFamily, side);
-      const depthPlanes = isWoodHandle ? [zOffset * 0.72] : [-zOffset * 0.72, zOffset * 0.72];
+    // The wooden tote has one ring at the front rim and one at the back rim.
+    // They are separated through the bag depth, not arranged left/right across
+    // the front face; each ring must rise clearly above the opening.
+    if (isWoodHandle) {
+      const transform = {
+        x: 0,
+        y: profile.topY + 0.10,
+        scaleX: profile.width * 0.62,
+        scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
+      };
+      const depthPlanes = [-profile.topDepth * 0.78, profile.topDepth * 0.78];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
@@ -1120,8 +1123,23 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
           handleColor,
           material,
           stitch,
-          isWoodHandle ? 0 : 0.008,
+          0,
         );
+      }
+    } else {
+      for (const side of [-1, 1]) {
+        const transform = handleTransform(profile, renderFamily, side);
+        for (const z of [-zOffset * 0.72, zOffset * 0.72]) {
+          drawMesh(
+            renderer,
+            mesh,
+            multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1])),
+            handleColor,
+            material,
+            stitch,
+            0.008,
+          );
+        }
       }
     }
   }
