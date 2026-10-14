@@ -47,5 +47,6 @@ test("anchor acceptance uses a real visible pointer interaction instead of a zer
   assert.match(probe, /abags-fidelity3d-layer \.abags-fidelity3d-view-controls button/);
   assert.match(probe, /abagsFidelity3dRotationX/);
   assert.match(probe, /abagsFidelity3dRotationY/);
-  assert.doesNotMatch(probe, /button\.click\(\);[\s\S]*?authoritative transform/);
+  const viewClick = probe.slice(probe.indexOf("const clickView ="), probe.indexOf("const anchorEvidence ="));
+  assert.doesNotMatch(viewClick, /button\.click\(\);/);
 });
