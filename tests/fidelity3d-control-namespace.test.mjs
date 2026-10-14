@@ -49,7 +49,7 @@ test("production realtime acceptance exercises only isolated Fidelity3D view con
 
 
 test("3D view browser acceptance clicks the visible button at its real coordinates", () => {
-  const clickView = smoke.match(/const clickView = async \\(label\\) => \\{([\\s\\S]*?)\\n    \\};/)?.[1] || "";
+  const clickView = smoke.match(/const clickView = async \(label\) => \{([\s\S]*?)\n    \};/)?.[1] || "";
   assert.ok(clickView, "view interaction acceptance helper must exist");
   assert.match(clickView, /getBoundingClientRect/);
   assert.match(clickView, /Input\\.dispatchMouseEvent/);
