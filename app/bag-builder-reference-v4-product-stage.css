@@ -251,3 +251,111 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
     margin: 0 !important;
   }
 }
+
+
+/* Final mobile usability pass: family choices must contain a visible visual cue,
+   and the zoom controls must not be transparent. These are CSS-drawn previews,
+   not substitutes for product photography. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-options button,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v3-key="family"] .abags-builder-options button {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 96px !important;
+  height: auto !important;
+  padding: 9px 6px !important;
+  color: #5a4245 !important;
+  background: #fffaf8 !important;
+  border: 1px solid rgba(90,66,69,.18) !important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-options button.is-active,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v3-key="family"] .abags-builder-options button.is-active {
+  border-color: #b87880 !important;
+  box-shadow: 0 0 0 2px rgba(184,120,128,.16) !important;
+}
+.abags-builder-family-thumb {
+  position: relative !important;
+  display: block !important;
+  width: 62px !important;
+  height: 52px !important;
+  flex: 0 0 52px !important;
+  overflow: hidden !important;
+  border-radius: 7px !important;
+  background: linear-gradient(145deg,#f7e9df,#fffaf8) !important;
+}
+.abags-builder-family-thumb > span {
+  position: absolute !important;
+  left: 17px !important;
+  top: 17px !important;
+  width: 29px !important;
+  height: 27px !important;
+  border: 2px solid #986a70 !important;
+  border-radius: 7px 7px 10px 10px !important;
+  background: repeating-linear-gradient(0deg,#dbaeb2 0 3px,#c99099 3px 5px) !important;
+  box-shadow: 0 3px 4px rgba(90,66,69,.14) !important;
+}
+.abags-builder-family-thumb[data-family="tote"] > span::before,
+.abags-builder-family-thumb[data-family="mini"] > span::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 4px !important;
+  top: -15px !important;
+  width: 15px !important;
+  height: 15px !important;
+  border: 3px solid #986a70 !important;
+  border-bottom: 0 !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+.abags-builder-family-thumb[data-family="tote"] > span::after {
+  content: "" !important;
+  position: absolute !important;
+  right: -2px !important;
+  top: 5px !important;
+  width: 3px !important;
+  height: 13px !important;
+  background: #986a70 !important;
+}
+.abags-builder-family-thumb[data-family="round"] > span {
+  left: 16px !important;
+  top: 14px !important;
+  width: 31px !important;
+  height: 31px !important;
+  border-radius: 50% !important;
+}
+.abags-builder-family-thumb[data-family="bucket"] > span {
+  left: 17px !important;
+  top: 14px !important;
+  width: 29px !important;
+  height: 31px !important;
+  clip-path: polygon(10% 0,90% 0,100% 100%,0 100%) !important;
+  border-radius: 4px 4px 8px 8px !important;
+}
+.abags-builder-family-thumb[data-family="mini"] > span {
+  width: 25px !important;
+  height: 22px !important;
+  left: 19px !important;
+  top: 21px !important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-option-copy strong,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v3-key="family"] .abags-builder-option-copy strong {
+  display: block !important;
+  color: #5a4245 !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  text-align: center !important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v4-key="family"] .abags-builder-option-copy small,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-v3-key="family"] .abags-builder-option-copy small {
+  display: none !important;
+}
+@media (max-width: 620px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage .abags-fidelity3d-zoom,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage .abags-pro3d-zoom {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: grid !important;
+    pointer-events: auto !important;
+  }
+}
