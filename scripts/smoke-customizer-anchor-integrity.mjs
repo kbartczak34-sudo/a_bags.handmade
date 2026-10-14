@@ -197,7 +197,7 @@ async function main() {
     };
 
     const clickView = async (label) => {
-      const expected = label === "Przód" ? [-0.02, 0] : label === "Bok" ? [-0.035, Math.PI / 2] : [-0.07, 0.46];
+      const expected = label === "Przód" ? [-0.02, 0] : label === "Bok" ? [-0.07, Math.PI / 2] : [-0.12, -0.62];
       const clicked = await evaluate(`(() => {
         const button=[...document.querySelectorAll('.abags-pro3d-view-controls button')]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
