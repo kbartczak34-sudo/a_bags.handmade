@@ -4,13 +4,14 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("live customizer uses the current Bag Builder engine and verified V23 renderer mount", async () => {
+test("live customizer uses the current Bag Builder engine without a competing V23 mount", async () => {
   const source = await read("app/exact-live-customizer.tsx");
   assert.match(source, /<BagBuilderEngine \/>/);
   assert.match(source, /<BagBuilderFidelityOptions \/>/);
   assert.doesNotMatch(source, /<BagBuilderFinalWebGL3D\s*\/>/);
   const layout = await read("app/layout.tsx");
-  assert.match(layout, /BagBuilderPhotorealV17Mount/);
+  assert.doesNotMatch(layout, /BagBuilderPhotorealV17Mount/);
+  assert.match(layout, /<ExactLiveCustomizer \/>/);
 });
 
 

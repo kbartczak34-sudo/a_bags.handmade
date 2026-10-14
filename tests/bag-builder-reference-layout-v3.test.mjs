@@ -8,10 +8,10 @@ const reference = fs.readFileSync("app/bag-builder-reference-experience.tsx", "u
 
 test("visual layer keeps one authoritative interactive renderer visible at a time", () => {
   const rootLayout = fs.readFileSync("app/layout.tsx", "utf8");
-  const renderer = fs.readFileSync("app/bag-builder-photoreal-v17-mount.tsx", "utf8");
-  assert.match(rootLayout, /BagBuilderPhotorealV17Mount/);
-  assert.match(renderer, /BagBuilderPhotorealV23/);
-  assert.match(renderer, /zIndex:"90"/);
+  assert.doesNotMatch(rootLayout, /BagBuilderPhotorealV17Mount/);
+  assert.match(rootLayout, /<ExactLiveCustomizer \/>/);
+  assert.match(stack, /<BagBuilderFidelity3D \/>/);
+  assert.match(stack, /<BagBuilderFinal3DController \/>/);
 });
 
 test("desktop builder follows the target three-zone workspace", () => {

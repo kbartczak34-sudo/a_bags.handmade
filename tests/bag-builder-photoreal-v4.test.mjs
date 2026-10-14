@@ -4,10 +4,11 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("photoreal V4 is retained as historical fallback and V23 owns the active mount", async () => {
+test("photoreal V4 is retained as historical fallback and is not mounted above live Fidelity3D", async () => {
   const layout = await read("app/layout.tsx");
   assert.doesNotMatch(layout, /<BagBuilderPhotorealV4 \/>/);
-  assert.match(layout, /BagBuilderPhotorealV17Mount/);
+  assert.doesNotMatch(layout, /BagBuilderPhotorealV17Mount/);
+  assert.match(layout, /<ExactLiveCustomizer \/>/);
 });
 
 test("photoreal V4 has explicit handle, strap, hardware and flap geometry", async () => {
