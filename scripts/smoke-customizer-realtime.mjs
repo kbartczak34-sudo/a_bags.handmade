@@ -116,14 +116,21 @@ async function main() {
       const s=d?.querySelector('.abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage="true"]');
       if(!d||!s)return null;
       const svg=s.querySelector(':scope > svg');
-      const canvas=s.querySelector('.abags-fidelity3d-canvas');
-      const fidelity=s.querySelector('.abags-fidelity3d-layer');
-      const neutral=s.querySelector('.abags-neutral-3d');
+      // During mobile family replacement React can briefly leave a stale renderer
+      // layer in the stage while the live portal has already mounted elsewhere in
+      // the dialog. Select the actual interactive layer as a unit (canvas + controls)
+      // rather than mixing a stale canvas with a different layer's controls.
+      const allFidelityLayers=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active .abags-fidelity3d-layer')];
+      const fidelityLayer=
+        allFidelityLayers.find((layer)=>layer.querySelector('.abags-fidelity3d-canvas') && layer.querySelector('.abags-pro3d-view-controls') && layer.querySelector('.abags-pro3d-zoom'))
+        || allFidelityLayers.find((layer)=>layer.querySelector('.abags-fidelity3d-canvas'))
+        || s.querySelector('.abags-fidelity3d-layer');
+      const canvas=fidelityLayer?.querySelector('.abags-fidelity3d-canvas') || s.querySelector('.abags-fidelity3d-canvas');
+      const fidelity=fidelityLayer || s.querySelector('.abags-fidelity3d-layer');
+      const neutral=fidelityLayer?.querySelector('.abags-neutral-3d') || s.querySelector('.abags-neutral-3d');
       const neutralStyle=neutral?getComputedStyle(neutral):null;
       const neutralRect=neutral?.getBoundingClientRect();
       const neutralVisible=Boolean(neutral && neutralStyle && neutralRect && neutralStyle.display!=='none' && neutralStyle.visibility!=='hidden' && Number.parseFloat(neutralStyle.opacity||'1')>.05 && neutralRect.width>20 && neutralRect.height>20);
-      // On mobile the active renderer can briefly be outside the queried stage during family replacement.
-      const fidelityLayer=s.querySelector('.abags-fidelity3d-layer') || document.querySelector('.abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active .abags-fidelity3d-layer');
       const viewControls=fidelityLayer?.querySelector('.abags-pro3d-view-controls');
       const zoomControls=fidelityLayer?.querySelector('.abags-pro3d-zoom');
       const svgStyle=svg?getComputedStyle(svg):null;
