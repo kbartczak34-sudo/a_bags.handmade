@@ -6,10 +6,10 @@ const renderer = await readFile(new URL("../app/bag-builder-fidelity3d.tsx", imp
 const specs = await readFile(new URL("../lib/abags-fidelity-v4-family-spec.ts", import.meta.url), "utf8");
 
 test("two real wooden ring handles remain distinct but close to the front/back rim", () => {
-  assert.match(renderer, /const depthPlanes = \[-profile\.topDepth \* 0\.56, profile\.topDepth \* 0\.56\]/);
+  assert.match(renderer, /const depthPlanes = \[-profile\.topDepth \* 0\.78, profile\.topDepth \* 0\.78\]/);
   assert.match(renderer, /for \(const z of depthPlanes\)/);
   assert.match(renderer, /drawMesh\([\s\S]*?mesh,[\s\S]*?handleColor/);
-  assert.doesNotMatch(renderer, /topDepth \* 0\.78/);
+  assert.doesNotMatch(renderer, /topDepth \* 0\.56/);
 });
 
 test("rim seating remains outside the bag shell for every family profile", () => {
@@ -19,7 +19,7 @@ test("rim seating remains outside the bag shell for every family profile", () =>
     assert.ok(block, `missing ${family} spec`);
     const depth = Number(block.match(/depth:\s*([0-9.]+)/)?.[1]);
     const bodyHalfDepth = depth * factor / 2;
-    const handleDepth = depth * factor * 0.92 * 0.56;
+    const handleDepth = depth * factor * 0.92 * 0.78;
     assert.ok(handleDepth > bodyHalfDepth, `${family}: wooden ring sits inside the front/back face`);
   }
 });

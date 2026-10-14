@@ -23,6 +23,9 @@ test("production anchor probe verifies the real strap finish and front accessory
   assert.match(probe, /handle\.separationRatio < 0\.045/);
   assert.match(probe, /handle\.sampled < 1000/);
   assert.match(probe, /handle\.clusterCount !== 1/);
+  assert.match(probe, /handle\.clusterCount > 2/);
+  assert.match(probe, /minorShare > 0\.18/);
+  assert.match(probe, /handle\.separationRatio > 0\.12/);
   assert.match(probe, /primary\.pixels < 45/);
   assert.match(probe, /secondary\.pixels < 45/);
   assert.match(probe, /handle:analyzeRigidHandle\(\)/);
