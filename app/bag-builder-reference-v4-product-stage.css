@@ -359,3 +359,23 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-gro
     pointer-events: auto !important;
   }
 }
+
+
+/* V4 uses Fidelity3D as the single source of product geometry. The legacy V23
+   renderer mounts its own full-size canvas over the canonical canvas (z-index 90),
+   which duplicates the body and leaves its separate strap/handle projection
+   visibly detached. Retain it only as a startup fallback; hide it as soon as
+   the canonical framebuffer is promoted and verified. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage.abags-fidelity3d-active > .abags-photoreal-v23-canvas,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage.abags-pro3d-active > .abags-photoreal-v23-canvas,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage[data-abags-final3d="promoting"] > .abags-photoreal-v23-canvas,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-photoreal-v23-canvas {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
