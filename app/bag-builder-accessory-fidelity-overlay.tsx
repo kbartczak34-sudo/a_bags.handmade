@@ -290,12 +290,16 @@ export default function BagBuilderAccessoryFidelityOverlay() {
 
   useEffect(() => {
     const find = () => {
-      const next = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage");
+      const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active");
+      const next = dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage]") ??
+        dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage") ??
+        dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage]") ??
+        dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage") ?? null;
       setStage((current) => current === next ? current : next);
     };
     find();
     const observer = new MutationObserver(find);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
     return () => observer.disconnect();
   }, []);
 
