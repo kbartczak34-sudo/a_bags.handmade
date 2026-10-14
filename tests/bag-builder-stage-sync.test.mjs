@@ -8,7 +8,8 @@ const workflow = readFileSync(new URL("../.github/workflows/deploy-cloudflare.ym
 
 test("Fidelity3D follows the stage that owns the visible canvas", () => {
   assert.match(renderer, /const canvasStage = canvas\?\.closest<HTMLElement>\("\.abags-bag-builder-stage"\)/);
-  assert.match(renderer, /const next =\s*canvasStage\s*\?\?/);
+  assert.match(renderer, /const liveStage =/);
+  assert.match(renderer, /const next =\s*liveStage\s*\?\?/);
   assert.match(renderer, /const DEFAULT_ZOOM = 0\.60/);
 });
 

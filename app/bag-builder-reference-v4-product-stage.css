@@ -137,3 +137,73 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
     height: 100% !important;
   }
 }
+
+
+/* Mobile corrective override: the earlier V4 stylesheet accidentally hid the
+   zoom row (opacity:0, 44px box). Restore the actual Fidelity3D controls and
+   keep all four controls inside the preview width. This file is loaded last. */
+@media (max-width: 620px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: absolute !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 36px !important;
+    max-width: none !important;
+    grid-template-columns: 30px minmax(0, 1fr) 30px 46px !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 4px !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    border-radius: 999px !important;
+    background: rgba(255, 250, 247, .94) !important;
+    z-index: 30 !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom > span,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom > span {
+    display: none !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom input[type="range"],
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom input[type="range"] {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom button,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom button {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 28px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-pro3d-zoom .abags-pro3d-reset,
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom .abags-pro3d-reset {
+    font-size: 9px !important;
+    white-space: nowrap !important;
+  }
+}
