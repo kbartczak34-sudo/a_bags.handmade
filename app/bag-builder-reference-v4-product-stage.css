@@ -207,3 +207,47 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
     white-space: nowrap !important;
   }
 }
+
+
+/* Final compact zoom geometry: preserve the full slider and reset button without
+   stretching the control over the bag or clipping its last column on mobile. */
+@media (max-width: 620px) {
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom {
+    left: auto !important;
+    right: 8px !important;
+    width: min(184px, calc(100% - 16px)) !important;
+    min-width: 0 !important;
+    max-width: 184px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 48px !important;
+    grid-template-columns: 28px minmax(34px, 1fr) 28px 38px !important;
+    gap: 4px !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 32px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom button:last-child {
+    font-size: 7px !important;
+  }
+  body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+  .abags-bag-builder-stage .abags-fidelity3d-zoom input[type="range"] {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 28px !important;
+    margin: 0 !important;
+  }
+}

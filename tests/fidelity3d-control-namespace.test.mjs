@@ -38,8 +38,11 @@ test("view synchronization prefers the Fidelity3D zoom namespace", () => {
 test("production realtime acceptance exercises only isolated Fidelity3D view controls", () => {
   assert.match(smoke, /\.abags-pro3d-view-controls button/);
   assert.match(smoke, /legacyControlCount/);
+  const legacyCountExpression = smoke.match(/const legacyControlCount=([\s\S]*?);/)?.[1] || "";
+  assert.ok(legacyCountExpression, "legacy control count must be measured");
+  assert.doesNotMatch(legacyCountExpression, /\.abags-fidelity3d-layer \.abags-fidelity3d-(view-controls|zoom)/, "canonical Fidelity3D controls must not be counted as legacy duplicates");
   assert.match(smoke, /viewControls\.height > 44/);
   assert.match(smoke, /zoomControls\.height > 48/);
-  assert.match(smoke, /fidelityLayer\?\.querySelectorAll\('\.abags-pro3d-view-controls button'\)/);
-  assert.match(smoke, /const viewControls=fidelityLayer\?\.querySelector\('\.abags-pro3d-view-controls'\)/);
+  assert.match(smoke, /fidelityLayer\?\.querySelectorAll\('\.abags-fidelity3d-view-controls button, \.abags-pro3d-view-controls button'\)/);
+  assert.match(smoke, /const viewControls=fidelityLayer\?\.querySelector\('\.abags-fidelity3d-view-controls, \.abags-pro3d-view-controls'\)/);
 });
