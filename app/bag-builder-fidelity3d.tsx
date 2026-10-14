@@ -81,7 +81,7 @@ const EMPTY: Config = {
 // A positive yaw was still reading too close to front-on on some Chromium devices.
 const DEFAULT_ROTATION = { x: -0.12, y: -0.62 };
 // Frame the rendered bag as the primary product, while preserving enough margin for handles on narrow screens.
-const DEFAULT_ZOOM = 0.92;
+const DEFAULT_ZOOM = 1.14;
 
 function physicalDepth(family: Exclude<Family, "">) {
   const calibrated = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].depth;
