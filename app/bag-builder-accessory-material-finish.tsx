@@ -333,17 +333,24 @@ function prepareCanvas(canvas: HTMLCanvasElement, stage: HTMLElement) {
   const bounds = stage.getBoundingClientRect();
   const width = Math.max(1, bounds.width);
   const height = Math.max(1, bounds.height);
-  const dprCap = window.innerWidth <= 620 ? 1.5 : 2;
-  const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
-  const pixelWidth = Math.max(2, Math.round(width * dpr));
-  const pixelHeight = Math.max(2, Math.round(height * dpr));
+  // The rear and front accessory layers must share the SAME backing-pixel
+  // grid as the authoritative Fidelity3D WebGL canvas. The old 1.5x mobile
+  // cap produced 585x369 accessory pixels over a 780x492 3D frame and
+  // visibly shifted straps/chain anchors on high-density phones.
+  const fidelityCanvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelWidth = fidelityCanvas && fidelityCanvas.width >= 16
+    ? fidelityCanvas.width : Math.max(2, Math.round(width * dpr));
+  const pixelHeight = fidelityCanvas && fidelityCanvas.height >= 16
+    ? fidelityCanvas.height : Math.max(2, Math.round(height * dpr));
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
     canvas.width = pixelWidth;
     canvas.height = pixelHeight;
   }
   const context = canvas.getContext("2d");
   if (!context) return null;
-  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Compensate for subpixel layout rounding without modifying WebGL state.
+  context.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0);
   context.clearRect(0, 0, width, height);
   context.lineCap = "round";
   context.lineJoin = "round";
