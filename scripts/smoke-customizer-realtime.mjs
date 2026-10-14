@@ -242,8 +242,12 @@ async function main() {
       return state;
     };
     const clickView = async (label) => {
-      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button)].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
-      if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
+      // Use a real pointer-positioned click. HTMLElement.click() dispatches at (0,0), which can trip V4 coordinate-based touch rescue logic.
+      const point = await evaluate(`(() => { const buttons=[...document.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')].filter((b)=>b.textContent?.trim()===${JSON.stringify(label)}); const b=buttons.find((n)=>{const r=n.getBoundingClientRect();const s=getComputedStyle(n);return r.width>0&&r.height>0&&s.display!=="none"&&s.visibility!=="hidden"&&Number.parseFloat(s.opacity||"1")>.05;}); if(!b)return null; const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()`);
+      if (!point) throw new Error(`Could not locate visible 3D view ${label}.`);
+      await send("Input.dispatchMouseEvent", {type:"mouseMoved", x:point.x, y:point.y});
+      await send("Input.dispatchMouseEvent", {type:"mousePressed", x:point.x, y:point.y, button:"left", clickCount:1});
+      await send("Input.dispatchMouseEvent", {type:"mouseReleased", x:point.x, y:point.y, button:"left", clickCount:1});
       await waitFor(`[...document.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
     };
     const buildBag = async ({ family, color, stitch }, label) => {
