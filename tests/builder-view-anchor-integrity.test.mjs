@@ -5,11 +5,11 @@ import test from "node:test";
 const probePath = new URL("../scripts/smoke-customizer-anchor-integrity.mjs", import.meta.url);
 const deployPath = new URL("../.github/workflows/deploy-cloudflare.yml", import.meta.url);
 
-test("production anchor probe verifies both accessory depth layers across all customer views", async () => {
+test("production anchor probe verifies the real strap finish and front accessory layer across all customer views", async () => {
   const probe = await readFile(probePath, "utf8");
 
   for (const view of ["Przód", "3/4", "Bok"]) assert.match(probe, new RegExp(view.replace("/", "\\/")));
-  assert.match(probe, /abags-accessory-fidelity-back/);
+  assert.match(probe, /abags-accessory-material-finish-back/);
   assert.match(probe, /abags-accessory-fidelity-front/);
   assert.match(probe, /back\.contactRatio < 0\.08/);
   assert.match(probe, /back\.bottomContactRatio < 0\.35/);
