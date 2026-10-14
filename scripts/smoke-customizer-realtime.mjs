@@ -379,7 +379,7 @@ async function main() {
       const dialog=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
       const stage=dialog?.querySelector('.abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage="true"]');
       if(!stage)return null;
-      const selectors=['.abags-crochet-flap-density','.abags-crochet-flap-relief','.abags-crochet-relief-surface','.abags-flap-realism'];
+      const selectors=['.abags-crochet-flap-density','.abags-crochet-flap-relief','.abags-flap-realism'];
       const visible=selectors.flatMap((selector)=>[...stage.querySelectorAll(selector)].filter((node)=>{
         const s=getComputedStyle(node),r=node.getBoundingClientRect();
         return s.display!=='none'&&s.visibility!=='hidden'&&Number.parseFloat(s.opacity||'1')>.05&&r.width>2&&r.height>2;
