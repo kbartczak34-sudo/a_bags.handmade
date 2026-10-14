@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const STAGE_SELECTOR = ".abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
+const STAGE_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const BASE_SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
 const AGATA_SOURCE_SELECTOR = ".abags-agata-cord-webgl";
@@ -151,7 +151,7 @@ export default function BagBuilderLifelikeSurface() {
 
     findLayer();
     const observer = new MutationObserver(findLayer);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
     return () => observer.disconnect();
   }, []);
 
