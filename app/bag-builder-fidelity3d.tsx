@@ -1066,8 +1066,11 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
-  const interiorColor = darken(openingColor, 0.58);
-  drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, 0, stitch, 0);
+  const agataOpenWoodTote = renderFamily === "tote" && config.handles.startsWith("wood");
+  const interiorColor = agataOpenWoodTote ? "#f0e7d9" : darken(openingColor, 0.58);
+  // The red and brown wooden-handle versions share one silhouette and geometry.
+  // The checked lining is visible when the customer rotates the same model to look inside.
+  drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, agataOpenWoodTote ? 5 : 0, stitch, 0);
   drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.009 : 0.004);
 
   if (config.strap !== "none") {
