@@ -47,12 +47,19 @@ export default function PersonalizationEntry() {
     // host if a later storefront render replaces the collection subtree.
     const attach = () => {
       const collection = document.getElementById("kolekcja");
-      if (!collection?.parentElement) return;
-      if (mount?.isConnected && mount.previousElementSibling === collection) return;
+      // The storefront collection can be temporarily absent while client-side
+      // content is hydrated or refreshed. Keep the customizer reachable by
+      // mounting after the hero/main fallback, then move it after the collection
+      // once that canonical anchor becomes available.
+      const anchor = collection?.parentElement
+        ? collection
+        : document.querySelector("#top") ?? document.querySelector("main");
+      if (!anchor?.parentElement) return;
+      if (mount?.isConnected && mount.previousElementSibling === anchor) return;
 
       mount ??= document.createElement("div");
       mount.className = "abags-personalization-entry-mount";
-      collection.insertAdjacentElement("afterend", mount);
+      anchor.insertAdjacentElement("afterend", mount);
 
       if (frame) window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
