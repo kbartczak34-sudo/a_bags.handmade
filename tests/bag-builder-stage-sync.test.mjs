@@ -17,10 +17,10 @@ test("Fidelity3D follows the stage that owns the visible canvas", () => {
 
 test("mobile preview controls fit the viewport without clipping the range", () => {
   assert.match(mobileCss, /\.abags-bag-builder-stage \.abags-pro3d-zoom/);
-  assert.match(mobileCss, /grid-template-columns: 28px minmax\\(34px, 1fr\\) 28px 38px !important/);
-  assert.match(mobileCss, /width: min\\(184px, calc\\(100% - 16px\\)\\) !important/);
+  assert.match(mobileCss, /grid-template-columns: 28px minmax\(34px, 1fr\) 28px 38px !important/);
+  assert.match(mobileCss, /width: min\(184px, calc\(100% - 16px\)\) !important/);
   assert.match(mobileCss, /max-width: 184px !important/);
-  assert.match(mobileCss, /\\.abags-fidelity3d-zoom input\\[type="range"\\][\\s\\S]*?min-width: 0 !important/);
+  assert.match(mobileCss, /\.abags-fidelity3d-zoom input\[type="range"\][\s\S]*?min-width: 0 !important/);
 });
 
 test("production browser acceptance checks cannot be silently ignored", () => {
