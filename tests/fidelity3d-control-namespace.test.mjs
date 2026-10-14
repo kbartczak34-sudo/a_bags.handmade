@@ -46,3 +46,12 @@ test("production realtime acceptance exercises only isolated Fidelity3D view con
   assert.match(smoke, /fidelityLayer\?\.querySelectorAll\('\.abags-fidelity3d-view-controls button, \.abags-pro3d-view-controls button'\)/);
   assert.match(smoke, /const viewControls=fidelityLayer\?\.querySelector\('\.abags-fidelity3d-view-controls, \.abags-pro3d-view-controls'\)/);
 });
+
+
+test("3D view browser acceptance clicks the visible button at its real coordinates", () => {
+  const clickView = smoke.match(/const clickView = async \(label\) => \{([\s\S]*?)\n    \};/)?.[1] || "";
+  assert.ok(clickView, "view interaction acceptance helper must exist");
+  assert.ok(clickView.includes("getBoundingClientRect"));
+  assert.ok(clickView.includes("Input.dispatchMouseEvent"));
+  assert.ok(!clickView.includes("b.click()"), "synthetic zero-coordinate clicks can trigger unrelated V4 touch-rescue code");
+});
