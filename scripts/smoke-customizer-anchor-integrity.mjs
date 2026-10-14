@@ -199,7 +199,7 @@ async function main() {
     const clickView = async (label) => {
       const expected = label === "Przód" ? [-0.02, 0] : label === "Bok" ? [-0.07, Math.PI / 2] : [-0.12, -0.62];
       const clicked = await evaluate(`(() => {
-        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\'true\']');
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
         const button=[...(stage?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
         if(!button)return false;
