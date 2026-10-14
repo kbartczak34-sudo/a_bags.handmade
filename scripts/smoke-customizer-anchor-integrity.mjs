@@ -99,8 +99,26 @@ function assertViewEvidence(label, view, evidence) {
 }
 if (view !== "Bok") {
     const handle = evidence?.handle;
-    if (!handle || handle.sampled < 1000 || handle.clusterCount !== 1) {
-      throw new Error(`${label} ${view}: rigid wooden handle no longer resolves to one coherent merchandising arch: ${JSON.stringify(handle)}`);
+    if (!handle || handle.sampled < 1000) {
+      throw new Error(`${label} ${view}: rigid wooden handles are missing or too small: ${JSON.stringify(handle)}`);
+    }
+    if (view === "Przód" && handle.clusterCount !== 1) {
+      throw new Error(`${label} ${view}: the front-on wooden rings must read as one coherent arch: ${JSON.stringify(handle)}`);
+    }
+    if (view === "3/4") {
+      // Two real rings may produce a small second rear arc in an oblique view.
+      // Reject a substantial disconnected bar, not a physically correct
+      // glimpse of the back handle. The true side view still requires 2 rings.
+      if (handle.clusterCount < 1 || handle.clusterCount > 2) {
+        throw new Error(`${label} ${view}: implausible number of visible wooden handle arcs: ${JSON.stringify(handle)}`);
+      }
+      if (handle.clusterCount === 2) {
+        const [major, minor] = [...handle.clusters].sort((a, b) => b.pixels - a.pixels);
+        const minorShare = minor.pixels / handle.sampled;
+        if (major.pixels < 900 || minorShare > 0.18 || handle.separationRatio > 0.12) {
+          throw new Error(`${label} ${view}: rear handle reads as a detached large object instead of partial occlusion: ${JSON.stringify(handle)}`);
+        }
+      }
     }
     if (back.leftContact < 20 || back.rightContact < 20) {
       throw new Error(`${label} ${view}: rear accessory lost one of its two side attachment zones: ${JSON.stringify(back)}`);
