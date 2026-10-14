@@ -216,12 +216,12 @@ export default function BagBuilderCrochetFlapRelief() {
 
   useEffect(() => {
     const find = () => {
-      const next = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage[data-abags-live-stage=\"true\"]");
+      const next = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]");
       setStage((current) => current === next ? current : next);
     };
     find();
     const observer = new MutationObserver(find);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
     return () => observer.disconnect();
   }, []);
 
