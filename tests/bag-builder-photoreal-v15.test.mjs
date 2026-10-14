@@ -5,9 +5,9 @@ import test from "node:test";
 const layout = fs.readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 const renderer = fs.readFileSync(new URL("../app/bag-builder-photoreal-v17.tsx", import.meta.url), "utf8");
 
-test("current photoreal renderer is V23 behind the compatibility mount", () => {
-  assert.match(layout, /BagBuilderPhotorealV17Mount/);
-  assert.match(layout, /<BagBuilderPhotorealV17Mount \/>/);
+test("V17 geometry remains available but no second renderer is mounted globally", () => {
+  assert.doesNotMatch(layout, /BagBuilderPhotorealV17Mount/);
+  assert.match(layout, /<ExactLiveCustomizer \/>/);
   assert.match(renderer, /function face\(/);
 });
 

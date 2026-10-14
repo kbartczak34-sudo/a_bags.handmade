@@ -9,10 +9,11 @@ const [stack, geometry, css, layout] = await Promise.all([
   readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
 ]);
 
-test("Physical Cord V1 remains available as a legacy fallback while the active V23 renderer owns the visible product", async () => {
+test("Physical Cord V1 remains available as a legacy fallback while the live Fidelity3D renderer owns the visible product", async () => {
   assert.match(stack, /bag-builder-physical-cord-geometry\.css/);
   assert.match(stack, /<BagBuilderBasketWeaveFinish\s*\/>[\s\S]*<BagBuilderHandmadeEdgeFinish\s*\/>/);
-  assert.match(layout, /BagBuilderPhotorealV17Mount/);
+  assert.doesNotMatch(layout, /BagBuilderPhotorealV17Mount/);
+  assert.match(layout, /<ExactLiveCustomizer \/>/);
   assert.match(geometry, /SURFACE_VERSION = "physical-cord-geometry-v1-volumetric-loops"/);
   assert.match(css, /z-index:4!important/);
 });

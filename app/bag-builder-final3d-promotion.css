@@ -197,3 +197,31 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 .abags-bag-builder-stage .abags-fidelity3d-layer .abags-pro3d-zoom{
   z-index:5!important;
 }
+
+
+/* Customer renderer ownership: an unpainted software fallback must not intercept
+   gestures or cover the deterministic SVG. Unlike WebGL, it is promoted only
+   after Canvas2D has drawn a non-empty model for the selected family. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage > .abags-premium-canvas3d-layer {
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage.abags-premium-canvas3d-active:not([data-abags-final3d="ready"]) > .abags-premium-canvas3d-layer {
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  z-index:300!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage.abags-premium-canvas3d-active:not([data-abags-final3d="ready"]) > svg,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage.abags-premium-canvas3d-active:not([data-abags-final3d="ready"]) > .abags-fidelity3d-layer {
+  display:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}

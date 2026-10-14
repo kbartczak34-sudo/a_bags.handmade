@@ -224,14 +224,14 @@ function drawMetal(ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
   ctx.restore();
 }
 
-function drawPremium(canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number, sprite: HTMLImageElement | null) {
+function drawPremium(canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number, sprite: HTMLImageElement | null): boolean {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const width = Math.max(1, canvas.clientWidth), height = Math.max(1, canvas.clientHeight);
   const pixelW = Math.round(width * dpr), pixelH = Math.round(height * dpr);
   if (canvas.width !== pixelW || canvas.height !== pixelH) { canvas.width = pixelW; canvas.height = pixelH; }
-  const ctx = canvas.getContext("2d"); if (!ctx) return;
+  const ctx = canvas.getContext("2d"); if (!ctx) return false;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, width, height);
-  if (!config.family) return;
+  if (!config.family) return false;
 
   const family = config.family as Exclude<Family, "">;
   const { w, h, d } = dims(family);
@@ -349,6 +349,7 @@ function drawPremium(canvas: HTMLCanvasElement, config: Config, rotation: { x: n
   } else if (config.accent === "charm") {
     const p = project({ x: w * 0.84, y: h * 0.12, z: d + 0.14 }, width, height, rotation, zoom); drawMetal(ctx, p.x, p.y, Math.max(2.8, 4.4 * zoom), metal, true); ctx.save(); ctx.fillStyle = "#b87880"; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(p.x, p.y + 9 * zoom, 4.5 * zoom, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
+  return true;
 }
 
 export default function BagBuilderPremiumCanvas3D() {
@@ -374,6 +375,15 @@ export default function BagBuilderPremiumCanvas3D() {
     if (!stage) return;
     let timer = 0;
     const syncMode = () => {
+      // Before a family is selected, preserve the neutral spatial preview.
+      // The software renderer intentionally does not paint an empty product.
+      if (!stage.dataset.family) {
+        window.clearTimeout(timer);
+        setEnabled(false);
+        stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active");
+        stage.removeAttribute("data-abags-canvas3d-ready");
+        return;
+      }
       const finalState = stage.dataset.abagsFinal3d || "";
       const forceFallback = finalState === "fallback";
       const webglReady = stage.getAttribute("data-abags-pro3d-ready") === "true";
@@ -383,9 +393,7 @@ export default function BagBuilderPremiumCanvas3D() {
       // old timer leaves a blank window and can race with a stale readiness flag.
       if (forceFallback) {
         window.clearTimeout(timer);
-        setEnabled(true);
-        stage.classList.add("abags-canvas3d-active", "abags-premium-canvas3d-active");
-        stage.setAttribute("data-abags-canvas3d-ready", "premium-v2");
+        setEnabled(true); // Visibility is granted after a successful 2D draw.
       } else if (webglReady) {
         window.clearTimeout(timer);
         setEnabled(false);
@@ -395,14 +403,12 @@ export default function BagBuilderPremiumCanvas3D() {
         window.clearTimeout(timer);
         timer = window.setTimeout(() => {
           if (stage.dataset.abagsFinal3d !== "fallback" && stage.getAttribute("data-abags-pro3d-ready") !== "true") {
-            setEnabled(true);
-            stage.classList.add("abags-canvas3d-active", "abags-premium-canvas3d-active");
-            stage.setAttribute("data-abags-canvas3d-ready", "premium-v2");
+            setEnabled(true); // Do not hide SVG until the first canvas frame exists.
           }
         }, 650);
       }
     };
-    syncMode(); const observer = new MutationObserver(syncMode); observer.observe(stage, { attributes: true, attributeFilter: ["data-abags-pro3d-ready", "data-abags-final3d"] });
+    syncMode(); const observer = new MutationObserver(syncMode); observer.observe(stage, { attributes: true, attributeFilter: ["data-abags-pro3d-ready", "data-abags-final3d", "data-family"] });
     return () => { window.clearTimeout(timer); observer.disconnect(); stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active"); stage.removeAttribute("data-abags-canvas3d-ready"); };
   }, [stage]);
 
@@ -413,11 +419,31 @@ export default function BagBuilderPremiumCanvas3D() {
   }, [stage]);
 
   useEffect(() => {
-    if (!enabled) return; const canvas = canvasRef.current; if (!canvas) return;
-    let frame = requestAnimationFrame(() => drawPremium(canvas, config, rotation, zoom, sprite));
-    const redraw = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => drawPremium(canvas, config, rotation, zoom, sprite)); };
-    window.addEventListener("resize", redraw); return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", redraw); };
-  }, [enabled, config, rotation, zoom, sprite]);
+    if (!enabled || !stage) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const paint = () => {
+      try {
+        const painted = drawPremium(canvas, config, rotation, zoom, sprite);
+        if (!painted || canvas.width < 16 || canvas.height < 16) {
+          stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active");
+          stage.removeAttribute("data-abags-canvas3d-ready");
+          return;
+        }
+        // Atomic handoff: reveal this renderer only after an actual painted frame.
+        stage.classList.add("abags-canvas3d-active", "abags-premium-canvas3d-active");
+        stage.setAttribute("data-abags-canvas3d-ready", "premium-v2");
+      } catch (error) {
+        console.error("[A-Bags] Canvas3D fallback paint failed", error);
+        stage.classList.remove("abags-canvas3d-active", "abags-premium-canvas3d-active");
+        stage.removeAttribute("data-abags-canvas3d-ready");
+      }
+    };
+    let frame = requestAnimationFrame(paint);
+    const redraw = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(paint); };
+    window.addEventListener("resize", redraw);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", redraw); };
+  }, [enabled, stage, config, rotation, zoom, sprite]);
 
   const label = useMemo(() => config.family ? "Interaktywny premium podgląd 3D torebki A-Bags" : "Wybierz fason, aby rozpocząć", [config.family]);
   if (!stage || !enabled) return null;
