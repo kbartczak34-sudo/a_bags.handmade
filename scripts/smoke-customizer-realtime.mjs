@@ -234,9 +234,9 @@ async function main() {
       return state;
     };
     const clickView = async (label) => {
-      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-fidelity3d-view-controls button')].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
+      const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('.abags-pro3d-view-controls button')].find((n)=>n.textContent?.trim()===${JSON.stringify(label)}); if(!b)return false; b.click(); return true; })()`);
       if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
-      await waitFor(`[...document.querySelectorAll('.abags-fidelity3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
+      await waitFor(`[...document.querySelectorAll('.abags-pro3d-view-controls button')].some((b)=>b.textContent?.trim()===${JSON.stringify(label)}&&b.getAttribute('aria-pressed')==='true')`, `3D view ${label}`);
     };
     const buildBag = async ({ family, color, stitch }, label) => {
       const empty = await stageState();
