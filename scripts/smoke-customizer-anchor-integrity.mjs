@@ -169,13 +169,13 @@ async function main() {
         return true;
       })()`);
       if (!opened) throw new Error("Could not open the realtime customizer.");
-      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage'))", "customer realtime stage");
+      await waitFor("Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']'))", "customer realtime stage");
       await waitFor("document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas').length===2", "two accessory depth canvases");
     };
 
     const choose = async (key, value) => {
       const clicked = await evaluate(`(() => {
-        const button=[...document.querySelectorAll('button[data-builder-key=${JSON.stringify(key)}]')]
+        const button=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls button[data-builder-key=${JSON.stringify(key)}]')]
           .find((node)=>node.dataset.builderValue===${JSON.stringify(value)});
         if(!button || button.disabled)return false;
         button.click();
@@ -183,11 +183,11 @@ async function main() {
       })()`);
       if (!clicked) throw new Error(`Could not select ${key}=${value}.`);
       await waitFor(
-        `document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`,
+        `document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']')?.dataset[${JSON.stringify(key)}]===${JSON.stringify(value)}`,
         `${key}=${value}`,
       );
       await waitFor(`(() => {
-        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']');
         return stage?.dataset.abagsFinal3d==='ready' &&
           stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature &&
           stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature &&
@@ -199,7 +199,8 @@ async function main() {
     const clickView = async (label) => {
       const expected = label === "Przód" ? [-0.02, 0] : label === "Bok" ? [-0.07, Math.PI / 2] : [-0.12, -0.62];
       const clicked = await evaluate(`(() => {
-        const button=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 button, .abags-vc-dialog.abags-reference-layout-v3 button, .abags-pro3d-view-controls button, .abags-fidelity3d-view-controls button')]
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\'true\']');
+        const button=[...(stage?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
         if(!button)return false;
         button.click();
@@ -207,8 +208,8 @@ async function main() {
       })()`);
       if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
       await waitFor(`(() => {
-        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
-        const button=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 button, .abags-vc-dialog.abags-reference-layout-v3 button, .abags-pro3d-view-controls button, .abags-fidelity3d-view-controls button')]
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']');
+        const button=[...(stage?.querySelectorAll('.abags-fidelity3d-view-controls button, .abags-pro3d-view-controls button')||[])]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
         const x=Number(stage?.dataset.abagsFidelity3dRotationX);
         const y=Number(stage?.dataset.abagsFidelity3dRotationY);
@@ -219,7 +220,7 @@ async function main() {
     };
 
     const anchorEvidence = async () => evaluate(`(() => {
-      const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
+      const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage='true']');
       const canvas=stage?.querySelector('.abags-fidelity3d-canvas');
       const back=stage?.querySelector('.abags-accessory-fidelity-back');
       const front=stage?.querySelector('.abags-accessory-fidelity-front');
