@@ -13,7 +13,7 @@ type Point2 = { x: number; y: number; scale: number };
 type ProjectedArc = { points: Point2[]; cumulative: number[]; total: number };
 type HardwarePalette = { shadow: string; mid: string; highlight: string; glint: string };
 
-const STAGE_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-bag-builder-stage";
+const STAGE_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
 const DEFAULT_ZOOM = 0.94;
 const CHAIN_VERSION = "chain-metal-v2-continuous";
@@ -317,7 +317,7 @@ export default function BagBuilderChainRealism() {
     };
     find();
     const observer = new MutationObserver(find);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
     return () => observer.disconnect();
   }, []);
 
