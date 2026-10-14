@@ -107,7 +107,7 @@ export default function BagBuilderFidelity3DCompositorSync() {
     const findStage = () => attach(document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? document.querySelector<HTMLElement>(".abags-bag-builder-stage[data-abags-live-stage=\"true\"]"));
     findStage();
     bodyObserver = new MutationObserver(findStage);
-    bodyObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-abags-live-stage", "data-abags-engine-stage"] });
+    bodyObserver.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       clearFrames();
