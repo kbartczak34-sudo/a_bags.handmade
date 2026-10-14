@@ -199,7 +199,7 @@ async function main() {
     const clickView = async (label) => {
       const expected = label === "Przód" ? [-0.02, 0] : label === "Bok" ? [-0.035, Math.PI / 2] : [-0.07, 0.46];
       const clicked = await evaluate(`(() => {
-        const button=[...document.querySelectorAll('.abags-fidelity3d-view-controls button')]
+        const button=[...document.querySelectorAll('.abags-pro3d-view-controls button')]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
         if(!button)return false;
         button.click();
@@ -208,7 +208,7 @@ async function main() {
       if (!clicked) throw new Error(`Could not select 3D view ${label}.`);
       await waitFor(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage');
-        const button=[...document.querySelectorAll('.abags-fidelity3d-view-controls button')]
+        const button=[...document.querySelectorAll('.abags-pro3d-view-controls button')]
           .find((node)=>node.textContent?.trim()===${JSON.stringify(label)});
         const x=Number(stage?.dataset.abagsFidelity3dRotationX);
         const y=Number(stage?.dataset.abagsFidelity3dRotationY);
@@ -334,7 +334,7 @@ const analyze=(overlay)=>{
       };
 
       return {
-        view:[...stage.querySelectorAll('.abags-fidelity3d-view-controls button')]
+        view:[...stage.querySelectorAll('.abags-pro3d-view-controls button')]
           .find((button)=>button.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'',
         rotationX:Number(stage.dataset.abagsFidelity3dRotationX),
         rotationY:Number(stage.dataset.abagsFidelity3dRotationY),
