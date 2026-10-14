@@ -332,7 +332,13 @@ async function main() {
     const chooseVisible = async (key, value, label) => {
       const beforeState = await state();
       const beforePixels = await fingerprint();
-      if (!beforeState || !beforePixels) throw new Error(`${label}: no readable realtime composition before ${key}=${value}.`);
+      // The empty configurator intentionally has no WebGL bag or accessory
+      // canvases yet. The first family selection creates the 3D composition,
+      // so only require a readable pixel fingerprint after that transition.
+      const startsEmpty = key === "family" && beforeState && !beforeState.family;
+      if (!beforeState || (!beforePixels && !startsEmpty)) {
+        throw new Error(`${label}: no readable realtime composition before ${key}=${value}.`);
+      }
       await choose(key, value);
       const afterState = await waitReady(`${label} ${key}=${value}`);
       const afterPixels = await fingerprint();
@@ -340,7 +346,7 @@ async function main() {
       if (afterState.signature === beforeState.signature) {
         throw new Error(`${label}: ${key}=${value} did not change the builder signature.`);
       }
-      if (afterPixels.hash === beforePixels.hash) {
+      if (beforePixels && afterPixels.hash === beforePixels.hash) {
         throw new Error(`${label}: ${key}=${value} changed state but did not change visible composited pixels: ${JSON.stringify({ beforePixels, afterPixels, afterState })}`);
       }
       return { state: afterState, pixels: afterPixels };
