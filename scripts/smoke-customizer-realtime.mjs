@@ -379,11 +379,14 @@ async function main() {
       const dialog=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
       const stage=dialog?.querySelector('.abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage="true"]');
       if(!stage)return null;
-      const selectors=['.abags-crochet-flap-density','.abags-crochet-flap-relief','.abags-flap-realism'];
-      const visible=selectors.flatMap((selector)=>[...stage.querySelectorAll(selector)].filter((node)=>{
-        const s=getComputedStyle(node),r=node.getBoundingClientRect();
-        return s.display!=='none'&&s.visibility!=='hidden'&&Number.parseFloat(s.opacity||'1')>.05&&r.width>2&&r.height>2;
-      }).map((node)=>node.className));
+       // The crochet-relief surface is the bag body stitch texture, not a flap.
+       // Keep this assertion scoped to the legacy/explicit flap renderers only.
+       const selectors=[".abags-crochet-flap-density",".abags-crochet-flap-relief",".abags-flap-realism"];
+       const visible=selectors.flatMap((selector)=>[...stage.querySelectorAll(selector)].filter((node)=>{
+         if(node.matches(".abags-crochet-relief-surface,[data-abags-crochet-relief-surface]"))return false;
+         const s=getComputedStyle(node),r=node.getBoundingClientRect();
+         return s.display!=='none'&&s.visibility!=='hidden'&&Number.parseFloat(s.opacity||'1')>.05&&r.width>2&&r.height>2;
+       }).map((node)=>node.className));
       return { flap:stage.dataset.flap||'', family:stage.dataset.family||'', visibleFlapOverlays:visible };
     })()`);
     if (!bucket || bucket.flap !== "none" || bucketOverlayState?.flap !== "none" || bucketOverlayState?.visibleFlapOverlays?.length) {
