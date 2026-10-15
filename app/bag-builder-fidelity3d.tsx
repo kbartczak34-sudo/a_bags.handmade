@@ -1186,7 +1186,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       // Keep enough depth to reveal separate attachment points in side view.
       // A small part of the rear ring naturally peeks out at 3/4 yaw: that is
       // physical occlusion, not a detached flat 2D decoration.
-      const depthPlanes = [-profile.topDepth * 0.78, profile.topDepth * 0.78];
+      // Anchor the rings into the actual front/back rim. The former .78
+      // offset placed their feet outside the shell, breaking the rear arch
+      // into detached fragments at a three-quarter camera angle.
+      const depthPlanes = [-profile.topDepth * 0.49, profile.topDepth * 0.49];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
