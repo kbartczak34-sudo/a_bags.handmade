@@ -1178,7 +1178,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
         x: 0,
         // Keep the rigid ring visible above the softly domed crocheted mouth
         // at a 3/4 camera yaw, without changing its attachment-plane depth.
-        y: profile.topY + 0.14,
+        y: profile.topY + 0.17,
         scaleX: profile.width * 0.62,
         scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
       };
