@@ -17,7 +17,7 @@ test("Photo-True readiness follows the currently mounted builder stage", () => {
 test("Photo-True moves the real image into the stage and publishes loaded-image readiness", () => {
   assert.match(source, /createPortal\([\s\S]*?abags-photo-true-stage[\s\S]*?stage,/);
   assert.match(source, /photo\?\.setAttribute\("data-photo-true-ready", "true"\)/);
-  assert.match(source, /stage\.dataset\.photoTrueReady = "true"/);
+  assert.match(source, /mountedStage\.dataset\.photoTrueReady = "true"/);
   assert.match(source, /abags-photo-true-overlay/);
 });
 
