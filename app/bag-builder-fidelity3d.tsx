@@ -959,7 +959,7 @@ function makeRaisedCrochetGussetMesh(family: Exclude<Family, "">) {
   const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
 
   const sampleArc = (length: number) => {
-    let s = ((length % fullLength) + fullLength) % fullLength;
+    const s = ((length % fullLength) + fullLength) % fullLength;
     let index = 0;
     while (index < segments - 1 && s > distance[index + 1]) index++;
     const a = contour[index], b = contour[(index + 1) % segments];
