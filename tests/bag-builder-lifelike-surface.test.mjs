@@ -32,9 +32,9 @@ test("lifelike surface waits for verified 3D, follows material ownership and nev
   assert.match(surface, /stage\.dataset\.abagsPhotoTrue === "active"/);
   assert.match(surface, /abags:fidelity3d-transform/);
   assert.match(surface, /requestAnimationFrame\(paint\)/);
-  assert.match(surface, /selectMaterialSource\(layer, stage\)/);
+  assert.match(surface, /selectMaterialSource\(layer\)/);
   assert.match(surface, /stage\.dataset\.abagsLifelikeSource = selected\.name/);
-  assert.match(surface, /agata-webgl-photo-calibrated/);
+  assert.doesNotMatch(surface, /agata-webgl-photo-calibrated/);
   assert.match(surface, /calibrated-webgl-v4/);
   assert.match(css, /pointer-events:none!important/);
   assert.match(css, /data-abags-final3d="ready"\]\[data-abags-lifelike="ready"\]/);

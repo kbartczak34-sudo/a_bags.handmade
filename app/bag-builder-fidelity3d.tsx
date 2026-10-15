@@ -853,11 +853,16 @@ float knit(vec2 uv,float m){
     return clamp(cord*yarnVariation,0.0,1.0);
   }
   if(m<1.5){
-    // Herringbone: interlocking chevrons, not a flat diamond grid.
-    p=fract(uv*vec2(15.0,18.0));
-    float diag=abs(fract(p.x+p.y)-.5);
-    float anti=abs(fract(p.x-p.y)-.5);
-    return 1.0-smoothstep(.07,.24,min(diag,anti));
+    // Individual staggered crochet stitches, not two crossing diagonal fences.
+    float row=floor(uv.y*18.0);
+    p=fract(vec2(uv.x*17.0+mod(row,2.0)*.5,uv.y*18.0));
+    vec2 left=vec2(.18,.76),base=vec2(.49,.20),right=vec2(.82,.76);
+    vec2 eL=base-left,eR=right-base;
+    float dl=length(p-left-eL*clamp(dot(p-left,eL)/dot(eL,eL),0.0,1.0));
+    float dr=length(p-base-eR*clamp(dot(p-base,eR)/dot(eR,eR),0.0,1.0));
+    float cord=1.0-smoothstep(.065,.19,min(dl,dr));
+    float bridge=1.0-smoothstep(.04,.12,abs(p.y-.78));
+    return clamp(cord+bridge*.24,0.0,1.0);
   }
   if(m<2.5){
     // Basket stitch: alternating over/under bands.
@@ -920,8 +925,18 @@ float yarn(vec2 uv,float m){
     float fiber=sin((uv.x*247.0+uv.y*31.0))*sin(uv.y*193.0-uv.x*17.0);
     a=.35+.48*strand+.045*fiber+.035*sin(p.y*6.2831);
   } else if(m<1.5){
-    p=fract(uv*vec2(23.0,25.0));
-    a=.38+.5*(1.0-smoothstep(.06,.24,min(abs(fract(p.x+p.y)-.5),abs(fract(p.x-p.y)-.5))));
+    // The visible roughness and the physical displacement use the SAME stitch
+    // coordinates. Previously 23x25 shading fought 15x18 geometry into moire.
+    float row=floor(uv.y*18.0);
+    p=fract(vec2(uv.x*17.0+mod(row,2.0)*.5,uv.y*18.0));
+    vec2 left=vec2(.18,.76),base=vec2(.49,.20),right=vec2(.82,.76);
+    vec2 eL=base-left,eR=right-base;
+    float dl=length(p-left-eL*clamp(dot(p-left,eL)/dot(eL,eL),0.0,1.0));
+    float dr=length(p-base-eR*clamp(dot(p-base,eR)/dot(eR,eR),0.0,1.0));
+    float raised=1.0-smoothstep(.065,.19,min(dl,dr));
+    float bridge=1.0-smoothstep(.04,.12,abs(p.y-.78));
+    // The cords occupy the material instead of drawing stark glyphs on a flat field.
+    a=.72+.235*raised+.045*bridge;
   } else if(m<2.5){
     p=fract(uv*vec2(16.0,18.0));
     a=.4+.42*max(1.0-smoothstep(.14,.38,abs(p.x-.5)),1.0-smoothstep(.14,.38,abs(p.y-.5)));
@@ -957,9 +972,11 @@ void main(){
     n=normalize(n-.0023*vFaceWeight*(vTangent*slope.x+vBitangent*slope.y));
     float fullness=smoothstep(.29,.80,cord);
     float strandFibres=sin(vUv.x*411.0+vUv.y*163.0)*sin(vUv.x*57.0-vUv.y*407.0);
-    detail=mix(.70,1.07,fullness)*(1.0+.017*strandFibres);
+    // Polyester 5mm is a continuous matte rope: raised stitches should catch
+    // light, not behave like white ink printed on a black V-shaped stencil.
+    detail=mix(.87,1.045,fullness)*(1.0+.016*strandFibres);
     // The occlusion lives in the valleys, while raised polyester keeps highlights.
-    cordOcclusion=mix(.65,1.0,smoothstep(.32,.78,cord));
+    cordOcclusion=mix(.82,1.0,smoothstep(.44,.89,cord));
     rough=.93;
   } else if(uMaterial<1.5){
     // Flowing wood grain follows the handle UVs instead of flat shiny stripes.

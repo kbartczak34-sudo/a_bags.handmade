@@ -6,8 +6,7 @@ import { createPortal } from "react-dom";
 const STAGE_SELECTOR = ".abags-vc-dialog.abags-vc-builder-active .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]";
 const LAYER_SELECTOR = ".abags-fidelity3d-layer";
 const BASE_SOURCE_SELECTOR = ".abags-fidelity3d-canvas";
-const AGATA_SOURCE_SELECTOR = ".abags-agata-cord-webgl";
-const AGATA_SURFACE_VERSION = "agata-cord-webgl-v1-photo-calibrated";
+// The hidden Agata WebGL is an old cardboard-flat body projection, not the customer 3D source.
 
 function createFibrePattern() {
   const canvas = document.createElement("canvas");
@@ -126,13 +125,8 @@ function paintLifelikeSurface(
   return true;
 }
 
-function selectMaterialSource(layer: HTMLElement, stage: HTMLElement) {
-  const agataReady = stage.dataset.abagsAgataCordWebgl === AGATA_SURFACE_VERSION;
-  if (agataReady) {
-    const agata = layer.querySelector<HTMLCanvasElement>(AGATA_SOURCE_SELECTOR);
-    if (agata && agata.width >= 2 && agata.height >= 2) return { canvas: agata, name: "agata-webgl-photo-calibrated" };
-  }
-
+function selectMaterialSource(layer: HTMLElement) {
+  // Retired source must never be painted back over the verified 3D silhouette.
   const base = layer.querySelector<HTMLCanvasElement>(BASE_SOURCE_SELECTOR);
   return base ? { canvas: base, name: "calibrated-webgl-v4" } : null;
 }
@@ -176,7 +170,7 @@ export default function BagBuilderLifelikeSurface() {
         return;
       }
 
-      const selected = selectMaterialSource(layer, stage);
+      const selected = selectMaterialSource(layer);
       if (!selected) {
         clear();
         return;
