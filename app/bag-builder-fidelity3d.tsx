@@ -1275,7 +1275,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       // Anchor the rings into the actual front/back rim. The former .78
       // offset placed their feet too far outside the shell, breaking the rear arch
       // into detached fragments at a three-quarter camera angle.
-      const depthPlanes = [-profile.topDepth * 0.55, profile.topDepth * 0.55];
+      // The matching back textile dome is deeper than the former flat rear panel.
+      // Seat the two rings just outside BOTH physical textile faces (0.61)
+      // so the rear arch remains visible in profile without detached handles.
+      const depthPlanes = [-profile.topDepth * 0.61, profile.topDepth * 0.61];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
