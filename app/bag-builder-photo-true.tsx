@@ -101,22 +101,49 @@ export default function BagBuilderPhotoTrue() {
 
   useEffect(() => {
     if (!stage) return; const image = stage.querySelector<HTMLImageElement>(".abags-photo-true-base"); if (!image || !selected?.imageUrl) return; image.src = selected.imageUrl; image.alt = `${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`;
-    const syncReady = () => { const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage"); if (!liveStage) return; liveStage.dataset.photoTrueReady = image.naturalWidth > 0 && image.naturalHeight > 0 ? "true" : "false"; };
+    const syncReady = () => {
+      if (!stage.isConnected) return;
+      const photo = image.closest<HTMLElement>(".abags-photo-true-stage");
+      const ready = image.complete && image.naturalWidth > 0 && image.naturalHeight > 0;
+      stage.dataset.photoTrueReady = String(ready);
+      if (photo) photo.dataset.photoTrueReady = String(ready);
+    };
     image.onload = syncReady; if (image.complete) syncReady(); return () => { image.onload = null; };
   }, [selected, stage]);
 
   const exactReference = useMemo(() => photoReferenceForImage(selected?.imageUrl ?? null), [selected]);
   const rendered = useMemo(() => { const base = selected?.imageUrl || ""; const layers = LAYER_ORDER.map((category) => matchAsset(assets, category, config[category])).filter((asset): asset is Asset => Boolean(asset)); return { base, layers }; }, [assets, config, selected]);
   const missingLayers = useMemo(() => LAYER_ORDER.filter((category) => config[category] !== "none" && !matchAsset(assets, category, config[category])), [assets, config]);
-  if (!mount || !selected || !exactReference) return null;
+  if (!mount || !stage || !selected || !exactReference) return null;
 
-  return createPortal(
-    <div className="abags-photo-true-panel" data-photo-true-panel="true">
-      <div className="abags-photo-true-stage" aria-label="Rzeczywiste zdjęcie produktu 1:1">
-        <img className="abags-photo-true-base" src={selected.imageUrl || ""} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
-        {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-layer abags-photo-true-layer-${layer.category}`} src={layer.imageUrl} alt="" aria-hidden="true" />)}
+  // Product photograph belongs to the actual preview stage. The model picker
+  // belongs to the separate controls fieldset; mounting both in that fieldset
+  // caused the 3D canvas to remain visible during photo QA.
+  return <>
+    {createPortal(
+      <div className="abags-photo-true-stage" aria-label="Rzeczywiste zdjęcie produktu">
+        <img
+          className="abags-photo-true-base"
+          src={selected.imageUrl || ""}
+          alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`}
+          onLoad={(event) => {
+            const photo = event.currentTarget.closest<HTMLElement>(".abags-photo-true-stage");
+            photo?.setAttribute("data-photo-true-ready", "true");
+            stage.dataset.photoTrueReady = "true";
+          }}
+          onError={(event) => {
+            const photo = event.currentTarget.closest<HTMLElement>(".abags-photo-true-stage");
+            photo?.setAttribute("data-photo-true-ready", "false");
+            stage.dataset.photoTrueReady = "false";
+          }}
+        />
+        {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-overlay abags-photo-true-layer abags-photo-true-layer-${layer.category}`} data-photo-layer={layer.category} src={layer.imageUrl} alt="" aria-hidden="true" />)}
         <span className="abags-photo-true-badge">{exactReference.canonical ? "PHOTO-TRUE 1:1" : "ZDJĘCIE PRODUKTU"}</span>
-      </div>
+      </div>,
+      stage,
+    )}
+    {createPortal(
+    <div className="abags-photo-true-panel" data-photo-true-panel="true">
       <div className="abags-photo-true-note">Rzeczywiste zdjęcie produktu: {exactReference.sourceFile}. {exactReference.canonical ? "Zdjęcie pochodzi z kanonicznej biblioteki Exact Live." : "Zdjęcie pochodzi bezpośrednio z aktualnego katalogu sklepu."} Zdjęcie nie jest zastępowane syntetycznym renderem.{missingLayers.length ? ` Brak warstwy 1:1: ${missingLayers.join(", ")}.` : ""}{assetError ? ` ${assetError}` : ""}</div>
       <div className="abags-photo-models-grid" role="list">
         {products.map((product) => { const reference = photoReferenceForImage(product.imageUrl); if (!reference) return null; return (
@@ -126,5 +153,6 @@ export default function BagBuilderPhotoTrue() {
         ); })}
       </div>
     </div>, mount,
-  );
+    )}
+  </>;
 }

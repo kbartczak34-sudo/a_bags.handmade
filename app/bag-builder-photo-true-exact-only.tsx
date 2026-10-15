@@ -75,7 +75,22 @@ export default function BagBuilderPhotoTrueExactOnly() {
         (item) => fileNameFromUrl(baseImage).toLowerCase() === item.sourceFile.toLowerCase(),
       );
       const referenceId = reference?.id || "";
-      if (!selectedProduct || !referenceId) {
+      const img = stage.querySelector<HTMLImageElement>(".abags-photo-true-base");
+      const validImage = Boolean(img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+      // A real product photograph from the catalog is valid as a photograph,
+      // but never pretend it is a calibrated 1:1 Exact Live reference.
+      let catalogPhoto = false;
+      try {
+        const url = new URL(baseImage, window.location.origin);
+        catalogPhoto = validImage
+          && baseImage === stage.dataset.photoProductImageUrl
+          && url.origin === window.location.origin
+          && url.pathname === "/api/product-image"
+          && url.searchParams.get("id") === selectedProduct;
+      } catch { /* An invalid/untrusted image must not replace the 3D preview. */ }
+      const source = referenceId ? "exact-live-v4" : catalogPhoto ? "catalog-photo" : "";
+      const resolvedId = referenceId || (catalogPhoto ? `catalog-photo-${selectedProduct}` : "");
+      if (!selectedProduct || !validImage || !resolvedId) {
         clearExactState(stage);
         return;
       }
@@ -96,14 +111,16 @@ export default function BagBuilderPhotoTrueExactOnly() {
                 fileNameFromUrl(currentBaseImage).toLowerCase() === item.sourceFile.toLowerCase(),
             );
             const currentReferenceId = currentReference?.id || "";
-            if (!currentReferenceId) {
+            const currentImage = currentStage.querySelector<HTMLImageElement>(".abags-photo-true-base");
+            const photoLoaded = Boolean(currentImage?.complete && currentImage.naturalWidth > 0);
+            if (!photoLoaded || (source === "exact-live-v4" && !currentReferenceId)) {
               clearExactState(currentStage);
               return;
             }
             baseline = readConfig(currentStage);
-            currentStage.setAttribute("data-abags-photo-true-reference", "exact-live-v4");
-            currentStage.setAttribute("data-abags-photo-true-reference-id", currentReferenceId);
-            currentStage.dataset.abagsPhotoTrueState = "exact";
+            currentStage.setAttribute("data-abags-photo-true-reference", source);
+            currentStage.setAttribute("data-abags-photo-true-reference-id", resolvedId);
+            currentStage.dataset.abagsPhotoTrueState = source === "exact-live-v4" ? "exact" : "catalog-photograph";
             currentStage.setAttribute("data-abags-photo-true", "active");
             currentStage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.removeProperty("display");
             requestSync();
@@ -119,14 +136,14 @@ export default function BagBuilderPhotoTrueExactOnly() {
         stage.removeAttribute("data-abags-photo-true");
         stage.removeAttribute("data-abags-photo-true-reference");
         stage.dataset.abagsPhotoTrueState = "custom-realtime";
-        stage.setAttribute("data-abags-photo-true-reference-id", referenceId);
+        stage.setAttribute("data-abags-photo-true-reference-id", resolvedId);
         stage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.setProperty("display", "none", "important");
         return;
       }
 
-      stage.dataset.abagsPhotoTrueState = "exact";
-      stage.setAttribute("data-abags-photo-true-reference", "exact-live-v4");
-      stage.setAttribute("data-abags-photo-true-reference-id", referenceId);
+      stage.dataset.abagsPhotoTrueState = source === "exact-live-v4" ? "exact" : "catalog-photograph";
+      stage.setAttribute("data-abags-photo-true-reference", source);
+      stage.setAttribute("data-abags-photo-true-reference-id", resolvedId);
       stage.setAttribute("data-abags-photo-true", "active");
       stage.querySelector<HTMLElement>(".abags-photo-true-stage")?.style.removeProperty("display");
     };
@@ -143,6 +160,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
       attributes: true,
       attributeFilter: [
         "src",
+        "data-photo-true-ready",
         "data-photo-product-id",
         "data-family",
         "data-color",

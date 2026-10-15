@@ -14,6 +14,13 @@ test("Photo-True readiness follows the currently mounted builder stage", () => {
   assert.match(source, /\}, \[selected, stage\]\);/);
 });
 
+test("Photo-True moves the real image into the stage and publishes loaded-image readiness", () => {
+  assert.match(source, /createPortal\([\s\S]*?abags-photo-true-stage[\s\S]*?stage,/);
+  assert.match(source, /photo\?\.setAttribute\("data-photo-true-ready", "true"\)/);
+  assert.match(source, /stage\.dataset\.photoTrueReady = "true"/);
+  assert.match(source, /abags-photo-true-overlay/);
+});
+
 test("Photo-True validates the active DOM node before writing readiness markers", () => {
   const readinessEffect = source.slice(source.indexOf("const selected = useMemo"), source.indexOf("if (!selectedId) return;"));
   assert.match(readinessEffect, /liveStage !== stage/);
