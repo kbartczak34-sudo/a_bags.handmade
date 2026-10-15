@@ -315,13 +315,8 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
-  const bodyDepth = spec.depth * depthScale;
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
-  const frontZ = bodyDepth * 0.5;
-  const backZ = -frontZ;
-  const frontFaceZ = frontZ - bevel;
-  const backFaceZ = backZ + bevel;
 
   const addRing = (scaleFactor: number, zSign: number, zInset: number, mode: "face" | "bevel" | "side") => {
     const startIndex = positions.length / 3;
