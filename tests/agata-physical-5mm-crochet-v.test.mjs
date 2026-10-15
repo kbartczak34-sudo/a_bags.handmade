@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 const src=await readFile(new URL("../app/bag-builder-fidelity3d.tsx",import.meta.url),"utf8");
 test("selected openwork stitch uses true tube rings on BOTH sides of the product",()=>{
   assert.match(src,/function makeRaisedCrochetCordMesh\(family:/);
-  assert.match(src,/const radius = spec\.rx \* \(0\.005 \/ 0\.16\) \* 0\.5/);
+  assert.match(src,/const radius = spec\.rx \* \(0\.005 \/ 0\.16\)/);
   assert.match(src,/for \(const side of \[1, -1\] as const\)/);
   assert.match(src,/const tangent = normalize/);
   assert.match(src,/normals\.push\(\.\.\.n\)/);

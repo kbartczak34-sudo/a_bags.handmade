@@ -842,7 +842,7 @@ function makeRaisedCrochetCordMesh(family: Exclude<Family, "">) {
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
   const domeLift = spec.depth * (.075 + .045) * depthScale;
-  const radius = spec.rx * (0.005 / 0.16) * 0.5; // true 5 mm diameter relative to approximately 16 cm width
+  const radius = spec.rx * (0.005 / 0.16); // true 5 mm diameter relative to approximately 16 cm width
   const columns = 16;
   const rows = 11;
   const axialSteps = 11;
