@@ -427,7 +427,24 @@ const analyze=(overlay)=>{
       const results = [];
       for (const view of ["Przód", "3/4", "Bok"]) {
         await clickView(view);
-        const evidence = { ...await anchorEvidence(), view };
+        // The camera's React state can advance before the asynchronously composited
+        // front/rear accessory canvases paint. A fixed delay alone sometimes sampled
+        // the old front-facing pixels for the 3/4 view. Require fresh pixels in BOTH
+        // overlays while preserving the exact same final unique-frame assertions.
+        let sampled = await anchorEvidence();
+        if (results.length) {
+          const previous = results[results.length - 1];
+          const deadline = Date.now() + 12_000;
+          while (Date.now() < deadline && (
+            !sampled?.back || !sampled?.front
+            || sampled.back.hash === previous.back.hash
+            || sampled.front.hash === previous.front.hash
+          )) {
+            await sleep(160);
+            sampled = await anchorEvidence();
+          }
+        }
+        const evidence = { ...sampled, view };
         results.push(evidence);
         await capture(`anchor-${label.toLowerCase()}-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
         await writeFile(path.join(qaDir, `anchor-${label.toLowerCase()}-evidence.json`), JSON.stringify(results, null, 2));
