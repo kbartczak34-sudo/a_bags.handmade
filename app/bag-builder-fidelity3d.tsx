@@ -935,6 +935,98 @@ function makeRaisedCrochetCordMesh(family: Exclude<Family, "">) {
   return { positions, normals, uvs, indices };
 }
 
+
+/**
+ * Woven gusset of the same rounded 5mm cord, curved along the ACTUAL 3D
+ * body outline. This is a separate mesh to keep every WebGL1 Uint16 index
+ * buffer below 65,536 vertices; the geometry rotates with the camera.
+ */
+function makeRaisedCrochetGussetMesh(family: Exclude<Family, "">) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const contour = familyContour(family);
+  const radius = spec.rx * (0.005 / 0.16);
+  const segments = contour.length;
+  const distance = [0];
+  for (let k = 0; k < segments; k++) {
+    const first = contour[k], next = contour[(k + 1) % segments];
+    distance.push(distance[distance.length - 1] + Math.hypot(next[0] - first[0], next[1] - first[1]));
+  }
+  const fullLength = distance[segments];
+  const stitchCount = Math.max(22, Math.round(fullLength / (spec.rx * .12)));
+  const depthRows = 6;
+  const axialSteps = 9;
+  const tubeSides = 8;
+  const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
+
+  const sampleArc = (length: number) => {
+    let s = ((length % fullLength) + fullLength) % fullLength;
+    let index = 0;
+    while (index < segments - 1 && s > distance[index + 1]) index++;
+    const a = contour[index], b = contour[(index + 1) % segments];
+    const fraction = (s - distance[index]) / Math.max(.00001, distance[index + 1] - distance[index]);
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const outward = normalize(dy, -dx, 0);
+    return { x: a[0] + dx * fraction, y: a[1] + dy * fraction, outward };
+  };
+  for (let row = 0; row < depthRows; row++) {
+    const rowStagger = row % 2 ? .5 : 0;
+    for (let col = 0; col < stitchCount; col++) {
+      const arcCenter = (col + .5 + rowStagger) * fullLength / stitchCount;
+      const path: Array<[number, number, number]> = [];
+      let skip = false;
+      for (let step = 0; step <= axialSteps; step++) {
+        const t = step / axialSteps;
+        const outer = Math.sqrt(.25 + .020);
+        const bend = Math.sqrt((t - .5) * (t - .5) + .020);
+        const v = .43 - .68 * (1 - bend / outer);
+        const arc = sampleArc(arcCenter + (t - .5) * .84 * fullLength / stitchCount);
+        if (arc.y > spec.ry * .90) skip = true; // the top is open, never seal the mouth
+        const softness = softBodyOffset(family, arc.x, arc.y);
+        const positionY = arc.y + softness.y;
+        const halfDepth = depthAt(family, positionY) * .5 + softness.z;
+        const depth = (row + .5 + v) / depthRows;
+        path.push([
+          arc.x + arc.outward[0] * radius * .72,
+          positionY + arc.outward[1] * radius * .72,
+          (1 - depth * 2) * halfDepth,
+        ]);
+      }
+      if (skip) continue;
+      const start = positions.length / 3;
+      for (let i = 0; i < path.length; i++) {
+        const prev = path[Math.max(0, i - 1)], next = path[Math.min(path.length - 1, i + 1)];
+        const t = normalize(next[0] - prev[0], next[1] - prev[1], next[2] - prev[2]);
+        const side = normalize(-t[1], t[0], .15);
+        const binormal = normalize(
+          t[1] * side[2] - t[2] * side[1],
+          t[2] * side[0] - t[0] * side[2],
+          t[0] * side[1] - t[1] * side[0],
+        );
+        for (let ring = 0; ring <= tubeSides; ring++) {
+          const angle = ring / tubeSides * Math.PI * 2;
+          const n = normalize(
+            side[0] * Math.cos(angle) + binormal[0] * Math.sin(angle),
+            side[1] * Math.cos(angle) + binormal[1] * Math.sin(angle),
+            side[2] * Math.cos(angle) + binormal[2] * Math.sin(angle),
+          );
+          positions.push(path[i][0] + n[0] * radius, path[i][1] + n[1] * radius, path[i][2] + n[2] * radius);
+          normals.push(...n);
+          uvs.push(i / axialSteps * 1.5 + col * .031, ring / tubeSides);
+        }
+      }
+      for (let i = 0; i < axialSteps; i++) {
+        for (let ring = 0; ring < tubeSides; ring++) {
+          const a = start + i * (tubeSides + 1) + ring;
+          const b = a + tubeSides + 1;
+          indices.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+      }
+    }
+  }
+  if (positions.length / 3 >= 65536) throw new Error("gusset-crochet-uint16-overflow");
+  return { positions, normals, uvs, indices };
+}
+
 const VERTEX = `
 attribute vec3 aPosition;
 attribute vec3 aNormal;
@@ -1126,10 +1218,11 @@ void main(){
   ndh=max(dot(n,h),0.0);
   facing=max(dot(n,v),0.0);
 
-  // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
+  // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,uMaterial>7.5?.84:.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
   float rim=pow(1.0-facing,2.7);
   float cavity=.92+.08*pow(1.0-facing,1.5);
   float illumination=.18+.72*ndl+.18*fillLight;
+  if(uMaterial>7.5) illumination=max(.40,illumination); // visible matte rear strap contact, no black sidewall
   vec3 color=base*illumination*cavity*cordOcclusion+vec3(spec)+base*.025*rim;
 
   // A restrained warm atelier bounce keeps pale cords from washing out.
@@ -1186,6 +1279,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("round")),
       bucketCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("bucket")),
       miniCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("mini")),
+      toteCrochetGusset: createMesh(gl, makeRaisedCrochetGussetMesh("tote")),
+      roundCrochetGusset: createMesh(gl, makeRaisedCrochetGussetMesh("round")),
+      bucketCrochetGusset: createMesh(gl, makeRaisedCrochetGussetMesh("bucket")),
+      miniCrochetGusset: createMesh(gl, makeRaisedCrochetGussetMesh("mini")),
       toteRim: createMesh(gl, makeOpeningRim("tote")),
       roundRim: createMesh(gl, makeOpeningRim("round")),
       bucketRim: createMesh(gl, makeOpeningRim("bucket")),
@@ -1352,6 +1449,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, shellPose, body, physicalVStitch ? 8 : 0, stitch, physicalVStitch ? 0 : relief);
   if (physicalVStitch) {
     drawMesh(renderer, meshes[renderFamily + "CrochetCord"], shellPose, body, 7, stitch, 0);
+    drawMesh(renderer, meshes[renderFamily + "CrochetGusset"], shellPose, body, 7, stitch, 0);
   }
 
   const openingColor = config.color ? body : "#d8cec4";
