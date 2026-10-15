@@ -32,15 +32,15 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-stitch="basket"][data-abags-final3d="ready"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
 > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
-  opacity:.94!important;
-  visibility:visible!important;
+  opacity:0!important;
+  visibility:hidden!important;
 }
 
 @media (max-width:620px) {
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
   .abags-bag-builder-stage[data-stitch="basket"][data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"]
   > .abags-fidelity3d-layer > .abags-basket-physical-cord-v2 {
-    opacity:.88!important;
+    opacity:0!important;
   }
 }
 
