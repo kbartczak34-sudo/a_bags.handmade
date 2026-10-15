@@ -76,7 +76,9 @@ function ensureHeader(dialog: HTMLElement) {
 }
 
 function decorate(dialog: HTMLElement) {
-  const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
+  const stage = dialog.querySelector<HTMLElement>('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')
+    ?? dialog.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage")
+    ?? dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
   if (!stage) return;
   dialog.classList.add("abags-reference-layout-v3");
   dialog.dataset.abagsReferenceLayout = "v3";
