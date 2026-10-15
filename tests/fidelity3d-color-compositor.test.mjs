@@ -149,11 +149,11 @@ test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures
   assert.match(renderer, /Herringbone: interlocking chevrons/);
   assert.match(renderer, /Basket stitch: alternating over\/under bands/);
   assert.match(renderer, /Shell stitch: repeated scallops/);
-  assert.match(renderer, /const frontBulge = spec\.depth \* 0\.075/);
-  assert.match(renderer, /frontFaceZ \+ frontBulge/);
+  assert.match(renderer, /const frontBulge = spec\.depth \* \.075/);
+  assert.match(renderer, /frontBulge \+ bodyDomeLift\) \* dome/);
   assert.match(renderer, /float fillLight=max\(dot\(n,fill\),0\.0\)/);
   assert.match(renderer, /A restrained warm atelier bounce/);
-  assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.016 : 0\.006/);
+  assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.037 : 0\.016/);
 });
 
 test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
