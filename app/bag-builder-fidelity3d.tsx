@@ -821,6 +821,120 @@ function makeCone(radius = 0.14, height = 0.55, segments = 32) {
   return { positions, normals, uvs, indices };
 }
 
+
+/**
+ * Physical 5 mm crochet cords for the upright/openwork stitch.
+ *
+ * Each U/V loop is a smoothly bent cylindrical strand with actual tangent-
+ * oriented normals. There are no canvas overlays, alpha-cutout stickers,
+ * diagonal painted gratings or intersecting straight wires. Both panels use
+ * the same construction with opposite face normals; the existing shell owns
+ * body volume, handles, gussets, lining and the 360-degree camera.
+ *
+ * The cord/body-width ratio uses Agata's approximately 16 cm body width.
+ * Height and gusset depth remain the existing unmeasured design geometry.
+ */
+function makeRaisedCrochetCordMesh(family: Exclude<Family, "">) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const contour = familyContour(family);
+  const centerX = contour.reduce((sum, p) => sum + p[0], 0) / contour.length;
+  const centerY = contour.reduce((sum, p) => sum + p[1], 0) / contour.length;
+  const bevel = Math.min(spec.bevel, spec.depth * 0.14);
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
+  const domeLift = spec.depth * (.075 + .045) * depthScale;
+  const radius = spec.rx * (0.005 / 0.16) * 0.5; // true 5 mm diameter relative to approximately 16 cm width
+  const columns = 16;
+  const rows = 11;
+  const axialSteps = 11;
+  const tubeSides = 8;
+  const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
+
+  const onSurface = (nx: number, ny: number, side: 1 | -1): [number, number, number] => {
+    const clampedY = clamp(ny, -.79, .79);
+    const rawY = clampedY * spec.ry;
+    const normalizedY = Math.abs(clampedY);
+    const halfWidth = spec.rx * Math.pow(Math.max(.001, 1 - Math.pow(normalizedY, spec.power)), 1 / spec.power)
+      * (1 + spec.taper * clampedY);
+    const x = centerX + nx * halfWidth;
+    const softness = softBodyOffset(family, x, rawY);
+    const y = rawY + softness.y;
+    const radialX = (x - centerX) / Math.max(.001, spec.rx * (1 + spec.taper * clampedY));
+    const radialY = (rawY - centerY) / Math.max(.001, spec.ry);
+    const fraction = Math.pow(
+      Math.pow(Math.abs(radialX), spec.power) + Math.pow(Math.abs(radialY), spec.power),
+      1 / spec.power,
+    );
+    const dome = Math.max(0, 1 - fraction * fraction);
+    const halfDepth = depthAt(family, y) * .5 - bevel + softness.z + domeLift * dome;
+    return [x, y, side * (halfDepth + radius * .72)];
+  };
+
+  const addRoundStrand = (samples: Array<[number, number, number]>, row: number, column: number) => {
+    const start = positions.length / 3;
+    for (let sample = 0; sample < samples.length; sample++) {
+      const prev = samples[Math.max(0, sample - 1)];
+      const next = samples[Math.min(samples.length - 1, sample + 1)];
+      const tangent = normalize(next[0] - prev[0], next[1] - prev[1], next[2] - prev[2]);
+      const side = normalize(-tangent[1], tangent[0], 0);
+      const across = normalize(
+        tangent[1] * side[2] - tangent[2] * side[1],
+        tangent[2] * side[0] - tangent[0] * side[2],
+        tangent[0] * side[1] - tangent[1] * side[0],
+      );
+      for (let ring = 0; ring <= tubeSides; ring++) {
+        const angle = ring / tubeSides * Math.PI * 2;
+        const n = normalize(
+          side[0] * Math.cos(angle) + across[0] * Math.sin(angle),
+          side[1] * Math.cos(angle) + across[1] * Math.sin(angle),
+          side[2] * Math.cos(angle) + across[2] * Math.sin(angle),
+        );
+        // Non-uniform handmade twist and soft cord compression at each bend,
+        // but deterministic and identical on both sides of the product.
+        const spring = 1 + .025 * Math.sin(row * 2.9 + column * 1.6 + sample * .71);
+        positions.push(samples[sample][0] + n[0] * radius * spring, samples[sample][1] + n[1] * radius * spring, samples[sample][2] + n[2] * radius * spring);
+        normals.push(...n);
+        uvs.push(sample / axialSteps * 1.5 + column * .031, ring / tubeSides);
+      }
+    }
+    for (let sample = 0; sample < axialSteps; sample++) {
+      for (let ring = 0; ring < tubeSides; ring++) {
+        const a = start + sample * (tubeSides + 1) + ring;
+        const b = a + tubeSides + 1;
+        indices.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    }
+  };
+
+  // An upright crochet V has a round bottom and two sloping legs. Rows stagger
+  // like actual hooked stitches. Avoid crossed X/diamond wires and flat SVGs.
+  for (const side of [1, -1] as const) {
+    for (let row = 0; row < rows; row++) {
+      const yCenter = -.70 + (row + .5) * (1.40 / rows);
+      const rowShift = row % 2 ? .5 : 0;
+      for (let column = -1; column <= columns; column++) {
+        const xCenter = -.80 + (column + .5 + rowShift) * (1.60 / columns);
+        if (Math.abs(xCenter) > .79) continue;
+        const path: Array<[number, number, number]> = [];
+        for (let index = 0; index <= axialSteps; index++) {
+          const t = index / axialSteps;
+          const bend = Math.sqrt((t - .5) * (t - .5) + .020);
+          const outside = Math.sqrt(.25 + .020);
+          const up = .43 - .68 * (1 - bend / outside);
+          const x = xCenter + (t - .5) * 1.60 / columns * .84;
+          const y = yCenter + up * 1.40 / rows;
+          const point = onSurface(x, y, side);
+          // Small, genuinely 3D crossover height near the hook throat.
+          point[2] += side * radius * .20 * Math.sin(t * Math.PI);
+          path.push(point);
+        }
+        addRoundStrand(path, row, column);
+      }
+    }
+  }
+  if (positions.length / 3 >= 65536) throw new Error("raised-crochet-uint16-overflow");
+  return { positions, normals, uvs, indices };
+}
+
 const VERTEX = `
 attribute vec3 aPosition;
 attribute vec3 aNormal;
@@ -987,9 +1101,21 @@ void main(){
     vec2 checker=floor(vUv*vec2(12.0,12.0));
     detail=mix(.73,1.04,mod(checker.x+checker.y,2.0));
     rough=.94;
-  } else {
+  } else if(uMaterial<6.5){
     // Soft dark textile instead of shiny metal inside the other families.
     detail=.74+.055*sin(vUv.x*118.0+vUv.y*97.0);
+    rough=.96;
+  } else if(uMaterial<7.5) {
+    // Genuine tube geometry: directional polyester filaments, not V ink on
+    // a card. All highlights are calculated from actual cylinder normals.
+    float twist=sin(vUv.x*86.0+vUv.y*18.0);
+    float filament=sin(vUv.x*241.0-vUv.y*67.0);
+    detail=.95+.025*twist+.012*filament;
+    rough=.89;
+  } else {
+    // Underlying continuous crochet body: textile substrate beneath REAL
+    // raised cord tubes, not the former intersecting diamond mesh pattern.
+    detail=.94+.018*sin(vUv.x*143.0+vUv.y*179.0);
     rough=.96;
   }
 
@@ -1056,6 +1182,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       round: createMesh(gl, makeVariableDepthBody("round")),
       bucket: createMesh(gl, makeVariableDepthBody("bucket")),
       mini: createMesh(gl, makeVariableDepthBody("mini")),
+      toteCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("tote")),
+      roundCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("round")),
+      bucketCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("bucket")),
+      miniCrochetCord: createMesh(gl, makeRaisedCrochetCordMesh("mini")),
       toteRim: createMesh(gl, makeOpeningRim("tote")),
       roundRim: createMesh(gl, makeOpeningRim("round")),
       bucketRim: createMesh(gl, makeOpeningRim("bucket")),
@@ -1215,7 +1345,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
   const relief = config.color && config.stitch ? 0.037 : 0.016;
-  drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
+  const physicalVStitch = config.stitch === "herringbone";
+  const shellPose = multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1]));
+  // The openwork selection is geometry, not a flat diagonal hatch painted on
+  // top of the bag. Keep the one-body depth test for the whole product.
+  drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, shellPose, body, physicalVStitch ? 8 : 0, stitch, physicalVStitch ? 0 : relief);
+  if (physicalVStitch) {
+    drawMesh(renderer, meshes[renderFamily + "CrochetCord"], shellPose, body, 7, stitch, 0);
+  }
 
   const openingColor = config.color ? body : "#d8cec4";
   const agataOpenWoodTote = renderFamily === "tote" && config.handles.startsWith("wood");
