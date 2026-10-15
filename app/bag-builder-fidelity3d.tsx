@@ -359,7 +359,9 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const backFace = addRing(inset, -1, bevel, "face");
 
   // Tessellated fibre panels; sparse fan triangles cannot carry yarn displacement.
-  const faceBands = 16;
+  // Dense yarn-level vertices ensure the stitch pattern is displaced in 3D,
+  // not just printed between sixteen widely-spaced surface bands.
+  const faceBands = 52;
   const frontBulge = spec.depth * .075 * depthScale;
   const bodyDomeLift = spec.depth * .045 * depthScale;
   const backBulge = spec.depth * .025 * depthScale;
@@ -782,6 +784,8 @@ uniform mat4 uProjection,uView,uModel;
 uniform float uRelief;
 uniform mediump float uStitch;
 varying vec3 vNormal,vWorld;
+varying vec3 vTangent,vBitangent;
+varying float vFaceWeight;
 varying vec2 vUv;
 
 float smoothLoop(float x,float width){
@@ -835,18 +839,28 @@ void main(){
   float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
   vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
   float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.24));
+  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.30));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
   vNormal=normalize(mat3(uModel)*localNormal);
+  // Bump lighting rotates with the bag's actual 3D pose.
+  vTangent=normalize(mat3(uModel)*vec3(1.0,0.0,0.0));
+  vBitangent=normalize(mat3(uModel)*vec3(0.0,1.0,0.0));
+  vFaceWeight=frontFace;
   vUv=aUv;
   gl_Position=uProjection*uView*world;
 }`;
 
 const FRAGMENT = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec3 vNormal,vWorld;
+varying vec3 vTangent,vBitangent;
+varying float vFaceWeight;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
@@ -887,14 +901,30 @@ void main(){
   float fillLight=max(dot(n,fill),0.0);
   float ndh=max(dot(n,h),0.0);
   float facing=max(dot(n,v),0.0);
-  float rough=.88,metal=0.0,detail=1.0;
+  float rough=.88,metal=0.0,detail=1.0,cordOcclusion=1.0;
 
   if(uMaterial<.5){
-    detail=.62+.58*yarn(vUv,uStitch)+.045*(hash(floor(vUv*vec2(180.0,150.0)))-.5);
-    rough=.94;
+    // Rounded cord affects the real per-pixel normal and shades deep crossings,
+    // preventing the former flat colour-only, line-art texture.
+    float cord=yarn(vUv,uStitch);
+    float e=.0020;
+    vec2 slope=vec2(
+      yarn(vUv+vec2(e,0.0),uStitch)-yarn(vUv-vec2(e,0.0),uStitch),
+      yarn(vUv+vec2(0.0,e),uStitch)-yarn(vUv-vec2(0.0,e),uStitch)
+    )/(2.0*e);
+    n=normalize(n-.0023*vFaceWeight*(vTangent*slope.x+vBitangent*slope.y));
+    float fullness=smoothstep(.29,.80,cord);
+    float strandFibres=sin(vUv.x*411.0+vUv.y*163.0)*sin(vUv.x*57.0-vUv.y*407.0);
+    detail=mix(.70,1.07,fullness)*(1.0+.017*strandFibres);
+    // The occlusion lives in the valleys, while raised polyester keeps highlights.
+    cordOcclusion=mix(.65,1.0,smoothstep(.32,.78,cord));
+    rough=.93;
   } else if(uMaterial<1.5){
-    detail=.91+.035*sin(vUv.x*18.0+sin(vUv.y*5.0)*.7)+.018*sin(vUv.x*47.0+vUv.y*3.0)+.012*(hash(floor(vUv*vec2(90.0,34.0)))-.5);
-    rough=.43;
+    // Flowing wood grain follows the handle UVs instead of flat shiny stripes.
+    float grain=sin(vUv.x*37.0+sin(vUv.y*8.0)*1.8);
+    float pores=hash(floor(vUv*vec2(150.0,46.0)));
+    detail=.87+.085*grain+.025*(pores-.5);
+    rough=.57;
   } else if(uMaterial<2.5){
     detail=.88+.065*(hash(floor(vUv*150.0))-.5)+.045*sin(vUv.y*52.0);
     rough=.52;
@@ -914,11 +944,18 @@ void main(){
     rough=.96;
   }
 
+  // The raised yarn changes the *actual* lighting: recompute incidence after
+  // the normal-map perturbation, not before the material-specific shader pass.
+  ndl=max(dot(n,l),0.0);
+  fillLight=max(dot(n,fill),0.0);
+  ndh=max(dot(n,h),0.0);
+  facing=max(dot(n,v),0.0);
+
   // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
   float rim=pow(1.0-facing,2.7);
   float cavity=.92+.08*pow(1.0-facing,1.5);
   float illumination=.18+.72*ndl+.18*fillLight;
-  vec3 color=base*illumination*cavity+vec3(spec)+base*.035*rim;
+  vec3 color=base*illumination*cavity*cordOcclusion+vec3(spec)+base*.025*rim;
 
   // A restrained warm atelier bounce keeps pale cords from washing out.
   color+=base*vec3(.035,.024,.018);
