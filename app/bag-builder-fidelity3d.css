@@ -8,7 +8,8 @@
 }
 
 .abags-bag-builder-stage.abags-fidelity3d-active .abags-pro3d-canvas{
-  filter:saturate(1.035) contrast(1.035);
+  /* Material shading, not a saturating image filter, determines yarn depth. */
+  filter:none;
 }
 
 .abags-bag-builder-stage.abags-fidelity3d-active .abags-pro3d-view-controls button.is-active{

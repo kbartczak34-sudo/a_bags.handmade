@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 const renderer = await readFile(new URL("../app/bag-builder-fidelity3d.tsx", import.meta.url), "utf8");
 
 test("the active customer renderer tessellates both crochet panels rather than a flat triangle fan", () => {
-  assert.match(renderer, /const faceBands = 16/);
+  assert.match(renderer, /const faceBands = 52/);
   assert.match(renderer, /addFabricFace\(frontFace, 1\)/);
   assert.match(renderer, /addFabricFace\(backFace, -1\)/);
 });

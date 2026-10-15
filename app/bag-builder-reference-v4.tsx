@@ -24,6 +24,12 @@ function builderKey(group: HTMLElement) {
   return group.querySelector<HTMLButtonElement>("button[data-builder-key]")?.dataset.builderKey || "";
 }
 
+function activeCustomerStage(dialog: HTMLElement) {
+  return dialog.querySelector<HTMLElement>('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')
+    ?? dialog.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage")
+    ?? dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
+}
+
 function activeStep(stage: HTMLElement) {
   const value = Number(stage.dataset.abagsRefStep || "1");
   return value >= 1 && value <= 7 ? value : 1;
@@ -101,7 +107,7 @@ function ensureHeaderTools(dialog: HTMLElement) {
     menu.setAttribute("aria-label", "Przejdź do konfiguracji");
     menu.innerHTML = "<span></span><span></span><span></span>";
     menu.addEventListener("click", () => {
-      const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
+      const stage = activeCustomerStage(dialog);
       if (stage) stage.dataset.abagsRefStep = "1";
       dialog.querySelector<HTMLElement>(".abags-builder-controls")?.scrollIntoView({ behavior: "smooth", block: "start" });
       window.requestAnimationFrame(() => dialog.querySelector<HTMLButtonElement>('button[data-builder-key="family"]')?.focus({ preventScroll: true }));
@@ -195,7 +201,7 @@ function synchronizeLegacyFlatSurface(stage: HTMLElement) {
 }
 
 function sync(dialog: HTMLElement) {
-  const stage = dialog.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage=\"true\"]") ?? dialog.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage");
+  const stage = activeCustomerStage(dialog);
   if (!stage) return;
   dialog.classList.add("abags-reference-layout-v4");
   dialog.dataset.abagsReferenceV4 = "true";
@@ -250,7 +256,7 @@ export default function BagBuilderReferenceV4() {
 
       if (!button || button.disabled) return;
       const dialog = button.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4");
-      const stage = dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage");
+      const stage = dialog ? activeCustomerStage(dialog) : null;
       const key = button.dataset.builderKey || "";
       const step = STEP_FOR_KEY[key];
       if (!stage || !step) return;

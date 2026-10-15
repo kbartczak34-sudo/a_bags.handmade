@@ -128,7 +128,11 @@ export default function BagBuilderReferenceLayoutV3() {
       const target = event.target as HTMLElement | null;
       const dialog = target?.closest<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active");
       if (!dialog) return;
-      const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
+      // Hidden legacy stages may remain mounted after a mobile family change.
+      // Only the live stage is read by the V4 accordion compositor.
+      const stage = dialog.querySelector<HTMLElement>('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')
+        ?? dialog.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage")
+        ?? dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
       if (!stage) return;
 
       const rail = target?.closest<HTMLButtonElement>("button[data-ref-step]");
