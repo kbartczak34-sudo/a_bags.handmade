@@ -102,10 +102,11 @@ export default function BagBuilderPhotoTrue() {
   useEffect(() => {
     if (!stage) return; const image = stage.querySelector<HTMLImageElement>(".abags-photo-true-base"); if (!image || !selected?.imageUrl) return; image.src = selected.imageUrl; image.alt = `${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`;
     const syncReady = () => {
-      if (!stage.isConnected) return;
+      const mountedStage = image.closest<HTMLElement>(".abags-bag-builder-stage");
+      if (!mountedStage?.isConnected) return;
       const photo = image.closest<HTMLElement>(".abags-photo-true-stage");
       const ready = image.complete && image.naturalWidth > 0 && image.naturalHeight > 0;
-      stage.dataset.photoTrueReady = String(ready);
+      mountedStage.dataset.photoTrueReady = String(ready);
       if (photo) photo.dataset.photoTrueReady = String(ready);
     };
     image.onload = syncReady; if (image.complete) syncReady(); return () => { image.onload = null; };
@@ -129,12 +130,14 @@ export default function BagBuilderPhotoTrue() {
           onLoad={(event) => {
             const photo = event.currentTarget.closest<HTMLElement>(".abags-photo-true-stage");
             photo?.setAttribute("data-photo-true-ready", "true");
-            stage.dataset.photoTrueReady = "true";
+            const mountedStage = event.currentTarget.closest<HTMLElement>(".abags-bag-builder-stage");
+            if (mountedStage) mountedStage.dataset.photoTrueReady = "true";
           }}
           onError={(event) => {
             const photo = event.currentTarget.closest<HTMLElement>(".abags-photo-true-stage");
             photo?.setAttribute("data-photo-true-ready", "false");
-            stage.dataset.photoTrueReady = "false";
+            const mountedStage = event.currentTarget.closest<HTMLElement>(".abags-bag-builder-stage");
+            if (mountedStage) mountedStage.dataset.photoTrueReady = "false";
           }}
         />
         {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-overlay abags-photo-true-layer abags-photo-true-layer-${layer.category}`} data-photo-layer={layer.category} src={layer.imageUrl} alt="" aria-hidden="true" />)}
