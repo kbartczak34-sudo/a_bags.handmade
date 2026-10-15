@@ -1270,6 +1270,8 @@ export default function BagBuilderFidelity3D() {
     let disposed = false;
     let retryFrame = 0;
     let stageObserver: MutationObserver | null = null;
+    let controllerStateObserver: MutationObserver | null = null;
+    let repaintCurrentFrame: (() => void) | null = null;
 
     const initialize = () => {
       if (disposed || rendererRef.current) return;
@@ -1345,6 +1347,7 @@ export default function BagBuilderFidelity3D() {
             stage.removeAttribute("data-abags-fidelity3d-ready");
           }
         };
+        repaintCurrentFrame = paint;
         requestAnimationFrame(paint);
       } catch (error) {
         rendererRef.current = null;
@@ -1360,6 +1363,22 @@ export default function BagBuilderFidelity3D() {
     initialize();
     stageObserver = new MutationObserver(initialize);
     stageObserver.observe(stage, { childList: true, subtree: true });
+
+    // The controller retries readiness for a short window, then marks a
+    // same-signature fallback and clears the ready attribute. Repaint when that
+    // exact transient state appears so the renderer can republish readiness and
+    // wake the controller's attribute observer instead of staying on SVG forever.
+    controllerStateObserver = new MutationObserver(() => {
+      const reason = stage.dataset.abagsFinal3dReason || "";
+      if (stage.dataset.abagsFinal3d === "fallback" && reason.startsWith("renderer-not-ready:")) {
+        repaintCurrentFrame?.();
+      }
+    });
+    controllerStateObserver.observe(stage, {
+      attributes: true,
+      attributeFilter: ["data-abags-final3d", "data-abags-final3d-reason"],
+    });
+
     const resizeObserver = new ResizeObserver(() => {
       const renderer = rendererRef.current;
       const canvas = canvasRef.current;
@@ -1378,6 +1397,8 @@ export default function BagBuilderFidelity3D() {
       disposed = true;
       if (retryFrame) window.cancelAnimationFrame(retryFrame);
       stageObserver?.disconnect();
+      controllerStateObserver?.disconnect();
+      repaintCurrentFrame = null;
       resizeObserver.disconnect();
       const canvas = canvasRef.current;
       if (canvas) {

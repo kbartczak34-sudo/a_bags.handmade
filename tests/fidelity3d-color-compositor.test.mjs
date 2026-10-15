@@ -238,3 +238,15 @@ test("same-signature fallback does not block recovery from missing renderer read
   assert.match(guard, /!recoverableReadinessFallback/);
   assert.match(guard, /Keep the block for actual canvas\/pixel acceptance failures/);
 });
+
+
+test("Fidelity3D repaints when controller falls back only because renderer readiness is missing", () => {
+  assert.match(renderer, /let controllerStateObserver: MutationObserver \| null = null/);
+  assert.match(renderer, /let repaintCurrentFrame: \(\(\) => void\) \| null = null/);
+  assert.match(renderer, /repaintCurrentFrame = paint/);
+  assert.match(renderer, /controllerStateObserver = new MutationObserver\(\(\) => \{/);
+  assert.match(renderer, /stage\.dataset\.abagsFinal3d === "fallback" && reason\.startsWith\("renderer-not-ready:"\)/);
+  assert.match(renderer, /repaintCurrentFrame\?\.\(\)/);
+  assert.match(renderer, /attributeFilter: \["data-abags-final3d", "data-abags-final3d-reason"\]/);
+  assert.match(renderer, /controllerStateObserver\?\.disconnect\(\)/);
+});
