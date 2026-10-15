@@ -17,14 +17,14 @@ test("Basket Physical Cord V2 stays a non-authoritative finishing layer below th
   assert.match(rootLayout, /<ExactLiveCustomizer \/>/);
 });
 
-test("V2 takes exclusive structural basket ownership only after its ready marker", () => {
+test("V2 remains a diagnostic 3D layer: final body has one visible crochet owner", () => {
   const readyMarker = /data-stitch="basket"\]\[data-abags-basket-physical-cord-v2="basket-physical-cord-v2-continuous-handmade-weave"\]/;
   assert.match(css, readyMarker);
   assert.match(css, /abags-basket-weave-surface\s*\{[\s\S]*opacity:0!important;[\s\S]*visibility:visible!important;/);
   assert.match(css, /abags-physical-cord-geometry,[\s\S]*abags-basket-weave-surface/);
   assert.match(css, /structural basket topology[\s\S]*exactly one visible owner/);
-  assert.match(css, /opacity:\.94!important/);
-  assert.match(css, /@media \(max-width:620px\)[\s\S]*opacity:\.88!important/);
+  assert.match(css, /data-abags-final3d="ready"[\s\S]*opacity:0!important;[\s\S]*visibility:hidden!important;/);
+  assert.match(css, /@media \(max-width:620px\)[\s\S]*opacity:0!important/);
 });
 
 test("V2 uses continuous sampled tubes instead of isolated cell-by-cell basket bars", () => {
