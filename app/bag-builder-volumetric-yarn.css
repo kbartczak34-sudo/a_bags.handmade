@@ -1,0 +1,22 @@
+/* Source-of-truth yarn for the selected upright/openwork stitch.
+   All its volumetric loops are GPU triangles in the MAIN Fidelity3D model,
+   therefore extra projected canvases must not redraw a second wire grid. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="herringbone"][data-abags-final3d="ready"]
+> .abags-fidelity3d-layer > .abags-physical-cord-geometry,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="herringbone"][data-abags-final3d="ready"]
+> .abags-fidelity3d-layer > .abags-sidewall-crochet-depth {
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* Preserve the original WebGL canvas for depth testing, zoom and 360° orbit. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-bag-builder-stage[data-stitch="herringbone"][data-abags-final3d="ready"]
+> .abags-fidelity3d-layer > .abags-fidelity3d-canvas{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
