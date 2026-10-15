@@ -944,6 +944,13 @@ void main(){
     rough=.96;
   }
 
+  // The raised yarn changes the *actual* lighting: recompute incidence after
+  // the normal-map perturbation, not before the material-specific shader pass.
+  ndl=max(dot(n,l),0.0);
+  fillLight=max(dot(n,fill),0.0);
+  ndh=max(dot(n,h),0.0);
+  facing=max(dot(n,v),0.0);
+
   // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
   float rim=pow(1.0-facing,2.7);
   float cavity=.92+.08*pow(1.0-facing,1.5);
