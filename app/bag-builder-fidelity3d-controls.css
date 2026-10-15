@@ -63,6 +63,12 @@
   overflow:hidden;
 }
 
+/* The four columns belong to minus, range, plus and reset. The legacy text
+   labels otherwise push plus/reset into a clipped second row on desktop. */
+.abags-fidelity3d-zoom>span{
+  display:none;
+}
+
 .abags-fidelity3d-zoom button{
   min-width:0;
   width:100%;
@@ -122,9 +128,9 @@
     right:8px;
     bottom:8px;
     left:auto;
-    width:min(184px,calc(100% - 16px));
+    width:min(250px,calc(100% - 16px));
     min-width:0;
-    max-width:184px;
+    max-width:250px;
     height:38px;
     min-height:38px;
     max-height:38px;
@@ -151,8 +157,7 @@
 }
 
 
-/* Final mobile zoom-control geometry: all six React controls remain tappable.
-   The previous 4-column grid collapsed the labels/buttons into an overflowed row. */
+/* Mobile controls keep minus, range, plus and reset within the preview. */
 @media(max-width:620px){
   .abags-fidelity3d-zoom{
     display:grid!important;

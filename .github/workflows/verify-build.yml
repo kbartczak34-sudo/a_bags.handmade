@@ -54,6 +54,35 @@ jobs:
           mkdir -p artifacts
           node --test --test-reporter spec tests/*.test.mjs 2>&1 | tee artifacts/regression-tests.log
 
+      - name: Browser regression on desktop and mobile
+        env:
+          ABAGS_PRODUCTION_URL: http://127.0.0.1:5173
+          ABAGS_REALTIME_QA_DIR: artifacts/customizer-browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/customizer-qa-server.mjs > artifacts/customizer-server.log 2>&1 &
+          qa_server=$!
+          trap 'kill "$qa_server" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --max-time 5 http://127.0.0.1:5173/ -o /dev/null; then break; fi
+            if ! kill -0 "$qa_server" 2>/dev/null; then cat artifacts/customizer-server.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent --max-time 5 http://127.0.0.1:5173/ -o /dev/null
+          node scripts/smoke-customizer-lifecycle.mjs
+          node scripts/smoke-customizer-anchor-integrity.mjs
+
+      - name: Upload customizer browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: customizer-browser-${{ github.run_number }}
+          path: |
+            artifacts/customizer-browser/
+            artifacts/customizer-server.log
+          if-no-files-found: warn
+
       - name: Upload regression diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

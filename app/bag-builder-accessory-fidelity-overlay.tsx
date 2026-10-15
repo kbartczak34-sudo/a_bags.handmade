@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { projectFidelityPoint as project } from "../lib/abags-fidelity-projection";
 import { ABAGS_ACCESSORY_FIDELITY_VERSION, ABAGS_ACCESSORY_VISUAL } from "../lib/abags-accessory-fidelity";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 
@@ -10,13 +11,12 @@ type Config = { family: Family; color: string; stitch: string; flap: string; han
 type Rotation = { x: number; y: number };
 type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
-type Point2 = { x: number; y: number; scale: number };
 
 // Keep the first paint identical to the canonical WebGL renderer. The live transform is
 // subsequently overwritten by the renderer event/dataset, but these defaults must never
 // produce a visibly detached accessory during the first mobile frame.
 const DEFAULT_ROTATION: Rotation = { x: -0.12, y: -0.62 };
-const DEFAULT_ZOOM = 0.72;
+const DEFAULT_ZOOM = 0.92;
 
 function readConfig(stage: HTMLElement): Config {
   return {
@@ -35,41 +35,6 @@ function hardwareColor(value: string) {
   if (value === "silver") return "#D5D9DD";
   if (value === "black") return "#2A292B";
   return "#C9A354";
-}
-
-function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
-  // This projection intentionally mirrors BagBuilderFidelity3D's WebGL transform:
-  // root = scale(zoom) * rotX(rotation.x) * rotY(rotation.y)
-  // view = translation(0, -0.02, -5.0)
-  // projection = perspective(Math.PI / 5.3, aspect, 0.1, 100)
-  // Keeping the matrix order, camera distance and FOV identical is what makes the
-  // 2D accessory compositor physically lock to the WebGL body on narrow screens.
-  const aspect = width / Math.max(1, height);
-  let [x, y, z] = point.map((value) => value * zoom) as Point3;
-
-  // WebGL matrix multiplication applies rotY first, then rotX.
-  const cy = Math.cos(rotation.y);
-  const sy = Math.sin(rotation.y);
-  [x, z] = [x * cy + z * sy, -x * sy + z * cy];
-
-  const cx = Math.cos(rotation.x);
-  const sx = Math.sin(rotation.x);
-  [y, z] = [y * cx - z * sx, y * sx + z * cx];
-
-  // Same view matrix as the canonical WebGL renderer.
-  y -= 0.02;
-  z -= 5.0;
-  if (z >= -0.08) return null;
-
-  // Same perspective matrix as the canonical WebGL renderer.
-  const f = 1 / Math.tan((Math.PI / 5.3) / 2);
-  const ndcX = (x * f / aspect) / -z;
-  const ndcY = (y * f) / -z;
-  return {
-    x: (ndcX * 0.5 + 0.5) * width,
-    y: (0.5 - ndcY * 0.5) * height,
-    scale: Math.max(0.25, Math.min(2.2, (f / -z) * zoom)),
-  };
 }
 
 function path3d(ctx: CanvasRenderingContext2D, points: Point3[], width: number, height: number, rotation: Rotation, zoom: number) {
@@ -256,12 +221,15 @@ function prepareCanvas(canvas: HTMLCanvasElement, stage: HTMLElement) {
   const width = Math.max(1, bounds.width);
   const height = Math.max(1, bounds.height);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const pixelWidth = Math.max(2, Math.round(width * dpr));
-  const pixelHeight = Math.max(2, Math.round(height * dpr));
+  const fidelityCanvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
+  const pixelWidth = fidelityCanvas && fidelityCanvas.width >= 16
+    ? fidelityCanvas.width : Math.max(2, Math.round(width * dpr));
+  const pixelHeight = fidelityCanvas && fidelityCanvas.height >= 16
+    ? fidelityCanvas.height : Math.max(2, Math.round(height * dpr));
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0);
   ctx.clearRect(0, 0, width, height);
   return { ctx, width, height };
 }
@@ -350,6 +318,7 @@ export default function BagBuilderAccessoryFidelityOverlay() {
       attributes: true,
       attributeFilter: [
         "data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent",
+        "data-abags-fidelity3d-frame-at",
         "data-abags-fidelity3d-rotation-x", "data-abags-fidelity3d-rotation-y", "data-abags-fidelity3d-zoom",
       ],
     });

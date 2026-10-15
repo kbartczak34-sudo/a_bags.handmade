@@ -11,7 +11,9 @@ test("accessory material finishing stays downstream of calibrated accessory geom
   assert.match(stack, /<BagBuilderAccessoryFidelityOverlay\s*\/>[\s\S]*<BagBuilderAccessoryMaterialFinish\s*\/>/);
   assert.match(finish, /FINISH_VERSION = "accessory-material-finish-v2"/);
   assert.match(finish, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
-  assert.match(finish, /ABAGS_ACCESSORY_VISUAL\.strapDepthBowRatio/);
+  assert.match(finish, /spec\.rx \* spec\.attachmentWidthFactor/);
+  assert.match(finish, /spec\.topY \+ spec\.attachmentYOffset - 0\.02/);
+  assert.match(finish, /projectFidelityPoint as project/);
   assert.match(finish, /stage\.dataset\.abagsFinal3d !== "ready"/);
 });
 
@@ -37,7 +39,12 @@ test("chain shoulder section remains leather instead of receiving duplicate meta
 test("finish layer preserves realtime gestures and mobile rendering budget", () => {
   assert.match(finish, /requestAnimationFrame/);
   assert.match(finish, /ResizeObserver/);
-  assert.match(finish, /dprCap = window\.innerWidth <= 620 \? 1\.5 : 2/);
+  assert.match(finish, /fidelityCanvas\.width >= 16/);
+  assert.match(finish, /fidelityCanvas\.height >= 16/);
+  assert.match(finish, /fidelityCanvas\.width : Math\.max/);
+  assert.match(finish, /fidelityCanvas\.height : Math\.max/);
+  assert.match(finish, /context\.setTransform\(pixelWidth \/ width, 0, 0, pixelHeight \/ height/);
+  assert.doesNotMatch(finish, /dprCap = window\.innerWidth <= 620 \? 1\.5 : 2/);
   assert.match(finish, /pointer-events:none!important/);
   assert.match(finish, /touch-action:none!important/);
   assert.match(finish, /aria-hidden="true"/);

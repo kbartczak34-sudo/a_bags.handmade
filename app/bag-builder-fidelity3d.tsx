@@ -934,10 +934,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
       bucketStrap: createMesh(gl, familyShoulderStrapMesh("bucket")),
       miniStrap: createMesh(gl, familyShoulderStrapMesh("mini")),
-      toteChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.tote.chain[4])),
-      roundChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.round.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.round.chain[4])),
-      bucketChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.bucket.chain[4])),
-      miniChain: createMesh(gl, makeSegmentedChain(ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.rx * ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[0], ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.ry * ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[1], 0, ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[2], ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[3], ABAGS_FIDELITY_V4_FAMILY_SPECS.mini.chain[4])),
+      toteChain: createMesh(gl, familyShoulderChainMesh("tote")),
+      roundChain: createMesh(gl, familyShoulderChainMesh("round")),
+      bucketChain: createMesh(gl, familyShoulderChainMesh("bucket")),
+      miniChain: createMesh(gl, familyShoulderChainMesh("mini")),
       ring: createMesh(gl, makeArchTube(0.13, 0.13, 0, 0.025, 40, 9, true)),
       sphere: createMesh(gl, makeEllipsoid(1, 1, 1)),
       ribbon: createMesh(gl, makeEllipsoid(0.46, 0.14, 0.045, 18, 30)),
@@ -993,6 +993,15 @@ function familyShoulderStrapMesh(family: Exclude<Family, "">) {
   return makeArchTube(span, rise, 0, 0.043, 84, 12, false);
 }
 
+function familyShoulderChainMesh(family: Exclude<Family, "">) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  // Chain and fabric straps attach to the same hardware. The former tall
+  // chain arch clipped the mobile stage and extended beyond those anchors.
+  const span = spec.rx * spec.attachmentWidthFactor;
+  const rise = clamp(spec.ry * 0.48, 0.28, 0.44);
+  return makeSegmentedChain(span, rise, 0, spec.chain[2], spec.chain[3], spec.chain[4]);
+}
+
 function handleTransform(profile: FamilyProfile, family: Exclude<Family, "">, side: number) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const attachment = familyAttachment(profile, family);
@@ -1024,7 +1033,10 @@ function renderSignature(config: Config) {
 function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, config: Config) {
   const frameSignature = canvas.dataset.abagsFidelity3dFrame || renderSignature(config);
   const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature || "";
-  if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(config)) return;
+  const fallbackReason = stage.dataset.abagsFinal3dReason || "";
+  const recoverableReadinessFallback = fallbackReason.startsWith("renderer-not-ready:")
+    || fallbackReason === "current-frame-not-drawn";
+  if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(config) && !recoverableReadinessFallback) return;
 
   stage.dataset.abagsFidelity3dFrame = frameSignature;
   stage.dataset.abagsFidelity3dFrameAt = canvas.dataset.abagsFidelity3dFrameAt || String(Date.now());
@@ -1203,9 +1215,15 @@ export default function BagBuilderFidelity3D() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvasNode, setCanvasNode] = useState<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
+  const cameraRef = useRef({ rotation: DEFAULT_ROTATION, zoom: DEFAULT_ZOOM });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+
+  useLayoutEffect(() => {
+    // Initialization and ResizeObserver callbacks outlive a single camera state.
+    cameraRef.current = { rotation, zoom };
+  }, [rotation, zoom]);
 
   useEffect(() => {
     const find = () => setStage((current) => {
@@ -1270,15 +1288,29 @@ export default function BagBuilderFidelity3D() {
     let disposed = false;
     let retryFrame = 0;
     let stageObserver: MutationObserver | null = null;
+    let boundCanvas: HTMLCanvasElement | null = null;
+    let contextLost = false;
+
+    const unbindCanvasEvents = () => {
+      boundCanvas?.removeEventListener("webglcontextlost", handleContextLost);
+      boundCanvas?.removeEventListener("webglcontextrestored", handleContextRestored);
+      boundCanvas = null;
+    };
 
     const initialize = () => {
-      if (disposed || rendererRef.current) return;
+      if (disposed || contextLost || rendererRef.current) return;
       const canvas = canvasNode ?? canvasRef.current ?? stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
       if (!canvas) {
         retryFrame = window.requestAnimationFrame(initialize);
         return;
       }
       canvasRef.current = canvas;
+      if (boundCanvas !== canvas) {
+        unbindCanvasEvents();
+        boundCanvas = canvas;
+        canvas.addEventListener("webglcontextlost", handleContextLost);
+        canvas.addEventListener("webglcontextrestored", handleContextRestored);
+      }
       try {
         const nextRenderer = init(canvas);
         if (!nextRenderer) throw new Error("webgl-unavailable");
@@ -1301,17 +1333,18 @@ export default function BagBuilderFidelity3D() {
               return;
             }
             const currentConfig = readConfig(stage);
+            const { rotation, zoom } = cameraRef.current;
             draw(nextRenderer, canvas, currentConfig, rotation, zoom);
 
             // If this exact frame was already rejected, do not publish new proof that
             // would re-trigger promotion and recreate the blank-stage race.
             const blockedSignature = stage.dataset.abagsFinal3dBlockedSignature || "";
             const fallbackReason = stage.dataset.abagsFinal3dReason || "";
-            // A fallback caused only by missing ready metadata is transient: the
-            // controller can run before this first successful paint. Allow the
-            // renderer to publish its current frame and readiness so validation
-            // can retry. Keep the block for actual canvas/pixel acceptance failures.
-            const recoverableReadinessFallback = fallbackReason.startsWith("renderer-not-ready:");
+            // Missing frame/readiness metadata can time out while the stage is
+            // still hidden. A successful first paint must be allowed to publish
+            // evidence for validation. Keep the block for actual canvas/pixel acceptance failures.
+            const recoverableReadinessFallback = fallbackReason.startsWith("renderer-not-ready:")
+              || fallbackReason === "current-frame-not-drawn";
             if (
               stage.dataset.abagsFinal3d === "fallback" &&
               blockedSignature === renderSignature(currentConfig) &&
@@ -1365,7 +1398,10 @@ export default function BagBuilderFidelity3D() {
       const canvas = canvasRef.current;
       if (!renderer || !canvas) return;
       try {
+        const rect = stage.getBoundingClientRect();
+        if (rect.width < 40 || rect.height < 40) return;
         const currentConfig = readConfig(stage);
+        const { rotation, zoom } = cameraRef.current;
         draw(renderer, canvas, currentConfig, rotation, zoom);
         publishFrameMetadata(stage, canvas, currentConfig);
       } catch (error) {
@@ -1379,11 +1415,7 @@ export default function BagBuilderFidelity3D() {
       if (retryFrame) window.cancelAnimationFrame(retryFrame);
       stageObserver?.disconnect();
       resizeObserver.disconnect();
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.removeEventListener("webglcontextlost", handleContextLost);
-        canvas.removeEventListener("webglcontextrestored", handleContextRestored);
-      }
+      unbindCanvasEvents();
       rendererRef.current = null;
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
@@ -1392,19 +1424,26 @@ export default function BagBuilderFidelity3D() {
 
     function handleContextLost(event: Event) {
       event.preventDefault();
-      if (!stage) return;
+      if (disposed || !stage) return;
+      contextLost = true;
+      if (retryFrame) window.cancelAnimationFrame(retryFrame);
+      retryFrame = 0;
       setReady(false);
       rendererRef.current = null;
-      const canvas = canvasRef.current;
+      const canvas = boundCanvas;
       if (canvas) publishRendererError(stage, canvas, new Error("webgl-context-lost"), "webgl-context-lost");
       stage.classList.remove("abags-pro3d-active", "abags-fidelity3d-active");
       stage.removeAttribute("data-abags-pro3d-ready");
       stage.removeAttribute("data-abags-fidelity3d-ready");
-      retryFrame = window.requestAnimationFrame(initialize);
+      // Programs and buffers are invalid until the browser restores the context.
+      // Keep the fallback visible instead of retrying initialization every frame.
     }
 
     function handleContextRestored() {
+      if (disposed) return;
+      contextLost = false;
       rendererRef.current = null;
+      // Rebuild all GPU resources, then let the controller verify the new frame.
       setRendererEpoch((value) => value + 1);
     }
   }, [stage, rendererEpoch]);
@@ -1430,6 +1469,8 @@ export default function BagBuilderFidelity3D() {
     const renderFrame = () => {
       if (rendererRef.current !== renderer || canvasRef.current !== canvas) return;
       try {
+        const rect = stage?.getBoundingClientRect();
+        if (rect && (rect.width < 40 || rect.height < 40)) return;
         draw(renderer, canvas, config, rotation, zoom);
         if (stage) publishFrameMetadata(stage, canvas, config);
       } catch (error) {
