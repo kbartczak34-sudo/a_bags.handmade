@@ -11,7 +11,9 @@ test("accessory material finishing stays downstream of calibrated accessory geom
   assert.match(stack, /<BagBuilderAccessoryFidelityOverlay\s*\/>[\s\S]*<BagBuilderAccessoryMaterialFinish\s*\/>/);
   assert.match(finish, /FINISH_VERSION = "accessory-material-finish-v2"/);
   assert.match(finish, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
-  assert.match(finish, /ABAGS_ACCESSORY_VISUAL\.strapDepthBowRatio/);
+  assert.match(finish, /spec\.rx \* spec\.attachmentWidthFactor/);
+  assert.match(finish, /spec\.topY \+ spec\.attachmentYOffset - 0\.02/);
+  assert.match(finish, /projectFidelityPoint as project/);
   assert.match(finish, /stage\.dataset\.abagsFinal3d !== "ready"/);
 });
 

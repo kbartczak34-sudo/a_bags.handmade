@@ -27,7 +27,7 @@ test("isolated mobile controls have bounded product-safe geometry", () => {
   assert.match(css, /\.abags-fidelity3d-view-controls\s*\{/);
   assert.match(css, /max-height:35px/);
   assert.match(css, /\.abags-fidelity3d-zoom\s*\{/);
-  assert.match(css, /max-width:184px/);
+  assert.match(css, /max-width:250px/);
   assert.match(css, /max-height:38px/);
 });
 

@@ -8,9 +8,9 @@ const [stack, chain, fidelity] = await Promise.all([
   readFile(new URL("../lib/abags-accessory-fidelity.ts", import.meta.url), "utf8"),
 ]);
 
-test("premium chain realism is mounted after calibrated accessory material finishing", () => {
-  assert.match(stack, /<BagBuilderAccessoryFidelityOverlay\s*\/>[\s\S]*<BagBuilderAccessoryMaterialFinish\s*\/>[\s\S]*<BagBuilderChainRealism\s*\/>[\s\S]*<BagBuilderRigidMaterialFinish\s*\/>/);
-  assert.match(chain, /CHAIN_VERSION = "chain-metal-v2-continuous"/);
+test("the canonical WebGL chain is not duplicated or hidden by the legacy chain overlay", () => {
+  assert.match(stack, /<BagBuilderAccessoryFidelityOverlay\s*\/>[\s\S]*<BagBuilderAccessoryMaterialFinish\s*\/>[\s\S]*<BagBuilderRigidMaterialFinish\s*\/>/);
+  assert.doesNotMatch(stack, /BagBuilderChainRealism/);
 });
 
 test("chain keeps the authoritative A-Bags strap arc and attachment geometry", () => {

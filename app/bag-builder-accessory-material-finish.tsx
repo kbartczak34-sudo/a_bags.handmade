@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { projectFidelityPoint as project } from "../lib/abags-fidelity-projection";
 import { ABAGS_ACCESSORY_VISUAL } from "../lib/abags-accessory-fidelity";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 
@@ -9,13 +10,12 @@ type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Rotation = { x: number; y: number };
 type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
-type Point2 = { x: number; y: number; scale: number };
 type Config = { family: Family; strap: string; hardware: string; flap: string };
 
 type HardwarePalette = { shadow: string; mid: string; highlight: string };
 
-const DEFAULT_ROTATION: Rotation = { x: -0.07, y: 0.46 };
-const DEFAULT_ZOOM = 0.94;
+const DEFAULT_ROTATION: Rotation = { x: -0.12, y: -0.62 };
+const DEFAULT_ZOOM = 0.92;
 const FINISH_VERSION = "accessory-material-finish-v2";
 
 function readConfig(stage: HTMLElement): Config {
@@ -45,47 +45,17 @@ function hardwarePalette(value: string): HardwarePalette {
   };
 }
 
-function project(point: Point3, width: number, height: number, rotation: Rotation, zoom: number): Point2 | null {
-  const aspect = width / Math.max(1, height);
-  const narrow = aspect < 0.82;
-  const fit = narrow ? 0.92 : aspect < 1.15 ? 0.97 : 1;
-  const rootScale = zoom * fit;
-  const cameraZ = narrow ? -6.45 : aspect < 1.15 ? -5.85 : -5.25;
-  const verticalOffset = narrow ? -0.08 : -0.03;
-  let [x, y, z] = point.map((value) => value * rootScale) as Point3;
-
-  const cx = Math.cos(rotation.x);
-  const sx = Math.sin(rotation.x);
-  [y, z] = [y * cx - z * sx, y * sx + z * cx];
-  const cy = Math.cos(rotation.y);
-  const sy = Math.sin(rotation.y);
-  [x, z] = [x * cy + z * sy, -x * sy + z * cy + cameraZ];
-  y += verticalOffset;
-  if (z >= -0.08) return null;
-
-  const f = 1 / Math.tan((Math.PI / 5.15) / 2);
-  const ndcX = (x * f / aspect) / -z;
-  const ndcY = (y * f) / -z;
-  return {
-    x: (ndcX * 0.5 + 0.5) * width,
-    y: (0.5 - ndcY * 0.5) * height,
-    scale: Math.max(0.25, Math.min(2.2, (f / -z) * rootScale)),
-  };
-}
-
 function strapArc(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const archHeight = Math.max(0.78, spec.ry * 1.25);
-  const baseZ = spec.depth / 2 + 0.055;
-  const depthBow = Math.max(ABAGS_ACCESSORY_VISUAL.strapDepthBowMin, spec.depth * ABAGS_ACCESSORY_VISUAL.strapDepthBowRatio);
+  // Match the canonical family shoulder strap/chain mesh and its model translation.
+  const span = spec.rx * spec.attachmentWidthFactor;
+  const rise = Math.max(0.28, Math.min(0.44, spec.ry * 0.48));
+  const depthFactor = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
+  const baseY = spec.topY + spec.attachmentYOffset - 0.02;
+  const baseZ = spec.depth * depthFactor / 2 * spec.attachmentZFactor + 0.035;
   return Array.from({ length: 49 }, (_, index) => {
-    const t = index / 48;
-    const angle = Math.PI - t * Math.PI;
-    return [
-      spec.sideAnchor * Math.cos(angle),
-      spec.ringY + archHeight * Math.sin(angle),
-      baseZ + depthBow * Math.sin(angle),
-    ] as Point3;
+    const angle = Math.PI - index / 48 * Math.PI;
+    return [span * Math.cos(angle), baseY + rise * Math.sin(angle), baseZ] as Point3;
   });
 }
 
@@ -333,10 +303,8 @@ function prepareCanvas(canvas: HTMLCanvasElement, stage: HTMLElement) {
   const bounds = stage.getBoundingClientRect();
   const width = Math.max(1, bounds.width);
   const height = Math.max(1, bounds.height);
-  // The rear and front accessory layers must share the SAME backing-pixel
-  // grid as the authoritative Fidelity3D WebGL canvas. The old 1.5x mobile
-  // cap produced 585x369 accessory pixels over a 780x492 3D frame and
-  // visibly shifted straps/chain anchors on high-density phones.
+  // Use the renderer's backing grid, including its device-pixel-ratio cap and
+  // layout rounding, so all accessory layers sample the same physical pixels.
   const fidelityCanvas = stage.querySelector<HTMLCanvasElement>(".abags-fidelity3d-canvas");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const pixelWidth = fidelityCanvas && fidelityCanvas.width >= 16
@@ -445,7 +413,7 @@ export default function BagBuilderAccessoryMaterialFinish() {
     observer.observe(stage, {
       attributes: true,
       attributeFilter: [
-        "data-family", "data-strap", "data-hardware", "data-flap", "data-abags-final3d",
+        "data-family", "data-strap", "data-hardware", "data-flap", "data-abags-final3d", "data-abags-fidelity3d-frame-at",
         "data-abags-fidelity3d-rotation-x", "data-abags-fidelity3d-rotation-y", "data-abags-fidelity3d-zoom",
       ],
     });
