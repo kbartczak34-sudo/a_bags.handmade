@@ -315,13 +315,8 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
-  const bodyDepth = spec.depth * depthScale;
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
-  const frontZ = bodyDepth * 0.5;
-  const backZ = -frontZ;
-  const frontFaceZ = frontZ - bevel;
-  const backFaceZ = backZ + bevel;
 
   const addRing = (scaleFactor: number, zSign: number, zInset: number, mode: "face" | "bevel" | "side") => {
     const startIndex = positions.length / 3;
@@ -363,32 +358,66 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const backEdge = addRing(1, -1, 0, "bevel");
   const backFace = addRing(inset, -1, bevel, "face");
 
-  const frontBulge = spec.depth * 0.075 * depthScale;
-  const bodyDomeLift = spec.depth * 0.045 * depthScale;
-  const frontCenter = positions.length / 3;
-  positions.push(cx, cy, frontFaceZ + frontBulge + bodyDomeLift);
-  normals.push(0, 0, 1);
-  uvs.push(0.5, 0.5);
-  const backCenter = positions.length / 3;
-  positions.push(cx, cy, backFaceZ - spec.depth * 0.025 * depthScale);
-  normals.push(0, 0, -1);
-  uvs.push(0.5, 0.5);
-
-  for (let i = 0; i < contour.length; i += 1) {
+  // Tessellated fibre panels; sparse fan triangles cannot carry yarn displacement.
+  const faceBands = 16;
+  const frontBulge = spec.depth * .075 * depthScale;
+  const bodyDomeLift = spec.depth * .045 * depthScale;
+  const backBulge = spec.depth * .025 * depthScale;
+  const addFabricFace = (outer: number, side: 1 | -1) => {
+    let previous = outer;
+    for (let band = 1; band <= faceBands; band++) {
+      const fraction = 1 - band / (faceBands + 1);
+      const ring = positions.length / 3;
+      contour.forEach(([outlineX, outlineY]) => {
+        const x = cx + (outlineX - cx) * inset * fraction;
+        const rawY = cy + (outlineY - cy) * inset * fraction;
+        const softness = softBodyOffset(family, x, rawY);
+        const y = rawY + softness.y;
+        const dome = 1 - fraction * fraction;
+        const z = side === 1
+          ? depthAt(family, y) * .5 - bevel + softness.z + (frontBulge + bodyDomeLift) * dome
+          : -depthAt(family, y) * .5 + bevel + softness.z * .38 - backBulge * dome;
+        const nx = (x - cx) / Math.max(.001, spec.rx);
+        const ny = (y - cy) / Math.max(.001, spec.ry);
+        positions.push(x, y, z);
+        normals.push(...normalize(-side * nx * .17, -side * ny * .16, side));
+        uvs.push(...uvFor([x, y]));
+      });
+      for (let i = 0; i < contour.length; i++) {
+        const j = (i + 1) % contour.length;
+        const a = previous + i, b = previous + j, c = ring + i, d = ring + j;
+        if (side === 1) indices.push(a, b, c, b, d, c);
+        else indices.push(a, c, b, b, c, d);
+      }
+      previous = ring;
+    }
+    const center = positions.length / 3;
+    positions.push(cx, cy, side === 1
+      ? depthAt(family, cy) * .5 - bevel + frontBulge + bodyDomeLift
+      : -depthAt(family, cy) * .5 + bevel - backBulge);
+    normals.push(0, 0, side);
+    uvs.push(.5, .5);
+    for (let i = 0; i < contour.length; i++) {
+      const j = (i + 1) % contour.length;
+      if (side === 1) indices.push(center, previous + i, previous + j);
+      else indices.push(center, previous + j, previous + i);
+    }
+  };
+  addFabricFace(frontFace, 1);
+  addFabricFace(backFace, -1);
+  for (let i = 0; i < contour.length; i++) {
     const next = (i + 1) % contour.length;
-    indices.push(frontCenter, frontFace + i, frontFace + next);
-    indices.push(backCenter, backFace + next, backFace + i);
-
     const connect = (aStart: number, bStart: number, reverse = false) => {
-      const a = aStart + i;
-      const b = aStart + next;
-      const c = bStart + i;
-      const d = bStart + next;
+      const a = aStart + i, b = aStart + next;
+      const c = bStart + i, d = bStart + next;
       if (reverse) indices.push(a, b, c, b, d, c);
       else indices.push(a, c, b, b, c, d);
     };
     connect(frontFace, frontEdge);
-    connect(frontEdge, backEdge);
+    // Remove the upper sidewall cap: the bag has an actual open mouth.
+    if ((contour[i][1] + contour[next][1]) * .5 < spec.ry * .90) {
+      connect(frontEdge, backEdge);
+    }
     connect(backEdge, backFace, true);
   }
 
@@ -398,7 +427,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
 function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 18, tube = 8) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const width = spec.rx * 0.91;
-  const depth = spec.depth * 0.84;
+  const depth = depthAt(family, spec.topY) * 0.94;
   const y = spec.topY + 0.015;
   const radius = Math.min(width, depth) * 0.12;
   const points: Array<[number, number, number]> = [];
@@ -459,46 +488,59 @@ function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 1
 
 function makeOpeningInterior(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const width = spec.rx * 0.82;
-  const depth = spec.depth * 0.68;
-  const y = spec.topY - 0.035;
-  const radius = Math.min(width, depth) * 0.14;
-  const points: Array<[number, number]> = [];
-  const add = (x: number, z: number) => points.push([x, z]);
+  const width = spec.rx * .82;
+  const depth = depthAt(family, spec.topY) * .83;
+  const topY = spec.topY - .03;
+  const bottomY = topY - Math.min(.43, spec.ry * .6);
+  const radius = Math.min(width, depth * .5) * .25;
+  const points: Point[] = [];
   const segments = 12;
-  for (let i = 0; i <= segments; i += 1) {
+  const add = (x: number, z: number) => points.push([x, z]);
+  for (let i = 0; i <= segments; i++) {
     const t = i / segments;
-    add(-width + radius + 2 * (width - radius) * t, depth * 0.5 - radius);
+    add(-width + radius + 2 * (width - radius) * t, depth * .5);
   }
-  for (let i = 1; i <= segments; i += 1) {
-    const a = -Math.PI / 2 + (Math.PI / 2) * (i / segments);
-    add(width - radius + radius * Math.cos(a), depth * 0.5 - radius + radius * Math.sin(a));
+  for (let i = 1; i <= segments; i++) {
+    const a = Math.PI / 2 - Math.PI * .5 * i / segments;
+    add(width - radius + radius * Math.cos(a), depth * .5 - radius + radius * Math.sin(a));
   }
-  for (let i = 1; i <= segments; i += 1) {
+  for (let i = 1; i <= segments; i++) {
     const t = i / segments;
-    add(width - radius - 2 * (width - radius) * t, -depth * 0.5 + radius);
+    add(width - radius - 2 * (width - radius) * t, -depth * .5);
   }
-  for (let i = 1; i <= segments; i += 1) {
-    const a = Math.PI / 2 + (Math.PI / 2) * (i / segments);
-    add(-width + radius + radius * Math.cos(a), -depth * 0.5 + radius + radius * Math.sin(a));
+  for (let i = 1; i <= segments; i++) {
+    const a = -Math.PI / 2 - Math.PI * .5 * i / segments;
+    add(-width + radius + radius * Math.cos(a), -depth * .5 + radius + radius * Math.sin(a));
   }
 
-  const positions = [0, y, 0];
-  const normals = [0, 1, 0];
-  const uvs = [0.5, 0.5];
-  const indices: number[] = [];
-  const minX = Math.min(...points.map((p) => p[0]));
-  const maxX = Math.max(...points.map((p) => p[0]));
-  const minZ = Math.min(...points.map((p) => p[1]));
-  const maxZ = Math.max(...points.map((p) => p[1]));
-  points.forEach(([x, z]) => {
-    positions.push(x, y, z);
-    normals.push(0, 1, 0);
-    uvs.push((x - minX) / Math.max(0.001, maxX - minX), (z - minZ) / Math.max(0.001, maxZ - minZ));
+  const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
+  const count = points.length;
+  // Interior wall and floor sit behind the opening instead of covering its top.
+  points.forEach(([x, z], i) => {
+    const normal = normalize(-x / Math.max(width, .001), .06, -z / Math.max(depth * .5, .001));
+    for (const [y, factor, v] of [[topY, 1, 0], [bottomY, .83, 1]] as const) {
+      positions.push(x * factor, y, z * factor);
+      normals.push(...normal);
+      uvs.push(i / count * 12, v * 8);
+    }
   });
-  for (let i = 0; i < points.length; i += 1) {
-    const next = (i + 1) % points.length;
-    indices.push(0, next + 1, i + 1);
+  for (let i = 0; i < count; i++) {
+    const j = (i + 1) % count, a = i * 2, b = j * 2;
+    indices.push(a, a + 1, b, b, a + 1, b + 1);
+  }
+  const floorCenter = positions.length / 3;
+  positions.push(0, bottomY, 0);
+  normals.push(0, 1, 0);
+  uvs.push(.5, .5);
+  const floorRing = positions.length / 3;
+  points.forEach(([x, z]) => {
+    positions.push(x * .83, bottomY, z * .83);
+    normals.push(0, 1, 0);
+    uvs.push(.5 + x / Math.max(width * 2, .001), .5 + z / Math.max(depth, .001));
+  });
+  for (let i = 0; i < count; i++) {
+    const j = (i + 1) % count;
+    indices.push(floorCenter, floorRing + j, floorRing + i);
   }
   return { positions, normals, uvs, indices };
 }
@@ -752,14 +794,14 @@ float knit(vec2 uv,float m){
   float row;
   if(m<.5){
     // 5 mm polyester cord: rounded, interlocking crochet loops rather than a printed grid.
-    row=uv.y*17.0+sin(uv.x*5.1)*.055;
+    row=uv.y*26.0+sin(uv.x*5.1)*.055;
     float stagger=mod(floor(row),2.0)*.5;
-    p=fract(vec2(uv.x*12.0+stagger+sin(row*.71)*.065,row));
+    p=fract(vec2(uv.x*28.0+stagger+sin(row*.71)*.065,row));
     vec2 loopUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
     float loopRadius=length(loopUv);
     float loop=1.0-smoothstep(.12,.27,abs(loopRadius-.285));
     float bridge=1.0-smoothstep(.045,.13,abs(p.y-.53));
-    float overlap=step(.5,fract(uv.x*6.0+stagger));
+    float overlap=step(.5,fract(uv.x*14.0+stagger));
     float cord=loop*.90+bridge*(.14+.11*overlap);
     float yarnVariation=.94+.06*sin(uv.x*119.0+uv.y*83.0);
     return clamp(cord*yarnVariation,0.0,1.0);
@@ -815,7 +857,7 @@ float yarn(vec2 uv,float m){
   vec2 p;
   float a;
   if(m<.5){
-    p=fract(vec2(uv.x*12.0+floor(uv.y*17.0)*.5,uv.y*17.0));
+    p=fract(vec2(uv.x*28.0+floor(uv.y*26.0)*.5,uv.y*26.0));
     vec2 cordUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
     float loopRadius=length(cordUv);
     float strand=1.0-smoothstep(.18,.34,abs(loopRadius-.285));
@@ -859,8 +901,17 @@ void main(){
   } else if(uMaterial<3.5){
     detail=.76+.18*sin(vUv.x*72.0)*sin(vUv.y*38.0);
     rough=.78;
-  } else {
+  } else if(uMaterial<4.5){
     metal=.97; rough=.14; detail=1.0;
+  } else if(uMaterial<5.5){
+    // Matte checkered cloth inside the wooden-handle tote.
+    vec2 checker=floor(vUv*vec2(12.0,12.0));
+    detail=mix(.73,1.04,mod(checker.x+checker.y,2.0));
+    rough=.94;
+  } else {
+    // Soft dark textile instead of shiny metal inside the other families.
+    detail=.74+.055*sin(vUv.x*118.0+vUv.y*97.0);
+    rough=.96;
   }
 
   // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
@@ -928,7 +979,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
-      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.034, 96, 16, true)),
+      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.042, 96, 16, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
       roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
@@ -1077,7 +1128,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
-  const relief = config.color && config.stitch ? 0.016 : 0.006;
+  const relief = config.color && config.stitch ? 0.037 : 0.016;
   drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
 
   const openingColor = config.color ? body : "#d8cec4";
@@ -1085,7 +1136,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const interiorColor = agataOpenWoodTote ? "#f0e7d9" : darken(openingColor, 0.58);
   // The red and brown wooden-handle versions share one silhouette and geometry.
   // The checked lining is visible when the customer rotates the same model to look inside.
-  drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, agataOpenWoodTote ? 5 : 0, stitch, 0);
+  drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, agataOpenWoodTote ? 5 : 6, stitch, 0);
   drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.009 : 0.004);
 
   if (config.strap !== "none") {
@@ -1125,7 +1176,9 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     if (isWoodHandle) {
       const transform = {
         x: 0,
-        y: profile.topY + 0.10,
+        // Keep the rigid ring visible above the softly domed crocheted mouth
+        // at a 3/4 camera yaw, without changing its attachment-plane depth.
+        y: profile.topY + 0.17,
         scaleX: profile.width * 0.62,
         scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
       };
@@ -1133,7 +1186,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       // Keep enough depth to reveal separate attachment points in side view.
       // A small part of the rear ring naturally peeks out at 3/4 yaw: that is
       // physical occlusion, not a detached flat 2D decoration.
-      const depthPlanes = [-profile.topDepth * 0.78, profile.topDepth * 0.78];
+      // Anchor the rings into the actual front/back rim. The former .78
+      // offset placed their feet too far outside the shell, breaking the rear arch
+      // into detached fragments at a three-quarter camera angle.
+      const depthPlanes = [-profile.topDepth * 0.55, profile.topDepth * 0.55];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
