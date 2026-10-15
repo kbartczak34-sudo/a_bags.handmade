@@ -979,7 +979,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
-      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.034, 96, 16, true)),
+      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.037, 96, 16, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
       roundStrap: createMesh(gl, familyShoulderStrapMesh("round")),
