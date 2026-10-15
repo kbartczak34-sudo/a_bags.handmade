@@ -127,6 +127,13 @@ function paintLifelikeSurface(
 }
 
 function selectMaterialSource(layer: HTMLElement, stage: HTMLElement) {
+  if (stage.dataset.stitch === "herringbone") {
+    // The physical 5 mm tubes live in Fidelity3D itself. Copy ONLY that canvas:
+    // promoting the old Agata raster would replace the volumetric yarn with a
+    // printed SVG-like illustration on the customer-visible post-process.
+    const physical = layer.querySelector<HTMLCanvasElement>(BASE_SOURCE_SELECTOR);
+    return physical ? { canvas: physical, name: "physical-5mm-fidelity3d" } : null;
+  }
   const agataReady = stage.dataset.abagsAgataCordWebgl === AGATA_SURFACE_VERSION;
   if (agataReady) {
     const agata = layer.querySelector<HTMLCanvasElement>(AGATA_SOURCE_SELECTOR);
