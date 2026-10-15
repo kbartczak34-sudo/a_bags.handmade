@@ -407,6 +407,43 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   };
   addFabricFace(frontFace, 1);
   addFabricFace(backFace, -1);
+
+  // A true separate textile gusset. Previously the front and back edge rings
+  // shared identical FRONT-FACE UVs; interpolating those across depth gives
+  // constant UVs through the sidewall, hence rigid horizontal zebra stripes.
+  // Arc length around the bag and distance through its depth now provide the
+  // gusset's own stitch coordinates. The mouth remains open.
+  const sideRows = 12;
+  const sideStart = positions.length / 3;
+  let sideArcLength = 0;
+  for (let i = 0; i <= contour.length; i++) {
+    const index = i % contour.length;
+    const previous = (index - 1 + contour.length) % contour.length;
+    const next = (index + 1) % contour.length;
+    if (i > 0) {
+      sideArcLength += Math.hypot(
+        contour[index][0] - contour[previous][0],
+        contour[index][1] - contour[previous][1],
+      );
+    }
+    const tx = contour[next][0] - contour[previous][0];
+    const ty = contour[next][1] - contour[previous][1];
+    const outward = normalize(ty, -tx, 0.055);
+    const rimIndex = (frontEdge + index) * 3;
+    const backIndex = (backEdge + index) * 3;
+    for (let across = 0; across <= sideRows; across++) {
+      const depthProgress = across / sideRows;
+      positions.push(
+        positions[rimIndex],
+        positions[rimIndex + 1],
+        positions[rimIndex + 2] * (1 - depthProgress) + positions[backIndex + 2] * depthProgress,
+      );
+      normals.push(...outward);
+      // 5 mm cord is approximately a dozen stitches across the gusset,
+      // with continuous stitch spacing around the bag perimeter.
+      uvs.push(sideArcLength * 0.52, depthProgress * 0.46);
+    }
+  }
   for (let i = 0; i < contour.length; i++) {
     const next = (i + 1) % contour.length;
     const connect = (aStart: number, bStart: number, reverse = false) => {
@@ -416,9 +453,14 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
       else indices.push(a, c, b, b, c, d);
     };
     connect(frontFace, frontEdge);
-    // Remove the upper sidewall cap: the bag has an actual open mouth.
+    // A visible, open mouth: gusset triangles are intentionally omitted above
+    // the top edge. Depth is a real woven wall instead of a flat UV-stretched cap.
     if ((contour[i][1] + contour[next][1]) * .5 < spec.ry * .90) {
-      connect(frontEdge, backEdge);
+      for (let across = 0; across < sideRows; across++) {
+        const a = sideStart + i * (sideRows + 1) + across;
+        const b = sideStart + (i + 1) * (sideRows + 1) + across;
+        indices.push(a, a + 1, b, b, a + 1, b + 1);
+      }
     }
     connect(backEdge, backFace, true);
   }
