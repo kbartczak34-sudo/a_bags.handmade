@@ -14,7 +14,7 @@ test("all four real A-Bags families have an approximate 16cm width, NOT invented
   assert.match(spec,/confirmedHeightCm: null/);
   assert.match(spec,/confirmedDepthCm: null/);
   assert.match(spec,/equivalentCrochetFrontAndBack: true/);
-  for(const family of ["tote","round","bucket","mini"]) assert.match(spec,new RegExp(family+": \\\\{"));
+  for(const family of ["tote","round","bucket","mini"]) assert.ok(spec.includes(`${family}: {`));
   assert.match(doc,/Approximate physical \*\*body width: 16 cm\*\*/);
 });
 test("3D model has the same real crochet body from the front and back",()=>{
