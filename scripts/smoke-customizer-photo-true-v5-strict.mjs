@@ -186,7 +186,7 @@ async function main() {
       })()`);
       if (switched !== "single") {
         if (activation === "keyboard") {
-          await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+          await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r", unmodifiedText: "\r" });
           await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
         }
         await waitFor(`document.querySelector('.abags-bag-builder-stage')?.dataset.photoProductId===${JSON.stringify(switched)}`, "real model switch");
@@ -205,6 +205,8 @@ async function main() {
 
     await send("Runtime.enable");
     await send("Page.enable");
+    await send("Page.bringToFront");
+    await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 
     // Desktop: actual store photo, real model cards, no visible synthetic/legacy model UI.
     await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
