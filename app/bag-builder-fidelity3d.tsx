@@ -327,10 +327,10 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
       const y = rawY + softness.y;
       const z = zSign > 0
         ? depthAt(family, y) * 0.5 - zInset + softness.z
-        : -depthAt(family, y) * 0.5 + zInset + softness.z * 0.38;
+        : -depthAt(family, y) * 0.5 + zInset - softness.z;
       const radial = normalize(x - cx, y - cy, 0);
       let normal: [number, number, number];
-      if (mode === "face" && zSign > 0) {
+      if (mode === "face") {
         // The front of a soft crochet bag is gently convex, not a paper-thin
         // plane. Match the normal field to the same shallow dome used by the
         // center vertex so the selected yarn catches light across the body.
@@ -339,7 +339,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const radialField = clamp(1 - xn * xn - yn * yn, 0, 1);
         const bulge = spec.depth * 0.12 * depthScale;
         const slope = 2 * bulge * Math.pow(Math.max(0, radialField), 0.55);
-        normal = normalize(-xn * slope, -yn * slope, 1);
+        normal = normalize(-xn * slope * zSign, -yn * slope * zSign, zSign);
       } else {
         const nz = mode === "bevel" ? zSign * 0.72 : zSign;
         const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
@@ -364,7 +364,10 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const faceBands = 52;
   const frontBulge = spec.depth * .075 * depthScale;
   const bodyDomeLift = spec.depth * .045 * depthScale;
-  const backBulge = spec.depth * .025 * depthScale;
+  // Agata confirmed the real bag body looks identical from the back.
+  // Equal dome curvature and mirrored Z relief keep front/back physical thickness
+  // and the same crochet silhouette under 360-degree rotation.
+  const backBulge = frontBulge + bodyDomeLift;
   const addFabricFace = (outer: number, side: 1 | -1) => {
     let previous = outer;
     for (let band = 1; band <= faceBands; band++) {
@@ -378,7 +381,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const dome = 1 - fraction * fraction;
         const z = side === 1
           ? depthAt(family, y) * .5 - bevel + softness.z + (frontBulge + bodyDomeLift) * dome
-          : -depthAt(family, y) * .5 + bevel + softness.z * .38 - backBulge * dome;
+          : -depthAt(family, y) * .5 + bevel - softness.z - backBulge * dome;
         const nx = (x - cx) / Math.max(.001, spec.rx);
         const ny = (y - cy) / Math.max(.001, spec.ry);
         positions.push(x, y, z);
@@ -407,6 +410,43 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   };
   addFabricFace(frontFace, 1);
   addFabricFace(backFace, -1);
+
+  // A true separate textile gusset. Previously the front and back edge rings
+  // shared identical FRONT-FACE UVs; interpolating those across depth gives
+  // constant UVs through the sidewall, hence rigid horizontal zebra stripes.
+  // Arc length around the bag and distance through its depth now provide the
+  // gusset's own stitch coordinates. The mouth remains open.
+  const sideRows = 12;
+  const sideStart = positions.length / 3;
+  let sideArcLength = 0;
+  for (let i = 0; i <= contour.length; i++) {
+    const index = i % contour.length;
+    const previous = (index - 1 + contour.length) % contour.length;
+    const next = (index + 1) % contour.length;
+    if (i > 0) {
+      sideArcLength += Math.hypot(
+        contour[index][0] - contour[previous][0],
+        contour[index][1] - contour[previous][1],
+      );
+    }
+    const tx = contour[next][0] - contour[previous][0];
+    const ty = contour[next][1] - contour[previous][1];
+    const outward = normalize(ty, -tx, 0.055);
+    const rimIndex = (frontEdge + index) * 3;
+    const backIndex = (backEdge + index) * 3;
+    for (let across = 0; across <= sideRows; across++) {
+      const depthProgress = across / sideRows;
+      positions.push(
+        positions[rimIndex],
+        positions[rimIndex + 1],
+        positions[rimIndex + 2] * (1 - depthProgress) + positions[backIndex + 2] * depthProgress,
+      );
+      normals.push(...outward);
+      // 5 mm cord is approximately a dozen stitches across the gusset,
+      // with continuous stitch spacing around the bag perimeter.
+      uvs.push(sideArcLength * 0.52, depthProgress * 0.46);
+    }
+  }
   for (let i = 0; i < contour.length; i++) {
     const next = (i + 1) % contour.length;
     const connect = (aStart: number, bStart: number, reverse = false) => {
@@ -416,9 +456,14 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
       else indices.push(a, c, b, b, c, d);
     };
     connect(frontFace, frontEdge);
-    // Remove the upper sidewall cap: the bag has an actual open mouth.
+    // A visible, open mouth: gusset triangles are intentionally omitted above
+    // the top edge. Depth is a real woven wall instead of a flat UV-stretched cap.
     if ((contour[i][1] + contour[next][1]) * .5 < spec.ry * .90) {
-      connect(frontEdge, backEdge);
+      for (let across = 0; across < sideRows; across++) {
+        const a = sideStart + i * (sideRows + 1) + across;
+        const b = sideStart + (i + 1) * (sideRows + 1) + across;
+        indices.push(a, a + 1, b, b, a + 1, b + 1);
+      }
     }
     connect(backEdge, backFace, true);
   }
@@ -839,7 +884,11 @@ void main(){
   float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
   vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
   float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  vec3 localNormal=normalize(mix(aNormal,reliefNormal,frontFace*.30));
+  // Back-facing polyester fibres must face backwards, not be bent toward
+  // +Z by the front relief normal (which previously produced flat rear lighting).
+  float faceSign=aNormal.z<0.0?-1.0:1.0;
+  vec3 sidedReliefNormal=normalize(vec3(reliefNormal.x*faceSign,reliefNormal.y*faceSign,reliefNormal.z*faceSign));
+  vec3 localNormal=normalize(mix(aNormal,sidedReliefNormal,frontFace*.30));
   vec3 pos=aPosition+aNormal*h;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
@@ -1226,7 +1275,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       // Anchor the rings into the actual front/back rim. The former .78
       // offset placed their feet too far outside the shell, breaking the rear arch
       // into detached fragments at a three-quarter camera angle.
-      const depthPlanes = [-profile.topDepth * 0.55, profile.topDepth * 0.55];
+      // The matching back textile dome is deeper than the former flat rear panel.
+      // Seat the two rings just outside BOTH physical textile faces (0.61)
+      // so the rear arch remains visible in profile without detached handles.
+      const depthPlanes = [-profile.topDepth * 0.61, profile.topDepth * 0.61];
       for (const z of depthPlanes) {
         drawMesh(
           renderer,

@@ -1,5 +1,19 @@
 export type FidelityV4Family = "tote" | "round" | "bucket" | "mini";
 
+/** Approximate measured width of the physical bag body for each current family.
+ * Height/depth are intentionally NOT inferred from the renderer's arbitrary units.
+ */
+export const ABAGS_AGATA_NOMINAL_BODY_WIDTH_CM = 16 as const;
+export const ABAGS_AGATA_REAL_BAG_MEASUREMENTS = {
+  approximateBodyWidthCm: ABAGS_AGATA_NOMINAL_BODY_WIDTH_CM,
+  bodyWidthIsApproximate: true,
+  confirmedHeightCm: null,
+  confirmedDepthCm: null,
+  /** The knitted body looks the same from the back; applied to the 3D body shell. */
+  equivalentCrochetFrontAndBack: true,
+} as const;
+
+
 export type FidelityV4FamilySpec = {
   /** Customer-facing A-Bags family represented by the technical renderer key. */
   label: string;

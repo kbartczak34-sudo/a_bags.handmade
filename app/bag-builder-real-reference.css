@@ -1,0 +1,89 @@
+/* True A-Bags photographs alongside the concept 3D model.
+   No reference photograph is ever passed off as an exact customer configuration. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+button[data-builder-key="family"] .abags-builder-family-thumb[data-reference-id] {
+  display:block!important;
+  position:relative!important;
+  flex:0 0 62px!important;
+  width:62px!important;
+  height:52px!important;
+  border:0!important;
+  border-radius:8px!important;
+  overflow:hidden!important;
+  background-repeat:no-repeat!important;
+  box-shadow:0 3px 10px rgba(50,33,35,.15)!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+button[data-builder-key="family"] .abags-builder-family-thumb[data-reference-id] > span,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+button[data-builder-key="family"] .abags-builder-family-thumb[data-reference-id]::before,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+button[data-builder-key="family"] .abags-builder-family-thumb[data-reference-id]::after {
+  display:none!important;
+  content:none!important;
+}
+
+/* Photo comparison never paints onto, flattens or remounts the WebGL canvas. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
+.abags-vc-preview > .abags-real-example-ui {
+  position:absolute!important;
+  inset:0!important;
+  z-index:280!important;
+  display:block!important;
+  pointer-events:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
+.abags-vc-preview > .abags-real-example-ui[hidden] {
+  display:none!important;
+}
+.abags-real-example-ui .abags-real-example-image {
+  position:absolute;
+  inset:0;
+  display:none;
+  background-color:#f7f1eb;
+  background-repeat:no-repeat;
+  filter:none;
+  pointer-events:auto;
+}
+.abags-real-example-ui[data-open="true"] .abags-real-example-image {display:block}
+.abags-real-example-ui .abags-real-example-note {
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  right:12px;
+  display:none;
+  max-width:calc(100% - 24px);
+  gap:4px;
+  padding:9px 11px;
+  border-radius:12px;
+  background:rgba(255,252,248,.95);
+  color:#4a383b;
+  box-shadow:0 8px 24px rgba(40,27,28,.14);
+  pointer-events:none;
+}
+.abags-real-example-ui[data-open="true"] .abags-real-example-note {display:grid}
+.abags-real-example-note strong {font:700 11px/1.2 var(--font-sans)}
+.abags-real-example-note span {font:500 10px/1.35 var(--font-sans)}
+.abags-real-example-toggle {
+  position:absolute;
+  top:53px;
+  right:12px;
+  z-index:1;
+  min-height:34px;
+  padding:7px 12px;
+  border:1px solid rgba(99,71,77,.2);
+  border-radius:999px;
+  background:rgba(255,254,252,.96);
+  color:#594046;
+  font:700 10px/1.2 var(--font-sans);
+  box-shadow:0 7px 20px rgba(40,27,28,.1);
+  cursor:pointer;
+  pointer-events:auto;
+}
+.abags-real-example-toggle:focus-visible {outline:3px solid #a86574;outline-offset:2px}
+@media(max-width:620px){
+  .abags-real-example-toggle{top:43px;right:8px;min-height:30px;padding:6px 9px;font-size:9px}
+  .abags-real-example-ui .abags-real-example-note{left:8px;right:8px;bottom:53px;padding:7px 9px}
+  .abags-real-example-note strong{font-size:10px}
+  .abags-real-example-note span{font-size:9px}
+}

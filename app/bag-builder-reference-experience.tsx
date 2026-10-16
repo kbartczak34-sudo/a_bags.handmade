@@ -198,7 +198,70 @@ function decorateFamilyButtons(dialog: HTMLElement, spriteUrl: string) {
       button.prepend(thumb);
     }
     applySpriteCell(thumb, spriteUrl, referenceId);
+    // The customer used to see only the CSS-drawn cartoon thumbnail, even
+    // though we already have Agata's real atelier photographs in this sprite.
+    const photoThumb = button.querySelector<HTMLElement>(".abags-builder-family-thumb");
+    if (photoThumb) {
+      const realReference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
+      if (!realReference) return;
+      applySpriteCell(photoThumb, spriteUrl, referenceId);
+      // Older important backgrounds on the illustrated thumb must not repaint
+      // over the actual photo. Keep the same true sprite cell.
+      photoThumb.style.setProperty("background-image", `url(${JSON.stringify(spriteUrl)})`, "important");
+      photoThumb.style.setProperty("background-size", "500% 400%", "important");
+      photoThumb.style.setProperty("background-position", spritePosition(realReference.index), "important");
+    }
   });
+}
+
+/**
+ * This is an explicitly labelled PHOTOGRAPHIC REFERENCE, not a picture of the
+ * customer's current combination. The interactive Fidelity3D model is never
+ * destroyed or replaced, and every configuration change restores its preview.
+ */
+function ensureAtelierExample(preview: HTMLElement, stage: HTMLElement, spriteUrl: string) {
+  const family = stage.dataset.family || "";
+  const referenceId = FAMILY_REFERENCE[family];
+  const realReference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
+  let viewer = preview.querySelector<HTMLElement>(':scope > [data-abags-example-ui]');
+  if (!spriteUrl || !realReference) {
+    if (viewer) viewer.hidden = true;
+    return;
+  }
+  if (!viewer) {
+    viewer = document.createElement("div");
+    viewer.className = "abags-real-example-ui";
+    viewer.dataset.abagsExampleUi = "true";
+    viewer.dataset.open = "false";
+    viewer.innerHTML = `
+      <div class="abags-real-example-image" role="img"></div>
+      <div class="abags-real-example-note">
+        <strong>Rzeczywista torebka Agaty</strong>
+        <span>Zdjęcie przykładowego fasonu, nie wizualizacja wybranych zmian.</span>
+      </div>
+      <button type="button" class="abags-real-example-toggle" data-abags-example-toggle aria-pressed="false">Pokaż prawdziwą torebkę</button>
+    `;
+    preview.appendChild(viewer);
+  }
+  viewer.hidden = false;
+  const signature = ["family", "color", "stitch", "flap", "handles", "strap", "hardware", "accent"]
+    .map((key) => stage.getAttribute(`data-${key}`) || "").join("|");
+  if (viewer.dataset.exampleSignature !== signature) {
+    viewer.dataset.exampleSignature = signature;
+    viewer.dataset.open = "false";
+  }
+  const image = viewer.querySelector<HTMLElement>(".abags-real-example-image");
+  if (image) {
+    applySpriteCell(image, spriteUrl, realReference.id);
+    image.setAttribute("aria-label", `Zdjęcie przykładowej torebki A-Bags: ${realReference.label}; nie jest to podgląd Twoich zmian`);
+  }
+  const toggle = viewer.querySelector<HTMLButtonElement>("[data-abags-example-toggle]");
+  if (toggle) {
+    const open = viewer.dataset.open === "true";
+    toggle.setAttribute("aria-pressed", String(open));
+    const text = open ? "Wróć do modelu 3D" : "Pokaż prawdziwą torebkę";
+    if (toggle.textContent !== text) toggle.textContent = text;
+  }
 }
 
 function makeRail() {
@@ -292,7 +355,10 @@ export default function BagBuilderReferenceExperience() {
     const sync = () => {
       frame = 0;
       const dialog = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active");
-      const stage = dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage") ?? null;
+      const stage = dialog?.querySelector<HTMLElement>('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')
+        ?? dialog?.querySelector<HTMLElement>(".abags-vc-preview .abags-bag-builder-stage")
+        ?? dialog?.querySelector<HTMLElement>(".abags-bag-builder-stage")
+        ?? null;
       const mount = dialog?.querySelector<HTMLElement>(".abags-exact-live-mount") ?? null;
       const preview = dialog?.querySelector<HTMLElement>(".abags-vc-preview") ?? null;
       const previewColumn = dialog?.querySelector<HTMLElement>(".abags-vc-preview-column") ?? null;
@@ -329,6 +395,7 @@ export default function BagBuilderReferenceExperience() {
       syncGroups(dialog, stage);
       syncLayers(stage, layers);
       decorateFamilyButtons(dialog, spriteUrl);
+      ensureAtelierExample(preview, stage, spriteUrl);
 
       const chip = stage.querySelector<HTMLElement>(".abags-canvas3d-chip, .abags-pro3d-chip");
       if (chip) chip.textContent = "PODGLĄD NA ŻYWO · OBRÓT 360°";
@@ -336,6 +403,16 @@ export default function BagBuilderReferenceExperience() {
       if (!cleanupClick) {
         const onClick = (event: MouseEvent) => {
           const target = event.target as HTMLElement | null;
+          const exampleToggle = target?.closest<HTMLButtonElement>("[data-abags-example-toggle]");
+          if (exampleToggle) {
+            const viewer = exampleToggle.closest<HTMLElement>("[data-abags-example-ui]");
+            if (!viewer) return;
+            viewer.dataset.open = viewer.dataset.open === "true" ? "false" : "true";
+            const open = viewer.dataset.open === "true";
+            exampleToggle.setAttribute("aria-pressed", String(open));
+            exampleToggle.textContent = open ? "Wróć do modelu 3D" : "Pokaż prawdziwą torebkę";
+            return;
+          }
           const stepButton = target?.closest<HTMLButtonElement>("button[data-ref-step]");
           if (stepButton) {
             const key = stepButton.dataset.refKey || "family";
@@ -420,7 +497,13 @@ export default function BagBuilderReferenceExperience() {
       cleanupClick?.();
       cleanupKey?.();
       document.querySelectorAll(".abags-reference-experience-active").forEach((node) => node.classList.remove("abags-reference-experience-active"));
-      document.querySelectorAll(".abags-ref-step-rail,.abags-ref-layers,.abags-ref-inspirations,.abags-ref-trust,.abags-ref-family-photo").forEach((node) => node.remove());
+      document.querySelectorAll(".abags-ref-step-rail,.abags-ref-layers,.abags-ref-inspirations,.abags-ref-trust,.abags-ref-family-photo,.abags-real-example-ui").forEach((node) => node.remove());
+      document.querySelectorAll<HTMLElement>(".abags-builder-family-thumb[data-reference-id]").forEach((thumb) => {
+        thumb.style.removeProperty("background-image");
+        thumb.style.removeProperty("background-size");
+        thumb.style.removeProperty("background-position");
+        delete thumb.dataset.referenceId;
+      });
     };
   }, [spriteUrl]);
 
