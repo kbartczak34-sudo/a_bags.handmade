@@ -97,13 +97,14 @@ export default function BagBuilderPhotoTrueExactOnly() {
 
       if (selectedProduct !== productId) {
         productId = selectedProduct;
+        const scheduledProduct = selectedProduct;
         baseline = null;
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
             const currentStage = document.querySelector<HTMLElement>(
               ".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage",
             );
-            if (!currentStage || currentStage.dataset.photoProductId !== productId) return;
+            if (!currentStage || currentStage.dataset.photoProductId !== scheduledProduct || productId !== scheduledProduct) return;
             const currentBaseImage =
               currentStage.querySelector<HTMLImageElement>(".abags-photo-true-base")?.getAttribute("src") || "";
             const currentReference = EXACT_ATELIER_LIBRARY.find(
@@ -160,6 +161,7 @@ export default function BagBuilderPhotoTrueExactOnly() {
       attributes: true,
       attributeFilter: [
         "src",
+        "data-photo-true-ready",
         "data-photo-true-ready",
         "data-photo-product-id",
         "data-family",
