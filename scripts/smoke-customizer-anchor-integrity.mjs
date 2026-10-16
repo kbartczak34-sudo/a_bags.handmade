@@ -351,6 +351,12 @@ const analyze=(overlay)=>{
         const pixels=ctx.getImageData(0,0,ow,oh).data;
         const samples=[];
         let minX=ow,minY=oh,maxX=0,maxY=0,hash=2166136261>>>0;
+        // Include the complete raster, including transparent pixels. Hashing
+        // only colored samples discarded their positions, so moving the same
+        // accessory could be mistaken for an unchanged camera frame.
+        for(let index=0;index<pixels.length;index+=1){
+          hash^=pixels[index];hash=Math.imul(hash,16777619)>>>0;
+        }
         for(let y=0;y<oh;y+=2){
           for(let x=0;x<ow;x+=2){
             const i=(y*ow+x)*4;
@@ -358,10 +364,6 @@ const analyze=(overlay)=>{
             if(a<=24)continue;
             samples.push([x,y]);
             minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-            hash^=pixels[i];hash=Math.imul(hash,16777619)>>>0;
-            hash^=pixels[i+1];hash=Math.imul(hash,16777619)>>>0;
-            hash^=pixels[i+2];hash=Math.imul(hash,16777619)>>>0;
-            hash^=a;hash=Math.imul(hash,16777619)>>>0;
           }
         }
         if(!samples.length)return {sampled:0,hash:'00000000'};
@@ -426,11 +428,35 @@ const analyze=(overlay)=>{
       for (const [key, value] of choices) await choose(key, value);
       const results = [];
       for (const view of ["Przód", "3/4", "Bok"]) {
+        const before = await anchorEvidence();
+        const expected = view === "Przód" ? [-0.02, 0] : view === "Bok" ? [-0.07, Math.PI / 2] : [-0.12, -0.62];
+        const cameraChanged = !before || Math.abs(before.rotationX - expected[0]) >= 0.002
+          || Math.abs(before.rotationY - expected[1]) >= 0.002;
         await clickView(view);
-        const evidence = { ...await anchorEvidence(), view };
+        // The camera's React state can advance before the asynchronously composited
+        // accessory canvases paint. Compare BOTH overlays with the pre-click raster,
+        // including the first front view, which otherwise can retain the initial 3/4
+        // pixels and falsely appear identical to the following actual 3/4 frame.
+        const fresh = (value) => Boolean(value?.back && value?.front
+          && Math.abs(value.rotationX - expected[0]) < 0.002
+          && Math.abs(value.rotationY - expected[1]) < 0.002
+          && (!cameraChanged || (value.back.hash !== before?.back?.hash && value.front.hash !== before?.front?.hash)));
+        let sampled = await anchorEvidence();
+        const deadline = Date.now() + 12_000;
+        while (Date.now() < deadline && !fresh(sampled)) {
+          await sleep(160);
+          sampled = await anchorEvidence();
+        }
+        const evidence = { ...sampled, view, cameraChanged, preClick: {
+          rotationX:before?.rotationX,rotationY:before?.rotationY,
+          backHash:before?.back?.hash,frontHash:before?.front?.hash,
+        } };
         results.push(evidence);
-        await capture(`anchor-${label.toLowerCase()}-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
         await writeFile(path.join(qaDir, `anchor-${label.toLowerCase()}-evidence.json`), JSON.stringify(results, null, 2));
+        await capture(`anchor-${label.toLowerCase()}-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
+        if (!fresh(sampled)) {
+          throw new Error(`${label} ${view}: both accessory canvases did not redraw for the requested camera: ${JSON.stringify(evidence)}`);
+        }
         assertViewEvidence(label, view, evidence, results[0]);
       }
       if (new Set(results.map((item) => item.back.hash)).size !== 3) {

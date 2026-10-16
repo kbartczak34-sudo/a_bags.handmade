@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { EXACT_ATELIER_LIBRARY } from "../lib/exact-customizer-library";
 
@@ -99,32 +99,58 @@ export default function BagBuilderPhotoTrue() {
     if (!stage) return; const sync = () => setConfig((current) => { const next = readConfig(stage); return sameConfig(current, next) ? current : next; }); sync(); const observer = new MutationObserver(sync); observer.observe(stage, { attributes: true, attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] }); return () => observer.disconnect();
   }, [stage]);
 
-  useEffect(() => {
-    if (!stage) return; const image = stage.querySelector<HTMLImageElement>(".abags-photo-true-base"); if (!image || !selected?.imageUrl) return; image.src = selected.imageUrl; image.alt = `${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`;
-    const syncReady = () => { const liveStage = document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage"); if (!liveStage) return; liveStage.dataset.photoTrueReady = image.naturalWidth > 0 && image.naturalHeight > 0 ? "true" : "false"; };
-    image.onload = syncReady; if (image.complete) syncReady(); return () => { image.onload = null; };
+  useLayoutEffect(() => {
+    if (!stage) return;
+    const photo = stage.querySelector<HTMLElement>(".abags-photo-true-stage");
+    const image = photo?.querySelector<HTMLImageElement>(".abags-photo-true-base");
+    if (!photo || !image || !selected?.imageUrl) return;
+    const mountedStage = image.closest<HTMLElement>(".abags-bag-builder-stage");
+    if (!mountedStage || mountedStage !== stage) return;
+    mountedStage.dataset.photoTrueReady = "false";
+    photo.dataset.photoTrueReady = "false";
+    const expectedSrc = new URL(selected.imageUrl, window.location.href).href;
+    const syncReady = () => {
+      const currentSrc = image.currentSrc || image.src;
+      const ready = stage.isConnected && image.isConnected && image.complete
+        && currentSrc === expectedSrc && image.naturalWidth > 0 && image.naturalHeight > 0;
+      mountedStage.dataset.photoTrueReady = String(ready);
+      photo.dataset.photoTrueReady = String(ready);
+    };
+    image.addEventListener("load", syncReady);
+    image.addEventListener("error", syncReady);
+    if (image.complete) syncReady();
+    return () => {
+      image.removeEventListener("load", syncReady);
+      image.removeEventListener("error", syncReady);
+      mountedStage.dataset.photoTrueReady = "false";
+      photo.dataset.photoTrueReady = "false";
+    };
   }, [selected, stage]);
 
   const exactReference = useMemo(() => photoReferenceForImage(selected?.imageUrl ?? null), [selected]);
-  const rendered = useMemo(() => { const base = selected?.imageUrl || ""; const layers = LAYER_ORDER.map((category) => matchAsset(assets, category, config[category])).filter((asset): asset is Asset => Boolean(asset)); return { base, layers }; }, [assets, config, selected]);
-  const missingLayers = useMemo(() => LAYER_ORDER.filter((category) => config[category] !== "none" && !matchAsset(assets, category, config[category])), [assets, config]);
-  if (!mount || !selected || !exactReference) return null;
+  const selectedAssets = useMemo(() => assets.filter((asset) => asset.productId === selectedId), [assets, selectedId]);
+  const rendered = useMemo(() => { const base = selected?.imageUrl || ""; const layers = LAYER_ORDER.map((category) => matchAsset(selectedAssets, category, config[category])).filter((asset): asset is Asset => Boolean(asset)); return { base, layers }; }, [selectedAssets, config, selected]);
+  const missingLayers = useMemo(() => LAYER_ORDER.filter((category) => config[category] !== "none" && !matchAsset(selectedAssets, category, config[category])), [selectedAssets, config]);
+  if (!mount || !stage || !selected || !exactReference) return null;
 
-  return createPortal(
+  return <>{createPortal(
     <div className="abags-photo-true-panel" data-photo-true-panel="true">
-      <div className="abags-photo-true-stage" aria-label="Rzeczywiste zdjęcie produktu 1:1">
+      <div key={`${selected.id}|${selected.imageUrl}`} className="abags-photo-true-stage" data-photo-true-ready="false" aria-label={exactReference.canonical ? "Rzeczywiste zdjęcie produktu 1:1" : "Rzeczywiste zdjęcie produktu"}>
         <img className="abags-photo-true-base" src={selected.imageUrl || ""} alt={`${selected.name} — rzeczywiste zdjęcie produktu A-Bags Handmade`} />
-        {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-layer abags-photo-true-layer-${layer.category}`} src={layer.imageUrl} alt="" aria-hidden="true" />)}
+        {rendered.layers.map((layer) => <img key={`${layer.category}-${layer.variant}`} className={`abags-photo-true-overlay abags-photo-true-layer abags-photo-true-layer-${layer.category}`} data-photo-layer={layer.category} src={layer.imageUrl} alt="" aria-hidden="true" />)}
         <span className="abags-photo-true-badge">{exactReference.canonical ? "PHOTO-TRUE 1:1" : "ZDJĘCIE PRODUKTU"}</span>
       </div>
       <div className="abags-photo-true-note">Rzeczywiste zdjęcie produktu: {exactReference.sourceFile}. {exactReference.canonical ? "Zdjęcie pochodzi z kanonicznej biblioteki Exact Live." : "Zdjęcie pochodzi bezpośrednio z aktualnego katalogu sklepu."} Zdjęcie nie jest zastępowane syntetycznym renderem.{missingLayers.length ? ` Brak warstwy 1:1: ${missingLayers.join(", ")}.` : ""}{assetError ? ` ${assetError}` : ""}</div>
+    </div>, stage,
+  )}{createPortal(
+    <div className="abags-photo-models">
       <div className="abags-photo-models-grid" role="list">
         {products.map((product) => { const reference = photoReferenceForImage(product.imageUrl); if (!reference) return null; return (
-          <button key={product.id} type="button" data-photo-product-choice={product.id} aria-pressed={product.id === selectedId} onClick={() => setSelectedId(product.id)} title={reference.label}>
-            <img src={product.imageUrl || ""} alt={product.name} loading="eager" /><span>{product.name}</span>
+          <button key={product.id} type="button" className={product.id === selectedId ? "is-active" : ""} data-photo-product-choice={product.id} aria-pressed={product.id === selectedId} onClick={() => setSelectedId(product.id)} title={reference.label}>
+            <span className="abags-photo-model-thumb"><img src={product.imageUrl || ""} alt={product.name} loading="eager" /></span><span className="abags-photo-model-copy"><strong>{product.name}</strong></span>
           </button>
         ); })}
       </div>
     </div>, mount,
-  );
+  )}</>;
 }

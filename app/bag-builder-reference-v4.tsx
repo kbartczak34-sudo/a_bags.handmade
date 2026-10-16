@@ -235,13 +235,16 @@ export default function BagBuilderReferenceV4() {
       const target = event.target as HTMLElement | null;
       let button = target?.closest<HTMLButtonElement>("button[data-builder-key]") || null;
 
-      if (!button) {
+      // Keyboard/programmatic activation has no pointer coordinates. Let its
+      // actual target handle the click instead of rescuing an unrelated option.
+      if (!button && event.detail > 0) {
         const dialog = target?.closest<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4")
           || document.querySelector<HTMLElement>(".abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active");
         if (dialog) {
           button = [...dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key]")].find((candidate) => {
             if (candidate.disabled) return false;
             const rect = candidate.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return false;
             return event.clientX >= rect.left && event.clientX <= rect.right
               && event.clientY >= rect.top && event.clientY <= rect.bottom;
           }) || null;
@@ -277,6 +280,7 @@ export default function BagBuilderReferenceV4() {
       const button = [...dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key]")].find((candidate) => {
         if (candidate.disabled) return false;
         const rect = candidate.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
         return event.clientX >= rect.left && event.clientX <= rect.right
           && event.clientY >= rect.top && event.clientY <= rect.bottom;
       });
@@ -298,6 +302,7 @@ export default function BagBuilderReferenceV4() {
       const button = [...dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key]")].find((candidate) => {
         if (candidate.disabled) return false;
         const rect = candidate.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
         return touch.clientX >= rect.left && touch.clientX <= rect.right
           && touch.clientY >= rect.top && touch.clientY <= rect.bottom;
       });

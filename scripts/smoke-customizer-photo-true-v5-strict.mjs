@@ -173,17 +173,22 @@ async function main() {
       };
     })()`);
 
-    const switchModel = async () => {
+    const switchModel = async (activation = "programmatic") => {
       const before = await evaluate("document.querySelector('.abags-bag-builder-stage')?.dataset.photoProductId || ''");
       const switched = await evaluate(`(() => {
         const buttons=[...document.querySelectorAll('[data-photo-product-choice]')];
         const current=document.querySelector('.abags-bag-builder-stage')?.dataset.photoProductId||'';
         const next=buttons.find((b)=>b.dataset.photoProductChoice!==current);
         if(!next)return 'single';
-        next.click();
+        if (${JSON.stringify(activation)} === 'keyboard') next.focus({preventScroll:true});
+        else next.click();
         return next.dataset.photoProductChoice||'';
       })()`);
       if (switched !== "single") {
+        if (activation === "keyboard") {
+          await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r", unmodifiedText: "\r" });
+          await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+        }
         await waitFor(`document.querySelector('.abags-bag-builder-stage')?.dataset.photoProductId===${JSON.stringify(switched)}`, "real model switch");
         await waitFor(`(() => { const img=document.querySelector('.abags-photo-true-base'); return img?.complete && img.naturalWidth>0; })()`, "switched product photograph");
         const after = await evaluate("document.querySelector('.abags-bag-builder-stage')?.dataset.photoProductId || ''");
@@ -200,6 +205,8 @@ async function main() {
 
     await send("Runtime.enable");
     await send("Page.enable");
+    await send("Page.bringToFront");
+    await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 
     // Desktop: actual store photo, real model cards, no visible synthetic/legacy model UI.
     await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -209,6 +216,7 @@ async function main() {
     const desktopBefore = await contract();
     assertPhotoTrueContract(desktopBefore, "Desktop");
     const desktopSwitch = await switchModel();
+    const desktopKeyboardSwitch = await switchModel("keyboard");
     const desktopAfter = await contract();
     assertPhotoTrueContract(desktopAfter, "Desktop after model switch");
     const desktopBytes = await capture("customizer-desktop-v5-photo-true.png");
@@ -248,7 +256,7 @@ async function main() {
     const mobileBytes = await capture("customizer-mobile-v5-photo-true.png");
 
     console.log("Photo-True V5 production acceptance passed:", JSON.stringify({
-      desktopBefore, desktopAfter, desktopSwitch, mobile, mobileContract, mobileAfter, mobileSwitch,
+      desktopBefore, desktopAfter, desktopSwitch, desktopKeyboardSwitch, mobile, mobileContract, mobileAfter, mobileSwitch,
       desktopScreenshotBytes: desktopBytes, mobileScreenshotBytes: mobileBytes, screenshots: Boolean(outputDir),
     }));
   } finally {
