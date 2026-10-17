@@ -11,13 +11,15 @@ test("the active customer renderer tessellates both crochet panels rather than a
 });
 test("the bag has an open mouth and actual matte fabric interior", () => {
   assert.match(renderer, /spec\.ry \* \.90/);
-  assert.match(renderer, /const bottomY = topY - Math\.min\(\.43/);
+  assert.match(renderer, /const opening = openingLoop\(family, 12\)/);
+  assert.match(renderer, /const bottomY = Math\.min\(\.\.\.opening\.map/);
   assert.match(renderer, /agataOpenWoodTote \? 5 : 6/);
   assert.match(renderer, /uMaterial<5\.5/);
-  assert.match(renderer, /depthAt\(family, spec\.topY\) \* 0\.94/);
+  assert.match(renderer, /rawY \+ softness\.y \+ spec\.bodyY/);
 });
 test("crochet relief and yarn shader are aligned at a realistic loop density", () => {
-  assert.match(renderer, /uv\.x\*28\.0\+stagger/);
-  assert.match(renderer, /uv\.x\*28\.0\+floor\(uv\.y\*26\.0\)/);
+  assert.equal(renderer.split("${ABAGS_CROCHET_HEIGHT_GLSL}").length - 1, 2);
+  assert.match(renderer, /height=crochetHeight\(aUv,uStitch\)/);
+  assert.match(renderer, /cord=crochetHeight\(vUv,uStitch\)/);
   assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.037/);
 });

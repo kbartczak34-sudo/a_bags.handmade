@@ -8,9 +8,11 @@ const [stack, surface, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-lifelike-surface.css", import.meta.url), "utf8"),
 ]);
 
-test("lifelike pass follows the current live renderer stack without replacing product geometry", () => {
-  assert.match(stack, /<BagBuilderEngine \/>[\s\S]*<BagBuilderFidelityOptions \/>[\s\S]*<BagBuilderLifelikeSurface \/>/);
+test("canonical Fidelity3D renders its own textile surface without the legacy lifelike canvas", () => {
+  assert.match(stack, /<BagBuilderEngine \/>[\s\S]*<BagBuilderFidelity3D \/>[\s\S]*<BagBuilderFidelityOptions \/>/);
+  assert.doesNotMatch(stack, /BagBuilderLifelikeSurface/);
   assert.match(stack, /import "\.\/bag-builder-lifelike-surface\.css"/);
+  assert.match(css, /\.abags-fidelity3d-layer::before[\s\S]*z-index:0/);
   assert.doesNotMatch(surface, /bodyPath|familyContour|superellipseContour|beveledExtrusion/);
   assert.match(surface, /BASE_SOURCE_SELECTOR = "\.abags-fidelity3d-canvas"/);
 });

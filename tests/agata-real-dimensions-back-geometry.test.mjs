@@ -22,8 +22,9 @@ test("3D model has the same real crochet body from the front and back",()=>{
   assert.match(renderer,/addFabricFace\(frontFace, 1\)/);
   assert.match(renderer,/addFabricFace\(backFace, -1\)/);
   assert.match(renderer,/\.5 \+ bevel - softness\.z - backBulge \* dome/);
-  assert.match(renderer,/faceSign=aNormal\.z<0\.0\?-1\.0:1\.0/);
-  assert.match(renderer,/sidedReliefNormal/);
+  assert.match(renderer,/vNormal=normalize\(uNormalMatrix\*aNormal\)/);
+  assert.match(renderer,/reciprocalU=cross\(vBitangent,n\)/);
+  assert.doesNotMatch(renderer,/vFaceWeight/);
   assert.doesNotMatch(renderer,/backBulge = spec\.depth \* \.025|softness\.z \* \.38/);
 });
 test("builder shows width as approximate while leaving other dimensions unspecified",()=>{
