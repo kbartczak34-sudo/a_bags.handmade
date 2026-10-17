@@ -24,9 +24,9 @@ test("visible polyester cord relief is genuine tessellated geometry", () => {
 });
 
 test("yarn reflects light in the model frame and crossings occlude naturally", () => {
-  assert.match(renderer, /varying vec3 vTangent,vBitangent;/);
-  assert.match(renderer, /vTangent=normalize\(mat3\(uModel\)/);
-  assert.match(renderer, /n=normalize\(n-\.0023\*vFaceWeight/);
-  assert.match(renderer, /cordOcclusion=mix\(\.65,1\.0/);
-  assert.match(renderer, /base\*illumination\*cavity\*cordOcclusion/);
+  assert.match(renderer, /varying vec3 vNormal,vWorld,vTangent,vBitangent;/);
+  assert.match(renderer, /vTangent=mat3\(uModel\)\*aTangent/);
+  assert.match(renderer, /n=normalize\(n-gradient\*uRelief/);
+  assert.match(renderer, /cordOcclusion=mix\(1\.0,mix\(\.72,1\.0/);
+  assert.match(renderer, /base\*\(sky\+1\.12\*ndl\*shadow\+\.30\*fillLight\)\*cordOcclusion/);
 });

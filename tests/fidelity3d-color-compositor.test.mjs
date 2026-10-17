@@ -144,11 +144,8 @@ test("Fidelity3D accessories use family-specific physical attachment points", ()
   assert.doesNotMatch(renderer, /matrix\(\[x, profile\.topY - 0\.18, 0\.02\]/);
 });
 
-test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures and a convex handmade front", () => {
-  assert.match(renderer, /5 mm polyester cord: rounded, interlocking crochet loops/);
-  assert.match(renderer, /Herringbone: interlocking chevrons/);
-  assert.match(renderer, /Basket stitch: alternating over\/under bands/);
-  assert.match(renderer, /Shell stitch: repeated scallops/);
+test("Fidelity3D textile pass uses a shared cord height field and a convex handmade front", () => {
+  assert.equal(renderer.split("${ABAGS_CROCHET_HEIGHT_GLSL}").length - 1, 2);
   assert.match(renderer, /const frontBulge = spec\.depth \* \.075/);
   assert.match(renderer, /frontBulge \+ bodyDomeLift\) \* dome/);
   assert.match(renderer, /float fillLight=max\(dot\(n,fill\),0\.0\)/);
@@ -157,11 +154,12 @@ test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures
 });
 
 test("Fidelity3D yarn relief affects both geometry and lighting normals", () => {
-  assert.match(renderer, /float h=knit\(aUv,uStitch\)\*uRelief\*\.48/);
-  assert.match(renderer, /float hx=\(knit\(aUv\+vec2\(eps,0\.0\),uStitch\)-knit\(aUv-vec2\(eps,0\.0\),uStitch\)\)/);
-  assert.match(renderer, /float hy=\(knit\(aUv\+vec2\(0\.0,eps\),uStitch\)-knit\(aUv-vec2\(0\.0,eps\),uStitch\)\)/);
-  assert.match(renderer, /vec3 reliefNormal=normalize/);
-  assert.match(renderer, /mix\(aNormal,sidedReliefNormal,frontFace\*\.30\)/);
+  assert.match(renderer, /height=crochetHeight\(aUv,uStitch\)\*uRelief\*\.48/);
+  assert.match(renderer, /crochetHeight\(vUv\+vec2\(e,0\.0\),uStitch\)-crochetHeight\(vUv-vec2\(e,0\.0\),uStitch\)/);
+  assert.match(renderer, /crochetHeight\(vUv\+vec2\(0\.0,e\),uStitch\)-crochetHeight\(vUv-vec2\(0\.0,e\),uStitch\)/);
+  assert.match(renderer, /vNormal=normalize\(uNormalMatrix\*aNormal\)/);
+  assert.match(renderer, /n=normalize\(n-gradient\*uRelief\*vReliefScale\*\.48\*visibility\)/);
+  assert.doesNotMatch(renderer, /vFaceWeight/);
 });
 
 

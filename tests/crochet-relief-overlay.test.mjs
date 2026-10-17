@@ -8,8 +8,9 @@ const [stack, relief, css] = await Promise.all([
   readFile(new URL("../app/bag-builder-crochet-relief-overlay.css", import.meta.url), "utf8"),
 ]);
 
-test("crochet relief is mounted after the lifelike pass and before accessory detail", () => {
-  assert.match(stack, /<BagBuilderLifelikeSurface\s*\/>[\s\S]*<BagBuilderCrochetReliefOverlay\s*\/>[\s\S]*<BagBuilderAccessoryFidelityOverlay\s*\/>/);
+test("canonical textile shading is not covered by the legacy crochet canvas and preserves accessory detail", () => {
+  assert.doesNotMatch(stack, /BagBuilderCrochetReliefOverlay/);
+  assert.match(stack, /<BagBuilderFidelity3D\s*\/>[\s\S]*<BagBuilderAccessoryFidelityOverlay\s*\/>[\s\S]*<BagBuilderAccessoryMaterialFinish\s*\/>/);
   assert.match(stack, /import "\.\/bag-builder-crochet-relief-overlay\.css"/);
 });
 

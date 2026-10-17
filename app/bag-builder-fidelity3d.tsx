@@ -8,6 +8,10 @@ import {
   type FidelityV4Family,
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
+import { ABAGS_CROCHET_HEIGHT_GLSL, textileNormalMatrix, textileUvFrame } from "../lib/abags-textile-surface";
+import { createCrochetCordMeshes } from "../lib/abags-crochet-geometry";
+import { createCordTexture } from "../lib/abags-cord-texture";
+import { createCordShadow, renderCordShadow, type CordShadow } from "../lib/abags-cord-shadow";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -32,6 +36,8 @@ type Mesh = {
   position: WebGLBuffer;
   normal: WebGLBuffer;
   uv: WebGLBuffer;
+  tangent: WebGLBuffer;
+  bitangent: WebGLBuffer;
   index: WebGLBuffer;
   count: number;
 };
@@ -40,9 +46,15 @@ type Renderer = {
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
-  attribs: { position: number; normal: number; uv: number };
-  uniforms: Record<"projection" | "view" | "model" | "color" | "material" | "stitch" | "relief" | "light", WebGLUniformLocation>;
+  cordMeshes: Map<string, Mesh[]>;
+  cordTexture: WebGLTexture;
+  shadow: CordShadow | null;
+  commands: DrawCommand[];
+  attribs: { position: number; normal: number; uv: number; tangent: number; bitangent: number };
+  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "fiberTexture" | "shadowMatrix" | "shadowTexture" | "shadowEnabled" | "shadowTexel", WebGLUniformLocation>;
 };
+
+type DrawCommand = { mesh: Mesh; model: Float32Array; color: string; material: number; stitch: number; relief: number };
 
 type Point = [number, number];
 type FamilyProfile = {
@@ -293,9 +305,59 @@ function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
   const softness = (0.022 + spec.ry * 0.018) * familyFactor;
   const sagY = -softness * center * lower;
+  // The unsupported middle of the mouth relaxes slightly between its anchors.
+  // Keep X unchanged: the family's nominal body width is the physical anchor.
+  const upper = Math.pow(Math.max(0, yn), 5);
+  const lipSag = -softness * 0.48 * center * upper * (1 + 0.12 * Math.sin(xn * 4.2));
   const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
   const bulgeZ = spec.depth * depthScale * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
-  return { y: sagY, z: bulgeZ };
+  // Broad, coherent folds belong to the cloth surface, not to a random normal
+  // texture. Fade them at the boundary so hardware keeps its existing contacts.
+  const foldEnvelope = center * Math.max(0, 1 - yn * yn);
+  const folds = Math.sin(xn * 4.1 + yn * 1.6 + 0.3)
+    + 0.35 * Math.sin(xn * 7.2 - yn * 3.4);
+  const drapeZ = 0.007 * familyFactor * foldEnvelope * folds;
+  return { y: sagY + lipSag, z: bulgeZ + drapeZ };
+}
+
+function smoothBodyNormals(positions: number[], normals: number[], indices: number[]) {
+  const derivatives = new Float64Array(positions.length);
+  // Area-weighted surface derivatives follow the actual dome, folds and edge
+  // rolls. A guessed sign on nx/ny previously lit the convex front as a hollow.
+  for (let i = 0; i < indices.length; i += 3) {
+    const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+    const ux = positions[b] - positions[a], uy = positions[b + 1] - positions[a + 1], uz = positions[b + 2] - positions[a + 2];
+    const vx = positions[c] - positions[a], vy = positions[c + 1] - positions[a + 1], vz = positions[c + 2] - positions[a + 2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const orientation = nx * (normals[a] + normals[b] + normals[c])
+      + ny * (normals[a + 1] + normals[b + 1] + normals[c + 1])
+      + nz * (normals[a + 2] + normals[b + 2] + normals[c + 2]);
+    if (orientation < 0) {
+      nx = -nx; ny = -ny; nz = -nz;
+      [indices[i + 1], indices[i + 2]] = [indices[i + 2], indices[i + 1]];
+    }
+    for (const vertex of [a, b, c]) {
+      derivatives[vertex] += nx;
+      derivatives[vertex + 1] += ny;
+      derivatives[vertex + 2] += nz;
+    }
+  }
+  // UV seams have separate vertices but share one physical textile surface.
+  const seamNormals = new Map<string, [number, number, number]>();
+  const keys: string[] = [];
+  for (let i = 0; i < positions.length; i += 3) {
+    const key = positions.slice(i, i + 3).map((value) => Math.round(value * 1e6)).join(":");
+    keys.push(key);
+    const sum = seamNormals.get(key) ?? [0, 0, 0];
+    sum[0] += derivatives[i]; sum[1] += derivatives[i + 1]; sum[2] += derivatives[i + 2];
+    seamNormals.set(key, sum);
+  }
+  keys.forEach((key, vertex) => {
+    const sum = seamNormals.get(key)!;
+    if (Math.hypot(...sum) < 1e-10) return;
+    const normal = normalize(...sum);
+    normals.splice(vertex * 3, 3, ...normal);
+  });
 }
 
 function makeVariableDepthBody(family: Exclude<Family, "">) {
@@ -316,7 +378,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
-  const inset = 0.965;
+  const inset = 0.935;
 
   const addRing = (scaleFactor: number, zSign: number, zInset: number, mode: "face" | "bevel" | "side") => {
     const startIndex = positions.length / 3;
@@ -325,9 +387,11 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
       const rawY = cy + (point[1] - cy) * scaleFactor;
       const softness = softBodyOffset(family, x, rawY);
       const y = rawY + softness.y;
+      // The front stays at its established depth; the edge rolls away into the
+      // gusset rather than standing proud as a rigid frame around the fabric.
       const z = zSign > 0
-        ? depthAt(family, y) * 0.5 - zInset + softness.z
-        : -depthAt(family, y) * 0.5 + zInset - softness.z;
+        ? depthAt(family, y) * 0.5 - 2 * bevel + zInset + softness.z
+        : -depthAt(family, y) * 0.5 + 2 * bevel - zInset - softness.z;
       const radial = normalize(x - cx, y - cy, 0);
       let normal: [number, number, number];
       if (mode === "face") {
@@ -339,15 +403,14 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const radialField = clamp(1 - xn * xn - yn * yn, 0, 1);
         const bulge = spec.depth * 0.12 * depthScale;
         const slope = 2 * bulge * Math.pow(Math.max(0, radialField), 0.55);
-        normal = normalize(-xn * slope * zSign, -yn * slope * zSign, zSign);
+        normal = normalize(xn * slope, yn * slope, zSign);
       } else {
-        const nz = mode === "bevel" ? zSign * 0.72 : zSign;
-        const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
-        normal = normalize(radial[0] * tangent, radial[1] * tangent, nz);
+        const angle = Math.acos(clamp(zInset / Math.max(bevel, 0.001), 0, 1));
+        normal = normalize(radial[0] * Math.sin(angle), radial[1] * Math.sin(angle), zSign * Math.cos(angle));
       }
       normals.push(...normal);
       positions.push(x, y, z);
-      const [u, v] = uvFor(point);
+      const [u, v] = uvFor([x, y]);
       uvs.push(u, v);
     });
     return startIndex;
@@ -385,7 +448,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const nx = (x - cx) / Math.max(.001, spec.rx);
         const ny = (y - cy) / Math.max(.001, spec.ry);
         positions.push(x, y, z);
-        normals.push(...normalize(-side * nx * .17, -side * ny * .16, side));
+        normals.push(...normalize(nx * .17, ny * .16, side));
         uvs.push(...uvFor([x, y]));
       });
       for (let i = 0; i < contour.length; i++) {
@@ -397,11 +460,13 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
       previous = ring;
     }
     const center = positions.length / 3;
-    positions.push(cx, cy, side === 1
-      ? depthAt(family, cy) * .5 - bevel + frontBulge + bodyDomeLift
-      : -depthAt(family, cy) * .5 + bevel - backBulge);
+    const centerSoftness = softBodyOffset(family, cx, cy);
+    const centerY = cy + centerSoftness.y;
+    positions.push(cx, centerY, side === 1
+      ? depthAt(family, centerY) * .5 - bevel + centerSoftness.z + frontBulge + bodyDomeLift
+      : -depthAt(family, centerY) * .5 + bevel - centerSoftness.z - backBulge);
     normals.push(0, 0, side);
-    uvs.push(.5, .5);
+    uvs.push(...uvFor([cx, centerY]));
     for (let i = 0; i < contour.length; i++) {
       const j = (i + 1) % contour.length;
       if (side === 1) indices.push(center, previous + i, previous + j);
@@ -410,6 +475,21 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   };
   addFabricFace(frontFace, 1);
   addFabricFace(backFace, -1);
+
+  // Several small quarter-ellipse strips make a soft rolled textile edge.
+  // The outer contour and accessory anchors retain their established bounds.
+  const frontRoll = [frontFace];
+  const backRoll = [backFace];
+  const rollBands = 5;
+  for (let band = 1; band < rollBands; band++) {
+    const angle = band / rollBands * Math.PI * 0.5;
+    const fraction = inset + (1 - inset) * Math.sin(angle);
+    const zInset = bevel * Math.cos(angle);
+    frontRoll.push(addRing(fraction, 1, zInset, "bevel"));
+    backRoll.push(addRing(fraction, -1, zInset, "bevel"));
+  }
+  frontRoll.push(frontEdge);
+  backRoll.push(backEdge);
 
   // A true separate textile gusset. Previously the front and back edge rings
   // shared identical FRONT-FACE UVs; interpolating those across depth gives
@@ -431,7 +511,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
     }
     const tx = contour[next][0] - contour[previous][0];
     const ty = contour[next][1] - contour[previous][1];
-    const outward = normalize(ty, -tx, 0.055);
+    const outward = normalize(ty, -tx, 0);
     const rimIndex = (frontEdge + index) * 3;
     const backIndex = (backEdge + index) * 3;
     for (let across = 0; across <= sideRows; across++) {
@@ -455,7 +535,10 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
       if (reverse) indices.push(a, b, c, b, d, c);
       else indices.push(a, c, b, b, c, d);
     };
-    connect(frontFace, frontEdge);
+    for (let band = 0; band < rollBands; band++) {
+      connect(frontRoll[band], frontRoll[band + 1]);
+      connect(backRoll[band], backRoll[band + 1], true);
+    }
     // A visible, open mouth: gusset triangles are intentionally omitted above
     // the top edge. Depth is a real woven wall instead of a flat UV-stretched cap.
     if ((contour[i][1] + contour[next][1]) * .5 < spec.ry * .90) {
@@ -465,65 +548,76 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         indices.push(a, a + 1, b, b, a + 1, b + 1);
       }
     }
-    connect(backEdge, backFace, true);
   }
 
+  smoothBodyNormals(positions, normals, indices);
   return { positions, normals, uvs, indices };
 }
 
-function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 18, tube = 8) {
+function openingLoop(family: Exclude<Family, "">, segments = 18): Array<[number, number, number]> {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const width = spec.rx * 0.91;
-  const depth = depthAt(family, spec.topY) * 0.94;
-  const y = spec.topY + 0.015;
-  const radius = Math.min(width, depth) * 0.12;
+  // Match the actual open upper contour. In particular, a round bag cannot
+  // have a rectangular mouth wider than its shell at the height of that mouth.
+  const openingY = spec.ry * 0.90;
+  const width = spec.rx * Math.pow(1 - Math.pow(0.90, spec.power), 1 / spec.power)
+    * (1 + spec.taper * 0.90);
+  const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const points: Array<[number, number, number]> = [];
-  const add = (x: number, z: number) => points.push([x, y, z]);
+  const count = segments * 4;
+  for (let i = 0; i < count; i++) {
+    const angle = i / count * Math.PI * 2;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const x = width * Math.sign(cos) * Math.pow(Math.abs(cos), 1 / 3);
+    // The upper branch of the family's superellipse, including its taper.
+    let low = openingY, high = spec.ry;
+    for (let step = 0; step < 18; step++) {
+      const candidate = (low + high) * 0.5;
+      const relativeY = candidate / spec.ry;
+      const candidateWidth = spec.rx * Math.pow(Math.max(0, 1 - Math.pow(relativeY, spec.power)), 1 / spec.power)
+        * (1 + spec.taper * relativeY);
+      if (candidateWidth > Math.abs(x)) low = candidate;
+      else high = candidate;
+    }
+    const rawY = (low + high) * 0.5;
+    const softness = softBodyOffset(family, x, rawY);
+    const halfDepth = depthAt(family, rawY + softness.y) * 0.5 - 2 * bevel + softness.z;
+    const z = halfDepth * Math.sign(sin) * Math.pow(Math.abs(sin), 0.5);
+    points.push([x, rawY + softness.y + spec.bodyY + 0.004, z]);
+  }
+  return points;
+}
 
-  for (let i = 0; i <= segments; i += 1) {
-    const t = i / segments;
-    add(-width + radius + (2 * (width - radius)) * t, depth * 0.5);
-  }
-  for (let i = 1; i <= segments; i += 1) {
-    const a = Math.PI / 2 - (Math.PI / 2) * (i / segments);
-    add(width - radius + radius * Math.cos(a), depth * 0.5 - radius + radius * Math.sin(a));
-  }
-  for (let i = 1; i <= segments; i += 1) {
-    const t = i / segments;
-    add(width - radius - (2 * (width - radius)) * t, -depth * 0.5);
-  }
-  for (let i = 1; i <= segments; i += 1) {
-    const a = -Math.PI / 2 - (Math.PI / 2) * (i / segments);
-    add(-width + radius + radius * Math.cos(a), -depth * 0.5 + radius + radius * Math.sin(a));
-  }
-  points.push(points[0]);
-
+function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 18, tube = 8) {
+  const points = openingLoop(family, segments);
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
-  for (let i = 0; i < points.length; i += 1) {
-    const prev = points[Math.max(0, i - 1)];
-    const next = points[Math.min(points.length - 1, i + 1)];
-    const tx = next[0] - prev[0];
-    const tz = next[2] - prev[2];
-    const len = Math.hypot(tx, tz) || 1;
-    const txN = tx / len;
-    const tzN = tz / len;
+  for (let i = 0; i <= points.length; i += 1) {
+    const point = points[i % points.length];
+    const prev = points[(i - 1 + points.length) % points.length];
+    const next = points[(i + 1) % points.length];
+    const tangent = normalize(next[0] - prev[0], next[1] - prev[1], next[2] - prev[2]);
+    const radial = normalize(-tangent[2], 0, tangent[0]);
+    const up = normalize(
+      -radial[2] * tangent[1],
+      radial[2] * tangent[0] - radial[0] * tangent[2],
+      radial[0] * tangent[1],
+    );
+    const cordRadius = minor * (1 + 0.035 * Math.sin(i / points.length * Math.PI * 6));
     for (let j = 0; j <= tube; j += 1) {
-      const a = (j / tube) * Math.PI * 2;
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      const nx = -tzN * ca;
-      const ny = sa;
-      const nz = txN * ca;
-      positions.push(points[i][0] + minor * nx, points[i][1] + minor * ny, points[i][2] + minor * nz);
+      const angle = (j / tube) * Math.PI * 2;
+      const ca = Math.cos(angle), sa = Math.sin(angle);
+      const nx = radial[0] * ca + up[0] * sa;
+      const ny = radial[1] * ca + up[1] * sa;
+      const nz = radial[2] * ca + up[2] * sa;
+      positions.push(point[0] + cordRadius * nx, point[1] + cordRadius * ny, point[2] + cordRadius * nz);
       normals.push(...normalize(nx, ny, nz));
-      uvs.push(i / Math.max(1, points.length - 1), j / tube);
+      uvs.push(i / points.length, j / tube);
     }
   }
   const stride = tube + 1;
-  for (let i = 0; i < points.length - 1; i += 1) {
+  for (let i = 0; i < points.length; i += 1) {
     for (let j = 0; j < tube; j += 1) {
       const a = i * stride + j;
       const b = a + stride;
@@ -535,37 +629,17 @@ function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 1
 
 function makeOpeningInterior(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const width = spec.rx * .82;
-  const depth = depthAt(family, spec.topY) * .83;
-  const topY = spec.topY - .03;
-  const bottomY = topY - Math.min(.43, spec.ry * .6);
-  const radius = Math.min(width, depth * .5) * .25;
-  const points: Point[] = [];
-  const segments = 12;
-  const add = (x: number, z: number) => points.push([x, z]);
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    add(-width + radius + 2 * (width - radius) * t, depth * .5);
-  }
-  for (let i = 1; i <= segments; i++) {
-    const a = Math.PI / 2 - Math.PI * .5 * i / segments;
-    add(width - radius + radius * Math.cos(a), depth * .5 - radius + radius * Math.sin(a));
-  }
-  for (let i = 1; i <= segments; i++) {
-    const t = i / segments;
-    add(width - radius - 2 * (width - radius) * t, -depth * .5);
-  }
-  for (let i = 1; i <= segments; i++) {
-    const a = -Math.PI / 2 - Math.PI * .5 * i / segments;
-    add(-width + radius + radius * Math.cos(a), -depth * .5 + radius + radius * Math.sin(a));
-  }
-
+  const opening = openingLoop(family, 12);
+  // The lining follows the same relaxed lip, slightly inset and below it.
+  // Its previous independent topY left a dark panel floating above the shell.
+  const width = Math.max(...opening.map(([x]) => Math.abs(x))) * 0.96;
+  const depth = Math.max(...opening.map(([, , z]) => Math.abs(z))) * 1.86;
+  const bottomY = Math.min(...opening.map(([, y]) => y)) - Math.min(0.43, spec.ry * 0.6);
   const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
-  const count = points.length;
-  // Interior wall and floor sit behind the opening instead of covering its top.
-  points.forEach(([x, z], i) => {
-    const normal = normalize(-x / Math.max(width, .001), .06, -z / Math.max(depth * .5, .001));
-    for (const [y, factor, v] of [[topY, 1, 0], [bottomY, .83, 1]] as const) {
+  const count = opening.length;
+  opening.forEach(([x, topY, z], i) => {
+    const normal = normalize(-x / Math.max(width, 0.001), 0.06, -z / Math.max(depth * 0.5, 0.001));
+    for (const [y, factor, v] of [[topY - 0.022, 0.96, 0], [bottomY, 0.80, 1]] as const) {
       positions.push(x * factor, y, z * factor);
       normals.push(...normal);
       uvs.push(i / count * 12, v * 8);
@@ -578,12 +652,12 @@ function makeOpeningInterior(family: Exclude<Family, "">) {
   const floorCenter = positions.length / 3;
   positions.push(0, bottomY, 0);
   normals.push(0, 1, 0);
-  uvs.push(.5, .5);
+  uvs.push(0.5, 0.5);
   const floorRing = positions.length / 3;
-  points.forEach(([x, z]) => {
-    positions.push(x * .83, bottomY, z * .83);
+  opening.forEach(([x, , z]) => {
+    positions.push(x * 0.80, bottomY, z * 0.80);
     normals.push(0, 1, 0);
-    uvs.push(.5 + x / Math.max(width * 2, .001), .5 + z / Math.max(depth, .001));
+    uvs.push(0.5 + x / Math.max(width * 2, 0.001), 0.5 + z / Math.max(depth, 0.001));
   });
   for (let i = 0; i < count; i++) {
     const j = (i + 1) % count;
@@ -822,81 +896,29 @@ function makeCone(radius = 0.14, height = 0.55, segments = 32) {
 }
 
 const VERTEX = `
-attribute vec3 aPosition;
-attribute vec3 aNormal;
+attribute vec3 aPosition,aNormal,aTangent,aBitangent;
 attribute vec2 aUv;
 uniform mat4 uProjection,uView,uModel;
-uniform float uRelief;
+uniform mat4 uShadowMatrix;
+uniform mat3 uNormalMatrix;
+uniform mediump float uRelief;
 uniform mediump float uStitch;
-varying vec3 vNormal,vWorld;
-varying vec3 vTangent,vBitangent;
-varying float vFaceWeight;
+varying vec3 vNormal,vWorld,vTangent,vBitangent;
+varying float vReliefScale;
+varying vec4 vShadowPosition;
 varying vec2 vUv;
-
-float smoothLoop(float x,float width){
-  float d=abs(fract(x)-.5);
-  return 1.0-smoothstep(.08,width,d);
-}
-
-float knit(vec2 uv,float m){
-  vec2 p;
-  float row;
-  if(m<.5){
-    // 5 mm polyester cord: rounded, interlocking crochet loops rather than a printed grid.
-    row=uv.y*26.0+sin(uv.x*5.1)*.055;
-    float stagger=mod(floor(row),2.0)*.5;
-    p=fract(vec2(uv.x*28.0+stagger+sin(row*.71)*.065,row));
-    vec2 loopUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
-    float loopRadius=length(loopUv);
-    float loop=1.0-smoothstep(.12,.27,abs(loopRadius-.285));
-    float bridge=1.0-smoothstep(.045,.13,abs(p.y-.53));
-    float overlap=step(.5,fract(uv.x*14.0+stagger));
-    float cord=loop*.90+bridge*(.14+.11*overlap);
-    float yarnVariation=.94+.06*sin(uv.x*119.0+uv.y*83.0);
-    return clamp(cord*yarnVariation,0.0,1.0);
-  }
-  if(m<1.5){
-    // Herringbone: interlocking chevrons, not a flat diamond grid.
-    p=fract(uv*vec2(15.0,18.0));
-    float diag=abs(fract(p.x+p.y)-.5);
-    float anti=abs(fract(p.x-p.y)-.5);
-    return 1.0-smoothstep(.07,.24,min(diag,anti));
-  }
-  if(m<2.5){
-    // Basket stitch: alternating over/under bands.
-    p=fract(uv*vec2(11.0,13.0));
-    float warp=1.0-smoothstep(.16,.38,abs(p.x-.5));
-    float weft=1.0-smoothstep(.16,.38,abs(p.y-.5));
-    return max(warp*(.72+.28*step(.5,fract(uv.y*9.0))),weft*(.72+.28*step(.5,fract(uv.x*8.0))));
-  }
-  // Shell stitch: repeated scallops with a woven secondary strand.
-  row=uv.y*17.0;
-  p=fract(vec2(uv.x*19.0,row));
-  float shell=1.0-smoothstep(.06,.42,abs(length(p-vec2(.5,.32))-.34));
-  float rib=1.0-smoothstep(.05,.17,abs(p.x-.5));
-  return shell*.7+rib*.22;
-}
-
+${ABAGS_CROCHET_HEIGHT_GLSL}
 void main(){
-  float h=knit(aUv,uStitch)*uRelief*.48;
-  float eps=.0028;
-  float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
-  float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
-  vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
-  float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  // Back-facing polyester fibres must face backwards, not be bent toward
-  // +Z by the front relief normal (which previously produced flat rear lighting).
-  float faceSign=aNormal.z<0.0?-1.0:1.0;
-  vec3 sidedReliefNormal=normalize(vec3(reliefNormal.x*faceSign,reliefNormal.y*faceSign,reliefNormal.z*faceSign));
-  vec3 localNormal=normalize(mix(aNormal,sidedReliefNormal,frontFace*.30));
-  vec3 pos=aPosition+aNormal*h;
+  float height=crochetHeight(aUv,uStitch)*uRelief*.48;
+  vec3 pos=aPosition+aNormal*height;
   vec4 world=uModel*vec4(pos,1.0);
   vWorld=world.xyz;
-  vNormal=normalize(mat3(uModel)*localNormal);
-  // Bump lighting rotates with the bag's actual 3D pose.
-  vTangent=normalize(mat3(uModel)*vec3(1.0,0.0,0.0));
-  vBitangent=normalize(mat3(uModel)*vec3(0.0,1.0,0.0));
-  vFaceWeight=frontFace;
+  vShadowPosition=uShadowMatrix*world;
+  vNormal=normalize(uNormalMatrix*aNormal);
+  vReliefScale=dot(mat3(uModel)*aNormal,vNormal);
+  // UV derivatives follow the front, back and gusset, including mirrored UVs.
+  vTangent=mat3(uModel)*aTangent;
+  vBitangent=mat3(uModel)*aBitangent;
   vUv=aUv;
   gl_Position=uProjection*uView*world;
 }`;
@@ -907,108 +929,133 @@ precision highp float;
 #else
 precision mediump float;
 #endif
-varying vec3 vNormal,vWorld;
-varying vec3 vTangent,vBitangent;
-varying float vFaceWeight;
+varying vec3 vNormal,vWorld,vTangent,vBitangent;
+varying float vReliefScale;
+varying vec4 vShadowPosition;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
+uniform mediump float uRelief;
 uniform mediump float uStitch;
-
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float yarn(vec2 uv,float m){
-  vec2 p;
-  float a;
-  if(m<.5){
-    p=fract(vec2(uv.x*28.0+floor(uv.y*26.0)*.5,uv.y*26.0));
-    vec2 cordUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
-    float loopRadius=length(cordUv);
-    float strand=1.0-smoothstep(.18,.34,abs(loopRadius-.285));
-    float fiber=sin((uv.x*247.0+uv.y*31.0))*sin(uv.y*193.0-uv.x*17.0);
-    a=.35+.48*strand+.045*fiber+.035*sin(p.y*6.2831);
-  } else if(m<1.5){
-    p=fract(uv*vec2(23.0,25.0));
-    a=.38+.5*(1.0-smoothstep(.06,.24,min(abs(fract(p.x+p.y)-.5),abs(fract(p.x-p.y)-.5))));
-  } else if(m<2.5){
-    p=fract(uv*vec2(16.0,18.0));
-    a=.4+.42*max(1.0-smoothstep(.14,.38,abs(p.x-.5)),1.0-smoothstep(.14,.38,abs(p.y-.5)));
-  } else {
-    p=fract(uv*vec2(28.0,24.0));
-    a=.44+.38*(1.0-smoothstep(.08,.4,abs(length(p-vec2(.5,.32))-.34)));
+uniform sampler2D uFiberTexture;
+uniform sampler2D uShadowTexture;
+uniform float uShadowEnabled,uShadowTexel;
+${ABAGS_CROCHET_HEIGHT_GLSL}
+float cordShadow(float ndl){
+  if(uShadowEnabled<.5)return 1.0;
+  vec3 coordinate=vShadowPosition.xyz/vShadowPosition.w*.5+.5;
+  if(coordinate.x<0.0||coordinate.x>1.0||coordinate.y<0.0||coordinate.y>1.0||coordinate.z>1.0||coordinate.z<0.0)return 1.0;
+  float bias=.00025+.00035*(1.0-ndl);
+  float light=0.0;
+  for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++){
+    float depth=texture2D(uShadowTexture,coordinate.xy+vec2(float(x),float(y))*uShadowTexel).r;
+    light+=coordinate.z-bias<=depth?1.0:.16;
   }
-  float micro=sin((uv.x*311.0+uv.y*179.0))*sin((uv.x*97.0-uv.y*131.0));
-  return clamp(a+.055*micro,.10,.96);
+  return light/9.0;
 }
-
+vec3 filmic(vec3 x){
+  return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.0,1.0);
+}
 void main(){
   vec3 n=normalize(vNormal);
   vec3 l=normalize(uLight);
-  vec3 fill=normalize(vec3(.55,.30,.82));
-  vec3 v=normalize(vec3(0.0,.10,5.2)-vWorld);
+  vec3 fill=normalize(vec3(.72,.26,-.35));
+  vec3 v=normalize(vec3(0.0,.02,5.0)-vWorld);
   vec3 h=normalize(l+v);
+  float rough=.88,metal=0.0,detail=1.0,cordOcclusion=1.0,sheen=0.0;
+  if(uMaterial<.5){
+    float visibility=1.0;
+#ifdef ABAGS_DERIVATIVES
+    vec2 stitchUv=vUv*vec2(22.0,20.0);
+    float footprint=max(length(dFdx(stitchUv)),length(dFdy(stitchUv)));
+    visibility=1.0-smoothstep(.32,.95,footprint);
+#endif
+    float cord=crochetHeight(vUv,uStitch);
+    float e=.0008;
+    vec2 slope=vec2(
+      crochetHeight(vUv+vec2(e,0.0),uStitch)-crochetHeight(vUv-vec2(e,0.0),uStitch),
+      crochetHeight(vUv+vec2(0.0,e),uStitch)-crochetHeight(vUv-vec2(0.0,e),uStitch)
+    )/(2.0*e);
+    // Reciprocal UV frame converts relief to physical slopes on curved panels.
+    // Unlike a global XY normal map this also lights yarn on the side wall.
+    vec3 reciprocalU=cross(vBitangent,n);
+    float determinant=dot(vTangent,reciprocalU);
+    if(abs(determinant)>.00001){
+      vec3 gradient=(reciprocalU*slope.x+cross(n,vTangent)*slope.y)/determinant;
+      n=normalize(n-gradient*uRelief*vReliefScale*.48*visibility);
+    }
+    float fullness=smoothstep(.12,.86,cord);
+    float dye=.985+.015*sin(vUv.x*43.0+sin(vUv.y*19.0)*2.0);
+    // Intersections are softly occluded; dark outlines made the old weave read as ink.
+    detail=mix(1.0,mix(.92,1.035,fullness)*dye,visibility);
+    cordOcclusion=mix(1.0,mix(.72,1.0,smoothstep(.08,.72,cord)),visibility);
+    rough=.91;
+    sheen=.055;
+  }else if(uMaterial<1.5){
+    float grain=sin(vUv.x*37.0+sin(vUv.y*8.0)*1.8);
+    float pores=textileHash(floor(vUv*vec2(150.0,46.0)));
+    detail=.91+.065*grain+.02*(pores-.5);
+    rough=.53;
+  }else if(uMaterial<2.5){
+    detail=.94+.035*(textileHash(floor(vUv*150.0))-.5);
+    rough=.58;
+  }else if(uMaterial<3.5){
+    detail=.9+.07*sin(vUv.x*72.0)*sin(vUv.y*38.0);
+    rough=.84;
+  }else if(uMaterial<4.5){
+    metal=.97; rough=.22;
+  }else if(uMaterial<5.5){
+    vec2 checker=floor(vUv*vec2(12.0,12.0));
+    detail=mix(.78,1.0,mod(checker.x+checker.y,2.0));
+    rough=.94;
+  }else if(uMaterial<6.5){
+    detail=.87+.025*sin(vUv.x*118.0+vUv.y*97.0);
+    rough=.96;
+  }else if(uMaterial<7.5){
+    // Individually modelled round cord: only filament detail belongs in the shader.
+    // U measures distance along the strand in radii; V goes around its circumference.
+    vec2 fiberUv=vec2(vUv.y,vUv.x*.07);
+    float fibre=texture2D(uFiberTexture,fiberUv).r;
+    vec2 fiberSlope=vec2(
+      texture2D(uFiberTexture,fiberUv+vec2(.0015,0.0)).r-texture2D(uFiberTexture,fiberUv-vec2(.0015,0.0)).r,
+      texture2D(uFiberTexture,fiberUv+vec2(0.0,.0015)).r-texture2D(uFiberTexture,fiberUv-vec2(0.0,.0015)).r
+    );
+    detail=.60+.80*fibre;
+    vec3 along=normalize(vTangent);
+    vec3 around=normalize(vBitangent-n*dot(n,vBitangent));
+    n=normalize(n-around*fiberSlope.x*1.25-along*fiberSlope.y*.65);
+    rough=.94;
+    sheen=.065;
+  }else{
+    // Continuous matte substrate is visible only deep between physical cords.
+    detail=.36;
+    rough=.98;
+  }
   float ndl=max(dot(n,l),0.0);
   float fillLight=max(dot(n,fill),0.0);
   float ndh=max(dot(n,h),0.0);
-  float facing=max(dot(n,v),0.0);
-  float rough=.88,metal=0.0,detail=1.0,cordOcclusion=1.0;
-
-  if(uMaterial<.5){
-    // Rounded cord affects the real per-pixel normal and shades deep crossings,
-    // preventing the former flat colour-only, line-art texture.
-    float cord=yarn(vUv,uStitch);
-    float e=.0020;
-    vec2 slope=vec2(
-      yarn(vUv+vec2(e,0.0),uStitch)-yarn(vUv-vec2(e,0.0),uStitch),
-      yarn(vUv+vec2(0.0,e),uStitch)-yarn(vUv-vec2(0.0,e),uStitch)
-    )/(2.0*e);
-    n=normalize(n-.0023*vFaceWeight*(vTangent*slope.x+vBitangent*slope.y));
-    float fullness=smoothstep(.29,.80,cord);
-    float strandFibres=sin(vUv.x*411.0+vUv.y*163.0)*sin(vUv.x*57.0-vUv.y*407.0);
-    detail=mix(.70,1.07,fullness)*(1.0+.017*strandFibres);
-    // The occlusion lives in the valleys, while raised polyester keeps highlights.
-    cordOcclusion=mix(.65,1.0,smoothstep(.32,.78,cord));
-    rough=.93;
-  } else if(uMaterial<1.5){
-    // Flowing wood grain follows the handle UVs instead of flat shiny stripes.
-    float grain=sin(vUv.x*37.0+sin(vUv.y*8.0)*1.8);
-    float pores=hash(floor(vUv*vec2(150.0,46.0)));
-    detail=.87+.085*grain+.025*(pores-.5);
-    rough=.57;
-  } else if(uMaterial<2.5){
-    detail=.88+.065*(hash(floor(vUv*150.0))-.5)+.045*sin(vUv.y*52.0);
-    rough=.52;
-  } else if(uMaterial<3.5){
-    detail=.76+.18*sin(vUv.x*72.0)*sin(vUv.y*38.0);
-    rough=.78;
-  } else if(uMaterial<4.5){
-    metal=.97; rough=.14; detail=1.0;
-  } else if(uMaterial<5.5){
-    // Matte checkered cloth inside the wooden-handle tote.
-    vec2 checker=floor(vUv*vec2(12.0,12.0));
-    detail=mix(.73,1.04,mod(checker.x+checker.y,2.0));
-    rough=.94;
-  } else {
-    // Soft dark textile instead of shiny metal inside the other families.
-    detail=.74+.055*sin(vUv.x*118.0+vUv.y*97.0);
-    rough=.96;
-  }
-
-  // The raised yarn changes the *actual* lighting: recompute incidence after
-  // the normal-map perturbation, not before the material-specific shader pass.
-  ndl=max(dot(n,l),0.0);
-  fillLight=max(dot(n,fill),0.0);
-  ndh=max(dot(n,h),0.0);
-  facing=max(dot(n,v),0.0);
-
-  // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
-  float rim=pow(1.0-facing,2.7);
-  float cavity=.92+.08*pow(1.0-facing,1.5);
-  float illumination=.18+.72*ndl+.18*fillLight;
-  vec3 color=base*illumination*cavity*cordOcclusion+vec3(spec)+base*.025*rim;
-
+  float ndv=max(dot(n,v),.001);
+  float vdh=max(dot(v,h),0.0);
+  float shadow=cordShadow(ndl);
+  vec3 base=pow(uColor,vec3(2.2))*detail;
+  // Broad studio key and environment fill, evaluated in linear colour space.
+  float sky=.28+.12*max(n.y,0.0);
+  vec3 diffuse=base*(sky+1.12*ndl*shadow+.30*fillLight)*cordOcclusion*(1.0-metal);
+  float alpha=rough*rough,alpha2=alpha*alpha;
+  float denominator=ndh*ndh*(alpha2-1.0)+1.0;
+  float distribution=alpha2/(3.14159*denominator*denominator+.0001);
+  float k=(rough+1.0)*(rough+1.0)/8.0;
+  float geometry=(ndl/(ndl*(1.0-k)+k))*(ndv/(ndv*(1.0-k)+k));
+  vec3 f0=mix(vec3(.035),base,metal);
+  vec3 fresnel=f0+(1.0-f0)*pow(1.0-vdh,5.0);
+  vec3 specular=distribution*geometry*fresnel/(4.0*ndv*max(ndl,.001)+.001)*ndl*shadow;
+  // A broad reflection keeps metal legible between direct highlights.
+  vec3 environment=mix(vec3(.50,.43,.36),vec3(.96,.97,1.0),smoothstep(-.35,.65,n.y));
+  vec3 metalReflection=environment*base*metal*(.35+.45*pow(1.0-ndv,2.0));
+  vec3 fiberSheen=mix(base,vec3(1.0),.25)*sheen*pow(1.0-ndv,4.0);
   // A restrained warm atelier bounce keeps pale cords from washing out.
-  color+=base*vec3(.035,.024,.018);
-  gl_FragColor=vec4(pow(max(color,0.0),vec3(.95)),1.0);
+  vec3 color=diffuse+specular+metalReflection+fiberSheen+base*vec3(.035,.024,.018);
+  gl_FragColor=vec4(pow(filmic(max(color,0.0)),vec3(1.0/2.2)),1.0);
 }`;
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
@@ -1024,22 +1071,29 @@ function createMesh(gl: WebGLRenderingContext, data: { positions: number[]; norm
   const position = gl.createBuffer();
   const normal = gl.createBuffer();
   const uv = gl.createBuffer();
+  const tangent = gl.createBuffer();
+  const bitangent = gl.createBuffer();
   const index = gl.createBuffer();
-  if (!position || !normal || !uv || !index) throw new Error("buffer");
+  if (!position || !normal || !uv || !tangent || !bitangent || !index) throw new Error("buffer");
+  const frame = textileUvFrame(data);
   gl.bindBuffer(gl.ARRAY_BUFFER, position); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.positions), gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, normal); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.normals), gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, uv); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.uvs), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, tangent); gl.bufferData(gl.ARRAY_BUFFER, frame.tangent, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bitangent); gl.bufferData(gl.ARRAY_BUFFER, frame.bitangent, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(data.indices), gl.STATIC_DRAW);
-  return { position, normal, uv, index, count: data.indices.length };
+  return { position, normal, uv, tangent, bitangent, index, count: data.indices.length };
 }
 
-function init(canvas: HTMLCanvasElement): Renderer | null {
+function init(canvas: HTMLCanvasElement, onMaterialReady: () => void): Renderer | null {
   const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true });
   if (!gl) return null;
   const program = gl.createProgram();
   if (!program) return null;
   gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT));
+  const derivatives = gl.getExtension("OES_standard_derivatives")
+    ? "#extension GL_OES_standard_derivatives : enable\n#define ABAGS_DERIVATIVES\n" : "";
+  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, derivatives + FRAGMENT));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "link");
   gl.useProgram(program);
@@ -1051,6 +1105,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
   return {
     gl,
     program,
+    cordMeshes: new Map(),
+    cordTexture: createCordTexture(gl, canvas, onMaterialReady),
+    shadow: createCordShadow(gl),
+    commands: [],
     meshes: {
       tote: createMesh(gl, makeVariableDepthBody("tote")),
       round: createMesh(gl, makeVariableDepthBody("round")),
@@ -1084,20 +1142,29 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       position: gl.getAttribLocation(program, "aPosition"),
       normal: gl.getAttribLocation(program, "aNormal"),
       uv: gl.getAttribLocation(program, "aUv"),
+      tangent: gl.getAttribLocation(program, "aTangent"),
+      bitangent: gl.getAttribLocation(program, "aBitangent"),
     },
     uniforms: {
-      projection: req("uProjection"), view: req("uView"), model: req("uModel"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"),
+      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), fiberTexture: req("uFiberTexture"), shadowMatrix: req("uShadowMatrix"), shadowTexture: req("uShadowTexture"), shadowEnabled: req("uShadowEnabled"), shadowTexel: req("uShadowTexel"),
     },
   };
 }
 
 function drawMesh(renderer: Renderer, mesh: Mesh, model: Float32Array, color: string, material: number, stitch: number, relief = 0) {
+  renderer.commands.push({ mesh, model, color, material, stitch, relief });
+}
+
+function drawCommand(renderer: Renderer, { mesh, model, color, material, stitch, relief }: DrawCommand) {
   const { gl, attribs, uniforms } = renderer;
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.position); gl.enableVertexAttribArray(attribs.position); gl.vertexAttribPointer(attribs.position, 3, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.normal); gl.enableVertexAttribArray(attribs.normal); gl.vertexAttribPointer(attribs.normal, 3, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv); gl.enableVertexAttribArray(attribs.uv); gl.vertexAttribPointer(attribs.uv, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.tangent); gl.enableVertexAttribArray(attribs.tangent); gl.vertexAttribPointer(attribs.tangent, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.bitangent); gl.enableVertexAttribArray(attribs.bitangent); gl.vertexAttribPointer(attribs.bitangent, 3, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.index);
   gl.uniformMatrix4fv(uniforms.model, false, model);
+  gl.uniformMatrix3fv(uniforms.normalMatrix, false, textileNormalMatrix(model));
   gl.uniform3fv(uniforms.color, hex(color));
   gl.uniform1f(uniforms.material, material);
   gl.uniform1f(uniforms.stitch, stitch);
@@ -1193,18 +1260,28 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
   const { gl, uniforms, meshes } = renderer;
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
+  gl.useProgram(renderer.program);
+  renderer.commands = [];
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
   const width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
   const height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
   if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
   gl.viewport(0, 0, width, height);
   gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
   gl.uniformMatrix4fv(uniforms.projection, false, perspective(Math.PI / 5.3, width / height, 0.1, 100));
   gl.uniformMatrix4fv(uniforms.view, false, translation(0, -0.02, -5.0));
   gl.uniform3fv(uniforms.light, new Float32Array([-0.42, 0.86, 0.92]));
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, renderer.cordTexture);
+  gl.uniform1i(uniforms.fiberTexture, 0);
+  gl.uniformMatrix4fv(uniforms.shadowMatrix, false, renderer.shadow?.matrix ?? identity());
+  gl.uniform1f(uniforms.shadowEnabled, renderer.shadow ? 1 : 0);
+  gl.uniform1f(uniforms.shadowTexel, renderer.shadow ? 1 / renderer.shadow.size : 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, renderer.shadow?.texture ?? renderer.cordTexture);
+  gl.uniform1i(uniforms.shadowTexture, 1);
   // Keep the construction state empty in the controls, but never leave the 3D
   // stage visually empty. Before the customer chooses a family, render a neutral
   // atelier base model; as soon as a family/color/stitch is selected, the same
@@ -1215,7 +1292,26 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
   const relief = config.color && config.stitch ? 0.037 : 0.016;
-  drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
+  const physicalCord = stitch === 0 || stitch === 1;
+  const bodyModel = multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1]));
+  drawMesh(renderer, meshes[renderFamily], bodyModel, body, physicalCord ? 8 : 0, stitch, physicalCord ? 0 : relief);
+  if (physicalCord) {
+    const key = `${renderFamily}:${stitch}`;
+    let cords = renderer.cordMeshes.get(key);
+    if (!cords) {
+      cords = createCrochetCordMeshes(renderFamily, stitch).map((data) => createMesh(gl, data));
+    }
+    renderer.cordMeshes.delete(key);
+    renderer.cordMeshes.set(key, cords);
+    while (renderer.cordMeshes.size > 2) {
+      const oldest = renderer.cordMeshes.keys().next().value!;
+      for (const mesh of renderer.cordMeshes.get(oldest)!) {
+        for (const buffer of [mesh.position, mesh.normal, mesh.uv, mesh.tangent, mesh.bitangent, mesh.index]) gl.deleteBuffer(buffer);
+      }
+      renderer.cordMeshes.delete(oldest);
+    }
+    for (const cord of cords) drawMesh(renderer, cord, bodyModel, body, 7, stitch, 0);
+  }
 
   const openingColor = config.color ? body : "#d8cec4";
   const agataOpenWoodTote = renderFamily === "tote" && config.handles.startsWith("wood");
@@ -1340,6 +1436,21 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // the bag body, flap, handles, shoulder strap and strap attachment hardware.
   // Do not add unconditional decorative hardware to an otherwise plain bag.
 
+  if (renderer.shadow) renderCordShadow(renderer.shadow, renderer.commands);
+  gl.useProgram(renderer.program);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, width, height);
+  gl.colorMask(true, true, true, true);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, renderer.cordTexture);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, renderer.shadow?.texture ?? renderer.cordTexture);
+  for (const command of renderer.commands) drawCommand(renderer, command);
+  renderer.commands = [];
+  canvas.dataset.abagsCordShadow = renderer.shadow ? "ready" : "unsupported";
+
   const renderError = gl.getError();
   if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
@@ -1457,7 +1568,21 @@ export default function BagBuilderFidelity3D() {
         canvas.addEventListener("webglcontextrestored", handleContextRestored);
       }
       try {
-        const nextRenderer = init(canvas);
+        const nextRenderer = init(canvas, () => {
+          requestAnimationFrame(() => {
+            const renderer = rendererRef.current;
+            if (disposed || !renderer || renderer !== nextRenderer || canvasRef.current !== canvas) return;
+            const rect = stage.getBoundingClientRect();
+            if (rect.width < 40 || rect.height < 40) return;
+            try {
+              const { rotation, zoom } = cameraRef.current;
+              draw(renderer, canvas, readConfig(stage), rotation, zoom);
+              publishFrameMetadata(stage, canvas, readConfig(stage));
+            } catch (error) {
+              publishRendererError(stage, canvas, error, "material-frame-failed");
+            }
+          });
+        });
         if (!nextRenderer) throw new Error("webgl-unavailable");
         rendererRef.current = nextRenderer;
 

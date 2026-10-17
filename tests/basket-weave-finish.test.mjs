@@ -7,8 +7,9 @@ const [stack, finish] = await Promise.all([
   readFile(new URL("../app/bag-builder-basket-weave-finish.tsx", import.meta.url), "utf8"),
 ]);
 
-test("Basket V6 remains mounted after calibrated crochet relief and inside the Fidelity stack", () => {
-  assert.match(stack, /<BagBuilderCrochetReliefOverlay\s*\/>[\s\S]*<BagBuilderBasketWeaveFinish\s*\/>/);
+test("Basket V6 compatibility finish remains in the Fidelity stack without the legacy relief canvas", () => {
+  assert.match(stack, /<BagBuilderFidelity3D\s*\/>[\s\S]*<BagBuilderFidelityOptions\s*\/>[\s\S]*<BagBuilderBasketWeaveFinish\s*\/>/);
+  assert.doesNotMatch(stack, /BagBuilderCrochetReliefOverlay/);
   assert.match(finish, /FINISH_VERSION\s*=\s*"basket-cord-weave-v6-segmented-relief"/);
   assert.match(finish, /ABAGS_FIDELITY_V4_FAMILY_SPECS\[family\]/);
   assert.match(finish, /stage\.dataset\.abagsFinal3d\s*!==\s*"ready"/);
