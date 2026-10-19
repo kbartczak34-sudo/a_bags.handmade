@@ -192,21 +192,24 @@ function drawCharm(ctx: CanvasRenderingContext2D, config: Config, width: number,
   const anchor = project(anchor3, width, height, rotation, zoom);
   const drop = project([anchor3[0], anchor3[1] - 0.30, anchor3[2] + 0.02], width, height, rotation, zoom);
   if (!anchor || !drop) return;
-  const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale;
+  // On a narrow live canvas, real-world centimetres shrink dramatically.
+  // Keep the charm visible and inspectable without changing its 3D anchor.
+  const compact = width < 480;
+  const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale * (compact ? 1.22 : 1);
   ctx.beginPath();
   ctx.moveTo(anchor.x, anchor.y);
   ctx.lineTo(drop.x, drop.y);
   ctx.strokeStyle = hardwareColor(config.hardware);
-  ctx.lineWidth = Math.max(1.3, 2 * scale);
+  ctx.lineWidth = Math.max(compact ? 1.8 : 1.3, 2 * scale);
   ctx.stroke();
 
   const colors = ["#B86F82", "#8E7DB8", "#4F9B9B"];
   for (let index = 0; index < ABAGS_ACCESSORY_VISUAL.charmStones; index += 1) {
     const angle = (Math.PI * 2 * index) / ABAGS_ACCESSORY_VISUAL.charmStones - Math.PI / 2;
-    const x = drop.x + Math.cos(angle) * 7 * scale;
-    const y = drop.y + Math.sin(angle) * 6 * scale;
+    const x = drop.x + Math.cos(angle) * (compact ? 9 : 7) * scale;
+    const y = drop.y + Math.sin(angle) * (compact ? 8 : 6) * scale;
     ctx.beginPath();
-    ctx.arc(x, y, Math.max(2.5, 4.2 * scale), 0, Math.PI * 2);
+    ctx.arc(x, y, Math.max(compact ? 4.1 : 2.5, 4.2 * scale), 0, Math.PI * 2);
     ctx.fillStyle = colors[index % colors.length];
     ctx.fill();
     ctx.beginPath();
@@ -244,7 +247,7 @@ function paint(backCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, st
   // different coordinate system and can leave a detached vertical leg beside the bag.
 
   front.ctx.save();
-  drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
+  if (stage.dataset.abagsCrochetOwner !== "webgl-yarn") drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
   if (config.accent === "tassel") drawTassel(front.ctx, config, front.width, front.height, rotation, zoom);
   else if (config.accent === "scarf") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
   else if (config.accent === "charm") drawCharm(front.ctx, config, front.width, front.height, rotation, zoom);
@@ -279,9 +282,20 @@ export default function BagBuilderAccessoryFidelityOverlay() {
     let frame = 0;
 
     const schedule = () => {
-      if (frame) cancelAnimationFrame(frame);
+      // Coalesce mutations instead of cancelling an imminent frame. A mobile
+      // camera switch can dispatch several DOM and transform updates at once.
+      if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
+        // Read the authoritative camera directly at paint time. The stored
+        // transform from a previous frame can otherwise repaint both accessory
+        // canvases behind the now-updated WebGL view.
+        const liveX = Number(stage.dataset.abagsFidelity3dRotationX);
+        const liveY = Number(stage.dataset.abagsFidelity3dRotationY);
+        const liveZoom = Number(stage.dataset.abagsFidelity3dZoom);
+        if (Number.isFinite(liveX) && Number.isFinite(liveY)) rotation.current = { x: liveX, y: liveY };
+        if (Number.isFinite(liveZoom) && liveZoom > 0) zoom.current = liveZoom;
+        config.current = readConfig(stage);
         const backCanvas = backCanvasRef.current;
         const frontCanvas = frontCanvasRef.current;
         if (backCanvas && frontCanvas) paint(backCanvas, frontCanvas, stage, config.current, rotation.current, zoom.current);

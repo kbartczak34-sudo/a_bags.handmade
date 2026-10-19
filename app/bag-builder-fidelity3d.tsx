@@ -37,11 +37,12 @@ type Mesh = {
 };
 
 type Renderer = {
+  yarnKey?: string;
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
   attribs: { position: number; normal: number; uv: number };
-  uniforms: Record<"projection" | "view" | "model" | "color" | "material" | "stitch" | "relief" | "light", WebGLUniformLocation>;
+  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light", WebGLUniformLocation>;
 };
 
 type Point = [number, number];
@@ -194,6 +195,20 @@ function rotX(a: number) {
   return o;
 }
 
+// Inverse transpose keeps highlights correct on nonuniformly scaled wood/leather.
+function normalMatrix(model: Float32Array) {
+  const [a, b, c] = [model[0], model[1], model[2]];
+  const [d, e, f] = [model[4], model[5], model[6]];
+  const [g, h, i] = [model[8], model[9], model[10]];
+  const determinant = a * (e * i - f * h) - d * (b * i - c * h) + g * (b * f - c * e);
+  const inverse = Math.abs(determinant) > 1e-8 ? 1 / determinant : 1;
+  return new Float32Array([
+    (e * i - f * h) * inverse, (f * g - d * i) * inverse, (d * h - e * g) * inverse,
+    (c * h - b * i) * inverse, (a * i - c * g) * inverse, (b * g - a * h) * inverse,
+    (b * f - c * e) * inverse, (c * d - a * f) * inverse, (a * e - b * d) * inverse,
+  ]);
+}
+
 function rotY(a: number) {
   const o = identity();
   const c = Math.cos(a);
@@ -339,7 +354,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const radialField = clamp(1 - xn * xn - yn * yn, 0, 1);
         const bulge = spec.depth * 0.12 * depthScale;
         const slope = 2 * bulge * Math.pow(Math.max(0, radialField), 0.55);
-        normal = normalize(-xn * slope * zSign, -yn * slope * zSign, zSign);
+        normal = normalize(xn * slope, yn * slope, zSign);
       } else {
         const nz = mode === "bevel" ? zSign * 0.72 : zSign;
         const tangent = mode === "side" ? 0.22 : mode === "bevel" ? 0.7 : 0;
@@ -385,7 +400,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
         const nx = (x - cx) / Math.max(.001, spec.rx);
         const ny = (y - cy) / Math.max(.001, spec.ry);
         positions.push(x, y, z);
-        normals.push(...normalize(-side * nx * .17, -side * ny * .16, side));
+        normals.push(...normalize(nx * .17, ny * .16, side));
         uvs.push(...uvFor([x, y]));
       });
       for (let i = 0; i < contour.length; i++) {
@@ -471,63 +486,209 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   return { positions, normals, uvs, indices };
 }
 
-function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 18, tube = 8) {
+// The mouth follows the actual shell, including its vertical offset. An
+// independent rectangular rim used to float above the textile at three-quarter view.
+function openingPath(family: Exclude<Family, "">): Array<[number, number, number]> {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const width = spec.rx * 0.91;
-  const depth = depthAt(family, spec.topY) * 0.94;
-  const y = spec.topY + 0.015;
-  const radius = Math.min(width, depth) * 0.12;
-  const points: Array<[number, number, number]> = [];
-  const add = (x: number, z: number) => points.push([x, y, z]);
+  const upper = familyContour(family).filter(([, y]) => y >= spec.ry * .90);
+  const edge = ([x, y]: Point, side: number): [number, number, number] => {
+    const softness = softBodyOffset(family, x, y);
+    return [x, y + softness.y + spec.bodyY, side * (depthAt(family, y) * .5 + softness.z)];
+  };
+  return [...upper.map((point) => edge(point, 1)), ...[...upper].reverse().map((point) => edge(point, -1))];
+}
 
-  for (let i = 0; i <= segments; i += 1) {
-    const t = i / segments;
-    add(-width + radius + (2 * (width - radius)) * t, depth * 0.5);
-  }
-  for (let i = 1; i <= segments; i += 1) {
-    const a = Math.PI / 2 - (Math.PI / 2) * (i / segments);
-    add(width - radius + radius * Math.cos(a), depth * 0.5 - radius + radius * Math.sin(a));
-  }
-  for (let i = 1; i <= segments; i += 1) {
-    const t = i / segments;
-    add(width - radius - (2 * (width - radius)) * t, -depth * 0.5);
-  }
-  for (let i = 1; i <= segments; i += 1) {
-    const a = -Math.PI / 2 - (Math.PI / 2) * (i / segments);
-    add(-width + radius + radius * Math.cos(a), -depth * 0.5 + radius + radius * Math.sin(a));
-  }
-  points.push(points[0]);
+function woodHandleDepthPlanes(family: Exclude<Family, "">): [number, number] {
+  const frontSeam = openingPath(family).filter((point) => point[2] > 0);
+  const top = frontSeam.reduce((highest, point) => point[1] > highest[1] ? point : highest);
+  return [-top[2], top[2]];
+}
 
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const indices: number[] = [];
-  for (let i = 0; i < points.length; i += 1) {
-    const prev = points[Math.max(0, i - 1)];
-    const next = points[Math.min(points.length - 1, i + 1)];
-    const tx = next[0] - prev[0];
-    const tz = next[2] - prev[2];
-    const len = Math.hypot(tx, tz) || 1;
-    const txN = tx / len;
-    const tzN = tz / len;
-    for (let j = 0; j <= tube; j += 1) {
-      const a = (j / tube) * Math.PI * 2;
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      const nx = -tzN * ca;
-      const ny = sa;
-      const nz = txN * ca;
-      positions.push(points[i][0] + minor * nx, points[i][1] + minor * ny, points[i][2] + minor * nz);
-      normals.push(...normalize(nx, ny, nz));
-      uvs.push(i / Math.max(1, points.length - 1), j / tube);
+// Anchor the open ends of each rigid wooden arch to the same top seam as
+// the crocheted bag, rather than suspending both ends above it.
+function woodHandleMountHeight(family: Exclude<Family, "">) {
+  return Math.max(...openingPath(family).map((point) => point[1])) - 0.012;
+}
+
+type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
+type YarnPoint = [number, number, number];
+
+function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean) {
+  const sides = 10;
+  let previous = -1;
+  points.forEach((point, index) => {
+    if (!contains(point)) { previous = -1; return; }
+    const before = points[Math.max(0, index - 1)], after = points[Math.min(points.length - 1, index + 1)];
+    const tangent = normalize(after[0] - before[0], after[1] - before[1], after[2] - before[2]);
+    const normal = guide(point);
+    const across = normalize(normal[1] * tangent[2] - normal[2] * tangent[1], normal[2] * tangent[0] - normal[0] * tangent[2], normal[0] * tangent[1] - normal[1] * tangent[0]);
+    const outward = normalize(tangent[1] * across[2] - tangent[2] * across[1], tangent[2] * across[0] - tangent[0] * across[2], tangent[0] * across[1] - tangent[1] * across[0]);
+    const start = mesh.positions.length / 3;
+    for (let side = 0; side <= sides; side++) {
+      const angle = side / sides * Math.PI * 2;
+      const n = across.map((v, axis) => v * Math.cos(angle) + outward[axis] * Math.sin(angle)) as YarnPoint;
+      mesh.positions.push(...point.map((v, axis) => v + n[axis] * thickness));
+      mesh.normals.push(...n);
+      mesh.uvs.push(index / Math.max(1, points.length - 1), side / sides);
+      if (previous >= 0 && side < sides) {
+        const a = previous + side, b = start + side;
+        mesh.indices.push(a, b, a + 1, a + 1, b, b + 1);
+      }
+    }
+    previous = start;
+  });
+}
+
+// Actual 5 mm cord, seated on the same soft shell as the lining and opening.
+// Each stitch has a round cross-section, depth and its own surface normals.
+function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const radius = spec.rx * 5 / 160;
+  const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const rows = Math.max(9, Math.round(columns * spec.ry / spec.rx * 1.12));
+  const dx = spec.rx * 1.94 / columns, dy = spec.ry * 1.94 / rows;
+  const inset = .965;
+  const bevel = Math.min(spec.bevel, spec.depth * .14);
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
+  const bulge = spec.depth * .12 * depthScale;
+  const fractionAt = (x: number, y: number) => {
+    const taper = 1 + spec.taper * y / spec.ry;
+    return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
+  };
+  const seat = (x: number, y: number, lift: number): YarnPoint => {
+    const softness = softBodyOffset(family, x, y);
+    const dome = Math.max(0, 1 - Math.pow(fractionAt(x, y) / inset, 2));
+    return [x, y + softness.y, depthAt(family, y + softness.y) * .5 - bevel + softness.z + bulge * dome + radius * .62 + lift];
+  };
+  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974);
+  const curve = (cx: number, cy: number, width: number, height: number, lift: number, drift: number) => {
+    const points: YarnPoint[] = [];
+    for (let i = 0; i <= 16; i++) {
+      const t = i / 16;
+      // A smooth U/V loop, curling outwards at the shoulders like the atelier cord.
+      const x = cx + Math.sin((t - .5) * Math.PI) * width * .43 + drift * Math.sin(t * Math.PI);
+      const y = cy + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height;
+      points.push(seat(x, y, lift + radius * .24 * Math.sin(t * Math.PI * 2)));
+    }
+    tube(points);
+  };
+  for (let row = -1; row <= rows; row++) {
+    for (let column = -1; column <= columns; column++) {
+      const variation = Math.sin((row + 7) * 17.31 + (column + 11) * 5.97);
+      const cx = -spec.rx * .97 + (column + .5 + (row % 2) * .5) * dx;
+      const cy = -spec.ry * .97 + (row + .5) * dy;
+      if (stitch === "basket") {
+        const verticalOver = (row + column) % 2 === 0;
+        for (const axis of [0, 1]) for (const strand of [-1, 1]) {
+          const points: YarnPoint[] = [];
+          for (let i = 0; i <= 8; i++) {
+            const t = i / 8 - .5;
+            const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10);
+            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19);
+            const over = (axis === 0) === verticalOver;
+            points.push(seat(x, y, over ? radius * (.50 + .35 * Math.cos(t * Math.PI)) : -radius * .28));
+          }
+          tube(points, radius * .84);
+        }
+      } else if (stitch === "shell") {
+        // Rounded fans, with a crossing lower crown instead of a flat scallop icon.
+        curve(cx, cy, dx * 1.30, dy * .90, radius * .12, variation * dx * .035);
+        curve(cx, cy + dy * .28, dx * .78, dy * .72, radius * .24, -variation * dx * .025);
+      } else {
+        const compact = stitch === "herringbone";
+        curve(cx, cy, dx * (compact ? 1.06 : 1.18), dy * (compact ? .84 : 1.06), variation * radius * .10, variation * dx * .035);
+      }
     }
   }
-  const stride = tube + 1;
-  for (let i = 0; i < points.length - 1; i += 1) {
-    for (let j = 0; j < tube; j += 1) {
-      const a = i * stride + j;
-      const b = a + stride;
-      indices.push(a, b, a + 1, b, b + 1, a + 1);
+  // A continuous sewn binding hides clipped loop ends at the rounded panel edge.
+  const binding = familyContour(family).map(([x, y]) => seat(x * .953, y * .953, radius * .05));
+  binding.push(binding[0]);
+  tube(binding, radius * .78);
+  return mesh;
+}
+
+function makeCrochetGusset(family: Exclude<Family, "">): FabricMesh {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const contour = familyContour(family);
+  const arcs = [0];
+  for (let i = 0; i < contour.length; i++) {
+    const a = contour[i], b = contour[(i + 1) % contour.length];
+    arcs.push(arcs[i] + Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  const perimeter = arcs[arcs.length - 1];
+  const columns = Math.round(perimeter / (spec.rx * 1.94 / 16));
+  const rows = Math.max(3, Math.round(depthAt(family, 0) / (spec.rx * .15)));
+  const radius = spec.rx * 5 / 160;
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const at = (arc: number, across: number, lift: number): YarnPoint => {
+    const distance = ((arc % perimeter) + perimeter) % perimeter;
+    let i = 0;
+    while (i < contour.length - 1 && arcs[i + 1] < distance) i++;
+    const t = (distance - arcs[i]) / Math.max(.0001, arcs[i + 1] - arcs[i]);
+    const a = contour[i], b = contour[(i + 1) % contour.length];
+    const normal = normalize(b[1] - a[1], a[0] - b[0], 0);
+    const x = a[0] * (1 - t) + b[0] * t, y = a[1] * (1 - t) + b[1] * t;
+    const softness = softBodyOffset(family, x, y);
+    return [x + normal[0] * (radius * .15 + lift), y + softness.y + normal[1] * (radius * .15 + lift), (.5 - across) * (depthAt(family, y) + softness.z * 2)];
+  };
+  for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+    const points: YarnPoint[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const arc = (column + .5 + (row % 2) * .5 + Math.sin((t - .5) * Math.PI) * .50) * perimeter / columns;
+      const across = (row + .5 + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * 1.06) / rows;
+      points.push(at(arc, across, radius * .18 * Math.sin(t * Math.PI * 2)));
+    }
+    appendCord(mesh, points, radius, ([x, y]) => normalize(x / spec.rx, y / spec.ry, 0), ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51);
+  }
+  return mesh;
+}
+
+function ensureCrochetMeshes(renderer: Renderer, family: Exclude<Family, "">, stitch: Stitch) {
+  const key = family + ":" + stitch;
+  if (renderer.yarnKey === key) return;
+  for (const name of ["yarnFront", "yarnBack", "yarnSide"]) {
+    const mesh = renderer.meshes[name];
+    if (mesh) for (const buffer of [mesh.position, mesh.normal, mesh.uv, mesh.index]) renderer.gl.deleteBuffer(buffer);
+  }
+  const front = makeCrochetPanel(family, stitch);
+  const back = {
+    positions: front.positions.map((v, i) => i % 3 === 2 ? -v : v),
+    normals: front.normals.map((v, i) => i % 3 === 2 ? -v : v),
+    uvs: front.uvs,
+    indices: front.indices.map((v, i, indices) => i % 3 === 1 ? indices[i + 1] : i % 3 === 2 ? indices[i - 1] : v),
+  };
+  renderer.meshes.yarnFront = createMesh(renderer.gl, front);
+  renderer.meshes.yarnBack = createMesh(renderer.gl, back);
+  renderer.meshes.yarnSide = createMesh(renderer.gl, makeCrochetGusset(family));
+  renderer.yarnKey = key;
+}
+
+function makeOpeningRim(family: Exclude<Family, "">, minor = 0.022, tube = 10) {
+  const points = openingPath(family);
+  const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
+  for (let i = 0; i <= points.length; i++) {
+    const point = points[i % points.length];
+    const prev = points[(i + points.length - 1) % points.length];
+    const next = points[(i + 1) % points.length];
+    const tangent = normalize(next[0] - prev[0], next[1] - prev[1], next[2] - prev[2]);
+    const outward = normalize(-tangent[2], 0, tangent[0]);
+    const up = normalize(
+      tangent[1] * outward[2] - tangent[2] * outward[1],
+      tangent[2] * outward[0] - tangent[0] * outward[2],
+      tangent[0] * outward[1] - tangent[1] * outward[0],
+    );
+    for (let j = 0; j <= tube; j++) {
+      const angle = j / tube * Math.PI * 2;
+      const normal = normalize(...outward.map((v, axis) => v * Math.cos(angle) + up[axis] * Math.sin(angle)) as [number, number, number]);
+      positions.push(...point.map((v, axis) => v + minor * normal[axis]));
+      normals.push(...normal);
+      uvs.push(i / points.length, j / tube);
+      if (i < points.length && j < tube) {
+        const a = i * (tube + 1) + j, b = a + tube + 1;
+        indices.push(a, b, a + 1, b, b + 1, a + 1);
+      }
     }
   }
   return { positions, normals, uvs, indices };
@@ -535,40 +696,20 @@ function makeOpeningRim(family: Exclude<Family, "">, minor = 0.028, segments = 1
 
 function makeOpeningInterior(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const width = spec.rx * .82;
-  const depth = depthAt(family, spec.topY) * .83;
-  const topY = spec.topY - .03;
+  const width = spec.rx;
+  const depth = depthAt(family, spec.ry);
+  const topY = spec.bodyY + spec.ry;
   const bottomY = topY - Math.min(.43, spec.ry * .6);
-  const radius = Math.min(width, depth * .5) * .25;
-  const points: Point[] = [];
-  const segments = 12;
-  const add = (x: number, z: number) => points.push([x, z]);
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    add(-width + radius + 2 * (width - radius) * t, depth * .5);
-  }
-  for (let i = 1; i <= segments; i++) {
-    const a = Math.PI / 2 - Math.PI * .5 * i / segments;
-    add(width - radius + radius * Math.cos(a), depth * .5 - radius + radius * Math.sin(a));
-  }
-  for (let i = 1; i <= segments; i++) {
-    const t = i / segments;
-    add(width - radius - 2 * (width - radius) * t, -depth * .5);
-  }
-  for (let i = 1; i <= segments; i++) {
-    const a = -Math.PI / 2 - Math.PI * .5 * i / segments;
-    add(-width + radius + radius * Math.cos(a), -depth * .5 + radius + radius * Math.sin(a));
-  }
-
+  const points = openingPath(family);
   const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
   const count = points.length;
-  // Interior wall and floor sit behind the opening instead of covering its top.
-  points.forEach(([x, z], i) => {
-    const normal = normalize(-x / Math.max(width, .001), .06, -z / Math.max(depth * .5, .001));
-    for (const [y, factor, v] of [[topY, 1, 0], [bottomY, .83, 1]] as const) {
-      positions.push(x * factor, y, z * factor);
+  // The lining starts immediately under the same seam and descends into the bag.
+  points.forEach(([x, y, z], i) => {
+    const normal = normalize(-x / width, .06, -z / Math.max(depth * .5, .001));
+    for (const [height, factor, v] of [[y - .018, .96, 0], [bottomY, .83, 1]] as const) {
+      positions.push(x * factor, height, z * factor);
       normals.push(...normal);
-      uvs.push(i / count * 12, v * 8);
+      uvs.push(i / count, v);
     }
   });
   for (let i = 0; i < count; i++) {
@@ -576,19 +717,13 @@ function makeOpeningInterior(family: Exclude<Family, "">) {
     indices.push(a, a + 1, b, b, a + 1, b + 1);
   }
   const floorCenter = positions.length / 3;
-  positions.push(0, bottomY, 0);
-  normals.push(0, 1, 0);
-  uvs.push(.5, .5);
+  positions.push(0, bottomY, 0); normals.push(0, 1, 0); uvs.push(.5, .5);
   const floorRing = positions.length / 3;
-  points.forEach(([x, z]) => {
-    positions.push(x * .83, bottomY, z * .83);
-    normals.push(0, 1, 0);
-    uvs.push(.5 + x / Math.max(width * 2, .001), .5 + z / Math.max(depth, .001));
+  points.forEach(([x, , z]) => {
+    positions.push(x * .83, bottomY, z * .83); normals.push(0, 1, 0);
+    uvs.push(.5 + x / (width * 2), .5 + z / depth);
   });
-  for (let i = 0; i < count; i++) {
-    const j = (i + 1) % count;
-    indices.push(floorCenter, floorRing + j, floorRing + i);
-  }
+  for (let i = 0; i < count; i++) indices.push(floorCenter, floorRing + (i + 1) % count, floorRing + i);
   return { positions, normals, uvs, indices };
 }
 
@@ -821,81 +956,89 @@ function makeCone(radius = 0.14, height = 0.55, segments = 32) {
   return { positions, normals, uvs, indices };
 }
 
+// One height field drives vertex displacement, fragment normals and crossing
+// occlusion. Separate patterns previously put highlights beside the raised yarn.
+const CROCHET_SURFACE = `
+float segmentDistance(vec2 p,vec2 a,vec2 b){
+  vec2 ab=b-a;
+  return length(p-a-ab*clamp(dot(p-a,ab)/dot(ab,ab),0.0,1.0));
+}
+float cordCrown(float distance,float radius){
+  float d=clamp(distance/radius,0.0,1.0);
+  return sqrt(max(0.0,1.0-d*d));
+}
+float knit(vec2 uv,float m){
+  vec2 p;
+  if(m<.5){
+    // 5 mm polyester cord: rounded, interlocking crochet loops.
+    // Open V legs, curved at the crossing, rather than closed circular beads.
+    float row=uv.y*18.0+sin(uv.x*6.2831)*.025;
+    float stagger=mod(floor(row),2.0)*.5;
+    vec2 cell=vec2(uv.x*16.0+stagger,row);
+    p=fract(cell)-.5;
+    float variation=sin(dot(floor(cell),vec2(2.17,5.43)));
+    p.x+=variation*.018;
+    vec2 q=vec2(abs(p.x),p.y);
+    float leg=min(segmentDistance(q,vec2(.46,.54),vec2(.24,.12)),
+                  segmentDistance(q,vec2(.24,.12),vec2(.05,-.31)));
+    float crossing=segmentDistance(p,vec2(-.12,-.33),vec2(.12,-.43));
+    return max(cordCrown(leg,.24+variation*.008),cordCrown(crossing,.19)*.82);
+  }
+  if(m<1.5){
+    // Herringbone: interlocking chevrons with individual cylindrical strands.
+    float row=uv.y*22.0;
+    p=fract(vec2(uv.x*21.0+mod(floor(row),2.0)*.5,row))-.5;
+    float leg=segmentDistance(vec2(abs(p.x),p.y),vec2(.48,.48),vec2(.03,-.43));
+    return cordCrown(leg,.19);
+  }
+  if(m<2.5){
+    // Basket stitch: alternating over/under bands, each made of two cords.
+    vec2 cell=uv*vec2(12.0,14.0);
+    p=fract(cell)-.5;
+    float vertical=cordCrown(abs(abs(p.x)-.17),.14);
+    float horizontal=cordCrown(abs(abs(p.y)-.17),.14);
+    float parity=mod(floor(cell.x)+floor(cell.y),2.0);
+    float over=mix(vertical,horizontal,parity);
+    float under=mix(horizontal,vertical,parity);
+    return max(over,under*(1.0-.58*over));
+  }
+  // Shell stitch: repeated scallops with rounded fan ribs.
+  float row=uv.y*15.0;
+  p=fract(vec2(uv.x*16.0+mod(floor(row),2.0)*.5,row))-.5;
+  float shell=abs(length((p-vec2(0.0,-.26))*vec2(1.0,.92))-.43);
+  float ribs=segmentDistance(vec2(abs(p.x),p.y),vec2(.34,.17),vec2(0.0,-.36));
+  return max(cordCrown(shell,.12),cordCrown(ribs,.10)*.88);
+}
+`;
+
 const VERTEX = `
 attribute vec3 aPosition;
 attribute vec3 aNormal;
 attribute vec2 aUv;
 uniform mat4 uProjection,uView,uModel;
-uniform float uRelief;
+uniform mat3 uNormalMatrix;
+uniform mediump float uRelief;
 uniform mediump float uStitch;
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
 varying float vFaceWeight;
 varying vec2 vUv;
-
-float smoothLoop(float x,float width){
-  float d=abs(fract(x)-.5);
-  return 1.0-smoothstep(.08,width,d);
-}
-
-float knit(vec2 uv,float m){
-  vec2 p;
-  float row;
-  if(m<.5){
-    // 5 mm polyester cord: rounded, interlocking crochet loops rather than a printed grid.
-    row=uv.y*26.0+sin(uv.x*5.1)*.055;
-    float stagger=mod(floor(row),2.0)*.5;
-    p=fract(vec2(uv.x*28.0+stagger+sin(row*.71)*.065,row));
-    vec2 loopUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
-    float loopRadius=length(loopUv);
-    float loop=1.0-smoothstep(.12,.27,abs(loopRadius-.285));
-    float bridge=1.0-smoothstep(.045,.13,abs(p.y-.53));
-    float overlap=step(.5,fract(uv.x*14.0+stagger));
-    float cord=loop*.90+bridge*(.14+.11*overlap);
-    float yarnVariation=.94+.06*sin(uv.x*119.0+uv.y*83.0);
-    return clamp(cord*yarnVariation,0.0,1.0);
-  }
-  if(m<1.5){
-    // Herringbone: interlocking chevrons, not a flat diamond grid.
-    p=fract(uv*vec2(15.0,18.0));
-    float diag=abs(fract(p.x+p.y)-.5);
-    float anti=abs(fract(p.x-p.y)-.5);
-    return 1.0-smoothstep(.07,.24,min(diag,anti));
-  }
-  if(m<2.5){
-    // Basket stitch: alternating over/under bands.
-    p=fract(uv*vec2(11.0,13.0));
-    float warp=1.0-smoothstep(.16,.38,abs(p.x-.5));
-    float weft=1.0-smoothstep(.16,.38,abs(p.y-.5));
-    return max(warp*(.72+.28*step(.5,fract(uv.y*9.0))),weft*(.72+.28*step(.5,fract(uv.x*8.0))));
-  }
-  // Shell stitch: repeated scallops with a woven secondary strand.
-  row=uv.y*17.0;
-  p=fract(vec2(uv.x*19.0,row));
-  float shell=1.0-smoothstep(.06,.42,abs(length(p-vec2(.5,.32))-.34));
-  float rib=1.0-smoothstep(.05,.17,abs(p.x-.5));
-  return shell*.7+rib*.22;
-}
-
+${CROCHET_SURFACE}
 void main(){
-  float h=knit(aUv,uStitch)*uRelief*.48;
-  float eps=.0028;
-  float hx=(knit(aUv+vec2(eps,0.0),uStitch)-knit(aUv-vec2(eps,0.0),uStitch))/(2.0*eps);
-  float hy=(knit(aUv+vec2(0.0,eps),uStitch)-knit(aUv-vec2(0.0,eps),uStitch))/(2.0*eps);
-  vec3 reliefNormal=normalize(vec3(-hx*uRelief*.55,-hy*uRelief*.55,1.0));
-  float frontFace=clamp(abs(aNormal.z),0.0,1.0);
-  // Back-facing polyester fibres must face backwards, not be bent toward
-  // +Z by the front relief normal (which previously produced flat rear lighting).
+  float h=0.0;
+  if(uRelief>0.0) h=knit(aUv,uStitch)*uRelief*.48;
+  float frontFace=smoothstep(.45,.85,abs(aNormal.z));
+  // The back keeps its outward normal; relief never bends it toward the front.
   float faceSign=aNormal.z<0.0?-1.0:1.0;
-  vec3 sidedReliefNormal=normalize(vec3(reliefNormal.x*faceSign,reliefNormal.y*faceSign,reliefNormal.z*faceSign));
-  vec3 localNormal=normalize(mix(aNormal,sidedReliefNormal,frontFace*.30));
-  vec3 pos=aPosition+aNormal*h;
-  vec4 world=uModel*vec4(pos,1.0);
+  vec3 sidedReliefNormal=vec3(aNormal.xy,abs(aNormal.z)*faceSign);
+  vec4 world=uModel*vec4(aPosition+aNormal*h,1.0);
   vWorld=world.xyz;
-  vNormal=normalize(mat3(uModel)*localNormal);
-  // Bump lighting rotates with the bag's actual 3D pose.
-  vTangent=normalize(mat3(uModel)*vec3(1.0,0.0,0.0));
-  vBitangent=normalize(mat3(uModel)*vec3(0.0,1.0,0.0));
+  vNormal=normalize(uNormalMatrix*sidedReliefNormal);
+  // The gusset has its own arc-length UVs, so its tangent follows the perimeter.
+  vec3 localTangent=normalize(mix(vec3(-aNormal.y,aNormal.x,.001),vec3(1.0,0.0,0.0),frontFace));
+  vec3 localBitangent=mix(vec3(0.0,0.0,-1.0),vec3(0.0,1.0,0.0),frontFace);
+  vTangent=normalize(mat3(uModel)*localTangent);
+  vBitangent=normalize(mat3(uModel)*localBitangent);
   vFaceWeight=frontFace;
   vUv=aUv;
   gl_Position=uProjection*uView*world;
@@ -913,102 +1056,89 @@ varying float vFaceWeight;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
+uniform mediump float uRelief;
 uniform mediump float uStitch;
-
+${CROCHET_SURFACE}
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float yarn(vec2 uv,float m){
-  vec2 p;
-  float a;
-  if(m<.5){
-    p=fract(vec2(uv.x*28.0+floor(uv.y*26.0)*.5,uv.y*26.0));
-    vec2 cordUv=(p-vec2(.5,.48))*vec2(1.0,1.22);
-    float loopRadius=length(cordUv);
-    float strand=1.0-smoothstep(.18,.34,abs(loopRadius-.285));
-    float fiber=sin((uv.x*247.0+uv.y*31.0))*sin(uv.y*193.0-uv.x*17.0);
-    a=.35+.48*strand+.045*fiber+.035*sin(p.y*6.2831);
-  } else if(m<1.5){
-    p=fract(uv*vec2(23.0,25.0));
-    a=.38+.5*(1.0-smoothstep(.06,.24,min(abs(fract(p.x+p.y)-.5),abs(fract(p.x-p.y)-.5))));
-  } else if(m<2.5){
-    p=fract(uv*vec2(16.0,18.0));
-    a=.4+.42*max(1.0-smoothstep(.14,.38,abs(p.x-.5)),1.0-smoothstep(.14,.38,abs(p.y-.5)));
-  } else {
-    p=fract(uv*vec2(28.0,24.0));
-    a=.44+.38*(1.0-smoothstep(.08,.4,abs(length(p-vec2(.5,.32))-.34)));
-  }
-  float micro=sin((uv.x*311.0+uv.y*179.0))*sin((uv.x*97.0-uv.y*131.0));
-  return clamp(a+.055*micro,.10,.96);
+// A rough dielectric highlight instead of the former plastic Phong shine.
+vec3 specularGGX(vec3 n,vec3 l,vec3 v,float roughness,vec3 f0){
+  vec3 h=normalize(l+v);
+  float nl=max(dot(n,l),.001),nv=max(dot(n,v),.001);
+  float nh=max(dot(n,h),0.0),vh=max(dot(v,h),0.0);
+  float alpha=roughness*roughness,alpha2=alpha*alpha;
+  float denom=nh*nh*(alpha2-1.0)+1.0;
+  float distribution=alpha2/(3.14159*denom*denom);
+  float k=(roughness+1.0)*(roughness+1.0)/8.0;
+  float geometry=(nl/(nl*(1.0-k)+k))*(nv/(nv*(1.0-k)+k));
+  vec3 fresnel=f0+(1.0-f0)*pow(1.0-vh,5.0);
+  return fresnel*distribution*geometry/(4.0*nl*nv)*nl;
 }
-
 void main(){
   vec3 n=normalize(vNormal);
   vec3 l=normalize(uLight);
-  vec3 fill=normalize(vec3(.55,.30,.82));
-  vec3 v=normalize(vec3(0.0,.10,5.2)-vWorld);
-  vec3 h=normalize(l+v);
+  vec3 fill=normalize(vec3(.75,.25,.30));
+  vec3 v=normalize(vec3(0.0,.02,5.0)-vWorld);
+  float rough=.76,metal=0.0,detail=1.0,cordOcclusion=1.0;
+  float fibreSheen=0.0;
+  if(uMaterial<.5){
+    float cord=knit(vUv,uStitch);
+    float e=.0012;
+    vec2 slope=vec2(
+      knit(vUv+vec2(e,0.0),uStitch)-knit(vUv-vec2(e,0.0),uStitch),
+      knit(vUv+vec2(0.0,e),uStitch)-knit(vUv-vec2(0.0,e),uStitch)
+    )/(2.0*e);
+    vec3 tangent=normalize(vTangent-n*dot(n,vTangent));
+    vec3 bitangent=normalize(vBitangent-n*dot(n,vBitangent));
+    float strength=uRelief*.40*mix(.8,1.0,vFaceWeight);
+    n=normalize(n-strength*(tangent*slope.x+bitangent*slope.y));
+    float strandFibres=sin(vUv.x*1127.0+vUv.y*487.0+cord*3.0);
+    detail=mix(.84,1.02,cord)*(1.0+.018*strandFibres);
+    cordOcclusion=mix(.62,1.0,smoothstep(.04,.76,cord));
+    fibreSheen=.035*cord*(.7+.3*strandFibres);
+    rough=.68;
+  } else if(uMaterial<1.5){
+    // Fine longitudinal grain and pores follow the physical wooden ring.
+    float grain=sin(vUv.y*93.0+sin(vUv.x*31.0)*1.7);
+    float fine=sin(vUv.y*257.0+sin(vUv.x*47.0)*2.0);
+    detail=.92+.045*grain+.018*fine;
+    rough=.43;
+  } else if(uMaterial<2.5){
+    detail=.97+.035*(hash(floor(vUv*220.0))-.5);
+    rough=.64;
+  } else if(uMaterial<3.5){
+    detail=.92+.035*sin(vUv.x*210.0)*sin(vUv.y*136.0);
+    rough=.85;
+  } else if(uMaterial<4.5){
+    metal=.97; rough=.24;
+  } else if(uMaterial<5.5){
+    vec2 checker=floor(vUv*vec2(22.0,10.0));
+    detail=mix(.56,.94,mod(checker.x+checker.y,2.0));
+    rough=.95;
+  } else if(uMaterial<6.5){
+    detail=.88+.025*sin(vUv.x*118.0+vUv.y*97.0);
+    rough=.96;
+  } else {
+    // Fine twisted filaments on the cylindrical yarn, in cord-local UV space.
+    float filaments=sin(vUv.y*138.23+vUv.x*25.13);
+    float braid=sin(vUv.y*37.70-vUv.x*12.57);
+    detail=.96+.028*filaments+.018*braid;
+    rough=.66+.035*filaments;
+    fibreSheen=.025;
+  }
   float ndl=max(dot(n,l),0.0);
   float fillLight=max(dot(n,fill),0.0);
-  float ndh=max(dot(n,h),0.0);
   float facing=max(dot(n,v),0.0);
-  float rough=.88,metal=0.0,detail=1.0,cordOcclusion=1.0;
-
-  if(uMaterial<.5){
-    // Rounded cord affects the real per-pixel normal and shades deep crossings,
-    // preventing the former flat colour-only, line-art texture.
-    float cord=yarn(vUv,uStitch);
-    float e=.0020;
-    vec2 slope=vec2(
-      yarn(vUv+vec2(e,0.0),uStitch)-yarn(vUv-vec2(e,0.0),uStitch),
-      yarn(vUv+vec2(0.0,e),uStitch)-yarn(vUv-vec2(0.0,e),uStitch)
-    )/(2.0*e);
-    n=normalize(n-.0023*vFaceWeight*(vTangent*slope.x+vBitangent*slope.y));
-    float fullness=smoothstep(.29,.80,cord);
-    float strandFibres=sin(vUv.x*411.0+vUv.y*163.0)*sin(vUv.x*57.0-vUv.y*407.0);
-    detail=mix(.70,1.07,fullness)*(1.0+.017*strandFibres);
-    // The occlusion lives in the valleys, while raised polyester keeps highlights.
-    cordOcclusion=mix(.65,1.0,smoothstep(.32,.78,cord));
-    rough=.93;
-  } else if(uMaterial<1.5){
-    // Flowing wood grain follows the handle UVs instead of flat shiny stripes.
-    float grain=sin(vUv.x*37.0+sin(vUv.y*8.0)*1.8);
-    float pores=hash(floor(vUv*vec2(150.0,46.0)));
-    detail=.87+.085*grain+.025*(pores-.5);
-    rough=.57;
-  } else if(uMaterial<2.5){
-    detail=.88+.065*(hash(floor(vUv*150.0))-.5)+.045*sin(vUv.y*52.0);
-    rough=.52;
-  } else if(uMaterial<3.5){
-    detail=.76+.18*sin(vUv.x*72.0)*sin(vUv.y*38.0);
-    rough=.78;
-  } else if(uMaterial<4.5){
-    metal=.97; rough=.14; detail=1.0;
-  } else if(uMaterial<5.5){
-    // Matte checkered cloth inside the wooden-handle tote.
-    vec2 checker=floor(vUv*vec2(12.0,12.0));
-    detail=mix(.73,1.04,mod(checker.x+checker.y,2.0));
-    rough=.94;
-  } else {
-    // Soft dark textile instead of shiny metal inside the other families.
-    detail=.74+.055*sin(vUv.x*118.0+vUv.y*97.0);
-    rough=.96;
-  }
-
-  // The raised yarn changes the *actual* lighting: recompute incidence after
-  // the normal-map perturbation, not before the material-specific shader pass.
-  ndl=max(dot(n,l),0.0);
-  fillLight=max(dot(n,fill),0.0);
-  ndh=max(dot(n,h),0.0);
-  facing=max(dot(n,v),0.0);
-
-  // Make the physical gusset/side wall read as a separate textile plane in the product view.\n  // This is material lighting only; geometry and the calibrated family contract stay unchanged.\n  float sideFacing=1.0-smoothstep(.42,.88,abs(n.z));\n  float sideShade=mix(1.0,.64,sideFacing);\n  vec3 base=uColor*detail*sideShade;\n  float spec=pow(max(ndh,0.0),mix(72.0,10.0,rough))*mix(.07,.9,metal);
-  float rim=pow(1.0-facing,2.7);
-  float cavity=.92+.08*pow(1.0-facing,1.5);
-  float illumination=.18+.72*ndl+.18*fillLight;
-  vec3 color=base*illumination*cavity*cordOcclusion+vec3(spec)+base*.025*rim;
-
-  // A restrained warm atelier bounce keeps pale cords from washing out.
-  color+=base*vec3(.035,.024,.018);
-  gl_FragColor=vec4(pow(max(color,0.0),vec3(.95)),1.0);
+  vec3 base=pow(max(uColor,vec3(.001)),vec3(2.2))*detail;
+  float cavity=.94+.06*facing;
+  float illumination=.30+.66*ndl+.20*fillLight;
+  vec3 f0=mix(vec3(.035),base,metal);
+  vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
+  color+=specularGGX(n,l,v,rough,f0)*1.6;
+  color+=vec3(fibreSheen)*pow(1.0-facing,2.0)*(.3+.7*ndl);
+  // A restrained warm atelier bounce stays in linear light, preserving cord hue.
+  color+=base*vec3(.025,.020,.016);
+  color=color/(1.0+color*.18);
+  gl_FragColor=vec4(pow(max(color,vec3(0.0)),vec3(1.0/2.2)),1.0);
 }`;
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
@@ -1021,6 +1151,8 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
 }
 
 function createMesh(gl: WebGLRenderingContext, data: { positions: number[]; normals: number[]; uvs: number[]; indices: number[] }): Mesh {
+  // WebGL 1 uses unsigned-short indices, including on older Android devices.
+  if (data.positions.length / 3 > 65535) throw new Error("mesh-index-budget");
   const position = gl.createBuffer();
   const normal = gl.createBuffer();
   const uv = gl.createBuffer();
@@ -1086,7 +1218,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       uv: gl.getAttribLocation(program, "aUv"),
     },
     uniforms: {
-      projection: req("uProjection"), view: req("uView"), model: req("uModel"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"),
+      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"),
     },
   };
 }
@@ -1098,6 +1230,7 @@ function drawMesh(renderer: Renderer, mesh: Mesh, model: Float32Array, color: st
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv); gl.enableVertexAttribArray(attribs.uv); gl.vertexAttribPointer(attribs.uv, 2, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.index);
   gl.uniformMatrix4fv(uniforms.model, false, model);
+  gl.uniformMatrix3fv(uniforms.normalMatrix, false, normalMatrix(model));
   gl.uniform3fv(uniforms.color, hex(color));
   gl.uniform1f(uniforms.material, material);
   gl.uniform1f(uniforms.stitch, stitch);
@@ -1176,6 +1309,7 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   if (stage.dataset.abagsFinal3d === "fallback" && blockedSignature === renderSignature(config) && !recoverableReadinessFallback) return;
 
   stage.dataset.abagsFidelity3dFrame = frameSignature;
+  stage.dataset.abagsCrochetOwner = canvas.dataset.abagsCrochetOwner || "";
   stage.dataset.abagsFidelity3dFrameAt = canvas.dataset.abagsFidelity3dFrameAt || String(Date.now());
   stage.removeAttribute("data-abags-fidelity3d-error");
 }
@@ -1184,9 +1318,11 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
   const message = error instanceof Error ? error.message.slice(0, 160) : fallback;
   canvas.removeAttribute("data-abags-fidelity3d-frame");
   canvas.removeAttribute("data-abags-fidelity3d-frame-at");
+  canvas.removeAttribute("data-abags-crochet-owner");
   canvas.dataset.abagsFidelity3dError = message;
   stage.removeAttribute("data-abags-fidelity3d-frame");
   stage.removeAttribute("data-abags-fidelity3d-frame-at");
+  stage.removeAttribute("data-abags-crochet-owner");
   stage.dataset.abagsFidelity3dError = message;
 }
 
@@ -1214,8 +1350,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
-  const relief = config.color && config.stitch ? 0.037 : 0.016;
-  drawMesh(renderer, config.family ? meshes[config.family] : meshes.tote, multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1])), body, 0, stitch, relief);
+  ensureCrochetMeshes(renderer, renderFamily, config.stitch || "classic");
+  const bodyModel = multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1]));
+  // Matte textile in the valleys; the raised surface is actual cylindrical cord.
+  drawMesh(renderer, meshes[renderFamily], bodyModel, darken(body, .22), 6, stitch, 0);
+  drawMesh(renderer, meshes.yarnFront, bodyModel, body, 7, stitch, 0);
+  drawMesh(renderer, meshes.yarnBack, bodyModel, body, 7, stitch, 0);
+  drawMesh(renderer, meshes.yarnSide, bodyModel, body, 7, stitch, 0);
 
   const openingColor = config.color ? body : "#d8cec4";
   const agataOpenWoodTote = renderFamily === "tote" && config.handles.startsWith("wood");
@@ -1223,7 +1364,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // The red and brown wooden-handle versions share one silhouette and geometry.
   // The checked lining is visible when the customer rotates the same model to look inside.
   drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, agataOpenWoodTote ? 5 : 6, stitch, 0);
-  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 0, stitch, config.color && config.stitch ? 0.009 : 0.004);
+  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 3, stitch, 0);
 
   if (config.strap !== "none") {
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
@@ -1262,28 +1403,23 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     if (isWoodHandle) {
       const transform = {
         x: 0,
-        // Keep the rigid ring visible above the softly domed crocheted mouth
-        // at a 3/4 camera yaw, without changing its attachment-plane depth.
-        y: profile.topY + 0.17,
-        scaleX: profile.width * 0.62,
-        scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
+        // The arch ends now meet the real opening, while its crown remains
+        // above the fabric instead of floating above the bag.
+        y: woodHandleMountHeight(renderFamily),
+        scaleX: profile.width * 0.84,
+        scaleY: Math.max(0.28, profile.handleScaleY * 1.35),
       };
-      // Two physical rigid rings sit on the front and rear mounting planes.
-      // Keep enough depth to reveal separate attachment points in side view.
-      // A small part of the rear ring naturally peeks out at 3/4 yaw: that is
-      // physical occlusion, not a detached flat 2D decoration.
-      // Anchor the rings into the actual front/back rim. The former .78
-      // offset placed their feet too far outside the shell, breaking the rear arch
-      // into detached fragments at a three-quarter camera angle.
-      // The matching back textile dome is deeper than the former flat rear panel.
-      // Seat the two rings just outside BOTH physical textile faces (0.61)
-      // so the rear arch remains visible in profile without detached handles.
-      const depthPlanes = [-profile.topDepth * 0.61, profile.topDepth * 0.61];
+      // Both rigid rings attach to the actual front/back seam. The old depth
+      // multiplier put the rear ring outside the now-corrected opening.
+      const depthPlanes = woodHandleDepthPlanes(renderFamily);
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
           mesh,
-          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1])),
+          // Real pairs of wooden arches lean slightly towards the centre of
+          // the mouth. Their feet stay on the front/back rim while the top
+          // of the rear arch falls partly behind the front in a 3/4 view.
+          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1], [z < 0 ? 0.40 : -0.40, 0, 0])),
           handleColor,
           material,
           stitch,
@@ -1311,13 +1447,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? "#7c5034" : config.flap === "suede-burgundy" ? "#803248" : body;
     const material = config.flap === "crochet" ? 0 : 2;
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.045], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.0035 : 0);
+    // Seat the flap in front of the new cord crowns, so loops cannot pierce it.
+    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.13], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.018 : 0);
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
   // Closure hardware is only present when a flap/closure is selected.
   if (config.flap !== "none") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.25], [0.077, 0.050, 0.021])), metal, 4, 0);
   }
 
   if (config.strap !== "none") {
@@ -1344,6 +1481,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
 
+  canvas.dataset.abagsCrochetOwner = "webgl-yarn";
   canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
   canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
   canvas.removeAttribute("data-abags-fidelity3d-error");

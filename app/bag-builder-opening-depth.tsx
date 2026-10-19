@@ -313,6 +313,7 @@ export default function BagBuilderOpeningDepth() {
       frameRef.current = null;
       const family = (stage.dataset.family || "") as Family;
       if (
+        source.dataset.abagsCrochetOwner === "webgl-yarn" ||
         stage.dataset.abagsFinal3d !== "ready" ||
         stage.dataset.abagsPhotoTrue === "active" ||
         !family
