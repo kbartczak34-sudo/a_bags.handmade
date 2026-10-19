@@ -1407,7 +1407,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
         // above the fabric instead of floating above the bag.
         y: woodHandleMountHeight(renderFamily),
         scaleX: profile.width * 0.84,
-        scaleY: Math.max(0.28, profile.handleScaleY * 1.06),
+        scaleY: Math.max(0.28, profile.handleScaleY * 1.35),
       };
       // Both rigid rings attach to the actual front/back seam. The old depth
       // multiplier put the rear ring outside the now-corrected opening.
