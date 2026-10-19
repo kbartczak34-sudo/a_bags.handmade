@@ -33,5 +33,5 @@ test("wooden handle ends are seated at the real stitched rim and both arches can
     assert.ok(mountingY <= seamTopY, `${family}: arch feet must not float above the rim`);
     assert.ok(seamTopY - mountingY < 0.025, `${family}: arch feet stay in direct rim contact`);
   }
-  assert.match(renderer, /\[z < 0 \? 0\.20 : -0\.20, 0, 0\]/);
+  assert.match(renderer, /\[z < 0 \? 0\.40 : -0\.40, 0, 0\]/);
 });
