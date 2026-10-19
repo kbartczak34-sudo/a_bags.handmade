@@ -24,3 +24,14 @@ test("both handle mounting planes meet real rim vertices in every family", () =>
     }
   }
 });
+
+
+test("wooden handle ends are seated at the real stitched rim and both arches cant inward", () => {
+  for (const family of Object.keys(specs)) {
+    const seamTopY = Math.max(...geometry.openingPath(family).map((point) => point[1]));
+    const mountingY = geometry.woodHandleMountHeight(family);
+    assert.ok(mountingY <= seamTopY, `${family}: arch feet must not float above the rim`);
+    assert.ok(seamTopY - mountingY < 0.025, `${family}: arch feet stay in direct rim contact`);
+  }
+  assert.match(renderer, /\[z < 0 \? 0\.28 : -0\.28, 0, 0\]/);
+});
