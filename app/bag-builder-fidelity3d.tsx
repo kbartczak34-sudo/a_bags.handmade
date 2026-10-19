@@ -504,6 +504,12 @@ function woodHandleDepthPlanes(family: Exclude<Family, "">): [number, number] {
   return [-top[2], top[2]];
 }
 
+// Anchor the open ends of each rigid wooden arch to the same top seam as
+// the crocheted bag, rather than suspending both ends above it.
+function woodHandleMountHeight(family: Exclude<Family, "">) {
+  return Math.max(...openingPath(family).map((point) => point[1])) - 0.012;
+}
+
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
 type YarnPoint = [number, number, number];
 
@@ -1397,11 +1403,11 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     if (isWoodHandle) {
       const transform = {
         x: 0,
-        // Keep the rigid ring visible above the softly domed crocheted mouth
-        // at a 3/4 camera yaw, without changing its attachment-plane depth.
-        y: profile.topY + 0.17,
+        // The arch ends now meet the real opening, while its crown remains
+        // above the fabric instead of floating above the bag.
+        y: woodHandleMountHeight(renderFamily),
         scaleX: profile.width * 0.84,
-        scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
+        scaleY: Math.max(0.28, profile.handleScaleY * 1.06),
       };
       // Both rigid rings attach to the actual front/back seam. The old depth
       // multiplier put the rear ring outside the now-corrected opening.
@@ -1410,7 +1416,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
         drawMesh(
           renderer,
           mesh,
-          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1])),
+          // Real pairs of wooden arches lean slightly towards the centre of
+          // the mouth. Their feet stay on the front/back rim while the top
+          // of the rear arch falls partly behind the front in a 3/4 view.
+          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1], [z < 0 ? 0.28 : -0.28, 0, 0])),
           handleColor,
           material,
           stitch,
