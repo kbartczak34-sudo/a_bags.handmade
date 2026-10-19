@@ -192,21 +192,24 @@ function drawCharm(ctx: CanvasRenderingContext2D, config: Config, width: number,
   const anchor = project(anchor3, width, height, rotation, zoom);
   const drop = project([anchor3[0], anchor3[1] - 0.30, anchor3[2] + 0.02], width, height, rotation, zoom);
   if (!anchor || !drop) return;
-  const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale;
+  // On a narrow live canvas, real-world centimetres shrink dramatically.
+  // Keep the charm visible and inspectable without changing its 3D anchor.
+  const compact = width < 480;
+  const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale * (compact ? 1.22 : 1);
   ctx.beginPath();
   ctx.moveTo(anchor.x, anchor.y);
   ctx.lineTo(drop.x, drop.y);
   ctx.strokeStyle = hardwareColor(config.hardware);
-  ctx.lineWidth = Math.max(1.3, 2 * scale);
+  ctx.lineWidth = Math.max(compact ? 1.8 : 1.3, 2 * scale);
   ctx.stroke();
 
   const colors = ["#B86F82", "#8E7DB8", "#4F9B9B"];
   for (let index = 0; index < ABAGS_ACCESSORY_VISUAL.charmStones; index += 1) {
     const angle = (Math.PI * 2 * index) / ABAGS_ACCESSORY_VISUAL.charmStones - Math.PI / 2;
-    const x = drop.x + Math.cos(angle) * 7 * scale;
-    const y = drop.y + Math.sin(angle) * 6 * scale;
+    const x = drop.x + Math.cos(angle) * (compact ? 9 : 7) * scale;
+    const y = drop.y + Math.sin(angle) * (compact ? 8 : 6) * scale;
     ctx.beginPath();
-    ctx.arc(x, y, Math.max(2.5, 4.2 * scale), 0, Math.PI * 2);
+    ctx.arc(x, y, Math.max(compact ? 4.1 : 2.5, 4.2 * scale), 0, Math.PI * 2);
     ctx.fillStyle = colors[index % colors.length];
     ctx.fill();
     ctx.beginPath();
