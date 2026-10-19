@@ -20,3 +20,10 @@
     opacity:.88;
   }
 }
+
+/* No floating 2D ribbons on top of the true curved, lit 3D gusset.
+   The previous post-process made it read like printed stripes on cardboard. */
+.abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-fidelity3d-layer > .abags-sidewall-crochet-depth{
+  opacity:0!important;
+  visibility:hidden!important;
+}

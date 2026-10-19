@@ -20,15 +20,15 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
 body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
 .abags-bag-builder-stage[data-abags-final3d="ready"][data-abags-physical-cord-geometry="physical-cord-geometry-v1-volumetric-loops"]
 > .abags-fidelity3d-layer > .abags-physical-cord-geometry {
-  opacity:.94!important;
-  visibility:visible!important;
+  opacity:0!important;
+  visibility:hidden!important;
 }
 
 @media (max-width:620px) {
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"])
   .abags-bag-builder-stage[data-abags-physical-cord-geometry="physical-cord-geometry-v1-volumetric-loops"]
   > .abags-fidelity3d-layer > .abags-physical-cord-geometry {
-    opacity:.90!important;
+    opacity:0!important;
   }
 }
 

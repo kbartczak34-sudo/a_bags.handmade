@@ -27,6 +27,6 @@ test("yarn reflects light in the model frame and crossings occlude naturally", (
   assert.match(renderer, /varying vec3 vTangent,vBitangent;/);
   assert.match(renderer, /vTangent=normalize\(mat3\(uModel\)/);
   assert.match(renderer, /n=normalize\(n-\.0023\*vFaceWeight/);
-  assert.match(renderer, /cordOcclusion=mix\(\.65,1\.0/);
+  assert.match(renderer, /cordOcclusion=mix\(\.82,1\.0/);
   assert.match(renderer, /base\*illumination\*cavity\*cordOcclusion/);
 });
