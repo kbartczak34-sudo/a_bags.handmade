@@ -282,9 +282,20 @@ export default function BagBuilderAccessoryFidelityOverlay() {
     let frame = 0;
 
     const schedule = () => {
-      if (frame) cancelAnimationFrame(frame);
+      // Coalesce mutations instead of cancelling an imminent frame. A mobile
+      // camera switch can dispatch several DOM and transform updates at once.
+      if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
+        // Read the authoritative camera directly at paint time. The stored
+        // transform from a previous frame can otherwise repaint both accessory
+        // canvases behind the now-updated WebGL view.
+        const liveX = Number(stage.dataset.abagsFidelity3dRotationX);
+        const liveY = Number(stage.dataset.abagsFidelity3dRotationY);
+        const liveZoom = Number(stage.dataset.abagsFidelity3dZoom);
+        if (Number.isFinite(liveX) && Number.isFinite(liveY)) rotation.current = { x: liveX, y: liveY };
+        if (Number.isFinite(liveZoom) && liveZoom > 0) zoom.current = liveZoom;
+        config.current = readConfig(stage);
         const backCanvas = backCanvasRef.current;
         const frontCanvas = frontCanvasRef.current;
         if (backCanvas && frontCanvas) paint(backCanvas, frontCanvas, stage, config.current, rotation.current, zoom.current);
