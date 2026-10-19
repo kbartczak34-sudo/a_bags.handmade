@@ -498,6 +498,12 @@ function openingPath(family: Exclude<Family, "">): Array<[number, number, number
   return [...upper.map((point) => edge(point, 1)), ...[...upper].reverse().map((point) => edge(point, -1))];
 }
 
+function woodHandleDepthPlanes(family: Exclude<Family, "">): [number, number] {
+  const frontSeam = openingPath(family).filter((point) => point[2] > 0);
+  const top = frontSeam.reduce((highest, point) => point[1] > highest[1] ? point : highest);
+  return [-top[2], top[2]];
+}
+
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
 type YarnPoint = [number, number, number];
 
@@ -1013,7 +1019,8 @@ varying float vFaceWeight;
 varying vec2 vUv;
 ${CROCHET_SURFACE}
 void main(){
-  float h=knit(aUv,uStitch)*uRelief*.48;
+  float h=0.0;
+  if(uRelief>0.0) h=knit(aUv,uStitch)*uRelief*.48;
   float frontFace=smoothstep(.45,.85,abs(aNormal.z));
   // The back keeps its outward normal; relief never bends it toward the front.
   float faceSign=aNormal.z<0.0?-1.0:1.0;
@@ -1396,17 +1403,9 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
         scaleX: profile.width * 0.84,
         scaleY: Math.max(0.28, profile.handleScaleY * 0.88),
       };
-      // Two physical rigid rings sit on the front and rear mounting planes.
-      // Keep enough depth to reveal separate attachment points in side view.
-      // A small part of the rear ring naturally peeks out at 3/4 yaw: that is
-      // physical occlusion, not a detached flat 2D decoration.
-      // Anchor the rings into the actual front/back rim. The former .78
-      // offset placed their feet too far outside the shell, breaking the rear arch
-      // into detached fragments at a three-quarter camera angle.
-      // The matching back textile dome is deeper than the former flat rear panel.
-      // Seat the two rings just outside BOTH physical textile faces (0.61)
-      // so the rear arch remains visible in profile without detached handles.
-      const depthPlanes = [-profile.topDepth * 0.61, profile.topDepth * 0.61];
+      // Both rigid rings attach to the actual front/back seam. The old depth
+      // multiplier put the rear ring outside the now-corrected opening.
+      const depthPlanes = woodHandleDepthPlanes(renderFamily);
       for (const z of depthPlanes) {
         drawMesh(
           renderer,
@@ -1439,13 +1438,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? "#7c5034" : config.flap === "suede-burgundy" ? "#803248" : body;
     const material = config.flap === "crochet" ? 0 : 2;
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.045], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.0035 : 0);
+    // Seat the flap in front of the new cord crowns, so loops cannot pierce it.
+    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.13], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.018 : 0);
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
   // Closure hardware is only present when a flap/closure is selected.
   if (config.flap !== "none") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.15], [0.088, 0.088, 0.058])), metal, 4, 0);
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.25], [0.077, 0.050, 0.021])), metal, 4, 0);
   }
 
   if (config.strap !== "none") {

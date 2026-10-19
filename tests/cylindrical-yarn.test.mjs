@@ -1,20 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { runInNewContext } from "node:vm";
-import ts from "typescript";
-
-const source = await readFile(new URL("../app/bag-builder-fidelity3d.tsx", import.meta.url), "utf8");
-const specSource = await readFile(new URL("../lib/abags-fidelity-v4-family-spec.ts", import.meta.url), "utf8");
-const compile = (code) => ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
-const specContext = { exports: {} };
-runInNewContext(compile(specSource), specContext);
-const specs = specContext.exports.ABAGS_FIDELITY_V4_FAMILY_SPECS;
-const context = { exports: {}, Float32Array, Uint16Array, ABAGS_FIDELITY_V4_FAMILY_SPECS: specs };
-const pure = source.slice(0, source.indexOf("export default function BagBuilderFidelity3D"))
-  .replace(/^import[\s\S]*?from "[^"]+";\s*/gm, "");
-runInNewContext(compile(pure + "\nObject.assign(exports, {makeCrochetPanel, makeCrochetGusset, openingPath, normalMatrix, matrix, ensureCrochetMeshes});"), context);
-const geometry = context.exports;
+import { geometry, specs } from "./helpers/fidelity-geometry.mjs";
 
 function checkMesh(mesh, label) {
   const vertices = mesh.positions.length / 3;

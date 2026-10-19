@@ -244,7 +244,7 @@ function paint(backCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, st
   // different coordinate system and can leave a detached vertical leg beside the bag.
 
   front.ctx.save();
-  drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
+  if (stage.dataset.abagsCrochetOwner !== "webgl-yarn") drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
   if (config.accent === "tassel") drawTassel(front.ctx, config, front.width, front.height, rotation, zoom);
   else if (config.accent === "scarf") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
   else if (config.accent === "charm") drawCharm(front.ctx, config, front.width, front.height, rotation, zoom);

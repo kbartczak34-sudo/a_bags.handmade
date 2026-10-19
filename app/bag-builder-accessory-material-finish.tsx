@@ -352,7 +352,7 @@ function paint(
   }
 
   if (config.strap !== "none") drawAnchorContact(front.context, arc, palette, front.width, front.height, rotation, zoom);
-  drawSnapGlint(front.context, config, palette, front.width, front.height, rotation, zoom);
+  if (stage.dataset.abagsCrochetOwner !== "webgl-yarn") drawSnapGlint(front.context, config, palette, front.width, front.height, rotation, zoom);
   stage.dataset.abagsAccessoryMaterialFinish = FINISH_VERSION;
 }
 
