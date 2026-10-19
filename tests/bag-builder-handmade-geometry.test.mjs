@@ -14,10 +14,12 @@ test("the bag has an open mouth and actual matte fabric interior", () => {
   assert.match(renderer, /const bottomY = topY - Math\.min\(\.43/);
   assert.match(renderer, /agataOpenWoodTote \? 5 : 6/);
   assert.match(renderer, /uMaterial<5\.5/);
-  assert.match(renderer, /depthAt\(family, spec\.topY\) \* 0\.94/);
+  assert.match(renderer, /const points = openingPath\(family\)/);
 });
-test("crochet relief and yarn shader are aligned at a realistic loop density", () => {
-  assert.match(renderer, /uv\.x\*28\.0\+stagger/);
-  assert.match(renderer, /uv\.x\*28\.0\+floor\(uv\.y\*26\.0\)/);
-  assert.match(renderer, /const relief = config\.color && config\.stitch \? 0\.037/);
+test("the visible body uses actual 5 mm cylindrical yarn instead of embossed grid shading", () => {
+  assert.match(renderer, /const radius = spec\.rx \* 5 \/ 160/);
+  assert.match(renderer, /ensureCrochetMeshes\(renderer, renderFamily/);
+  for (const panel of ["yarnFront", "yarnBack", "yarnSide"]) {
+    assert.ok(renderer.includes(`drawMesh(renderer, meshes.${panel}, bodyModel, body, 7`));
+  }
 });

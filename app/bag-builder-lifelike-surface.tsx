@@ -177,7 +177,7 @@ export default function BagBuilderLifelikeSurface() {
       }
 
       const selected = selectMaterialSource(layer, stage);
-      if (!selected) {
+      if (!selected || selected.canvas.dataset.abagsCrochetOwner === "webgl-yarn") {
         clear();
         return;
       }

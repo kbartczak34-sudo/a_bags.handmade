@@ -324,7 +324,7 @@ function prepareCanvas(canvas: HTMLCanvasElement, stage: HTMLElement) {
 
 function paint(canvas: HTMLCanvasElement, stage: HTMLElement, config: Config, rotation: Rotation, zoom: number) {
   const prepared = prepareCanvas(canvas, stage);
-  if (!prepared || !config.family || stage.dataset.abagsFinal3d !== "ready") {
+  if (!prepared || !config.family || stage.dataset.abagsCrochetOwner === "webgl-yarn" || stage.dataset.abagsFinal3d !== "ready") {
     stage.removeAttribute("data-abags-rigid-material-finish");
     return;
   }

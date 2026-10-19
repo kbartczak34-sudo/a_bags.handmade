@@ -418,6 +418,7 @@ export default function BagBuilderSidewallCrochetDepth() {
       const family = (stage.dataset.family || "") as Family;
       const stitch = (stage.dataset.stitch || "classic") as Stitch;
       if (
+        source.dataset.abagsCrochetOwner === "webgl-yarn" ||
         stage.dataset.abagsFinal3d !== "ready" ||
         stage.dataset.abagsPhotoTrue === "active" ||
         !family ||
