@@ -1419,7 +1419,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
           // Real pairs of wooden arches lean slightly towards the centre of
           // the mouth. Their feet stay on the front/back rim while the top
           // of the rear arch falls partly behind the front in a 3/4 view.
-          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1], [z < 0 ? 0.28 : -0.28, 0, 0])),
+          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1], [z < 0 ? 0.20 : -0.20, 0, 0])),
           handleColor,
           material,
           stitch,
