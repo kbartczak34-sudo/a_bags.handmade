@@ -11,6 +11,6 @@ export const specs = specContext.exports.ABAGS_FIDELITY_V4_FAMILY_SPECS;
 const context = { exports: {}, Float32Array, Uint16Array, ABAGS_FIDELITY_V4_FAMILY_SPECS: specs };
 const pure = source.slice(0, source.indexOf("export default function BagBuilderFidelity3D"))
   .replace(/^import[\s\S]*?from "[^"]+";\s*/gm, "");
-runInNewContext(compile(pure + "\nObject.assign(exports, {makeCrochetPanel, makeCrochetGusset, makeCrochetFlap, crochetFlapSurface, ensureCrochetFlapMesh, openingPath, woodHandleDepthPlanes, woodHandleMountHeight, normalMatrix, matrix, ensureCrochetMeshes});"), context);
+runInNewContext(compile(pure + "\nObject.assign(exports, {appendCord, makeCrochetPanel, makeCrochetGusset, makeCrochetFlap, crochetFlapSurface, ensureCrochetFlapMesh, openingPath, woodHandleDepthPlanes, woodHandleMountHeight, normalMatrix, matrix, ensureCrochetMeshes});"), context);
 export const geometry = context.exports;
 

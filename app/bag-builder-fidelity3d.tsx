@@ -517,7 +517,9 @@ type YarnPoint = [number, number, number];
 
 function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10) {
   let previous = -1;
+  let distance = 0;
   points.forEach((point, index) => {
+    if (index > 0) distance += Math.hypot(...point.map((value, axis) => value - points[index - 1][axis]));
     if (!contains(point)) { previous = -1; return; }
     const before = points[Math.max(0, index - 1)], after = points[Math.min(points.length - 1, index + 1)];
     const tangent = normalize(after[0] - before[0], after[1] - before[1], after[2] - before[2]);
@@ -530,7 +532,9 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
       const n = across.map((v, axis) => v * Math.cos(angle) + outward[axis] * Math.sin(angle)) as YarnPoint;
       mesh.positions.push(...point.map((v, axis) => v + n[axis] * thickness));
       mesh.normals.push(...n);
-      mesh.uvs.push(index / Math.max(1, points.length - 1), side / sides);
+      // The braid repeats at the same physical scale on short loops and long
+      // bindings. A normalized 0..1 path stretched the fibres on every seam.
+      mesh.uvs.push(distance / (thickness * 1.6), side / sides);
       if (previous >= 0 && side < sides) {
         const a = previous + side, b = start + side;
         mesh.indices.push(a, b, a + 1, a + 1, b, b + 1);
@@ -1145,6 +1149,9 @@ void main(){
 }`;
 
 const FRAGMENT = `
+#ifdef ABAGS_HAS_DERIVATIVES
+#extension GL_OES_standard_derivatives : enable
+#endif
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -1160,6 +1167,42 @@ uniform mediump float uRelief;
 uniform mediump float uStitch;
 ${CROCHET_SURFACE}
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+// Two crossing groups of carriers form the small braid of a polyester cord.
+// Circular UVs are periodic at the tube seam; U follows physical cord length.
+float cordBraid(vec2 uv,out vec2 slope){
+  vec2 phase=6.2831853*vec2(uv.x+uv.y*4.0,uv.x-uv.y*4.0);
+  vec2 strands=.5+.5*cos(phase);
+  vec2 gradient=-3.14159265*sin(phase);
+  float first=step(strands.y,strands.x);
+  slope=mix(gradient.y*vec2(1.0,-4.0),gradient.x*vec2(1.0,4.0),first);
+  return max(strands.x,strands.y);
+}
+float braidVisibility(vec2 uv){
+#ifdef ABAGS_HAS_DERIVATIVES
+  vec2 frequency=vec2(1.0,4.0);
+  float footprint=max(length(dFdx(uv)*frequency),length(dFdy(uv)*frequency));
+  return 1.0-smoothstep(.28,.75,footprint);
+#else
+  // Older WebGL 1 devices keep a stable matte cord without subpixel striping.
+  return 0.0;
+#endif
+}
+vec3 cordBraidNormal(vec3 normal,vec2 slope){
+#ifdef ABAGS_HAS_DERIVATIVES
+  vec3 dx=dFdx(vWorld),dy=dFdy(vWorld);
+  vec2 ux=dFdx(vUv),uy=dFdy(vUv);
+  float orientation=sign(ux.x*uy.y-ux.y*uy.x);
+  vec3 tangent=(dx*uy.y-dy*ux.y)*orientation;
+  vec3 bitangent=(dy*ux.x-dx*uy.x)*orientation;
+  tangent-=normal*dot(normal,tangent);
+  bitangent-=normal*dot(normal,bitangent);
+  if(dot(tangent,tangent)>1.e-12 && dot(bitangent,bitangent)>1.e-12){
+    // Relief is a small fraction of the 5 mm cord radius, not another stitch.
+    return normalize(normal-normalize(tangent)*slope.x*.022-normalize(bitangent)*slope.y*.007);
+  }
+#endif
+  return normal;
+}
 // A rough dielectric highlight instead of the former plastic Phong shine.
 vec3 specularGGX(vec3 n,vec3 l,vec3 v,float roughness,vec3 f0){
   vec3 h=normalize(l+v);
@@ -1218,12 +1261,14 @@ void main(){
     detail=.88+.025*sin(vUv.x*118.0+vUv.y*97.0);
     rough=.96;
   } else {
-    // Fine twisted filaments on the cylindrical yarn, in cord-local UV space.
-    float filaments=sin(vUv.y*138.23+vUv.x*25.13);
-    float braid=sin(vUv.y*37.70-vUv.x*12.57);
-    detail=.96+.028*filaments+.018*braid;
-    rough=.66+.035*filaments;
-    fibreSheen=.025;
+    vec2 braidSlope;
+    float braid=cordBraid(vUv,braidSlope);
+    float resolved=braidVisibility(vUv);
+    n=cordBraidNormal(n,braidSlope*resolved);
+    detail=mix(.97,.88+.15*braid,resolved);
+    cordOcclusion=mix(1.0,.88+.12*braid,resolved);
+    rough=.80+.04*(1.0-braid)*resolved;
+    fibreSheen=.018;
   }
   float ndl=max(dot(n,l),0.0);
   float fillLight=max(dot(n,fill),0.0);
@@ -1270,8 +1315,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
   if (!gl) return null;
   const program = gl.createProgram();
   if (!program) return null;
+  // Optional in WebGL 1: detail is filtered in screen space when supported.
+  const derivatives = Boolean(gl.getExtension("OES_standard_derivatives"));
   gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT));
+  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, derivatives ? "#define ABAGS_HAS_DERIVATIVES\n" + FRAGMENT : FRAGMENT));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "link");
   gl.useProgram(program);
