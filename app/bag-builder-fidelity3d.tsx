@@ -38,6 +38,8 @@ type Mesh = {
 
 type Renderer = {
   yarnKey?: string;
+  crochetFlapKey?: string;
+  crochetFlapLockZ?: number;
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
@@ -513,8 +515,7 @@ function woodHandleMountHeight(family: Exclude<Family, "">) {
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
 type YarnPoint = [number, number, number];
 
-function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean) {
-  const sides = 10;
+function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10) {
   let previous = -1;
   points.forEach((point, index) => {
     if (!contains(point)) { previous = -1; return; }
@@ -539,33 +540,22 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
   });
 }
 
-// Actual 5 mm cord, seated on the same soft shell as the lining and opening.
-// Each stitch has a round cross-section, depth and its own surface normals.
-function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
-  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
-  const radius = spec.rx * 5 / 160;
-  const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
-  const rows = Math.max(9, Math.round(columns * spec.ry / spec.rx * 1.12));
+type CrochetPatch = {
+  rx: number; ry: number; radius: number; columns: number; rows: number;
+  seat: (x: number, y: number, lift: number) => YarnPoint;
+  tube: (points: YarnPoint[], thickness?: number) => void;
+  curveSteps?: number;
+};
+
+// One construction produces each selected stitch on panels, flaps and gussets.
+function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
+  const { radius, columns, rows, seat, tube, curveSteps = 16 } = patch;
+  const spec = { rx: patch.rx, ry: patch.ry };
   const dx = spec.rx * 1.94 / columns, dy = spec.ry * 1.94 / rows;
-  const inset = .965;
-  const bevel = Math.min(spec.bevel, spec.depth * .14);
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
-  const bulge = spec.depth * .12 * depthScale;
-  const fractionAt = (x: number, y: number) => {
-    const taper = 1 + spec.taper * y / spec.ry;
-    return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
-  };
-  const seat = (x: number, y: number, lift: number): YarnPoint => {
-    const softness = softBodyOffset(family, x, y);
-    const dome = Math.max(0, 1 - Math.pow(fractionAt(x, y) / inset, 2));
-    return [x, y + softness.y, depthAt(family, y + softness.y) * .5 - bevel + softness.z + bulge * dome + radius * .62 + lift];
-  };
-  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974);
   const curve = (cx: number, cy: number, width: number, height: number, lift: number, drift: number) => {
     const points: YarnPoint[] = [];
-    for (let i = 0; i <= 16; i++) {
-      const t = i / 16;
+    for (let i = 0; i <= curveSteps; i++) {
+      const t = i / curveSteps;
       // A smooth U/V loop, curling outwards at the shoulders like the atelier cord.
       const x = cx + Math.sin((t - .5) * Math.PI) * width * .43 + drift * Math.sin(t * Math.PI);
       const y = cy + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height;
@@ -582,8 +572,8 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
         const verticalOver = (row + column) % 2 === 0;
         for (const axis of [0, 1]) for (const strand of [-1, 1]) {
           const points: YarnPoint[] = [];
-          for (let i = 0; i <= 8; i++) {
-            const t = i / 8 - .5;
+          for (let i = 0; i <= Math.max(4, curveSteps / 2); i++) {
+            const t = i / Math.max(4, curveSteps / 2) - .5;
             const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10);
             const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19);
             const over = (axis === 0) === verticalOver;
@@ -601,6 +591,31 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
       }
     }
   }
+}
+
+// Actual 5 mm cord, seated on the same soft shell as the lining and opening.
+// Each stitch has a round cross-section, depth and its own surface normals.
+function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const radius = spec.rx * 5 / 160;
+  const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const rows = Math.max(9, Math.round(columns * spec.ry / spec.rx * 1.12));
+  const inset = .965;
+  const bevel = Math.min(spec.bevel, spec.depth * .14);
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
+  const bulge = spec.depth * .12 * depthScale;
+  const fractionAt = (x: number, y: number) => {
+    const taper = 1 + spec.taper * y / spec.ry;
+    return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
+  };
+  const seat = (x: number, y: number, lift: number): YarnPoint => {
+    const softness = softBodyOffset(family, x, y);
+    const dome = Math.max(0, 1 - Math.pow(fractionAt(x, y) / inset, 2));
+    return [x, y + softness.y, depthAt(family, y + softness.y) * .5 - bevel + softness.z + bulge * dome + radius * .62 + lift];
+  };
+  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974);
+  fillCrochetPatch({ rx: spec.rx, ry: spec.ry, radius, columns, rows, seat, tube }, stitch);
   // A continuous sewn binding hides clipped loop ends at the rounded panel edge.
   const binding = familyContour(family).map(([x, y]) => seat(x * .953, y * .953, radius * .05));
   binding.push(binding[0]);
@@ -608,7 +623,7 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
   return mesh;
 }
 
-function makeCrochetGusset(family: Exclude<Family, "">): FabricMesh {
+function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classic"): FabricMesh {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const contour = familyContour(family);
   const arcs = [0];
@@ -617,8 +632,10 @@ function makeCrochetGusset(family: Exclude<Family, "">): FabricMesh {
     arcs.push(arcs[i] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
   const perimeter = arcs[arcs.length - 1];
-  const columns = Math.round(perimeter / (spec.rx * 1.94 / 16));
-  const rows = Math.max(3, Math.round(depthAt(family, 0) / (spec.rx * .15)));
+  const gaugeColumns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const columns = Math.round(perimeter / (spec.rx * 1.94 / gaugeColumns));
+  const depth = depthAt(family, 0);
+  const rows = Math.max(3, Math.round(columns * depth / perimeter * 1.12));
   const radius = spec.rx * 5 / 160;
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const at = (arc: number, across: number, lift: number): YarnPoint => {
@@ -632,15 +649,19 @@ function makeCrochetGusset(family: Exclude<Family, "">): FabricMesh {
     const softness = softBodyOffset(family, x, y);
     return [x + normal[0] * (radius * .15 + lift), y + softness.y + normal[1] * (radius * .15 + lift), (.5 - across) * (depthAt(family, y) + softness.z * 2)];
   };
-  for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
-    const points: YarnPoint[] = [];
-    for (let i = 0; i <= 12; i++) {
-      const t = i / 12;
-      const arc = (column + .5 + (row % 2) * .5 + Math.sin((t - .5) * Math.PI) * .50) * perimeter / columns;
-      const across = (row + .5 + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * 1.06) / rows;
-      points.push(at(arc, across, radius * .18 * Math.sin(t * Math.PI * 2)));
-    }
-    appendCord(mesh, points, radius, ([x, y]) => normalize(x / spec.rx, y / spec.ry, 0), ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51);
+  const seat = (x: number, y: number, lift: number) => at(x + perimeter * .5, .5 - y / depth, lift);
+  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness,
+    ([x, y]) => normalize(x / spec.rx, y / spec.ry, 0),
+    ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51, 8);
+  fillCrochetPatch({ rx: perimeter * .5, ry: depth * .5, radius, columns, rows, seat, tube, curveSteps: 8 }, stitch);
+  // Sewn piping covers the clipped ends where the gusset joins each panel.
+  for (const side of [-1, 1]) {
+    const seam = contour.map(([x, y]): YarnPoint => {
+      const softness = softBodyOffset(family, x, y);
+      return [x, y + softness.y, side * (depthAt(family, y) * .5 + softness.z)];
+    });
+    seam.push(seam[0]);
+    appendCord(mesh, seam, radius * 1.02, () => [0, 0, side], ([, y]) => y < spec.ry * .90, 8);
   }
   return mesh;
 }
@@ -661,8 +682,87 @@ function ensureCrochetMeshes(renderer: Renderer, family: Exclude<Family, "">, st
   };
   renderer.meshes.yarnFront = createMesh(renderer.gl, front);
   renderer.meshes.yarnBack = createMesh(renderer.gl, back);
-  renderer.meshes.yarnSide = createMesh(renderer.gl, makeCrochetGusset(family));
+  renderer.meshes.yarnSide = createMesh(renderer.gl, makeCrochetGusset(family, stitch));
   renderer.yarnKey = key;
+}
+
+// Sample the actual rendered flap triangles so raised yarn meets the existing
+// curved surface exactly, including its family scaling, hinge and camera pose.
+function crochetFlapSurface(family: Exclude<Family, "">) {
+  const profile = PROFILES[family];
+  const base = makeExtrudedContour(flapContour(), .04, .085);
+  const transform = matrix([0, profile.flapY, profile.frontZ + .13], profile.flapScale, [.02, 0, 0]);
+  const pointAt = (index: number): YarnPoint => {
+    const [x, y, z] = base.positions.slice(index * 3, index * 3 + 3);
+    return [transform[0] * x + transform[4] * y + transform[8] * z + transform[12],
+      transform[1] * x + transform[5] * y + transform[9] * z + transform[13],
+      transform[2] * x + transform[6] * y + transform[10] * z + transform[14]];
+  };
+  const triangles: Array<{ a: YarnPoint; b: YarnPoint; c: YarnPoint; normal: YarnPoint; determinant: number }> = [];
+  for (let i = 0; i < base.indices.length; i += 3) {
+    const indices = base.indices.slice(i, i + 3);
+    if (!indices.every((index) => base.normals[index * 3 + 2] > .8)) continue;
+    const [a, b, c] = indices.map(pointAt);
+    const ab = b.map((v, axis) => v - a[axis]), ac = c.map((v, axis) => v - a[axis]);
+    let normal = normalize(ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]);
+    if (normal[2] < 0) normal = normal.map((v) => -v) as YarnPoint;
+    const determinant = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+    if (Math.abs(determinant) > 1e-8) triangles.push({ a, b, c, normal, determinant });
+  }
+  const sample = (x: number, y: number) => {
+    for (const { a, b, c, normal, determinant } of triangles) {
+      const u = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / determinant;
+      const v = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / determinant;
+      const w = 1 - u - v;
+      if (u >= -1e-6 && v >= -1e-6 && w >= -1e-6) return { z: u * a[2] + v * b[2] + w * c[2], normal };
+    }
+    return null;
+  };
+  const contour = flapContour().map((_, index) => pointAt(index + 1));
+  const minY = Math.min(...contour.map((p) => p[1])), maxY = Math.max(...contour.map((p) => p[1]));
+  const rx = Math.max(...contour.map((p) => Math.abs(p[0]))), ry = (maxY - minY) * .5;
+  return { sample, contour, rx, ry, centerY: (minY + maxY) * .5 };
+}
+
+function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const surface = crochetFlapSurface(family);
+  const { rx, ry, centerY } = surface;
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const radius = spec.rx * 5 / 160;
+  const gauge = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const columns = Math.max(4, Math.round(gauge * rx / spec.rx));
+  const rows = Math.max(3, Math.round(columns * ry / rx * 1.12));
+  const seat = (x: number, y: number, lift: number): YarnPoint => {
+    const point = surface.sample(x, y + centerY);
+    return [x, y + centerY, (point?.z ?? PROFILES[family].frontZ + .20) + radius * .62 + lift];
+  };
+  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness,
+    ([x, y]) => surface.sample(x, y)?.normal ?? [0, 0, 1],
+    ([x, y]) => surface.sample(x, y) !== null);
+  fillCrochetPatch({ rx, ry, radius, columns, rows, seat, tube }, stitch);
+  const binding = surface.contour.map(([x, y]) => seat(x * .965, (y - centerY) * .965, radius * .04));
+  binding.push(binding[0]);
+  tube(binding, radius * .72);
+  return mesh;
+}
+
+function ensureCrochetFlapMesh(renderer: Renderer, family: Exclude<Family, "">, stitch: Stitch) {
+  const key = family + ":" + stitch;
+  if (renderer.crochetFlapKey === key) return;
+  const previous = renderer.meshes.yarnFlap;
+  if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+  const data = makeCrochetFlap(family, stitch);
+  renderer.meshes.yarnFlap = createMesh(renderer.gl, data);
+  let contactZ = PROFILES[family].frontZ + .13;
+  for (let i = 0; i < data.positions.length; i += 3) {
+    if (Math.abs(data.positions[i]) < .09 && Math.abs(data.positions[i + 1] - PROFILES[family].lockY) < .06) {
+      contactZ = Math.max(contactZ, data.positions[i + 2]);
+    }
+  }
+  // The metal snap sits on the real yarn crowns instead of being buried in them.
+  renderer.crochetFlapLockZ = contactZ + .025;
+  renderer.crochetFlapKey = key;
 }
 
 function makeOpeningRim(family: Exclude<Family, "">, minor = 0.022, tube = 10) {
@@ -1197,6 +1297,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
       flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
+      crochetFlapBase: createMesh(gl, makeExtrudedContour(flapContour(), .04, .085)),
       woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.042, 96, 16, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
@@ -1446,15 +1547,20 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? "#7c5034" : config.flap === "suede-burgundy" ? "#803248" : body;
-    const material = config.flap === "crochet" ? 0 : 2;
-    // Seat the flap in front of the new cord crowns, so loops cannot pierce it.
-    drawMesh(renderer, meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.13], profile.flapScale, [0.02, 0, 0])), flapColor, material, stitch, config.flap === "crochet" ? 0.018 : 0);
+    const crochet = config.flap === "crochet";
+    const material = crochet ? 6 : 2;
+    drawMesh(renderer, crochet ? meshes.crochetFlapBase : meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.13], profile.flapScale, [0.02, 0, 0])), crochet ? darken(flapColor, .22) : flapColor, material, stitch, 0);
+    if (crochet) {
+      ensureCrochetFlapMesh(renderer, renderFamily, config.stitch || "classic");
+      drawMesh(renderer, meshes.yarnFlap, root, flapColor, 7, stitch, 0);
+    }
   }
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
   // Closure hardware is only present when a flap/closure is selected.
   if (config.flap !== "none") {
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, profile.frontZ + 0.25], [0.077, 0.050, 0.021])), metal, 4, 0);
+    const lockZ = config.flap === "crochet" ? renderer.crochetFlapLockZ ?? profile.frontZ + .25 : profile.frontZ + .25;
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.077, 0.050, 0.021])), metal, 4, 0);
   }
 
   if (config.strap !== "none") {
