@@ -38,6 +38,7 @@ type Mesh = {
 
 type Renderer = {
   yarnKey?: string;
+  woodBindingKey?: string;
   crochetFlapKey?: string;
   crochetFlapLockZ?: number;
   gl: WebGLRenderingContext;
@@ -512,6 +513,15 @@ function woodHandleMountHeight(family: Exclude<Family, "">) {
   return Math.max(...openingPath(family).map((point) => point[1])) - 0.012;
 }
 
+// The wooden ring and its stitching share one transform, including the inward
+// cant. Binding created in screen space used to separate when the bag rotated.
+function woodHandleMatrix(family: Exclude<Family, "">, z: number) {
+  const profile = PROFILES[family];
+  return matrix([0, woodHandleMountHeight(family), z],
+    [profile.width * .84, Math.max(.28, profile.handleScaleY * 1.35), 1],
+    [z < 0 ? 0.40 : -0.40, 0, 0]);
+}
+
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
 type YarnPoint = [number, number, number];
 
@@ -599,25 +609,30 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
 
 // Actual 5 mm cord, seated on the same soft shell as the lining and opening.
 // Each stitch has a round cross-section, depth and its own surface normals.
+function crochetPanelPoint(family: Exclude<Family, "">, x: number, y: number, lift = 0): YarnPoint {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const radius = spec.rx * 5 / 160;
+  const taper = 1 + spec.taper * y / spec.ry;
+  const fraction = Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
+  const softness = softBodyOffset(family, x, y);
+  const dome = Math.max(0, 1 - Math.pow(fraction / .965, 2));
+  const bevel = Math.min(spec.bevel, spec.depth * .14);
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
+  const bulge = spec.depth * .12 * depthScale;
+  return [x, y + softness.y, depthAt(family, y + softness.y) * .5 - bevel + softness.z + bulge * dome + radius * .62 + lift];
+}
+
 function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const radius = spec.rx * 5 / 160;
   const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
   const rows = Math.max(9, Math.round(columns * spec.ry / spec.rx * 1.12));
-  const inset = .965;
-  const bevel = Math.min(spec.bevel, spec.depth * .14);
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
-  const bulge = spec.depth * .12 * depthScale;
   const fractionAt = (x: number, y: number) => {
     const taper = 1 + spec.taper * y / spec.ry;
     return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
   };
-  const seat = (x: number, y: number, lift: number): YarnPoint => {
-    const softness = softBodyOffset(family, x, y);
-    const dome = Math.max(0, 1 - Math.pow(fractionAt(x, y) / inset, 2));
-    return [x, y + softness.y, depthAt(family, y + softness.y) * .5 - bevel + softness.z + bulge * dome + radius * .62 + lift];
-  };
+  const seat = (x: number, y: number, lift: number) => crochetPanelPoint(family, x, y, lift);
   const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974);
   fillCrochetPatch({ rx: spec.rx, ry: spec.ry, radius, columns, rows, seat, tube }, stitch);
   // A continuous sewn binding hides clipped loop ends at the rounded panel edge.
@@ -688,6 +703,73 @@ function ensureCrochetMeshes(renderer: Renderer, family: Exclude<Family, "">, st
   renderer.meshes.yarnBack = createMesh(renderer.gl, back);
   renderer.meshes.yarnSide = createMesh(renderer.gl, makeCrochetGusset(family, stitch));
   renderer.yarnKey = key;
+}
+
+function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const transform = woodHandleMatrix(family, z);
+  const side = z < 0 ? -1 : 1;
+  const radius = spec.rx * 5 / 160 * .78;
+  const coil = .042 + radius * .72;
+  const turns = Math.round(Math.PI * .44 / (radius * 2.06));
+  const start = Math.PI + .10, span = Math.PI - .20;
+  const world = (x: number, y: number, depth: number): YarnPoint => [
+    transform[0] * x + transform[4] * y + transform[8] * depth + transform[12],
+    transform[1] * x + transform[5] * y + transform[9] * depth + transform[13],
+    transform[2] * x + transform[6] * y + transform[10] * depth + transform[14],
+  ];
+  const at = (progress: number): YarnPoint => {
+    const angle = start + span * progress;
+    const phase = progress * turns * Math.PI * 2;
+    const radial = normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0);
+    return world(.46 * Math.cos(angle) + radial[0] * coil * Math.cos(phase),
+      .42 * Math.sin(angle) + radial[1] * coil * Math.cos(phase), side * coil * Math.sin(phase));
+  };
+  const winding = Array.from({ length: turns * 14 + 1 }, (_, i) => at(i / (turns * 14)));
+  const seams: YarnPoint[][] = [];
+  for (let turn = 0; turn < turns; turn++) {
+    // Each wrap is sewn into the actual crocheted front/back panel rather
+    // than hanging as a second independent ring in front of the textile.
+    const target = at((turn + .75) / turns);
+    const y = clamp(target[1] - spec.bodyY - radius * 1.8, -spec.ry * .94, spec.ry * .91);
+    const seat = crochetPanelPoint(family, target[0], y);
+    seat[1] += spec.bodyY;
+    seat[2] *= side;
+    seams.push(Array.from({ length: 7 }, (_, i): YarnPoint => {
+      const t = i / 6;
+      return [seat[0] * (1 - t) + target[0] * t,
+        seat[1] * (1 - t) + target[1] * t,
+        seat[2] * (1 - t) + target[2] * t + side * Math.sin(t * Math.PI) * radius * .45];
+    }));
+  }
+  const guide = (point: YarnPoint): YarnPoint => {
+    const delta = point.map((value, axis) => value - transform[12 + axis]);
+    const local = (column: number) => (delta[0] * transform[column] + delta[1] * transform[column + 1] + delta[2] * transform[column + 2])
+      / (transform[column] ** 2 + transform[column + 1] ** 2 + transform[column + 2] ** 2);
+    const angle = Math.atan2(local(4) / .42, local(0) / .46);
+    const tx = -.46 * Math.sin(angle), ty = .42 * Math.cos(angle);
+    return normalize(transform[0] * tx + transform[4] * ty,
+      transform[1] * tx + transform[5] * ty, transform[2] * tx + transform[6] * ty);
+  };
+  return { winding, seams, radius, guide };
+}
+
+function makeWoodHandleBinding(family: Exclude<Family, "">): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  for (const z of woodHandleDepthPlanes(family)) {
+    const { winding, seams, radius, guide } = woodHandleBindingPaths(family, z);
+    appendCord(mesh, winding, radius, guide, () => true, 8);
+    for (const seam of seams) appendCord(mesh, seam, radius * .75, () => [0, 0, z < 0 ? -1 : 1], () => true, 8);
+  }
+  return mesh;
+}
+
+function ensureWoodHandleBinding(renderer: Renderer, family: Exclude<Family, "">) {
+  if (renderer.woodBindingKey === family) return;
+  const previous = renderer.meshes.woodBinding;
+  if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+  renderer.meshes.woodBinding = createMesh(renderer.gl, makeWoodHandleBinding(family));
+  renderer.woodBindingKey = family;
 }
 
 // Sample the actual rendered flap triangles so raised yarn meets the existing
@@ -1549,14 +1631,6 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     // They are separated through the bag depth, not arranged left/right across
     // the front face; each ring must rise clearly above the opening.
     if (isWoodHandle) {
-      const transform = {
-        x: 0,
-        // The arch ends now meet the real opening, while its crown remains
-        // above the fabric instead of floating above the bag.
-        y: woodHandleMountHeight(renderFamily),
-        scaleX: profile.width * 0.84,
-        scaleY: Math.max(0.28, profile.handleScaleY * 1.35),
-      };
       // Both rigid rings attach to the actual front/back seam. The old depth
       // multiplier put the rear ring outside the now-corrected opening.
       const depthPlanes = woodHandleDepthPlanes(renderFamily);
@@ -1567,13 +1641,15 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
           // Real pairs of wooden arches lean slightly towards the centre of
           // the mouth. Their feet stay on the front/back rim while the top
           // of the rear arch falls partly behind the front in a 3/4 view.
-          multiply(root, matrix([transform.x, transform.y, z], [transform.scaleX, transform.scaleY, 1], [z < 0 ? 0.40 : -0.40, 0, 0])),
+          multiply(root, woodHandleMatrix(renderFamily, z)),
           handleColor,
           material,
           stitch,
           0,
         );
       }
+      ensureWoodHandleBinding(renderer, renderFamily);
+      drawMesh(renderer, meshes.woodBinding, root, body, 7, stitch, 0);
     } else {
       for (const side of [-1, 1]) {
         const transform = handleTransform(profile, renderFamily, side);
