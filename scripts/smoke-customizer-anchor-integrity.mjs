@@ -297,6 +297,34 @@ async function main() {
       gl.readPixels(0,0,gw,gh,gl.RGBA,gl.UNSIGNED_BYTE,glPixels);
       if(gl.getError()!==gl.NO_ERROR)return null;
 
+      const ornamentContact=()=>{
+        let point;
+        try { point=JSON.parse(stage.dataset.abagsFidelityAccessoryAnchor||'null'); } catch { return null; }
+        if(!Array.isArray(point)||point.length!==3||!point.every(Number.isFinite))return null;
+        const current=stage.dataset.abagsFidelityAccessorySignature===stage.dataset.builderSignature;
+        const yaw=Number(stage.dataset.abagsFidelity3dRotationY),pitch=Number(stage.dataset.abagsFidelity3dRotationX);
+        const zoom=Number(stage.dataset.abagsFidelity3dZoom);
+        let [x,y,z]=point.map(v=>v*zoom);
+        [x,z]=[x*Math.cos(yaw)+z*Math.sin(yaw),-x*Math.sin(yaw)+z*Math.cos(yaw)];
+        [y,z]=[y*Math.cos(pitch)-z*Math.sin(pitch),y*Math.sin(pitch)+z*Math.cos(pitch)];
+        y-=.02;z-=5;
+        const f=1/Math.tan(Math.PI/5.3/2);
+        const px=Math.round((x*f/(gw/gh)/-z*.5+.5)*gw),py=Math.round((.5-y*f/-z*.5)*gh);
+        const overlay=front.getContext('2d')?.getImageData(0,0,gw,gh).data;
+        if(!overlay)return null;
+        let wood=0,knot=0;
+        const radius=Math.max(3,Math.round(Math.min(gw,gh)*.01));
+        for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+          const sx=px+dx,sy=py+dy;
+          if(sx<0||sx>=gw||sy<0||sy>=gh||dx*dx+dy*dy>radius*radius)continue;
+          const i=((gh-1-sy)*gw+sx)*4;
+          const [r,g,b,a]=glPixels.subarray(i,i+4);
+          if(a>32&&r>110&&g>75&&b<190&&r>g&&g>b&&r-b>32&&g-b>8)wood++;
+          if(overlay[(sy*gw+sx)*4+3]>24)knot++;
+        }
+        return {point,current,wood,knot};
+      };
+
       const analyzeRigidHandle=()=>{
   const columns=new Uint32Array(gw);
   let sampled=0;
@@ -411,6 +439,7 @@ const analyze=(overlay)=>{
         overlayCanvases:[...stage.querySelectorAll('.abags-accessory-fidelity-back, .abags-accessory-fidelity-front, .abags-accessory-material-finish-back, .abags-accessory-material-finish-front')]
           .map((canvas)=>({className:canvas.className,width:canvas.width,height:canvas.height})),
         handle:analyzeRigidHandle(),
+        ornament:ornamentContact(),
         back:analyze(back),
         front:analyze(front),
       };
@@ -489,11 +518,33 @@ const analyze=(overlay)=>{
       ],
     });
 
+    await setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await clearAndReload();
+    await openBuilder();
+    for (const [key, value] of [["family", "tote"], ["color", "#E4A9B5"], ["stitch", "classic"], ["handles", "wood-light"], ["accent", "scarf"]]) await choose(key, value);
+    const scarf = [];
+    for (const view of ["Przód", "3/4", "Bok"]) {
+      await clickView(view);
+      await waitFor(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        return stage?.dataset.abagsFidelityAccessorySignature===stage?.dataset.builderSignature && Boolean(stage?.dataset.abagsFidelityAccessoryAnchor);
+      })()`, "current scarf attachment metadata");
+      const evidence = await anchorEvidence();
+      scarf.push({ view, ornament: evidence?.ornament });
+      await capture(`anchor-scarf-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
+      const contact = evidence?.ornament;
+      if (!contact?.current || contact.point[1] < .7 || contact.wood < 2 || contact.knot < 4) {
+        throw new Error(`Scarf ${view}: knot must touch the actual wooden handle: ${JSON.stringify(contact)}`);
+      }
+    }
+    await writeFile(path.join(qaDir, "anchor-scarf-evidence.json"), JSON.stringify(scarf, null, 2));
+
     console.log("ACCESSORY ANCHOR INTEGRITY PASS:", productionUrl);
     console.log("- Przód / 3/4 / Bok use the authoritative Fidelity3D transform: yes");
     console.log("- rear strap/chain remains attached to WebGL side hardware on desktop/mobile: yes");
     console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
+    console.log("- scarf knot touches the wooden handle in Przód / 3/4 / Bok: yes");
   console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
   console.log("- rigid wood handle remains one coherent arch in Przód / 3/4 on desktop/mobile: yes");
   console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);
