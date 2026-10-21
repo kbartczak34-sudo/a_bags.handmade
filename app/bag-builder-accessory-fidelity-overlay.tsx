@@ -248,9 +248,13 @@ function paint(backCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, st
 
   front.ctx.save();
   if (stage.dataset.abagsCrochetOwner !== "webgl-yarn") drawFlapDetail(front.ctx, config, front.width, front.height, rotation, zoom);
-  if (config.accent === "tassel") drawTassel(front.ctx, config, front.width, front.height, rotation, zoom);
-  else if (config.accent === "scarf") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
-  else if (config.accent === "charm") drawCharm(front.ctx, config, front.width, front.height, rotation, zoom);
+  const ornamentInWebgl = stage.dataset.abagsFidelityOrnamentOwner === "webgl"
+    && stage.dataset.abagsFidelityAccessorySignature === stage.dataset.builderSignature;
+  if (!ornamentInWebgl) {
+    if (config.accent === "tassel") drawTassel(front.ctx, config, front.width, front.height, rotation, zoom);
+    else if (config.accent === "scarf") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
+    else if (config.accent === "charm") drawCharm(front.ctx, config, front.width, front.height, rotation, zoom);
+  }
   front.ctx.restore();
 }
 

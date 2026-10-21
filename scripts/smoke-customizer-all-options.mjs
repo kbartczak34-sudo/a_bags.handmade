@@ -191,6 +191,7 @@ async function main() {
 
     const fingerprint = async () => evaluate(`(() => {
       const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-canvas');
+      const stage=canvas?.closest('.abags-bag-builder-stage');
       const accessories=[...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-accessory-fidelity-canvas')];
       if(!(canvas instanceof HTMLCanvasElement) || accessories.length!==2 || accessories.some((node)=>!(node instanceof HTMLCanvasElement)))return null;
       const gl=canvas.getContext('webgl');
@@ -244,6 +245,9 @@ async function main() {
         hash:hash.toString(16).padStart(8,'0'),width,height,sampled,opaque,chromatic,
         overlayOpaque,backOpaque,frontOpaque,accessoryCount:accessories.length,
         accessoryDepths:accessories.map((node)=>node.dataset.accessoryDepth||''),
+        ornamentOwner:stage.dataset.abagsFidelityOrnamentOwner||'',
+        ornamentCurrent:stage.dataset.abagsFidelityAccessorySignature===stage.dataset.builderSignature,
+        ornamentTriangles:Number(stage.dataset.abagsFidelityOrnamentTriangles||0),
       };
     })()`);
 
@@ -395,12 +399,13 @@ async function main() {
       if (!final || final.final3d !== "ready" || final.signature !== final.frame || final.signature !== final.finalSignature) {
         throw new Error(`${label}: final renderer signatures are inconsistent: ${JSON.stringify(final)}`);
       }
-      // The back 2D canvas is intentionally transparent: strap/chain depth is owned by
-      // the authoritative WebGL renderer. Only the front finishing layer paints 2D pixels.
-      // Requiring backOpaque here would force a duplicate legacy strap projection and violate
-      // the renderer architecture. Verify both depth canvases exist and the real front finish
-      // is visibly populated instead.
-      if (!finalPixels || finalPixels.accessoryCount !== 2 || finalPixels.frontOpaque <= 0) {
+      // Canonical ornaments share the bag's real depth buffer. The compatibility
+      // front canvas must stay empty to avoid drawing the same ornament twice.
+      // The anchor suite separately compares actual browser screenshots against
+      // the same bag with accent=none, including CSS and compositing visibility.
+      if (!finalPixels || finalPixels.accessoryCount !== 2 || (finalPixels.ornamentOwner === 'webgl'
+        ? !finalPixels.ornamentCurrent || finalPixels.ornamentTriangles < 100 || finalPixels.frontOpaque !== 0
+        : finalPixels.frontOpaque <= 0)) {
         throw new Error(`${label}: accessory depth surfaces are incomplete: ${JSON.stringify(finalPixels)}`);
       }
       await capture(`accessory-${label.toLowerCase()}-final.png`);
