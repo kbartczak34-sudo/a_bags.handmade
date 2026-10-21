@@ -51,3 +51,15 @@ export const ABAGS_ACCESSORY_VISUAL = {
   strapDepthBowRatio: 0.78,
   strapDepthBowMin: 0.20,
 } as const;
+
+/** A round bundle fans out in both width and depth, including in a side view. */
+export function fidelityTasselFringe(anchor: [number, number, number], index: number, count = ABAGS_ACCESSORY_VISUAL.tasselFringes): [number, number, number][] {
+  const angle = index / count * Math.PI * 2;
+  const spread = Math.cos(angle) * .088;
+  const depth = (1 + Math.sin(angle)) * .044;
+  return [
+    [anchor[0] + spread * .18, anchor[1] - .062, anchor[2] + depth * .18],
+    [anchor[0] + spread * .62, anchor[1] - .28, anchor[2] + depth * .62],
+    [anchor[0] + spread, anchor[1] - .48 - Math.abs(spread) * .7, anchor[2] + depth],
+  ];
+}
