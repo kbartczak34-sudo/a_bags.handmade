@@ -167,6 +167,53 @@ test("strap binding geometry remains valid and reuses one cached GPU mesh", () =
   assert.equal(gl.state.deleted, 4);
 });
 
+
+test("metal D-rings contain a straight stitched crossbar and true curved shoulders", () => {
+  const ring = g.makeDHardwareRing();
+  const vertices = ring.positions.length / 3;
+  assert.ok(vertices > 500 && vertices < 65536);
+  assert.equal(ring.positions.length, ring.normals.length);
+  assert.equal(ring.uvs.length, vertices * 2);
+  assert.ok(ring.positions.every(Number.isFinite));
+  assert.ok(ring.indices.every((i) => Number.isInteger(i) && i >= 0 && i < vertices));
+  // A real straight bar crosses the entire ring beneath the curved crown.
+  const crossbar = [];
+  const crown = [];
+  for (let i = 0; i < ring.positions.length; i += 3) {
+    const x = ring.positions[i], y = ring.positions[i + 1];
+    if (Math.abs(y + .13) < .028) crossbar.push(x);
+    if (y > .10) crown.push(x);
+  }
+  assert.ok(crossbar.length > 100);
+  assert.ok(Math.min(...crossbar) < -.12 && Math.max(...crossbar) > .12);
+  assert.ok(crown.length > 70 && Math.min(...crown) < 0 && Math.max(...crown) > 0);
+  for (let i = 0; i < ring.normals.length; i += 3) {
+    assert.ok(Math.abs(Math.hypot(...ring.normals.slice(i, i + 3)) - 1) < 1e-5);
+  }
+});
+
+test("lobster hook and sprung gate are volumetric, not screen-space hardware drawings", () => {
+  const clasp = g.makeLobsterClaspMesh();
+  const vertices = clasp.positions.length / 3;
+  assert.ok(vertices > 350 && vertices < 65536);
+  assert.equal(clasp.normals.length, clasp.positions.length);
+  assert.equal(clasp.uvs.length, vertices * 2);
+  assert.ok(clasp.indices.every((i) => Number.isInteger(i) && i >= 0 && i < vertices));
+  assert.ok(clasp.positions.every(Number.isFinite));
+  assert.ok(Math.min(...clasp.positions.filter((_, i) => i % 3 === 2)) < -.009);
+  assert.ok(Math.max(...clasp.positions.filter((_, i) => i % 3 === 2)) > .009);
+  for (const family of families) for (const side of [-1, 1]) {
+    const anchor = g.strapHardwarePosition(family, side);
+    const claspPoint = g.strapClaspPosition(family, side);
+    assert.equal(claspPoint[0], anchor[0]);
+    assert.equal(claspPoint[2], anchor[2]);
+    assert.ok(Math.abs(claspPoint[1] - anchor[1] - .08) < 1e-7);
+    // Physical hook overlaps both the top of the D-ring and the strap tip.
+    assert.ok(claspPoint[1] + .042 > anchor[1] + .06);
+    assert.ok(claspPoint[1] - .042 < anchor[1] + .13);
+  }
+});
+
 test("accessory metadata ignores stale configurations and malformed coordinates", () => {
   const current = { builderSignature: "mini|pink|basket|none|wood-light|chain|gold|scarf", abagsFidelityAccessoryAnchor: "[-0.4,0.7,0.5]" };
   assert.equal(readFidelityAccessoryAnchor(current), undefined);

@@ -1134,6 +1134,49 @@ function makeArchTube(rx: number, ry: number, z: number, minor = 0.055, segments
   return { positions, normals, uvs, indices };
 }
 
+// A formed D-ring has a straight bar for the sewn tabs, two shoulders and a
+// rounded crown. Keeping the old envelope preserves the calibrated attachment
+// points and the depth-separated strap/chain ends in every camera view.
+function makeDHardwareRing(): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const points: YarnPoint[] = [];
+  for (let i = 0; i <= 12; i++) points.push([-.13 + .26 * i / 12, -.13, 0]);
+  for (let i = 1; i <= 8; i++) points.push([.13, -.13 + .13 * i / 8, 0]);
+  for (let i = 1; i <= 32; i++) {
+    const angle = Math.PI * i / 32;
+    points.push([.13 * Math.cos(angle), .125 * Math.sin(angle), 0]);
+  }
+  for (let i = 1; i <= 8; i++) points.push([-.13, -.13 * i / 8, 0]);
+  // Closing the sweep (rather than painting a D outline) gives both faces and
+  // the tubular cross section correct normals under arbitrary WebGL rotation.
+  appendCord(mesh, points, .022, () => [0, 0, 1], () => true, 12);
+  return mesh;
+}
+
+// Hook and spring gate are separately swept metal tubes, not a screen-space
+// accessory illustration. Both remain in the same plane as the D-ring.
+function makeLobsterClaspMesh(): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const hook: YarnPoint[] = Array.from({ length: 35 }, (_, i): YarnPoint => {
+    const angle = -.36 * Math.PI + 1.63 * Math.PI * i / 34;
+    return [.038 * Math.cos(angle), .042 * Math.sin(angle), 0];
+  });
+  const gate: YarnPoint[] = Array.from({ length: 11 }, (_, i): YarnPoint => {
+    const t = i / 10;
+    return [.038 - .059 * t, -.035 + .044 * t, .006 * Math.sin(Math.PI * t)];
+  });
+  appendCord(mesh, hook, .0105, () => [0, 0, 1], () => true, 10);
+  appendCord(mesh, gate, .0065, () => [0, 0, 1], () => true, 8);
+  return mesh;
+}
+
+function strapClaspPosition(family: Exclude<Family, "">, side: number): YarnPoint {
+  const [x, y, z] = strapHardwarePosition(family, side);
+  // The hook overlaps the upper D-ring and its swivel seats against the end
+  // link or leather tab (whose center sits at ringY + .06).
+  return [x, y + .08, z];
+}
+
 function makeSegmentedChain(rx: number, ry: number, z: number, links = 34, major = 0.043, minor = 0.011) {
   const positions: number[] = [];
   const normals: number[] = [];
@@ -1432,7 +1475,15 @@ void main(){
     detail=.92+.035*sin(vUv.x*210.0)*sin(vUv.y*136.0);
     rough=.85;
   } else if(uMaterial<4.5){
-    metal=.97; rough=.24;
+    // Black fittings have a dark protective coating; silver is polished steel,
+    // gold is softly brushed brass. The different BRDFs keep hardware from
+    // reading as uniform yellow, grey or black plastic.
+    float brightness=max(uColor.r,max(uColor.g,uColor.b));
+    float darkCoating=1.0-step(.35,brightness);
+    float coolSilver=step(uColor.r,uColor.b)*step(uColor.r,uColor.g);
+    metal=mix(.97,.72,darkCoating);
+    rough=mix(.27,.38,darkCoating);
+    rough=mix(rough,.19,coolSilver*(1.0-darkCoating));
   } else if(uMaterial<5.5){
     vec2 checker=floor(vUv*vec2(22.0,10.0));
     detail=mix(.56,.94,mod(checker.x+checker.y,2.0));
@@ -1533,7 +1584,8 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundChain: createMesh(gl, familyShoulderChainMesh("round")),
       bucketChain: createMesh(gl, familyShoulderChainMesh("bucket")),
       miniChain: createMesh(gl, familyShoulderChainMesh("mini")),
-      ring: createMesh(gl, makeArchTube(0.13, 0.13, 0, 0.025, 40, 9, true)),
+      ring: createMesh(gl, makeDHardwareRing()),
+      claspHook: createMesh(gl, makeLobsterClaspMesh()),
       sphere: createMesh(gl, makeEllipsoid(1, 1, 1)),
       ribbon: createMesh(gl, makeEllipsoid(0.46, 0.14, 0.045, 18, 30)),
       cone: createMesh(gl, makeCone()),
@@ -1866,7 +1918,11 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // Closure hardware is only present when a flap/closure is selected.
   if (config.flap !== "none") {
     const lockZ = (config.flap === "crochet" ? renderer.crochetFlapLockZ : renderer.flapLockZ) ?? profile.frontZ;
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.077, 0.050, 0.021], renderer.flapLockRotation)), metal, 4, 0);
+    // A seated press stud has a raised rim and a smaller domed cap. Both share
+    // the measured flap normal: the closure must not flatten at three-quarter.
+    const snapRotation = renderer.flapLockRotation;
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.088, 0.060, 0.014], snapRotation)), darken(metal, .24), 4, 0);
+    drawMesh(renderer, meshes.sphere, multiply(root, multiply(matrix([0, profile.lockY, lockZ], [1, 1, 1], snapRotation), matrix([0, 0, .012], [0.065, 0.044, 0.021]))), metal, 4, 0);
   }
 
   if (config.strap !== "none") {
@@ -1881,6 +1937,12 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
         4,
         0,
       );
+      // Reusable 3D swivel hook and sprung gate between the shoulder strap
+      // and D-ring. No duplicated flat chain or fake painted carabiner.
+      const claspPoint = strapClaspPosition(renderFamily, side);
+      const claspRotation: [number, number, number] = [0, Math.PI / 2, side < 0 ? -.12 : .12];
+      drawMesh(renderer, meshes.claspHook, multiply(root, matrix(claspPoint, [1, 1, 1], claspRotation)), metal, 4, 0);
+      drawMesh(renderer, meshes.sphere, multiply(root, matrix([claspPoint[0], claspPoint[1] + .044, claspPoint[2]], [.028, .035, .022], claspRotation)), metal, 4, 0);
     }
   }
 
