@@ -1922,7 +1922,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     // the measured flap normal: the closure must not flatten at three-quarter.
     const snapRotation = renderer.flapLockRotation;
     drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.088, 0.060, 0.014], snapRotation)), darken(metal, .24), 4, 0);
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ + .012], [0.065, 0.044, 0.021], snapRotation)), metal, 4, 0);
+    drawMesh(renderer, meshes.sphere, multiply(root, multiply(matrix([0, profile.lockY, lockZ], [1, 1, 1], snapRotation), matrix([0, 0, .012], [0.065, 0.044, 0.021]))), metal, 4, 0);
   }
 
   if (config.strap !== "none") {
