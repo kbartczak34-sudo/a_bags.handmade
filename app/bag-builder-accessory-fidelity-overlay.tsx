@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { projectFidelityPoint as project } from "../lib/abags-fidelity-projection";
-import { ABAGS_ACCESSORY_FIDELITY_VERSION, ABAGS_ACCESSORY_VISUAL, readFidelityAccessoryAnchor } from "../lib/abags-accessory-fidelity";
+import { ABAGS_ACCESSORY_FIDELITY_VERSION, ABAGS_ACCESSORY_VISUAL, fidelityTasselFringe, readFidelityAccessoryAnchor } from "../lib/abags-accessory-fidelity";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
@@ -117,12 +117,11 @@ function drawTassel(ctx: CanvasRenderingContext2D, config: Config, width: number
 
   const fringeCount = ABAGS_ACCESSORY_VISUAL.tasselFringes;
   for (let index = 0; index < fringeCount; index += 1) {
-    const spread = (index - (fringeCount - 1) / 2) * 0.022;
-    const end = project([anchor[0] + spread, anchor[1] - 0.48 - Math.abs(spread) * 0.7, anchor[2] + (index % 2 ? 0.018 : -0.006)], width, height, rotation, zoom);
-    if (!end) continue;
+    const [start, middle, end] = fidelityTasselFringe(anchor, index, fringeCount).map((point) => project(point, width, height, rotation, zoom));
+    if (!start || !middle || !end) continue;
     ctx.beginPath();
-    ctx.moveTo(top.x + spread * 10 * scale, top.y + 5 * scale);
-    ctx.quadraticCurveTo((top.x + end.x) / 2 + spread * 34 * scale, (top.y + end.y) / 2, end.x, end.y);
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(middle.x, middle.y, end.x, end.y);
     ctx.strokeStyle = config.color || "#E4A9B5";
     ctx.lineWidth = Math.max(1.2, 2.2 * scale * top.scale);
     ctx.lineCap = "round";

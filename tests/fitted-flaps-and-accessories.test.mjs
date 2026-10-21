@@ -10,7 +10,7 @@ const stitches = ["classic", "herringbone", "basket", "shell"];
 const source = await readFile(new URL("../lib/abags-accessory-fidelity.ts", import.meta.url), "utf8");
 const context = { exports: {} };
 runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, context);
-const { readFidelityAccessoryAnchor } = context.exports;
+const { readFidelityAccessoryAnchor, fidelityTasselFringe } = context.exports;
 
 function gpu() {
   let bound;
@@ -223,4 +223,18 @@ test("accessory metadata ignores stale configurations and malformed coordinates"
     assert.equal(readFidelityAccessoryAnchor({ ...current, abagsFidelityAccessoryAnchor: raw }), undefined);
   }
   assert.equal(readFidelityAccessoryAnchor({ ...current, builderSignature: "changed" }), undefined);
+});
+
+test("tassel fringe fans out in width and depth while remaining tied at one narrow neck", () => {
+  const anchor = [.65, .25, .38];
+  const paths = Array.from({ length: 9 }, (_, i) => fidelityTasselFringe(anchor, i));
+  const extent = (axis, at) => Math.max(...paths.map((path) => path[at][axis])) - Math.min(...paths.map((path) => path[at][axis]));
+  assert.ok(extent(0, 2) > .16, "visible fan in front view");
+  assert.ok(extent(2, 2) > .08, "visible volume in side view");
+  assert.ok(extent(0, 0) < .035 && extent(2, 0) < .02, "narrow tied neck");
+  for (const path of paths) {
+    assert.ok(path.flat().every(Number.isFinite));
+    assert.ok(path[0][1] > path[1][1] && path[1][1] > path[2][1]);
+    assert.ok(path.every((p) => p[2] >= anchor[2]), "fringes remain outside the front panel");
+  }
 });
