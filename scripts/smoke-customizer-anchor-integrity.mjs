@@ -76,9 +76,25 @@ function valueOf(result) {
   return result?.result?.value;
 }
 
+function assertRearAccessory(label, view, evidence) {
+  const back = evidence?.back;
+  if (!back) throw new Error(`${label} ${view}: missing rear accessory evidence.`);
+  if (evidence.strapOwner === "webgl-band" && (evidence.duplicateStrap || evidence.strapTriangles < 100)) {
+    throw new Error(`${label} ${view}: the shoulder band must have one verified volumetric renderer.`);
+  }
+  const minimumBackSamples = view === "Bok" ? 150 : 300;
+  if (back.sampled < minimumBackSamples || back.contact < 55 || back.contactRatio < 0.08 || back.bottomContact < 50 || back.bottomContactRatio < 0.35) {
+    throw new Error(`${label} ${view}: rear strap/chain no longer meets the WebGL body at its calibrated anchors: ${JSON.stringify(back)}`);
+  }
+  if (view !== "Bok" && (back.leftContact < 20 || back.rightContact < 20)) {
+    throw new Error(`${label} ${view}: rear accessory lost one of its two side attachment zones: ${JSON.stringify(back)}`);
+  }
+}
+
 function assertViewEvidence(label, view, evidence, frontEvidence) {
   if (!evidence?.back || !evidence?.front) throw new Error(`${label} ${view}: missing accessory depth evidence.`);
   const { webgl, back, front } = evidence;
+  assertRearAccessory(label, view, evidence);
   if (evidence.ornamentOwner === "webgl" && (evidence.duplicateOrnament || evidence.ornamentTriangles < 100)) {
     throw new Error(`${label} ${view}: the selected ornament must have one volumetric renderer.`);
   }
@@ -96,10 +112,6 @@ function assertViewEvidence(label, view, evidence, frontEvidence) {
   }
   // The compact shoulder arc is foreshortened edge-on in Bok. Its smaller
   // raster must still meet every attachment/contact requirement below.
-  const minimumBackSamples = view === "Bok" ? 150 : 300;
-  if (back.sampled < minimumBackSamples || back.contact < 55 || back.contactRatio < 0.08 || back.bottomContact < 50 || back.bottomContactRatio < 0.35) {
-    throw new Error(`${label} ${view}: rear strap/chain no longer meets the WebGL body at its calibrated anchors: ${JSON.stringify(back)}`);
-  }
   // Edge-on flaps and tassels collapse to a narrow but fully attached raster.
   // Preserve the contact floor and ratio; only the sample-area floor scales
   // for the genuine side view (e.g. 143/143 contact pixels on desktop Bok).
@@ -160,9 +172,6 @@ if (view !== "Bok") {
           throw new Error(`${label} ${view}: rear handle reads as a detached large object instead of partial occlusion: ${JSON.stringify(handle)}`);
         }
       }
-    }
-    if (back.leftContact < 20 || back.rightContact < 20) {
-      throw new Error(`${label} ${view}: rear accessory lost one of its two side attachment zones: ${JSON.stringify(back)}`);
     }
     if (front.leftContact < 20 || front.rightContact < 20) {
       throw new Error(`${label} ${view}: front accessory no longer spans both calibrated body zones: ${JSON.stringify(front)}`);
@@ -318,6 +327,17 @@ async function main() {
       const stamp=[stage.dataset.family,stage.dataset.color,stage.dataset.stitch,stage.dataset.flap,stage.dataset.handles,stage.dataset.strap,stage.dataset.hardware,stage.dataset.abagsFidelity3dRotationX,stage.dataset.abagsFidelity3dRotationY,stage.dataset.abagsFidelity3dZoom].join('|');
       const baseline=canvas.__abagsOrnamentBaseline;
       const bodyPixels=baseline?.stamp===stamp&&baseline.pixels.length===glPixels.length?baseline.pixels:null;
+      const strapInWebgl=stage.dataset.abagsFidelityStrapOwner==='webgl-band'&&stage.dataset.abagsFidelityAccessorySignature===stage.dataset.builderSignature;
+      const strapStamp=[stage.dataset.family,stage.dataset.color,stage.dataset.stitch,stage.dataset.flap,stage.dataset.handles,stage.dataset.accent,stage.dataset.hardware,stage.dataset.abagsFidelity3dRotationX,stage.dataset.abagsFidelity3dRotationY,stage.dataset.abagsFidelity3dZoom].join('|');
+      const strapBaseline=canvas.__abagsStrapBaseline;
+      const strapBodyPixels=strapBaseline?.stamp===strapStamp&&strapBaseline.pixels.length===glPixels.length?strapBaseline.pixels:null;
+      const strapPixels=new Uint8ClampedArray(glPixels.length);
+      if(strapInWebgl&&strapBodyPixels)for(let i=0;i<glPixels.length;i+=4){
+        if(glPixels[i+3]>24&&Math.abs(glPixels[i]-strapBodyPixels[i])+Math.abs(glPixels[i+1]-strapBodyPixels[i+1])+Math.abs(glPixels[i+2]-strapBodyPixels[i+2])>20){
+          const topIndex=((gh-1-Math.floor(i/4/gw))*gw+(i/4)%gw)*4;
+          strapPixels.set(glPixels.subarray(i,i+4),topIndex);
+        }
+      }
       const ornamentPixels=new Uint8ClampedArray(glPixels.length);
       if(ornamentInWebgl&&bodyPixels)for(let i=0;i<glPixels.length;i+=4){
         if(glPixels[i+3]>24&&Math.abs(glPixels[i]-bodyPixels[i])+Math.abs(glPixels[i+1]-bodyPixels[i+1])+Math.abs(glPixels[i+2]-bodyPixels[i+2])>20){
@@ -436,7 +456,7 @@ const analyze=(overlay,renderedPixels)=>{
               if(dx*dx+dy*dy>radius*radius)continue;
               const gx=wx+dx;
               if(gx<0||gx>=gw)continue;
-              const contactPixels=ornamentInWebgl&&overlay===front&&bodyPixels?bodyPixels:glPixels;
+              const contactPixels=ornamentInWebgl&&overlay===front&&bodyPixels?bodyPixels:strapInWebgl&&overlay===back&&strapBodyPixels?strapBodyPixels:glPixels;
               if(contactPixels[(gy*gw+gx)*4+3]>24)return true;
             }
           }
@@ -470,6 +490,9 @@ const analyze=(overlay,renderedPixels)=>{
         ornamentTriangles:Number(stage.dataset.abagsFidelityOrnamentTriangles||0),
         ornamentBounds:ornamentInWebgl?JSON.parse(stage.dataset.abagsFidelityOrnamentBounds||'null'):null,
         duplicateOrnament:ornamentInWebgl&&analyze(front).sampled>0,
+        strapOwner:strapInWebgl?'webgl-band':'canvas',
+        strapTriangles:Number(stage.dataset.abagsFidelityStrapTriangles||0),
+        duplicateStrap:strapInWebgl&&analyze(back).sampled>0,
         overlayCanvases:[...stage.querySelectorAll('.abags-accessory-fidelity-back, .abags-accessory-fidelity-front, .abags-accessory-material-finish-back, .abags-accessory-material-finish-front')]
           .map((canvas)=>{
             let visible=canvas.isConnected;
@@ -482,7 +505,7 @@ const analyze=(overlay,renderedPixels)=>{
           }),
         handle:analyzeRigidHandle(),
         ornament:ornamentContact(),
-        back:analyze(back),
+        back:analyze(back,strapInWebgl?strapPixels:null),
         front:analyze(front,ornamentInWebgl?ornamentPixels:null),
       };
     })()`);
@@ -494,9 +517,9 @@ const analyze=(overlay,renderedPixels)=>{
 
     // Compare real browser screenshots with the ornament visible and hidden.
     // Reading a canvas framebuffer alone cannot detect CSS or stacking masks.
-    const verifyAccessoryAppearance = async (label, evidence, allowFarSideOcclusion = false) => {
+    const verifyAccessoryAppearance = async (label, evidence, allowFarSideOcclusion = false, component = "accent") => {
       const state = await evaluate(`(() => {
-        const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front');
+        const canvas=document.querySelector(${JSON.stringify('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview '+(component==='strap'?'.abags-accessory-material-finish-back':'.abags-accessory-fidelity-front'))});
         if(!(canvas instanceof HTMLCanvasElement))return null;
         for(let node=canvas;node;node=node.parentElement){
           const style=getComputedStyle(node);
@@ -504,10 +527,10 @@ const analyze=(overlay,renderedPixels)=>{
         }
         const rect=canvas.getBoundingClientRect();
         const stage=canvas.closest('.abags-bag-builder-stage');
-        const owner=stage.dataset.abagsFidelityOrnamentOwner;
+        const owner=stage.dataset[${JSON.stringify(component==='strap'?'abagsFidelityStrapOwner':'abagsFidelityOrnamentOwner')}];
         let bounds=null;
-        if(owner==='webgl'){
-          const box=JSON.parse(stage.dataset.abagsFidelityOrnamentBounds||'null');
+        if(owner==='webgl'||owner==='webgl-band'){
+          const box=JSON.parse(stage.dataset[${JSON.stringify(component==='strap'?'abagsFidelityStrapBounds':'abagsFidelityOrnamentBounds')}]||'null');
           if(!box)return null;
           const yaw=Number(stage.dataset.abagsFidelity3dRotationY),pitch=Number(stage.dataset.abagsFidelity3dRotationX),zoom=Number(stage.dataset.abagsFidelity3dZoom);
           const f=1/Math.tan(Math.PI/5.3/2),w=canvas.width,h=canvas.height;
@@ -521,7 +544,7 @@ const analyze=(overlay,renderedPixels)=>{
           }
           bounds={minX:Math.min(...points.map(p=>p[0])),maxX:Math.max(...points.map(p=>p[0])),minY:Math.min(...points.map(p=>p[1])),maxY:Math.max(...points.map(p=>p[1]))};
         }
-        return {owner,accent:stage.dataset.accent,bounds,style:canvas.getAttribute('style'),rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};
+        return {owner,value:stage.dataset[${JSON.stringify(component)}],bounds,style:canvas.getAttribute('style'),rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};
       })()`);
       const bounds = state?.bounds || evidence?.front?.bounds;
       if (!state || !bounds) throw new Error(`${label}: customer ornament layer is not visible.`);
@@ -533,16 +556,17 @@ const analyze=(overlay,renderedPixels)=>{
       const visible = await screenshot();
       let hidden;
       try {
-        if(state.owner==='webgl'){
-          await choose('accent','none');
+        if(state.owner==='webgl'||state.owner==='webgl-band'){
+          await choose(component,'none');
           await evaluate(`(() => {
             const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
             const canvas=stage.querySelector('.abags-fidelity3d-canvas'),gl=canvas.getContext('webgl');
             const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
             gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
             if(gl.getError()!==gl.NO_ERROR)throw new Error('Cannot read the ornament-free reference');
-            const stamp=[stage.dataset.family,stage.dataset.color,stage.dataset.stitch,stage.dataset.flap,stage.dataset.handles,stage.dataset.strap,stage.dataset.hardware,stage.dataset.abagsFidelity3dRotationX,stage.dataset.abagsFidelity3dRotationY,stage.dataset.abagsFidelity3dZoom].join('|');
-            canvas.__abagsOrnamentBaseline={stamp,pixels};
+            const stamp=[stage.dataset.family,stage.dataset.color,stage.dataset.stitch,stage.dataset.flap,stage.dataset.handles,stage.dataset[${JSON.stringify(component==='strap'?'accent':'strap')}],stage.dataset.hardware,stage.dataset.abagsFidelity3dRotationX,stage.dataset.abagsFidelity3dRotationY,stage.dataset.abagsFidelity3dZoom].join('|');
+            if(${JSON.stringify(component)}==='strap'&&(Number(stage.dataset.abagsFidelityStrapTriangles)!==0||stage.dataset.abagsFidelityStrapBounds))throw new Error('Removed band left residual WebGL geometry');
+            canvas[${JSON.stringify(component==='strap'?'__abagsStrapBaseline':'__abagsOrnamentBaseline')}]={stamp,pixels};
             return true;
           })()`);
         }else await evaluate(`(() => {
@@ -551,7 +575,7 @@ const analyze=(overlay,renderedPixels)=>{
         })()`);
         hidden = await screenshot();
       } finally {
-        if(state.owner==='webgl')await choose('accent',state.accent);
+        if(state.owner==='webgl'||state.owner==='webgl-band')await choose(component,state.value);
         else await evaluate(`(() => {
           const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front');
           const original=${JSON.stringify(state.style)};
@@ -586,8 +610,10 @@ const analyze=(overlay,renderedPixels)=>{
         const cameraChanged = !before || Math.abs(before.rotationX - expected[0]) >= 0.002
           || Math.abs(before.rotationY - expected[1]) >= 0.002;
         await clickView(view);
-        let appearance;
+        let appearance, strapAppearance;
         const selected = await anchorEvidence();
+        if(['woven','leather'].includes(choices.find(([key])=>key==='strap')?.[1])&&selected?.strapOwner!=='webgl-band')throw new Error(`${label}: flat shoulder strap did not reach the canonical renderer.`);
+        if(selected?.strapOwner==='webgl-band')strapAppearance=await verifyAccessoryAppearance(`${label}-strap-${view}`,selected,false,'strap');
         if(selected?.ornamentOwner==='webgl')appearance=await verifyAccessoryAppearance(`${label}-${view}`,selected,view==='Bok');
         // The camera's React state can advance before the asynchronously composited
         // accessory canvases paint. Compare BOTH overlays with the pre-click raster,
@@ -603,7 +629,7 @@ const analyze=(overlay,renderedPixels)=>{
           await sleep(160);
           sampled = await anchorEvidence();
         }
-        const evidence = { ...sampled, view, cameraChanged, appearance, preClick: {
+        const evidence = { ...sampled, view, cameraChanged, appearance, strapAppearance, preClick: {
           rotationX:before?.rotationX,rotationY:before?.rotationY,
           backHash:before?.back?.hash,frontHash:before?.front?.hash,
         } };
@@ -670,6 +696,21 @@ const analyze=(overlay,renderedPixels)=>{
       return results;
     };
 
+    const probeShoulderBand = async (label) => {
+      const results=[];
+      for(const view of ['Przód','3/4','Bok']){
+        await clickView(view);
+        let evidence=await anchorEvidence();
+        if(evidence?.strapOwner!=='webgl-band')throw new Error(`${label}: missing canonical shoulder band.`);
+        const appearance=await verifyAccessoryAppearance(`${label}-strap-${view}`,evidence,false,'strap');
+        evidence=await anchorEvidence();
+        assertRearAccessory(label,view,evidence);
+        results.push({...evidence,view,strapAppearance:appearance});
+        await capture(`band-${label}-${view==='Przód'?'front':view==='Bok'?'side':'three-quarter'}.png`);
+        await writeFile(path.join(qaDir,`band-${label}-evidence.json`),JSON.stringify(results,null,2));
+      }
+    };
+
     await send("Runtime.enable");
     await send("Page.enable");
     await waitFor("document.readyState === 'complete'", "initial load");
@@ -690,6 +731,8 @@ const analyze=(overlay,renderedPixels)=>{
         ["handles", "wood-light"], ["strap", "chain"], ["hardware", "black"], ["accent", "charm"],
       ],
     });
+    await choose('strap','woven');
+    await probeShoulderBand('mobile-woven');
 
     await setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await clearAndReload();
@@ -714,6 +757,9 @@ const analyze=(overlay,renderedPixels)=>{
     }
     await writeFile(path.join(qaDir, "anchor-scarf-evidence.json"), JSON.stringify(scarf, null, 2));
 
+    for(const [key,value] of [['family','bucket'],['handles','none'],['color','#E8DDCC'],['flap','leather-black'],['strap','leather'],['accent','tassel']])await choose(key,value);
+    await probeShoulderBand('desktop-leather');
+
     console.log("ACCESSORY ANCHOR INTEGRITY PASS:", productionUrl);
     console.log("- Przód / 3/4 / Bok use the authoritative Fidelity3D transform: yes");
     console.log("- rear strap/chain remains attached to WebGL side hardware on desktop/mobile: yes");
@@ -721,6 +767,7 @@ const analyze=(overlay,renderedPixels)=>{
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
     console.log("- scarf knot touches the wooden handle in Przód / 3/4 / Bok: yes");
     console.log("- ornaments visibly change front / three-quarter / near-side screenshots and obey far-side occlusion: yes");
+    console.log("- woven and leather bands have visible 3D surfaces, no flat duplicate, and attached ends in all customer views: yes");
   console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
   console.log("- rigid wood handle remains one coherent arch in Przód / 3/4 on desktop/mobile: yes");
   console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);

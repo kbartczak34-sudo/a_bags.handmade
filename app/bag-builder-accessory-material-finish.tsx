@@ -342,12 +342,14 @@ function paint(
 
   const palette = hardwarePalette(config.hardware);
   const arc = strapArc(config.family as Exclude<Family, "">);
+  const bandInWebgl = stage.dataset.abagsFidelityStrapOwner === "webgl-band"
+    && stage.dataset.abagsFidelityAccessorySignature === stage.dataset.builderSignature;
   if (config.strap === "chain") {
     drawChainSpecular(back.context, arc, palette, back.width, back.height, rotation, zoom);
     drawLeatherFinish(back.context, arc.slice(18, 31), back.width, back.height, rotation, zoom, 0.72);
-  } else if (config.strap === "leather") {
+  } else if (config.strap === "leather" && !bandInWebgl) {
     drawLeatherFinish(back.context, arc, back.width, back.height, rotation, zoom);
-  } else if (config.strap === "woven") {
+  } else if (config.strap === "woven" && !bandInWebgl) {
     drawWovenFinish(back.context, arc, back.width, back.height, rotation, zoom);
   }
 
