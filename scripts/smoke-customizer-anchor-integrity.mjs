@@ -79,6 +79,9 @@ function valueOf(result) {
 function assertViewEvidence(label, view, evidence, frontEvidence) {
   if (!evidence?.back || !evidence?.front) throw new Error(`${label} ${view}: missing accessory depth evidence.`);
   const { webgl, back, front } = evidence;
+  if (evidence.ornamentOwner === "webgl" && (evidence.duplicateOrnament || evidence.ornamentTriangles < 100)) {
+    throw new Error(`${label} ${view}: the selected ornament must have one volumetric renderer.`);
+  }
   if (evidence.legacyChainCount !== 0) {
     throw new Error(`${label} ${view}: a second legacy chain renderer is still mounted.`);
   }
@@ -100,8 +103,16 @@ function assertViewEvidence(label, view, evidence, frontEvidence) {
   // Edge-on flaps and tassels collapse to a narrow but fully attached raster.
   // Preserve the contact floor and ratio; only the sample-area floor scales
   // for the genuine side view (e.g. 143/143 contact pixels on desktop Bok).
-  const minimumFrontSamples = view === "Bok" ? 120 : 150;
-  if (front.sampled < minimumFrontSamples || front.contact < 100 || front.contactRatio < 0.45) {
+  // Real 3D beads overlap and foreshorten at the side. Their samples below are
+  // the actual WebGL difference against the same bag with its ornament removed.
+  const minimumFrontSamples = evidence.ornamentOwner === "webgl" ? 12 : view === "Bok" ? 120 : 150;
+  const minimumFrontContact = evidence.ornamentOwner === "webgl" ? Math.min(100, Math.ceil(front.sampled * .6)) : 100;
+  // The preset side faces away from right-mounted ornaments. A real depth
+  // buffer can hide them completely; the opposite side is tested separately
+  // with a customer pointer drag and must reveal the same ornament again.
+  const farSideOcclusion = evidence.ornamentOwner === "webgl" && view === "Bok" && front.sampled < 12
+    && frontEvidence?.appearance?.changed >= 12 && evidence.appearance;
+  if (!farSideOcclusion && (front.sampled < minimumFrontSamples || front.contact < minimumFrontContact || front.contactRatio < 0.45)) {
     throw new Error(`${label} ${view}: front flap/accent layer drifted away from the verified WebGL body: ${JSON.stringify(front)}`);
   }
   if (view === "Bok") {
@@ -303,6 +314,17 @@ async function main() {
       const glPixels=new Uint8Array(gw*gh*4);
       gl.readPixels(0,0,gw,gh,gl.RGBA,gl.UNSIGNED_BYTE,glPixels);
       if(gl.getError()!==gl.NO_ERROR)return null;
+      const ornamentInWebgl=stage.dataset.abagsFidelityOrnamentOwner==='webgl'&&stage.dataset.abagsFidelityAccessorySignature===stage.dataset.builderSignature;
+      const stamp=[stage.dataset.family,stage.dataset.color,stage.dataset.stitch,stage.dataset.flap,stage.dataset.handles,stage.dataset.strap,stage.dataset.hardware,stage.dataset.abagsFidelity3dRotationX,stage.dataset.abagsFidelity3dRotationY,stage.dataset.abagsFidelity3dZoom].join('|');
+      const baseline=canvas.__abagsOrnamentBaseline;
+      const bodyPixels=baseline?.stamp===stamp&&baseline.pixels.length===glPixels.length?baseline.pixels:null;
+      const ornamentPixels=new Uint8ClampedArray(glPixels.length);
+      if(ornamentInWebgl&&bodyPixels)for(let i=0;i<glPixels.length;i+=4){
+        if(glPixels[i+3]>24&&Math.abs(glPixels[i]-bodyPixels[i])+Math.abs(glPixels[i+1]-bodyPixels[i+1])+Math.abs(glPixels[i+2]-bodyPixels[i+2])>20){
+          const topIndex=((gh-1-Math.floor(i/4/gw))*gw+(i/4)%gw)*4;
+          ornamentPixels.set(glPixels.subarray(i,i+4),topIndex);
+        }
+      }
 
       const ornamentContact=()=>{
         let point;
@@ -317,7 +339,7 @@ async function main() {
         y-=.02;z-=5;
         const f=1/Math.tan(Math.PI/5.3/2);
         const px=Math.round((x*f/(gw/gh)/-z*.5+.5)*gw),py=Math.round((.5-y*f/-z*.5)*gh);
-        const overlay=front.getContext('2d')?.getImageData(0,0,gw,gh).data;
+        const overlay=ornamentInWebgl?ornamentPixels:front.getContext('2d')?.getImageData(0,0,gw,gh).data;
         if(!overlay)return null;
         let wood=0,knot=0;
         const radius=Math.max(3,Math.round(Math.min(gw,gh)*.01));
@@ -325,7 +347,7 @@ async function main() {
           const sx=px+dx,sy=py+dy;
           if(sx<0||sx>=gw||sy<0||sy>=gh||dx*dx+dy*dy>radius*radius)continue;
           const i=((gh-1-sy)*gw+sx)*4;
-          const [r,g,b,a]=glPixels.subarray(i,i+4);
+          const [r,g,b,a]=(bodyPixels||glPixels).subarray(i,i+4);
           if(a>32&&r>110&&g>75&&b<190&&r>g&&g>b&&r-b>32&&g-b>8)wood++;
           if(overlay[(sy*gw+sx)*4+3]>24)knot++;
         }
@@ -379,11 +401,11 @@ async function main() {
   };
 };
 
-const analyze=(overlay)=>{
+const analyze=(overlay,renderedPixels)=>{
         const ctx=overlay.getContext('2d');
         if(!ctx || overlay.width<16 || overlay.height<16)return null;
         const ow=overlay.width, oh=overlay.height;
-        const pixels=ctx.getImageData(0,0,ow,oh).data;
+        const pixels=renderedPixels||ctx.getImageData(0,0,ow,oh).data;
         const samples=[];
         let minX=ow,minY=oh,maxX=0,maxY=0,hash=2166136261>>>0;
         // Include the complete raster, including transparent pixels. Hashing
@@ -401,7 +423,7 @@ const analyze=(overlay)=>{
             minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
           }
         }
-        if(!samples.length)return {sampled:0,hash:'00000000'};
+        if(!samples.length)return {width:ow,height:oh,sampled:0,contact:0,contactRatio:0,hash:'00000000'};
         const radius=Math.max(3,Math.round(Math.min(gw,gh)*0.022));
         const hasWebglNear=(ox,oy)=>{
           const wx=Math.max(0,Math.min(gw-1,Math.round(((ox+0.5)/ow)*gw)));
@@ -414,7 +436,8 @@ const analyze=(overlay)=>{
               if(dx*dx+dy*dy>radius*radius)continue;
               const gx=wx+dx;
               if(gx<0||gx>=gw)continue;
-              if(glPixels[(gy*gw+gx)*4+3]>24)return true;
+              const contactPixels=ornamentInWebgl&&overlay===front&&bodyPixels?bodyPixels:glPixels;
+              if(contactPixels[(gy*gw+gx)*4+3]>24)return true;
             }
           }
           return false;
@@ -443,6 +466,10 @@ const analyze=(overlay)=>{
         zoom:Number(stage.dataset.abagsFidelity3dZoom),
         webgl:{width:gw,height:gh},
         legacyChainCount:stage.querySelectorAll('.abags-chain-realism').length,
+        ornamentOwner:ornamentInWebgl?'webgl':'canvas',
+        ornamentTriangles:Number(stage.dataset.abagsFidelityOrnamentTriangles||0),
+        ornamentBounds:ornamentInWebgl?JSON.parse(stage.dataset.abagsFidelityOrnamentBounds||'null'):null,
+        duplicateOrnament:ornamentInWebgl&&analyze(front).sampled>0,
         overlayCanvases:[...stage.querySelectorAll('.abags-accessory-fidelity-back, .abags-accessory-fidelity-front, .abags-accessory-material-finish-back, .abags-accessory-material-finish-front')]
           .map((canvas)=>{
             let visible=canvas.isConnected;
@@ -456,7 +483,7 @@ const analyze=(overlay)=>{
         handle:analyzeRigidHandle(),
         ornament:ornamentContact(),
         back:analyze(back),
-        front:analyze(front),
+        front:analyze(front,ornamentInWebgl?ornamentPixels:null),
       };
     })()`);
 
@@ -467,7 +494,7 @@ const analyze=(overlay)=>{
 
     // Compare real browser screenshots with the ornament visible and hidden.
     // Reading a canvas framebuffer alone cannot detect CSS or stacking masks.
-    const verifyAccessoryAppearance = async (label, evidence) => {
+    const verifyAccessoryAppearance = async (label, evidence, allowFarSideOcclusion = false) => {
       const state = await evaluate(`(() => {
         const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front');
         if(!(canvas instanceof HTMLCanvasElement))return null;
@@ -476,9 +503,27 @@ const analyze=(overlay)=>{
           if(style.display==='none'||style.visibility!=='visible'||Number(style.opacity)<.05)return null;
         }
         const rect=canvas.getBoundingClientRect();
-        return {style:canvas.getAttribute('style'),rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};
+        const stage=canvas.closest('.abags-bag-builder-stage');
+        const owner=stage.dataset.abagsFidelityOrnamentOwner;
+        let bounds=null;
+        if(owner==='webgl'){
+          const box=JSON.parse(stage.dataset.abagsFidelityOrnamentBounds||'null');
+          if(!box)return null;
+          const yaw=Number(stage.dataset.abagsFidelity3dRotationY),pitch=Number(stage.dataset.abagsFidelity3dRotationX),zoom=Number(stage.dataset.abagsFidelity3dZoom);
+          const f=1/Math.tan(Math.PI/5.3/2),w=canvas.width,h=canvas.height;
+          const points=[];
+          for(const ax of [0,1])for(const ay of [0,1])for(const az of [0,1]){
+            let [x,y,z]=[ax?box.max[0]:box.min[0],ay?box.max[1]:box.min[1],az?box.max[2]:box.min[2]].map(v=>v*zoom);
+            [x,z]=[x*Math.cos(yaw)+z*Math.sin(yaw),-x*Math.sin(yaw)+z*Math.cos(yaw)];
+            [y,z]=[y*Math.cos(pitch)-z*Math.sin(pitch),y*Math.sin(pitch)+z*Math.cos(pitch)];
+            y-=.02;z-=5;
+            points.push([(x*f/(w/h)/-z*.5+.5)*w,(.5-y*f/-z*.5)*h]);
+          }
+          bounds={minX:Math.min(...points.map(p=>p[0])),maxX:Math.max(...points.map(p=>p[0])),minY:Math.min(...points.map(p=>p[1])),maxY:Math.max(...points.map(p=>p[1]))};
+        }
+        return {owner,accent:stage.dataset.accent,bounds,style:canvas.getAttribute('style'),rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};
       })()`);
-      const bounds = evidence?.front?.bounds;
+      const bounds = state?.bounds || evidence?.front?.bounds;
       if (!state || !bounds) throw new Error(`${label}: customer ornament layer is not visible.`);
       const rect = state.rect, grid = evidence.webgl;
       const x = Math.max(0, rect.x + (bounds.minX - 8) / grid.width * rect.width);
@@ -488,13 +533,26 @@ const analyze=(overlay)=>{
       const visible = await screenshot();
       let hidden;
       try {
-        await evaluate(`(() => {
+        if(state.owner==='webgl'){
+          await choose('accent','none');
+          await evaluate(`(() => {
+            const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+            const canvas=stage.querySelector('.abags-fidelity3d-canvas'),gl=canvas.getContext('webgl');
+            const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
+            gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+            if(gl.getError()!==gl.NO_ERROR)throw new Error('Cannot read the ornament-free reference');
+            const stamp=[stage.dataset.family,stage.dataset.color,stage.dataset.stitch,stage.dataset.flap,stage.dataset.handles,stage.dataset.strap,stage.dataset.hardware,stage.dataset.abagsFidelity3dRotationX,stage.dataset.abagsFidelity3dRotationY,stage.dataset.abagsFidelity3dZoom].join('|');
+            canvas.__abagsOrnamentBaseline={stamp,pixels};
+            return true;
+          })()`);
+        }else await evaluate(`(() => {
           document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front').style.setProperty('visibility','hidden','important');
           return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));
         })()`);
         hidden = await screenshot();
       } finally {
-        await evaluate(`(() => {
+        if(state.owner==='webgl')await choose('accent',state.accent);
+        else await evaluate(`(() => {
           const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front');
           const original=${JSON.stringify(state.style)};
           if(original===null)canvas.removeAttribute('style');else canvas.setAttribute('style',original);
@@ -512,7 +570,7 @@ const analyze=(overlay)=>{
         return {changed,width:canvas.width,height:canvas.height};
       })()`);
       await writeFile(path.join(qaDir, `appearance-${label.replaceAll(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), Buffer.from(visible.data, "base64"));
-      if (difference.changed < 12) throw new Error(`${label}: selected ornament does not change the customer-visible image: ${JSON.stringify(difference)}`);
+      if (difference.changed < 12 && !(allowFarSideOcclusion && state.owner==='webgl' && Math.abs(evidence.rotationY-Math.PI/2)<.002)) throw new Error(`${label}: selected ornament does not change the customer-visible image: ${JSON.stringify(difference)}`);
       return difference;
     };
 
@@ -528,6 +586,9 @@ const analyze=(overlay)=>{
         const cameraChanged = !before || Math.abs(before.rotationX - expected[0]) >= 0.002
           || Math.abs(before.rotationY - expected[1]) >= 0.002;
         await clickView(view);
+        let appearance;
+        const selected = await anchorEvidence();
+        if(selected?.ornamentOwner==='webgl')appearance=await verifyAccessoryAppearance(`${label}-${view}`,selected,view==='Bok');
         // The camera's React state can advance before the asynchronously composited
         // accessory canvases paint. Compare BOTH overlays with the pre-click raster,
         // including the first front view, which otherwise can retain the initial 3/4
@@ -542,7 +603,7 @@ const analyze=(overlay)=>{
           await sleep(160);
           sampled = await anchorEvidence();
         }
-        const evidence = { ...sampled, view, cameraChanged, preClick: {
+        const evidence = { ...sampled, view, cameraChanged, appearance, preClick: {
           rotationX:before?.rotationX,rotationY:before?.rotationY,
           backHash:before?.back?.hash,frontHash:before?.front?.hash,
         } };
@@ -553,7 +614,7 @@ const analyze=(overlay)=>{
           throw new Error(`${label} ${view}: both accessory canvases did not redraw for the requested camera: ${JSON.stringify(evidence)}`);
         }
         assertViewEvidence(label, view, evidence, results[0]);
-        evidence.appearance = await verifyAccessoryAppearance(`${label}-${view}`, evidence);
+        evidence.appearance = appearance || await verifyAccessoryAppearance(`${label}-${view}`, evidence);
         await writeFile(path.join(qaDir, `anchor-${label.toLowerCase()}-evidence.json`), JSON.stringify(results, null, 2));
       }
       if (new Set(results.map((item) => item.back.hash)).size !== 3) {
@@ -562,11 +623,40 @@ const analyze=(overlay)=>{
       if (new Set(results.map((item) => item.front.hash)).size !== 3) {
         throw new Error(`${label}: front accessory canvas did not redraw uniquely for Przód / 3/4 / Bok: ${JSON.stringify(results.map((item) => item.front.hash))}`);
       }
+      if(results[0]?.ornamentOwner==='webgl'){
+        await clickView('Przód');
+        const start=await evaluate(`(() => {
+          const r=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-canvas').getBoundingClientRect();
+          return {x:r.x+r.width*.65,y:r.y+r.height*.55};
+        })()`);
+        if(mobileViewport)await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...start,id:1}]});
+        else await send('Input.dispatchMouseEvent',{type:'mousePressed',...start,button:'left',clickCount:1});
+        for(let i=1;i<=8;i++){
+          const point={x:start.x-Math.PI/2/.012*i/8,y:start.y-.05/.008*i/8};
+          if(mobileViewport)await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...point,id:1}]});
+          else await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point,button:'left',buttons:1});
+          await sleep(40);
+        }
+        if(mobileViewport)await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        else await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:start.x-Math.PI/2/.012,y:start.y-.05/.008,button:'left',clickCount:1});
+        await waitFor(`(() => {
+          const s=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-fidelity3d-canvas').closest('.abags-bag-builder-stage');
+          return Math.abs(Number(s.dataset.abagsFidelity3dRotationY)+Math.PI/2)<.03;
+        })()`,`${label} opposite-side customer drag`);
+        await sleep(180);
+        let near=await anchorEvidence();
+        const appearance=await verifyAccessoryAppearance(`${label}-opposite-side`,near);
+        near=await anchorEvidence();
+        if(near.front.sampled<12||near.front.contactRatio<.45||near.duplicateOrnament)throw new Error(`${label}: near-side ornament must reappear attached after rotating the bag: ${JSON.stringify(near)}`);
+        await capture(`anchor-${label.toLowerCase()}-opposite-side.png`);
+        await writeFile(path.join(qaDir,`anchor-${label.toLowerCase()}-occlusion.json`),JSON.stringify({far:results.find(item=>item.view==='Bok'),near:{...near,appearance}},null,2));
+      }
       await choose("accent", "none");
       await waitFor(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
         const canvas=stage?.querySelector('.abags-accessory-fidelity-front');
         if(stage?.dataset.accent!=='none'||stage.dataset.abagsFidelity3dFrame!==stage.dataset.builderSignature||!(canvas instanceof HTMLCanvasElement))return false;
+        if(stage.dataset.abagsFidelityOrnamentOwner==='webgl'&&(Number(stage.dataset.abagsFidelityOrnamentTriangles)!==0||stage.dataset.abagsFidelityOrnamentBounds))return false;
         const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
         for(let i=3;i<pixels.length;i+=4)if(pixels[i]>24)return false;
         return true;
@@ -574,7 +664,8 @@ const analyze=(overlay)=>{
       await choose("accent", choices.find(([key]) => key === "accent")[1]);
       await waitFor(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
-        return stage?.dataset.accent!=='none'&&stage?.dataset.abagsFidelity3dFrame===stage?.dataset.builderSignature&&Boolean(stage?.dataset.abagsFidelityAccessoryAnchor);
+        return stage?.dataset.accent!=='none'&&stage?.dataset.abagsFidelity3dFrame===stage?.dataset.builderSignature&&Boolean(stage?.dataset.abagsFidelityAccessoryAnchor)&&
+          (stage.dataset.abagsFidelityOrnamentOwner!=='webgl'||Number(stage.dataset.abagsFidelityOrnamentTriangles)>100);
       })()`, `${label} restore selected ornament`);
       return results;
     };
@@ -611,8 +702,9 @@ const analyze=(overlay)=>{
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
         return stage?.dataset.abagsFidelityAccessorySignature===stage?.dataset.builderSignature && Boolean(stage?.dataset.abagsFidelityAccessoryAnchor);
       })()`, "current scarf attachment metadata");
-      const evidence = await anchorEvidence();
+      let evidence = await anchorEvidence();
       const appearance = await verifyAccessoryAppearance(`scarf-${view}`, evidence);
+      evidence = await anchorEvidence();
       scarf.push({ view, ornament: evidence?.ornament, appearance });
       await capture(`anchor-scarf-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
       const contact = evidence?.ornament;
@@ -628,7 +720,7 @@ const analyze=(overlay)=>{
     console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
     console.log("- scarf knot touches the wooden handle in Przód / 3/4 / Bok: yes");
-    console.log("- all ornaments change the actual customer-visible screenshot in every tested view: yes");
+    console.log("- ornaments visibly change front / three-quarter / near-side screenshots and obey far-side occlusion: yes");
   console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
   console.log("- rigid wood handle remains one coherent arch in Przód / 3/4 on desktop/mobile: yes");
   console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);

@@ -37,6 +37,10 @@ type Mesh = {
 };
 
 type Renderer = {
+  ornamentKey?: string;
+  ornamentParts?: Array<{ name: string; tone: OrnamentTone; material: number }>;
+  ornamentBounds?: { min: YarnPoint; max: YarnPoint };
+  ornamentTriangles?: number;
   yarnKey?: string;
   woodBindingKey?: string;
   strapBindingKey?: string;
@@ -1446,6 +1450,7 @@ void main(){
   vec3 v=normalize(vec3(0.0,.02,5.0)-vWorld);
   float rough=.76,metal=0.0,detail=1.0,cordOcclusion=1.0;
   float fibreSheen=0.0;
+  vec3 pigment=uColor;
   if(uMaterial<.5){
     float cord=knit(vUv,uStitch);
     float e=.0012;
@@ -1491,7 +1496,7 @@ void main(){
   } else if(uMaterial<6.5){
     detail=.88+.025*sin(vUv.x*118.0+vUv.y*97.0);
     rough=.96;
-  } else {
+  } else if(uMaterial<7.5){
     vec2 braidSlope;
     float braid=cordBraid(vUv,braidSlope);
     float resolved=braidVisibility(vUv);
@@ -1500,11 +1505,24 @@ void main(){
     cordOcclusion=mix(1.0,.88+.12*braid,resolved);
     rough=.80+.04*(1.0-braid)*resolved;
     fibreSheen=.018;
+  } else if(uMaterial<8.5){
+    // Woven satin on the physical folds: narrow borders and a restrained print.
+    float border=1.0-smoothstep(.025,.055,min(vUv.y,1.0-vUv.y));
+    float stripe=1.0-smoothstep(.06,.11,abs(fract(vUv.x*5.0+vUv.y*.75)-.5));
+    pigment=mix(pigment,vec3(.95,.86,.76),max(border*.90,stripe*.30));
+    detail=.98+.012*sin(vUv.x*120.0)*sin(vUv.y*74.0);
+    rough=.48;
+    fibreSheen=.035;
+  } else {
+    // Small polished stone beads retain volume and softly varied mineral colour.
+    float vein=sin(vUv.x*23.0+sin(vUv.y*17.0)*1.8);
+    detail=.94+.045*vein;
+    rough=.30;
   }
   float ndl=max(dot(n,l),0.0);
   float fillLight=max(dot(n,fill),0.0);
   float facing=max(dot(n,v),0.0);
-  vec3 base=pow(max(uColor,vec3(.001)),vec3(2.2))*detail;
+  vec3 base=pow(max(pigment,vec3(.001)),vec3(2.2))*detail;
   float cavity=.94+.06*facing;
   float illumination=.30+.66*ndl+.20*fillLight;
   vec3 f0=mix(vec3(.035),base,metal);
@@ -1716,6 +1734,166 @@ function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
   return [x, y, crochetPanelPoint(family, x, y - spec.bodyY)[2] + cordRadius * 1.75 + .018];
 }
 
+type OrnamentTone = "cord" | "metal" | "scarf" | "hem" | "rose" | "lilac" | "teal";
+type OrnamentPart = { name: string; tone: OrnamentTone; material: number; mesh: FabricMesh };
+
+function appendOrnamentMesh(target: FabricMesh, source: FabricMesh, pose: Float32Array) {
+  const start = target.positions.length / 3, normals = normalMatrix(pose);
+  for (let i = 0; i < source.positions.length; i += 3) {
+    const [x, y, z] = source.positions.slice(i, i + 3);
+    target.positions.push(pose[0] * x + pose[4] * y + pose[8] * z + pose[12], pose[1] * x + pose[5] * y + pose[9] * z + pose[13], pose[2] * x + pose[6] * y + pose[10] * z + pose[14]);
+    const [nx, ny, nz] = source.normals.slice(i, i + 3);
+    target.normals.push(...normalize(normals[0] * nx + normals[3] * ny + normals[6] * nz, normals[1] * nx + normals[4] * ny + normals[7] * nz, normals[2] * nx + normals[5] * ny + normals[8] * nz));
+  }
+  target.uvs.push(...source.uvs);
+  target.indices.push(...source.indices.map((index) => index + start));
+}
+
+function makeOrnamentLathe(profile: Point[], segments = 28): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  profile.forEach(([radius, y], row) => {
+    const a = profile[Math.max(0, row - 1)], b = profile[Math.min(profile.length - 1, row + 1)];
+    const slope = (b[0] - a[0]) / (b[1] - a[1] || .001);
+    for (let i = 0; i <= segments; i++) {
+      const angle = i / segments * Math.PI * 2, x = Math.cos(angle), z = Math.sin(angle);
+      mesh.positions.push(radius * x, y, radius * z);
+      mesh.normals.push(...normalize(x, -slope, z)); mesh.uvs.push(i / segments, row / (profile.length - 1));
+      if (row && i < segments) {
+        const j = row * (segments + 1) + i, k = j - segments - 1;
+        mesh.indices.push(k, j, k + 1, k + 1, j, j + 1);
+      }
+    }
+  });
+  return mesh;
+}
+
+function appendOrnamentRibbon(mesh: FabricMesh, sample: (u: number, v: number) => YarnPoint, rows = 36, columns = 8) {
+  const start = mesh.positions.length / 3, faceSize = (rows + 1) * (columns + 1);
+  for (const side of [1, -1]) for (let row = 0; row <= rows; row++) for (let column = 0; column <= columns; column++) {
+    const u = row / rows, v = column / columns * 2 - 1, e = .0005;
+    const point = sample(u, v), ua = sample(Math.max(0, u - e), v), ub = sample(Math.min(1, u + e), v);
+    const va = sample(u, Math.max(-1, v - e)), vb = sample(u, Math.min(1, v + e));
+    const du = ub.map((n, i) => n - ua[i]), dv = vb.map((n, i) => n - va[i]);
+    const n = normalize(du[1] * dv[2] - du[2] * dv[1], du[2] * dv[0] - du[0] * dv[2], du[0] * dv[1] - du[1] * dv[0]);
+    mesh.positions.push(...point.map((value, i) => value + n[i] * side * .0018));
+    mesh.normals.push(...n.map((value) => value * side)); mesh.uvs.push(u, (v + 1) * .5);
+  }
+  for (const side of [0, 1]) for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+    const a = start + side * faceSize + row * (columns + 1) + column, b = a + columns + 1;
+    mesh.indices.push(...(side ? [a, a + 1, b, a + 1, b + 1, b] : [a, b, a + 1, a + 1, b, b + 1]));
+  }
+  const join = (a: number, b: number) => mesh.indices.push(start + a, start + b, start + a + faceSize, start + b, start + b + faceSize, start + a + faceSize);
+  for (let row = 0; row < rows; row++) for (const col of [0, columns]) join(row * (columns + 1) + col, (row + 1) * (columns + 1) + col);
+  for (let column = 0; column < columns; column++) for (const row of [0, rows]) join(row * (columns + 1) + column, row * (columns + 1) + column + 1);
+}
+
+function makeOrnamentGeometry(config: Config) {
+  const anchor = fidelityAccessoryAnchor(config);
+  const parts: OrnamentPart[] = [];
+  if (!anchor || !config.family) return { parts, bounds: undefined };
+  const family = config.family, spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const part = (tone: OrnamentTone, material: number) => {
+    let current = parts.find((p) => p.tone === tone);
+    if (!current) { current = { name: "ornament-" + tone, tone, material, mesh: { positions: [], normals: [], uvs: [], indices: [] } }; parts.push(current); }
+    return current.mesh;
+  };
+  const point = (x: number, y: number, z: number, clearance = .012): YarnPoint => {
+    const wx = anchor[0] + x, wy = anchor[1] + y, localY = wy - spec.bodyY;
+    const taper = 1 + spec.taper * localY / spec.ry;
+    const fraction = Math.pow(Math.pow(Math.abs(wx / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(localY / spec.ry), spec.power), 1 / spec.power);
+    let wz = anchor[2] + z;
+    if (fraction < .974) wz = Math.max(wz, crochetPanelPoint(family, wx, localY)[2] + spec.rx * 5 / 160 * 1.75 + clearance);
+    return [wx, wy, wz];
+  };
+  const tube = (target: FabricMesh, points: YarnPoint[], radius: number) => appendCord(target, points, radius, () => [0, 0, 1], () => true, 8);
+  const ring = (target: FabricMesh, at: YarnPoint, rx: number, ry: number, radius: number, rotation: [number, number, number] = [0, 0, 0]) => appendOrnamentMesh(target, makeArchTube(rx, ry, 0, radius, 28, 8, true), matrix(at, [1, 1, 1], rotation));
+  const bead = (target: FabricMesh, at: YarnPoint, size: YarnPoint) => appendOrnamentMesh(target, makeEllipsoid(1, 1, 1, 10, 14), matrix(at, size));
+  if (config.accent === "tassel") {
+    const metal = part("metal", 4), cord = part("cord", 7);
+    ring(metal, point(0, -.015, .025), .025, .031, .006);
+    const cap = makeOrnamentLathe([[.013, .038], [.027, .031], [.037, .016], [.040, -.023], [.038, -.035], [.031, -.035]]);
+    appendOrnamentMesh(metal, cap, matrix(point(0, -.087, .060, .042), [1, 1, 1]));
+    for (let strand = 0; strand < 24; strand++) {
+      const angle = strand / 24 * Math.PI * 2, length = .43 + .018 * Math.sin(strand * 2.4);
+      const path = Array.from({ length: 25 }, (_, i) => {
+        const t = i / 24, spread = .021 + .043 * t;
+        return point(Math.cos(angle) * spread + .006 * Math.sin(t * Math.PI + angle), -.115 - length * t,
+          .070 + Math.sin(angle) * spread + .012 * Math.sin(t * Math.PI), .011);
+      });
+      tube(cord, path, .0085);
+      bead(cord, path[path.length - 1], [.0085, .010, .0085]);
+    }
+    const winding = Array.from({ length: 65 }, (_, i) => {
+      const t = i / 64, a = t * Math.PI * 6;
+      return point(Math.cos(a) * .030, -.113 - t * .028, .070 + Math.sin(a) * .030, .009);
+    });
+    tube(cord, winding, .006);
+  } else if (config.accent === "scarf") {
+    const fabric = part("scarf", 8), hem = part("hem", 3);
+    const ribbon = (sample: (u: number, v: number) => YarnPoint, rows = 40) => {
+      appendOrnamentRibbon(fabric, sample, rows);
+      for (const edge of [-1, 1]) tube(hem, Array.from({ length: rows + 1 }, (_, i) => sample(i / rows, edge)), .0018);
+    };
+    for (const side of [-1, 1]) ribbon((u, v) => {
+      const a = Math.PI * 2 * u;
+      const x = side * (.12 * (1 - Math.cos(a))), y = .055 * Math.sin(a) + .018 * Math.sin(Math.PI * u);
+      const dx = side * .12 * Math.sin(a), dy = .055 * Math.cos(a), length = Math.hypot(dx, dy);
+      const width = .018 + .032 * Math.sin(Math.PI * u);
+      return point(x - dy / length * width * v, y + dx / length * width * v,
+        .065 + .075 * Math.sin(Math.PI * u) + .012 * (1 - v * v) * Math.sin(a), .006);
+    });
+    for (const side of [-1, 1]) ribbon((u, v) => {
+      const length = side < 0 ? .51 : .45;
+      const x = side * (.018 + .090 * u + .028 * Math.sin(u * Math.PI));
+      const width = .038 + .015 * Math.sin(Math.PI * u);
+      const notch = .027 * (1 - Math.abs(v)) * Math.pow(u, 12);
+      return point(x + width * v, -.025 - length * u + notch,
+        .055 + .032 * Math.sin(u * Math.PI * 2 + side) + .018 * (1 - v * v) * Math.sin(u * Math.PI * 3), .007);
+    });
+    if (config.handles.startsWith("wood")) {
+      appendOrnamentRibbon(fabric, (u, v) => {
+        const angle = u * Math.PI * 2;
+        return [anchor[0] + .048 * Math.cos(angle), anchor[1] + .022 * v, anchor[2] - .045 + .060 * Math.sin(angle)];
+      }, 36, 6);
+    }
+    bead(fabric, point(0, -.010, .079, .035), [.045, .036, .035]);
+  } else if (config.accent === "charm") {
+    const metal = part("metal", 4);
+    ring(metal, point(0, -.012, .028), .022, .028, .0055);
+    for (let i = 0; i < 7; i++) ring(metal, point(0, -.043 - i * .026, .045, .021), .012, .018, .0038, [0, i % 2 ? Math.PI / 2 : 0, 0]);
+    const stones: Array<[OrnamentTone, number, number]> = [["rose", 0, -.285], ["lilac", .047, -.365], ["teal", -.047, -.365]];
+    for (const [tone, x, y] of stones) {
+      const center = point(x, y, .068, .044);
+      tube(metal, [point(0, -.215, .048, .021), [center[0], center[1] + .041, center[2]], [center[0], center[1] - .043, center[2]]], .0035);
+      bead(part(tone, 9), center, [.036, .040, .030]);
+      ring(metal, [center[0], center[1] + .038, center[2]], .013, .008, .0035);
+    }
+  }
+  const min: YarnPoint = [Infinity, Infinity, Infinity], max: YarnPoint = [-Infinity, -Infinity, -Infinity];
+  for (const { mesh } of parts) for (let i = 0; i < mesh.positions.length; i++) {
+    const axis = i % 3; min[axis] = Math.min(min[axis], mesh.positions[i]); max[axis] = Math.max(max[axis], mesh.positions[i]);
+  }
+  return { parts, bounds: parts.length ? { min, max } : undefined };
+}
+
+function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
+  const key = [config.family, config.accent, config.accent === "scarf" && config.handles.startsWith("wood")].join("|");
+  if (renderer.ornamentKey === key) return;
+  for (const part of renderer.ornamentParts ?? []) {
+    const mesh = renderer.meshes[part.name];
+    for (const buffer of [mesh.position, mesh.normal, mesh.uv, mesh.index]) renderer.gl.deleteBuffer(buffer);
+    delete renderer.meshes[part.name];
+  }
+  const data = makeOrnamentGeometry(config);
+  renderer.ornamentParts = data.parts.map(({ name, tone, material, mesh }) => {
+    renderer.meshes[name] = createMesh(renderer.gl, mesh);
+    return { name, tone, material };
+  });
+  renderer.ornamentBounds = data.bounds;
+  renderer.ornamentTriangles = data.parts.reduce((sum, part) => sum + part.mesh.indices.length / 3, 0);
+  renderer.ornamentKey = key;
+}
+
 function familyShoulderStrapMesh(family: Exclude<Family, "">) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   // Build the shoulder strap in the same coordinate space as the family rings.
@@ -1777,6 +1955,9 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsCrochetOwner = canvas.dataset.abagsCrochetOwner || "";
   stage.dataset.abagsFidelityAccessoryAnchor = canvas.dataset.abagsFidelityAccessoryAnchor || "";
   stage.dataset.abagsFidelityAccessorySignature = canvas.dataset.abagsFidelityAccessorySignature || "";
+  stage.dataset.abagsFidelityOrnamentOwner = canvas.dataset.abagsFidelityOrnamentOwner || "";
+  stage.dataset.abagsFidelityOrnamentBounds = canvas.dataset.abagsFidelityOrnamentBounds || "";
+  stage.dataset.abagsFidelityOrnamentTriangles = canvas.dataset.abagsFidelityOrnamentTriangles || "0";
   stage.dataset.abagsFidelity3dFrameAt = canvas.dataset.abagsFidelity3dFrameAt || String(Date.now());
   stage.removeAttribute("data-abags-fidelity3d-error");
 }
@@ -1794,6 +1975,9 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
   for (const node of [stage, canvas]) {
     node.removeAttribute("data-abags-fidelity-accessory-anchor");
     node.removeAttribute("data-abags-fidelity-accessory-signature");
+    node.removeAttribute("data-abags-fidelity-ornament-owner");
+    node.removeAttribute("data-abags-fidelity-ornament-bounds");
+    node.removeAttribute("data-abags-fidelity-ornament-triangles");
   }
 }
 
@@ -1946,16 +2130,20 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     }
   }
 
-  // Optional ornaments are drawn only by the synchronized accessory compositor.
-  // Rendering them here as well created doubled bows/charms; this renderer owns
-  // the bag body, flap, handles, shoulder strap and strap attachment hardware.
-  // Do not add unconditional decorative hardware to an otherwise plain bag.
+  // The selected ornament uses the same depth buffer, lighting and camera as
+  // the bag. The compatibility canvas is suppressed for this exact signature.
+  ensureOrnamentMeshes(renderer, config);
+  const ornamentColors: Record<OrnamentTone, string> = { cord: body, metal, scarf: "#D7839A", hem: "#F3E0CB", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
+  for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
 
   const renderError = gl.getError();
   if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
 
   canvas.dataset.abagsCrochetOwner = "webgl-yarn";
+  canvas.dataset.abagsFidelityOrnamentOwner = "webgl";
+  canvas.dataset.abagsFidelityOrnamentBounds = renderer.ornamentBounds ? JSON.stringify(renderer.ornamentBounds) : "";
+  canvas.dataset.abagsFidelityOrnamentTriangles = String(renderer.ornamentTriangles ?? 0);
   const accessoryAnchor = fidelityAccessoryAnchor(config);
   canvas.dataset.abagsFidelityAccessoryAnchor = accessoryAnchor ? JSON.stringify(accessoryAnchor) : "";
   canvas.dataset.abagsFidelityAccessorySignature = renderSignature(config);
