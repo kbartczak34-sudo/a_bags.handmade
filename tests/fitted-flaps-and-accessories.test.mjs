@@ -109,7 +109,7 @@ test("strap and chain endpoint geometry shares the same depth plane as its metal
 
 test("ornament anchors touch the body and a wooden-handle scarf touches the actual ring", () => {
   for (const family of families) {
-    for (const accent of ["tassel", "scarf", "charm"]) {
+    for (const accent of ["tassel", "scarf", "bow", "charm"]) {
       const anchor = g.fidelityAccessoryAnchor({ family, accent, handles: "none" });
       const seat = g.crochetPanelPoint(family, anchor[0], anchor[1] - specs[family].bodyY);
       const clearance = anchor[2] - seat[2];

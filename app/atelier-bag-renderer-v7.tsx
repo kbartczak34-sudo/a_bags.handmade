@@ -11,7 +11,7 @@ type BuilderConfig = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
 };
 
 const EMPTY: BuilderConfig = {
@@ -232,7 +232,7 @@ function AtelierSvg({ config }: { config: BuilderConfig }) {
         {Array.from({ length: 12 }, (_, index) => <path key={index} d={`M${452 + index * 3} 282 Q${455 + index * 3} ${329 + (index % 3) * 3} ${449 + index * 3.8} 382`} fill="none" stroke={index % 3 === 0 ? light : index % 3 === 1 ? bag : dark} strokeWidth={index % 2 ? 4.3 : 5.2} strokeLinecap="round"/>)}
       </g>}
 
-      {config.accent === "scarf" && <g data-v7-layer="accent" filter="url(#v7-soft-shadow)">
+      {(config.accent === "scarf" || config.accent === "bow") && <g data-v7-layer="accent" filter="url(#v7-soft-shadow)">
         <path d="M191 174 C157 146 133 161 149 191 C164 218 195 205 202 181 C211 209 243 219 258 192 C276 159 244 143 209 173 Z" fill="#EFBCC8" stroke="#fff" strokeWidth="3"/>
         <path d="M175 188 Q191 176 205 191 Q191 212 173 206 Z" fill="#8A5D78" opacity=".72"/>
         <path d="M211 187 Q227 175 244 191 Q229 210 211 204 Z" fill="#C99A38" opacity=".8"/>
