@@ -39,8 +39,12 @@ type Mesh = {
 type Renderer = {
   yarnKey?: string;
   woodBindingKey?: string;
+  strapBindingKey?: string;
   crochetFlapKey?: string;
   crochetFlapLockZ?: number;
+  flapShellKey?: string;
+  flapLockZ?: number;
+  flapLockRotation?: [number, number, number];
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
@@ -772,31 +776,106 @@ function ensureWoodHandleBinding(renderer: Renderer, family: Exclude<Family, "">
   renderer.woodBindingKey = family;
 }
 
-// Sample the actual rendered flap triangles so raised yarn meets the existing
-// curved surface exactly, including its family scaling, hinge and camera pose.
-function crochetFlapSurface(family: Exclude<Family, "">) {
+type ClosedFlapSurface = {
+  mesh: FabricMesh; contour: YarnPoint[]; rx: number; ry: number; centerY: number; thickness: number;
+  sample: (x: number, y: number) => { z: number; normal: YarnPoint } | null;
+};
+// Eight immutable surfaces cover the four families and two constructions.
+const closedFlapSurfaces = new Map<string, ClosedFlapSurface>();
+
+function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean): ClosedFlapSurface {
+  const key = family + (crochet ? ":crochet" : ":leather");
+  const cached = closedFlapSurfaces.get(key);
+  if (cached) return cached;
   const profile = PROFILES[family];
-  const base = makeExtrudedContour(flapContour(), .04, .085);
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  // Preserve the calibrated front outline; only its depth is fitted to the bag.
+  const base = crochet ? makeExtrudedContour(flapContour(), .04, .085) : makeExtrudedContour(flapContour(), 0.105, 0.085);
   const transform = matrix([0, profile.flapY, profile.frontZ + .13], profile.flapScale, [.02, 0, 0]);
-  const pointAt = (index: number): YarnPoint => {
-    const [x, y, z] = base.positions.slice(index * 3, index * 3 + 3);
+  const outline = flapContour().map((_, index): Point => {
+    const [x, y, z] = base.positions.slice((index + 1) * 3, (index + 2) * 3);
     return [transform[0] * x + transform[4] * y + transform[8] * z + transform[12],
-      transform[1] * x + transform[5] * y + transform[9] * z + transform[13],
-      transform[2] * x + transform[6] * y + transform[10] * z + transform[14]];
+      transform[1] * x + transform[5] * y + transform[9] * z + transform[13]];
+  });
+  const radius = spec.rx * 5 / 160;
+  const thickness = crochet ? radius * .50 : .018;
+  // The backing follows the same dome as the body. Clearance covers the tallest
+  // basket crossing; the flap no longer has a thick flat wedge behind its yarn.
+  const frontZ = (x: number, y: number) => crochetPanelPoint(family, x, y - spec.bodyY)[2]
+    + radius * 1.75 + .003 + thickness;
+  const normalAt = (x: number, y: number): YarnPoint => {
+    const e = .001;
+    return normalize(-(frontZ(x + e, y) - frontZ(x - e, y)) / (2 * e),
+      -(frontZ(x, y + e) - frontZ(x, y - e)) / (2 * e), 1);
   };
+  const cx = outline.reduce((sum, p) => sum + p[0], 0) / outline.length;
+  const cy = outline.reduce((sum, p) => sum + p[1], 0) / outline.length;
+  const minX = Math.min(...outline.map((p) => p[0])), maxX = Math.max(...outline.map((p) => p[0]));
+  const minY = Math.min(...outline.map((p) => p[1])), maxY = Math.max(...outline.map((p) => p[1]));
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const vertex = (x: number, y: number, side: number) => {
+    const index = mesh.positions.length / 3;
+    mesh.positions.push(x, y, frontZ(x, y) - (side < 0 ? thickness : 0));
+    mesh.normals.push(...normalAt(x, y).map((v) => v * side));
+    mesh.uvs.push((x - minX) / (maxX - minX), (y - minY) / (maxY - minY));
+    return index;
+  };
+  const face = (side: number) => {
+    const center = vertex(cx, cy, side);
+    let previous: number[] | null = null;
+    for (let band = 1; band <= 12; band++) {
+      const ring = outline.map(([x, y]) => vertex(cx + (x - cx) * band / 12, cy + (y - cy) * band / 12, side));
+      const triangle = (a: number, b: number, c: number) => mesh.indices.push(...(side > 0 ? [a, b, c] : [a, c, b]));
+      for (let i = 0; i < ring.length; i++) {
+        const j = (i + 1) % ring.length;
+        if (previous) {
+          triangle(previous[i], ring[j], ring[i]);
+          triangle(previous[i], previous[j], ring[j]);
+        } else triangle(center, ring[j], ring[i]);
+      }
+      previous = ring;
+    }
+  };
+  face(1); face(-1);
+  for (let i = 0; i < outline.length; i++) {
+    const j = (i + 1) % outline.length;
+    const a = outline[i], b = outline[j];
+    const normal = normalize(a[1] - b[1], b[0] - a[0], 0);
+    const start = mesh.positions.length / 3;
+    for (const [p, rear] of [[a, false], [a, true], [b, false], [b, true]] as const) {
+      mesh.positions.push(p[0], p[1], frontZ(...p) - (rear ? thickness : 0));
+      mesh.normals.push(...normal);
+      mesh.uvs.push((p === a ? i : i + 1) / outline.length, rear ? 0 : 1);
+    }
+    mesh.indices.push(start, start + 2, start + 1, start + 2, start + 3, start + 1);
+  }
+
+  // Bucket the actual front triangles, so clipping and yarn seating remain
+  // exact without scanning the whole curved mesh for every cord vertex.
   const triangles: Array<{ a: YarnPoint; b: YarnPoint; c: YarnPoint; normal: YarnPoint; determinant: number }> = [];
-  for (let i = 0; i < base.indices.length; i += 3) {
-    const indices = base.indices.slice(i, i + 3);
-    if (!indices.every((index) => base.normals[index * 3 + 2] > .8)) continue;
-    const [a, b, c] = indices.map(pointAt);
+  const grid = 16;
+  const bins: number[][] = Array.from({ length: grid * grid }, () => []);
+  const cellX = (x: number) => clamp(Math.floor((x - minX) / (maxX - minX) * grid), 0, grid - 1);
+  const cellY = (y: number) => clamp(Math.floor((y - minY) / (maxY - minY) * grid), 0, grid - 1);
+  for (let i = 0; i < mesh.indices.length; i += 3) {
+    const indices = mesh.indices.slice(i, i + 3);
+    if (!indices.every((index) => mesh.normals[index * 3 + 2] > .8)) continue;
+    const [a, b, c] = indices.map((index) => mesh.positions.slice(index * 3, index * 3 + 3) as YarnPoint);
     const ab = b.map((v, axis) => v - a[axis]), ac = c.map((v, axis) => v - a[axis]);
     let normal = normalize(ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]);
     if (normal[2] < 0) normal = normal.map((v) => -v) as YarnPoint;
     const determinant = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
-    if (Math.abs(determinant) > 1e-8) triangles.push({ a, b, c, normal, determinant });
+    if (Math.abs(determinant) <= 1e-8) continue;
+    const index = triangles.length;
+    triangles.push({ a, b, c, normal, determinant });
+    for (let y = cellY(Math.min(a[1], b[1], c[1])); y <= cellY(Math.max(a[1], b[1], c[1])); y++) {
+      for (let x = cellX(Math.min(a[0], b[0], c[0])); x <= cellX(Math.max(a[0], b[0], c[0])); x++) bins[y * grid + x].push(index);
+    }
   }
   const sample = (x: number, y: number) => {
-    for (const { a, b, c, normal, determinant } of triangles) {
+    if (x < minX - 1e-6 || x > maxX + 1e-6 || y < minY - 1e-6 || y > maxY + 1e-6) return null;
+    for (const index of bins[cellY(y) * grid + cellX(x)]) {
+      const { a, b, c, normal, determinant } = triangles[index];
       const u = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / determinant;
       const v = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / determinant;
       const w = 1 - u - v;
@@ -804,10 +883,29 @@ function crochetFlapSurface(family: Exclude<Family, "">) {
     }
     return null;
   };
-  const contour = flapContour().map((_, index) => pointAt(index + 1));
-  const minY = Math.min(...contour.map((p) => p[1])), maxY = Math.max(...contour.map((p) => p[1]));
+  const contour: YarnPoint[] = outline.map(([x, y]) => [x, y, frontZ(x, y)]);
   const rx = Math.max(...contour.map((p) => Math.abs(p[0]))), ry = (maxY - minY) * .5;
-  return { sample, contour, rx, ry, centerY: (minY + maxY) * .5 };
+  const surface = { mesh, sample, contour, rx, ry, centerY: (minY + maxY) * .5, thickness };
+  closedFlapSurfaces.set(key, surface);
+  return surface;
+}
+
+function crochetFlapSurface(family: Exclude<Family, "">) {
+  return closedFlapSurface(family, true);
+}
+
+function ensureClosedFlapShell(renderer: Renderer, family: Exclude<Family, "">, crochet: boolean) {
+  const key = family + (crochet ? ":crochet" : ":leather");
+  if (renderer.flapShellKey === key) return;
+  const previous = renderer.meshes.flapShell;
+  if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+  const surface = closedFlapSurface(family, crochet);
+  renderer.meshes.flapShell = createMesh(renderer.gl, surface.mesh);
+  const snap = surface.sample(0, PROFILES[family].lockY);
+  renderer.flapLockZ = (snap?.z ?? surface.contour[0][2]) + .023;
+  const n = snap?.normal ?? [0, 0, 1];
+  renderer.flapLockRotation = [-Math.asin(clamp(n[1], -1, 1)), Math.atan2(n[0], n[2]), 0];
+  renderer.flapShellKey = key;
 }
 
 function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
@@ -840,7 +938,7 @@ function ensureCrochetFlapMesh(renderer: Renderer, family: Exclude<Family, "">, 
   if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
   const data = makeCrochetFlap(family, stitch);
   renderer.meshes.yarnFlap = createMesh(renderer.gl, data);
-  let contactZ = PROFILES[family].frontZ + .13;
+  let contactZ = crochetFlapSurface(family).sample(0, PROFILES[family].lockY)?.z ?? PROFILES[family].frontZ;
   for (let i = 0; i < data.positions.length; i += 3) {
     if (Math.abs(data.positions[i]) < .09 && Math.abs(data.positions[i + 1] - PROFILES[family].lockY) < .06) {
       contactZ = Math.max(contactZ, data.positions[i + 2]);
@@ -1425,8 +1523,6 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundInterior: createMesh(gl, makeOpeningInterior("round")),
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
-      flap: createMesh(gl, makeExtrudedContour(flapContour(), 0.105, 0.085)),
-      crochetFlapBase: createMesh(gl, makeExtrudedContour(flapContour(), .04, .085)),
       woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.042, 96, 16, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteStrap: createMesh(gl, familyShoulderStrapMesh("tote")),
@@ -1479,6 +1575,93 @@ function familyAttachment(profile: FamilyProfile, family: Exclude<Family, "">) {
     y: profile.topY + spec.attachmentYOffset,
     z: profile.frontZ * spec.attachmentZFactor,
   };
+}
+
+function strapHardwarePosition(family: Exclude<Family, "">, side: number): YarnPoint {
+  const attachment = familyAttachment(PROFILES[family], family);
+  return [side * attachment.x, attachment.y - .08, attachment.z + .035];
+}
+
+function shoulderStrapMatrix(family: Exclude<Family, "">) {
+  const attachment = familyAttachment(PROFILES[family], family);
+  return matrix([0, attachment.y - .02, attachment.z + .035], [1, 1, 1]);
+}
+
+function strapBindingPaths(family: Exclude<Family, "">, side: number) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const ring = strapHardwarePosition(family, side);
+  const contour = familyContour(family);
+  const cord = spec.rx * 5 / 160;
+  const radius = cord * .65;
+  const footX = side * Math.min(Math.abs(ring[0]), spec.rx * .90);
+  const upperAt = (x: number) => {
+    let upper = 0;
+    for (let i = 0; i < contour.length; i++) {
+      const a = contour[i], b = contour[(i + 1) % contour.length];
+      if (Math.abs(b[0] - a[0]) < 1e-8 || x < Math.min(a[0], b[0]) || x > Math.max(a[0], b[0])) continue;
+      upper = Math.max(upper, a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]));
+    }
+    return upper;
+  };
+  const footY = Math.min(upperAt(footX - cord * .5), upperAt(footX + cord * .5)) - cord * 2.1;
+  const bottom = ring[1] - .13 * .88;
+  const y = Math.min(footY, bottom - spec.bodyY - cord * 3);
+  const seat = (x: number): YarnPoint => {
+    const point = crochetPanelPoint(family, x, y, cord * .35);
+    return [point[0], point[1] + spec.bodyY, point[2]];
+  };
+  const feet = [seat(footX - cord * .5), seat(footX + cord * .5)];
+  const bridge = (a: YarnPoint, b: YarnPoint) => Array.from({ length: 7 }, (_, i): YarnPoint => {
+    const t = i / 6;
+    return a.map((v, axis) => v * (1 - t) + b[axis] * t) as YarnPoint;
+  });
+  const paths = [-1, 0, 1].map((lane) => {
+    // Three sewn cord loops wrap over the bottom of the real metal ring.
+    // Their feet are inside the family's curved panel, including round bags.
+    const wrap = Array.from({ length: 17 }, (_, i): YarnPoint => {
+      const angle = Math.PI * (1 - i / 16);
+      return [ring[0] + (.025 + radius * .7) * Math.cos(angle),
+        bottom + (.022 + radius * .7) * Math.sin(angle), ring[2] + lane * radius * 1.7];
+    });
+    const a = [...feet[0]] as YarnPoint, b = [...feet[1]] as YarnPoint;
+    a[1] += lane * radius * .65; b[1] += lane * radius * .65;
+    return [...bridge(a, wrap[0]), ...wrap.slice(1), ...bridge(wrap[16], b).slice(1), a];
+  });
+  return { paths, radius };
+}
+
+function makeStrapBinding(family: Exclude<Family, "">): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  for (const side of [-1, 1]) {
+    const { paths, radius } = strapBindingPaths(family, side);
+    for (const path of paths) appendCord(mesh, path, radius, () => [0, 0, 1], () => true, 8);
+  }
+  return mesh;
+}
+
+function ensureStrapBinding(renderer: Renderer, family: Exclude<Family, "">) {
+  if (renderer.strapBindingKey === family) return;
+  const previous = renderer.meshes.strapBinding;
+  if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+  renderer.meshes.strapBinding = createMesh(renderer.gl, makeStrapBinding(family));
+  renderer.strapBindingKey = family;
+}
+
+function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
+  if (!config.family || config.accent === "none") return null;
+  const family = config.family, spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  if (config.accent === "scarf" && config.handles.startsWith("wood")) {
+    const model = woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]);
+    const angle = Math.PI - .16;
+    const x = .46 * Math.cos(angle), y = .42 * Math.sin(angle), z = .055;
+    return [model[0] * x + model[4] * y + model[8] * z + model[12],
+      model[1] * x + model[5] * y + model[9] * z + model[13],
+      model[2] * x + model[6] * y + model[10] * z + model[14]];
+  }
+  const x = spec.sideAnchor * (config.accent === "tassel" ? .91 : config.accent === "scarf" ? -.68 : .86);
+  const y = config.accent === "tassel" ? .25 : config.accent === "scarf" ? .36 : .12;
+  const cordRadius = spec.rx * 5 / 160;
+  return [x, y, crochetPanelPoint(family, x, y - spec.bodyY)[2] + cordRadius * 1.75 + .018];
 }
 
 function familyShoulderStrapMesh(family: Exclude<Family, "">) {
@@ -1540,6 +1723,8 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
 
   stage.dataset.abagsFidelity3dFrame = frameSignature;
   stage.dataset.abagsCrochetOwner = canvas.dataset.abagsCrochetOwner || "";
+  stage.dataset.abagsFidelityAccessoryAnchor = canvas.dataset.abagsFidelityAccessoryAnchor || "";
+  stage.dataset.abagsFidelityAccessorySignature = canvas.dataset.abagsFidelityAccessorySignature || "";
   stage.dataset.abagsFidelity3dFrameAt = canvas.dataset.abagsFidelity3dFrameAt || String(Date.now());
   stage.removeAttribute("data-abags-fidelity3d-error");
 }
@@ -1554,6 +1739,10 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
   stage.removeAttribute("data-abags-fidelity3d-frame-at");
   stage.removeAttribute("data-abags-crochet-owner");
   stage.dataset.abagsFidelity3dError = message;
+  for (const node of [stage, canvas]) {
+    node.removeAttribute("data-abags-fidelity-accessory-anchor");
+    node.removeAttribute("data-abags-fidelity-accessory-signature");
+  }
 }
 
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
@@ -1600,20 +1789,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
     const strapColor = config.strap === "chain" ? metal : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const material = config.strap === "chain" ? 4 : config.strap === "leather" ? 2 : 3;
-    const attachment = familyAttachment(profile, renderFamily);
     const strapMesh = config.strap === "chain"
       ? (config.family ? meshes[config.family + "Chain"] : meshes.toteChain)
       : meshes[renderFamily + "Strap"];
     drawMesh(
       renderer,
       strapMesh,
-      multiply(
-        root,
-        matrix(
-          [0, attachment.y - 0.02, attachment.z + 0.035],
-          [1, 1, 1],
-        ),
-      ),
+      multiply(root, shoulderStrapMatrix(renderFamily)),
       strapColor,
       material,
       stitch,
@@ -1671,8 +1853,9 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.flap !== "none") {
     const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? "#7c5034" : config.flap === "suede-burgundy" ? "#803248" : body;
     const crochet = config.flap === "crochet";
-    const material = crochet ? 6 : 2;
-    drawMesh(renderer, crochet ? meshes.crochetFlapBase : meshes.flap, multiply(root, matrix([0, profile.flapY, profile.frontZ + 0.13], profile.flapScale, [0.02, 0, 0])), crochet ? darken(flapColor, .22) : flapColor, material, stitch, 0);
+    const material = crochet ? 6 : config.flap === "suede-burgundy" ? 3 : 2;
+    ensureClosedFlapShell(renderer, renderFamily, crochet);
+    drawMesh(renderer, meshes.flapShell, root, crochet ? darken(flapColor, .22) : flapColor, material, stitch, 0);
     if (crochet) {
       ensureCrochetFlapMesh(renderer, renderFamily, config.stitch || "classic");
       drawMesh(renderer, meshes.yarnFlap, root, flapColor, 7, stitch, 0);
@@ -1682,18 +1865,18 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
   // Closure hardware is only present when a flap/closure is selected.
   if (config.flap !== "none") {
-    const lockZ = config.flap === "crochet" ? renderer.crochetFlapLockZ ?? profile.frontZ + .25 : profile.frontZ + .25;
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.077, 0.050, 0.021])), metal, 4, 0);
+    const lockZ = (config.flap === "crochet" ? renderer.crochetFlapLockZ : renderer.flapLockZ) ?? profile.frontZ;
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.077, 0.050, 0.021], renderer.flapLockRotation)), metal, 4, 0);
   }
 
   if (config.strap !== "none") {
+    ensureStrapBinding(renderer, renderFamily);
+    drawMesh(renderer, meshes.strapBinding, root, body, 7, stitch, 0);
     for (const side of [-1, 1]) {
-      const attachment = familyAttachment(profile, renderFamily);
-      const x = side * attachment.x;
       drawMesh(
         renderer,
         meshes.ring,
-        multiply(root, matrix([x, attachment.y - 0.08, 0.02], [0.74, 0.88, 1], [0, Math.PI / 2, 0])),
+        multiply(root, matrix(strapHardwarePosition(renderFamily, side), [0.74, 0.88, 1], [0, Math.PI / 2, 0])),
         metal,
         4,
         0,
@@ -1711,6 +1894,9 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
 
   canvas.dataset.abagsCrochetOwner = "webgl-yarn";
+  const accessoryAnchor = fidelityAccessoryAnchor(config);
+  canvas.dataset.abagsFidelityAccessoryAnchor = accessoryAnchor ? JSON.stringify(accessoryAnchor) : "";
+  canvas.dataset.abagsFidelityAccessorySignature = renderSignature(config);
   canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
   canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
   canvas.removeAttribute("data-abags-fidelity3d-error");

@@ -1,5 +1,17 @@
 export const ABAGS_ACCESSORY_FIDELITY_VERSION = "agata-accessories-v1";
 
+/** Read only an anchor measured by the renderer for the current configuration. */
+export function readFidelityAccessoryAnchor(dataset: Record<string, string | undefined>): [number, number, number] | undefined {
+  if (!dataset.abagsFidelityAccessorySignature || dataset.abagsFidelityAccessorySignature !== dataset.builderSignature) return undefined;
+  try {
+    const point: unknown = JSON.parse(dataset.abagsFidelityAccessoryAnchor || "null");
+    if (Array.isArray(point) && point.length === 3 && point.every((v) => typeof v === "number" && Number.isFinite(v))) {
+      return point as [number, number, number];
+    }
+  } catch { /* An unavailable renderer leaves the existing fallback anchor active. */ }
+  return undefined;
+}
+
 /**
  * Real A-Bags atelier references used to calibrate optional details in the
  * customer realtime renderer. These IDs point to EXACT_ATELIER_LIBRARY.

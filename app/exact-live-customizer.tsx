@@ -70,7 +70,7 @@ import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
-const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-21-sewn-wood-handles";
+const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-21-seated-flaps-and-details";
 
 export default function ExactLiveCustomizer() {
   useEffect(() => {
