@@ -10,7 +10,7 @@ type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-bur
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
 type Strap = "none" | "leather" | "woven" | "chain";
 type Hardware = "gold" | "silver" | "black";
-type Accent = "none" | "tassel" | "scarf" | "charm";
+type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
 type Config = { family: Family; color: string; stitch: Stitch; flap: Flap; handles: Handles; strap: Strap; hardware: Hardware; accent: Accent };
 type Mesh = { position: WebGLBuffer; normal: WebGLBuffer; uv: WebGLBuffer; count: number };

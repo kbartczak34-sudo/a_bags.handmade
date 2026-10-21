@@ -9,7 +9,7 @@ type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-bur
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
 type Strap = "none" | "leather" | "woven" | "chain";
 type Hardware = "gold" | "silver" | "black";
-type Accent = "none" | "tassel" | "scarf" | "charm";
+type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
 type Config = {
   family: Family;
@@ -582,7 +582,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   if (config.accent === "tassel") {
     drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.accentX, profile.accentY + 0.03, profile.frontZ + 0.07], [0.075, 0.075, 0.055])), metal, 4, 0);
     drawMesh(renderer, meshes.cone, multiply(root, matrix([profile.accentX, profile.accentY - 0.27, profile.frontZ + 0.06], [0.95, 1.05, 0.95])), body, 0, stitch, 0.01);
-  } else if (config.accent === "scarf") {
+  } else if ((config.accent === "scarf" || config.accent === "bow")) {
     drawMesh(renderer, meshes.ribbon, multiply(root, matrix([profile.accentX + 0.08, profile.accentY + 0.06, profile.frontZ + 0.12], [0.82, 1, 1], [0, 0, 0.52])), "#e9a8b7", 3, 0);
     drawMesh(renderer, meshes.ribbon, multiply(root, matrix([profile.accentX + 0.18, profile.accentY - 0.04, profile.frontZ + 0.13], [0.72, 1, 1], [0, 0, -0.5])), "#c8718a", 3, 0);
     drawMesh(renderer, meshes.sphere, multiply(root, matrix([profile.accentX + 0.13, profile.accentY + 0.02, profile.frontZ + 0.16], [0.09, 0.075, 0.05])), "#8c5666", 3, 0);

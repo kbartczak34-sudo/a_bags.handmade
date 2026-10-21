@@ -23,7 +23,8 @@
 .abags-atelier-v7-svg [data-v7-layer="accent"]{animation:abags-v7-fade .2s ease both}
 
 /* No cloth may escape the bag when the scarf option is selected. */
-.abags-bag-builder-stage.abags-v7-active[data-accent="scarf"] .abags-atelier-v7-svg [data-v7-layer="accent"]{transform-origin:205px 187px;transform:translate(24px,18px) scale(.82)}
+.abags-bag-builder-stage.abags-v7-active[data-accent="scarf"],
+.abags-bag-builder-stage.abags-v7-active[data-accent="bow"] .abags-atelier-v7-svg [data-v7-layer="accent"]{transform-origin:205px 187px;transform:translate(24px,18px) scale(.82)}
 
 /* Keep the old stitch magnifier useful but secondary; the actual bag now carries readable rope relief. */
 .abags-bag-builder-stage.abags-v7-active[data-stitch]:not([data-stitch=""])::after{width:72px;height:72px;border-radius:16px;bottom:52px;left:14px;box-shadow:0 0 0 1px rgba(90,66,69,.1),0 9px 22px rgba(90,66,69,.13),inset 0 3px 7px rgba(255,255,255,.42),inset 0 -7px 14px rgba(61,38,43,.16)}
