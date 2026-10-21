@@ -12,7 +12,7 @@ type Settings = {
   handlesCents: Record<"none" | "wood-light" | "wood-dark" | "crochet", number>;
   strapCents: Record<"none" | "leather" | "woven" | "chain", number>;
   hardwareCents: Record<"gold" | "silver" | "black", number>;
-  accentCents: Record<"none" | "tassel" | "scarf" | "charm", number>;
+  accentCents: Record<"none" | "tassel" | "scarf" | "bow" | "charm", number>;
   compatibility: {
     handles: Record<Family, string[]>;
     straps: Record<Family, string[]>;
@@ -30,7 +30,7 @@ const PRICE_GROUPS = [
   ["handlesCents", "Uchwyty", { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Szydełkowy" }],
   ["strapCents", "Pasek", { none: "Bez paska", leather: "Skórzany", woven: "Tkany", chain: "Łańcuszek" }],
   ["hardwareCents", "Okucia", { gold: "Złote", silver: "Srebrne", black: "Czarne" }],
-  ["accentCents", "Detal", { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka / kokarda", charm: "Zawieszka" }],
+  ["accentCents", "Detal", { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" }],
 ] as const;
 
 function fromPln(value: string) {

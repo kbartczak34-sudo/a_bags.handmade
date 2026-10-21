@@ -23,7 +23,7 @@ const VALUE_ALIASES: Record<Exclude<Category, "color">, Record<string, string[]>
   handles: { none: ["bez-uchwytu", "bez-uchwytow", "none"], "wood-light": ["drewniane-jasne", "drewno-jasne", "drewniane", "wood-light"], "wood-dark": ["drewniane-ciemne", "drewno-ciemne", "wood-dark"], crochet: ["szydelkowe", "szydelkowy", "crochet"] },
   strap: { none: ["bez-paska", "none"], leather: ["skorzany", "regulowany", "leather"], woven: ["tkany", "materialowy", "regulowany", "woven"], chain: ["lancuszek-premium", "lancuszek", "chain"] },
   hardware: { gold: ["zlote", "gold"], silver: ["srebrne", "silver"], black: ["czarne", "black"] },
-  accent: { none: ["bez-ozdoby", "none"], tassel: ["chwost", "tassel"], scarf: ["apaszka", "kokarda", "scarf"], charm: ["zawieszka", "charm"] },
+  accent: { none: ["bez-ozdoby", "none"], tassel: ["chwost", "tassel"], scarf: ["apaszka", "scarf"], bow: ["kokarda", "bow"], charm: ["zawieszka", "charm"] },
 };
 
 function readConfig(stage: HTMLElement): Config {

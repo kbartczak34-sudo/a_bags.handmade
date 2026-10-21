@@ -17,7 +17,7 @@ const SLOT_VALUES: Record<Slot, readonly string[]> = {
   handles: ["wood-light", "wood-dark", "crochet"],
   strap: ["leather", "woven", "chain"],
   hardware: ["gold", "silver", "black"],
-  accent: ["tassel", "scarf", "charm"],
+  accent: ["tassel", "scarf", "bow", "charm"],
 };
 
 const FAMILIES: Family[] = ["tote", "round", "bucket", "mini"];

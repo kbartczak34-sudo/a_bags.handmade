@@ -10,7 +10,7 @@ export type BagBuilderClientConfig = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
   baseProductId: string;
 };
 
@@ -53,7 +53,7 @@ const FLAPS = new Set<BagBuilderClientConfig["flap"]>(["none", "crochet", "leath
 const HANDLES = new Set<BagBuilderClientConfig["handles"]>(["none", "wood-light", "wood-dark", "crochet"]);
 const STRAPS = new Set<BagBuilderClientConfig["strap"]>(["none", "leather", "woven", "chain"]);
 const HARDWARE = new Set<BagBuilderClientConfig["hardware"]>(["gold", "silver", "black"]);
-const ACCENTS = new Set<BagBuilderClientConfig["accent"]>(["none", "tassel", "scarf", "charm"]);
+const ACCENTS = new Set<BagBuilderClientConfig["accent"]>(["none", "tassel", "scarf", "bow", "charm"]);
 
 const ALLOWED: { [K in BagBuilderConfigKey]: ReadonlySet<BagBuilderDraftConfig[K]> } = {
   family: FAMILIES,

@@ -35,7 +35,7 @@ const LABELS: Record<string, Record<string, string>> = {
   handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
   strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
   hardware: { gold: "Złote", silver: "Srebrne", black: "Czarne" },
-  accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka / kokarda", charm: "Zawieszka" },
+  accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" },
 };
 
 const COLOR_LABELS: Record<string, string> = {

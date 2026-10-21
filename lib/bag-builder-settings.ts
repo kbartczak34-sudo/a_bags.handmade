@@ -8,7 +8,7 @@ export const BUILDER_FLAPS = ["none", "crochet", "leather-black", "leather-cogna
 export const BUILDER_HANDLES = ["none", "wood-light", "wood-dark", "crochet"] as const;
 export const BUILDER_STRAPS = ["none", "leather", "woven", "chain"] as const;
 export const BUILDER_HARDWARE = ["gold", "silver", "black"] as const;
-export const BUILDER_ACCENTS = ["none", "tassel", "scarf", "charm"] as const;
+export const BUILDER_ACCENTS = ["none", "tassel", "scarf", "bow", "charm"] as const;
 
 export type BuilderFamily = (typeof BUILDER_FAMILIES)[number];
 export type BuilderColor = (typeof BUILDER_COLORS)[number];
@@ -65,7 +65,7 @@ export const DEFAULT_BAG_BUILDER_SETTINGS: BagBuilderSettings = {
   handlesCents: { none: 0, "wood-light": 0, "wood-dark": 0, crochet: 0 },
   strapCents: { none: 0, leather: 0, woven: 0, chain: 0 },
   hardwareCents: { gold: 0, silver: 0, black: 0 },
-  accentCents: { none: 0, tassel: 0, scarf: 0, charm: 0 },
+  accentCents: { none: 0, tassel: 0, scarf: 0, bow: 0, charm: 0 },
   compatibility: {
     handles: {
       tote: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.tote],
@@ -238,7 +238,7 @@ export function bagBuilderProjectSummary(config: BagBuilderProjectConfig) {
     handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
     strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
     hardware: { gold: "Okucia złote", silver: "Okucia srebrne", black: "Okucia czarne" },
-    accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka / kokarda", charm: "Zawieszka" },
+    accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" },
   } as const;
   return [
     labels.family[config.family],

@@ -79,7 +79,8 @@ const HARDWARE_LABELS: Record<string, string> = {
 const ACCENT_LABELS: Record<string, string> = {
   none: "Bez ozdoby",
   tassel: "Chwost",
-  scarf: "Apaszka / kokarda",
+  scarf: "Apaszka",
+  bow: "Kokarda",
   charm: "Zawieszka",
 };
 

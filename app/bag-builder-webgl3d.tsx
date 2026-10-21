@@ -11,7 +11,7 @@ type BuilderConfig = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
 };
 
 type Mesh = {
@@ -425,7 +425,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: BuilderConf
   if (config.accent === "tassel") {
     const tassel = localMatrix([-1.06, -.12, .28], [.9, 1, .9], [0, 0, -.08]);
     drawMesh(renderer, meshes.cone, multiply(root, tassel), bodyColor, stitchPattern, 0);
-  } else if (config.accent === "scarf") {
+  } else if ((config.accent === "scarf" || config.accent === "bow")) {
     const left = localMatrix([-.88, .33, .33], [.82, 1.05, 1], [0, 0, .55]);
     const right = localMatrix([-.76, .22, .37], [.78, 1.05, 1], [0, 0, -.48]);
     drawMesh(renderer, meshes.ribbon, multiply(root, left), "#e3a0b0", 9, .02);

@@ -11,7 +11,7 @@ type Config = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
 };
 
 type Point3 = { x: number; y: number; z: number };
@@ -353,7 +353,7 @@ function drawCanvas(canvas: HTMLCanvasElement, config: Config, rotation: { x: nu
     const bottom = project({ x: -w * 1.0, y: -h * 0.62, z: d + 0.08 }, width, height, rotation, zoom);
     raw.strokeStyle = body; raw.lineWidth = Math.max(6, 10 * zoom); raw.lineCap = "round";
     for (let i = -2; i <= 2; i += 1) { raw.beginPath(); raw.moveTo(top.x + i * 3, top.y); raw.lineTo(bottom.x + i * 4, bottom.y); raw.stroke(); }
-  } else if (config.accent === "scarf") {
+  } else if ((config.accent === "scarf" || config.accent === "bow")) {
     const p = project({ x: -w * 0.75, y: h * 0.6, z: d + 0.17 }, width, height, rotation, zoom);
     raw.save(); raw.translate(p.x, p.y); raw.rotate(-0.3 + rotation.y * 0.08); raw.fillStyle = "#e3a0b0"; raw.beginPath(); raw.ellipse(-8, 0, 18 * zoom, 9 * zoom, -0.4, 0, Math.PI * 2); raw.ellipse(10, 1, 17 * zoom, 8 * zoom, 0.45, 0, Math.PI * 2); raw.fill(); raw.fillStyle = "#c56e87"; raw.beginPath(); raw.arc(0, 2, 6 * zoom, 0, Math.PI * 2); raw.fill(); raw.restore();
   } else if (config.accent === "charm") {

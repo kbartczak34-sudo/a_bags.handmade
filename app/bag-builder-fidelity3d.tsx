@@ -15,7 +15,7 @@ type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-bur
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
 type Strap = "none" | "leather" | "woven" | "chain";
 type Hardware = "gold" | "silver" | "black";
-type Accent = "none" | "tassel" | "scarf" | "charm";
+type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
 type Config = {
   family: Family;
@@ -1735,7 +1735,7 @@ function ensureStrapBinding(renderer: Renderer, family: Exclude<Family, "">) {
 function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
   if (!config.family || config.accent === "none") return null;
   const family = config.family, spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  if (config.accent === "scarf" && config.handles.startsWith("wood")) {
+  if ((config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")) {
     const model = woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]);
     const angle = Math.PI - .16;
     const x = .46 * Math.cos(angle), y = .42 * Math.sin(angle), z = .055;
@@ -1743,8 +1743,8 @@ function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
       model[1] * x + model[5] * y + model[9] * z + model[13],
       model[2] * x + model[6] * y + model[10] * z + model[14]];
   }
-  const x = spec.sideAnchor * (config.accent === "tassel" ? .91 : config.accent === "scarf" ? -.68 : .86);
-  const y = config.accent === "tassel" ? .25 : config.accent === "scarf" ? .36 : .12;
+  const x = spec.sideAnchor * (config.accent === "tassel" ? .91 : (config.accent === "scarf" || config.accent === "bow") ? -.68 : .86);
+  const y = config.accent === "tassel" ? .25 : (config.accent === "scarf" || config.accent === "bow") ? .36 : .12;
   const cordRadius = spec.rx * 5 / 160;
   return [x, y, crochetPanelPoint(family, x, y - spec.bodyY)[2] + cordRadius * 1.75 + .018];
 }
@@ -1843,7 +1843,7 @@ function makeOrnamentGeometry(config: Config) {
       return point(Math.cos(a) * .030, -.113 - t * .028, .070 + Math.sin(a) * .030, .009);
     });
     tube(cord, winding, .006);
-  } else if (config.accent === "scarf") {
+  } else if (config.accent === "scarf" || config.accent === "bow") {
     const fabric = part("scarf", 8), hem = part("hem", 3);
     const ribbon = (sample: (u: number, v: number) => YarnPoint, rows = 40) => {
       appendOrnamentRibbon(fabric, sample, rows);
@@ -1858,7 +1858,8 @@ function makeOrnamentGeometry(config: Config) {
         .065 + .075 * Math.sin(Math.PI * u) + .012 * (1 - v * v) * Math.sin(a), .006);
     });
     for (const side of [-1, 1]) ribbon((u, v) => {
-      const length = side < 0 ? .51 : .45;
+      // A sewn bow has compact tails; the scarf retains its longer hanging fabric.
+      const length = config.accent === "bow" ? (side < 0 ? .19 : .16) : (side < 0 ? .51 : .45);
       const x = side * (.018 + .090 * u + .028 * Math.sin(u * Math.PI));
       const width = .038 + .015 * Math.sin(Math.PI * u);
       const notch = .027 * (1 - Math.abs(v)) * Math.pow(u, 12);
@@ -1892,7 +1893,7 @@ function makeOrnamentGeometry(config: Config) {
 }
 
 function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
-  const key = [config.family, config.accent, config.accent === "scarf" && config.handles.startsWith("wood")].join("|");
+  const key = [config.family, config.accent, (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")].join("|");
   if (renderer.ornamentKey === key) return;
   for (const part of renderer.ornamentParts ?? []) {
     const mesh = renderer.meshes[part.name];

@@ -11,7 +11,7 @@ type BuilderConfig = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
 };
 
 type Mesh = { position: WebGLBuffer; normal: WebGLBuffer; uv: WebGLBuffer; index: WebGLBuffer; count: number };
@@ -88,7 +88,7 @@ function draw(r:Renderer,canvas:HTMLCanvasElement,c:BuilderConfig,rotation:{x:nu
   if(c.strap!=="none"){const sc=c.strap==="chain"?(c.hardware==="silver"?"#d2d6dc":c.hardware==="black"?"#242225":"#c9a45b"):c.strap==="leather"?"#6a493c":"#9b7080",mat=c.strap==="chain"?4:c.strap==="leather"?2:3;drawMesh(r,c.strap==="chain"?meshes.chain:meshes.strap,multiply(root,matrix([0,-.1,-.12],[1,1,1])),sc,mat,st,0);}
   if(c.flap!=="none"){const fc=c.flap==="leather-black"?"#242124":c.flap==="leather-cognac"?"#7b4f34":c.flap==="suede-burgundy"?"#7f3043":body,mat=c.flap==="crochet"?0:2;drawMesh(r,meshes.flap,multiply(root,matrix([0,.48,.37],[c.family==="mini"?.78:1.02,c.family==="round"?.82:.74,.72],[.08,0,0])),fc,mat,st,c.flap==="crochet"?.018:0);}
   const metal=c.hardware==="silver"?"#d4d8de":c.hardware==="black"?"#29272a":"#c9a45b";drawMesh(r,meshes.sphere,multiply(root,matrix([0,c.flap!=="none"?.34:-.58,.47],[.105,.105,.075])),metal,4,0,0);
-  if(c.accent==="tassel")drawMesh(r,meshes.cone,multiply(root,matrix([-1.05,-.08,.27],[.92,1,.92],[0,0,-.08])),body,0,st,.01);else if(c.accent==="scarf"){drawMesh(r,meshes.ribbon,multiply(root,matrix([-.88,.3,.34],[.86,1,1],[0,0,.56])),"#e3a0b0",3,0,0);drawMesh(r,meshes.ribbon,multiply(root,matrix([-.75,.2,.37],[.78,1,1],[0,0,-.5])),"#c66f87",3,0,0);}else if(c.accent==="charm")drawMesh(r,meshes.sphere,multiply(root,matrix([1.02,-.08,.35],[.11,.16,.07])),"#b87880",4,0,0);
+  if(c.accent==="tassel")drawMesh(r,meshes.cone,multiply(root,matrix([-1.05,-.08,.27],[.92,1,.92],[0,0,-.08])),body,0,st,.01);else if((c.accent === "scarf" || c.accent === "bow")){drawMesh(r,meshes.ribbon,multiply(root,matrix([-.88,.3,.34],[.86,1,1],[0,0,.56])),"#e3a0b0",3,0,0);drawMesh(r,meshes.ribbon,multiply(root,matrix([-.75,.2,.37],[.78,1,1],[0,0,-.5])),"#c66f87",3,0,0);}else if(c.accent==="charm")drawMesh(r,meshes.sphere,multiply(root,matrix([1.02,-.08,.35],[.11,.16,.07])),"#b87880",4,0,0);
 }
 
 export default function BagBuilderReal3D(){

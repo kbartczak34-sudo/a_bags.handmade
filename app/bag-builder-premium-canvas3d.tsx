@@ -13,7 +13,7 @@ type Config = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
 };
 type P3 = { x: number; y: number; z: number };
 type P2 = { x: number; y: number; depth: number; scale: number };
@@ -334,7 +334,7 @@ function drawPremium(canvas: HTMLCanvasElement, config: Config, rotation: { x: n
   const badge = project({ x: 0, y: -h * 0.61, z: d + 0.11 }, width, height, rotation, zoom);
   ctx.save(); ctx.translate(badge.x, badge.y); const bw = 22 * zoom * badge.scale, bh = 6 * zoom * badge.scale; ctx.fillStyle = rgba(metal, 0.82); ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, Math.max(1, bh / 2)); ctx.fill(); ctx.restore();
 
-  if (config.accent === "scarf") {
+  if ((config.accent === "scarf" || config.accent === "bow")) {
     const p = project({ x: -w * 0.64, y: h * 0.67, z: d + 0.14 }, width, height, rotation, zoom);
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(-0.2 + rotation.y * 0.05); ctx.globalAlpha = 0.94;
     const sg = ctx.createLinearGradient(-20, -10, 20, 12); sg.addColorStop(0, "#f1c6d1"); sg.addColorStop(0.55, "#d9899f"); sg.addColorStop(1, "#a95d74"); ctx.fillStyle = sg;

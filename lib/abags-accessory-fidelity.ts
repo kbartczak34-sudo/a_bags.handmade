@@ -20,7 +20,8 @@ export function readFidelityAccessoryAnchor(dataset: Record<string, string | und
 export const ABAGS_ACCESSORY_REFERENCES = {
   chain: ["navy-wood-scarf-chain", "teal-wood-chain-stones", "small-multicolor-chain"],
   tassel: ["cream-round-taupe-flap", "black-leather-flap", "pink-purple-round"],
-  scarf: ["navy-wood-scarf-chain", "red-wood-scarf", "pastel-tote-wood-bow"],
+  scarf: ["navy-wood-scarf-chain", "red-wood-scarf"],
+  bow: ["pastel-tote-wood-bow"],
   charm: ["mustard-envelope-butterfly", "teal-wood-chain-stones"],
   leatherFlap: ["green-leather-flap", "pink-leather-flap", "black-leather-flap"],
   crochetFlap: ["mustard-round-navy-flap", "pastel-round-blue-flap", "pink-purple-round"],
