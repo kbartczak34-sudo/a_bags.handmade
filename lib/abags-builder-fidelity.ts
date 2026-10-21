@@ -3,7 +3,7 @@ export const AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY = {
     handles: ["none", "wood-light", "wood-dark"],
     flaps: ["none"],
     straps: ["none", "woven", "chain"],
-    accents: ["none", "scarf"],
+    accents: ["none", "scarf", "bow"],
   },
   round: {
     handles: ["none"],

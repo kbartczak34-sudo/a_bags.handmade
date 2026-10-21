@@ -160,9 +160,10 @@ function drawScarf(ctx: CanvasRenderingContext2D, config: Config, width: number,
   ctx.bezierCurveTo(anchor.x + 4 * scale, anchor.y + 10 * scale, anchor.x + 2 * scale, anchor.y + 2 * scale, anchor.x, anchor.y);
   ctx.stroke();
 
+  const shortBow = config.accent === "bow";
   const tails = [
-    project([anchor3[0] - 0.17, anchor3[1] - 0.48, anchor3[2] + 0.01], width, height, rotation, zoom),
-    project([anchor3[0] + 0.13, anchor3[1] - 0.42, anchor3[2] + 0.025], width, height, rotation, zoom),
+    project([anchor3[0] - (shortBow ? .09 : .17), anchor3[1] - (shortBow ? .19 : .48), anchor3[2] + .01], width, height, rotation, zoom),
+    project([anchor3[0] + (shortBow ? .08 : .13), anchor3[1] - (shortBow ? .16 : .42), anchor3[2] + .025], width, height, rotation, zoom),
   ];
   tails.forEach((tail, index) => {
     if (!tail) return;
@@ -252,7 +253,7 @@ function paint(backCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, st
     && stage.dataset.abagsFidelityAccessorySignature === stage.dataset.builderSignature;
   if (!ornamentInWebgl) {
     if (config.accent === "tassel") drawTassel(front.ctx, config, front.width, front.height, rotation, zoom);
-    else if (config.accent === "scarf") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
+    else if (config.accent === "scarf" || config.accent === "bow") drawScarf(front.ctx, config, front.width, front.height, rotation, zoom);
     else if (config.accent === "charm") drawCharm(front.ctx, config, front.width, front.height, rotation, zoom);
   }
   front.ctx.restore();

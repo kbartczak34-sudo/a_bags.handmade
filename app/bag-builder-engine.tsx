@@ -14,7 +14,7 @@ type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-bur
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
 type Strap = "none" | "leather" | "woven" | "chain";
 type Hardware = "gold" | "silver" | "black";
-type Accent = "none" | "tassel" | "scarf" | "charm";
+type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
 export type BagBuilderConfig = {
   family: Family;
@@ -98,7 +98,8 @@ const HARDWARE: Option<Hardware>[] = [
 const ACCENTS: Option<Accent>[] = [
   { value: "none", label: "Bez ozdoby" },
   { value: "tassel", label: "Chwost" },
-  { value: "scarf", label: "Apaszka / kokarda" },
+  { value: "scarf", label: "Apaszka" },
+  { value: "bow", label: "Kokarda" },
   { value: "charm", label: "Zawieszka" },
 ];
 
@@ -219,6 +220,7 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
         {(config.strap !== "none" || config.handles !== "none") && <g data-layer="hardware" className="abags-builder-layer abags-builder-layer-hardware"><circle cx="150" cy="238" r="11" fill="none" stroke={metal} strokeWidth="7" /><circle cx="450" cy="238" r="11" fill="none" stroke={metal} strokeWidth="7" /></g>}
         {config.accent === "tassel" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><circle cx="466" cy="250" r="9" fill={metal} /><path d="M472 258 Q488 270 482 292" fill="none" stroke={bagColor} strokeWidth="10" strokeLinecap="round" />{[0,1,2,3,4,5].map((index) => <path key={index} d={`M${473 + index * 4} 286 Q${478 + index * 4} 350 ${468 + index * 5} 405`} fill="none" stroke={index % 2 ? bagColor : "#F0D7DE"} strokeWidth="7" strokeLinecap="round" />)}</g>}
         {config.accent === "scarf" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M186 176 C135 135 104 160 130 206 C154 248 197 220 205 191 C215 229 259 250 279 211 C302 167 261 139 211 176 Z" fill="#F2C6D0" stroke="#FFFFFF" strokeWidth="3" /><path d="M196 192 L146 353 Q174 368 199 348 L220 207 Z" fill="#F6DDE3" /><path d="M211 194 L254 340 Q279 330 286 307 L224 203 Z" fill="#D9829A" opacity=".9" /><circle cx="173" cy="189" r="8" fill="#B95B74" /><circle cx="238" cy="196" r="7" fill="#C7962F" /></g>}
+        {config.accent === "bow" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M203 190 C166 147 111 152 128 206 C149 245 180 223 203 190 Z" fill="#F2C6D0" stroke="#FFF4F7" strokeWidth="4"/><path d="M203 190 C244 147 298 153 276 209 C250 247 221 219 203 190 Z" fill="#D7839A" stroke="#FFF4F7" strokeWidth="4"/><path d="M197 200 L172 266 L199 274 L217 204 Z" fill="#F6DDE3"/><path d="M214 202 L242 271 L263 259 L222 197 Z" fill="#B96780"/><ellipse cx="209" cy="197" rx="16" ry="19" fill="#B96780" stroke="#FFF4F7" strokeWidth="3"/></g>}
         {config.accent === "charm" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M455 246 Q492 265 487 302" fill="none" stroke={metal} strokeWidth="5" /><path d="M487 300 C470 278 444 301 487 336 C530 301 504 278 487 300 Z" fill="#B87880" stroke={metal} strokeWidth="4" /></g>}
       </g>}
       {/* Construction metadata retained for QA/accessibility contracts; the legacy brand badge itself is intentionally removed. */}
