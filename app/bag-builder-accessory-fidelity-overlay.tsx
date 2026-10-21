@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { projectFidelityPoint as project } from "../lib/abags-fidelity-projection";
-import { ABAGS_ACCESSORY_FIDELITY_VERSION, ABAGS_ACCESSORY_VISUAL } from "../lib/abags-accessory-fidelity";
+import { ABAGS_ACCESSORY_FIDELITY_VERSION, ABAGS_ACCESSORY_VISUAL, readFidelityAccessoryAnchor } from "../lib/abags-accessory-fidelity";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini";
-type Config = { family: Family; color: string; stitch: string; flap: string; handles: string; strap: string; hardware: string; accent: string };
+type Config = { family: Family; color: string; stitch: string; flap: string; handles: string; strap: string; hardware: string; accent: string; accentAnchor?: Point3 };
 type Rotation = { x: number; y: number };
 type TransformDetail = { rotation?: Rotation; zoom?: number };
 type Point3 = [number, number, number];
@@ -28,6 +28,7 @@ function readConfig(stage: HTMLElement): Config {
     strap: stage.dataset.strap || "none",
     hardware: stage.dataset.hardware || "gold",
     accent: stage.dataset.accent || "none",
+    accentAnchor: readFidelityAccessoryAnchor(stage.dataset),
   };
 }
 
@@ -104,7 +105,7 @@ function drawFlapDetail(ctx: CanvasRenderingContext2D, config: Config, width: nu
 function drawTassel(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family) return;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family as Exclude<Family, "">];
-  const anchor: Point3 = [spec.sideAnchor * 0.91, 0.25, spec.depth / 2 + 0.19];
+  const anchor: Point3 = config.accentAnchor ?? [spec.sideAnchor * 0.91, 0.25, spec.depth / 2 + 0.19];
   const top = project(anchor, width, height, rotation, zoom);
   if (!top) return;
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom;
@@ -140,7 +141,7 @@ function drawTassel(ctx: CanvasRenderingContext2D, config: Config, width: number
 function drawScarf(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family) return;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family as Exclude<Family, "">];
-  const anchor3: Point3 = [-spec.sideAnchor * 0.68, 0.36, spec.depth / 2 + 0.19];
+  const anchor3: Point3 = config.accentAnchor ?? [-spec.sideAnchor * 0.68, 0.36, spec.depth / 2 + 0.19];
   const anchor = project(anchor3, width, height, rotation, zoom);
   if (!anchor) return;
   const scale = Math.max(0.8, Math.min(width, height) / 720) * zoom * anchor.scale;
@@ -188,7 +189,7 @@ function drawScarf(ctx: CanvasRenderingContext2D, config: Config, width: number,
 function drawCharm(ctx: CanvasRenderingContext2D, config: Config, width: number, height: number, rotation: Rotation, zoom: number) {
   if (!config.family) return;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[config.family as Exclude<Family, "">];
-  const anchor3: Point3 = [spec.sideAnchor * 0.86, 0.12, spec.depth / 2 + 0.19];
+  const anchor3: Point3 = config.accentAnchor ?? [spec.sideAnchor * 0.86, 0.12, spec.depth / 2 + 0.19];
   const anchor = project(anchor3, width, height, rotation, zoom);
   const drop = project([anchor3[0], anchor3[1] - 0.30, anchor3[2] + 0.02], width, height, rotation, zoom);
   if (!anchor || !drop) return;

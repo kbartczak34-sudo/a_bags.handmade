@@ -351,7 +351,7 @@ function paint(
     drawWovenFinish(back.context, arc, back.width, back.height, rotation, zoom);
   }
 
-  if (config.strap !== "none") drawAnchorContact(front.context, arc, palette, front.width, front.height, rotation, zoom);
+  if (config.strap !== "none" && stage.dataset.abagsCrochetOwner !== "webgl-yarn") drawAnchorContact(front.context, arc, palette, front.width, front.height, rotation, zoom);
   if (stage.dataset.abagsCrochetOwner !== "webgl-yarn") drawSnapGlint(front.context, config, palette, front.width, front.height, rotation, zoom);
   stage.dataset.abagsAccessoryMaterialFinish = FINISH_VERSION;
 }
