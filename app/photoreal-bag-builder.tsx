@@ -16,7 +16,7 @@ type BuilderConfig = {
   handles: "none" | "wood-light" | "wood-dark" | "crochet";
   strap: "none" | "leather" | "woven" | "chain";
   hardware: "gold" | "silver" | "black";
-  accent: "none" | "tassel" | "scarf" | "charm";
+  accent: "none" | "tassel" | "scarf" | "bow" | "charm";
 };
 
 const EMPTY: BuilderConfig = {
@@ -155,6 +155,7 @@ function accentScore(reference: ExactAtelierReference, accent: BuilderConfig["ac
   if (accent === "none") return reference.accent === "none" ? 2 : 0;
   if (accent === "tassel") return reference.accent.startsWith("tassel") ? 2 : 0;
   if (accent === "scarf") return reference.accent === "scarf" ? 2 : 0;
+  if (accent === "bow") return reference.accent === "bow" ? 2 : 0;
   return reference.accent === "charm" || reference.accent === "stones" ? 2 : 0;
 }
 
@@ -301,7 +302,7 @@ function PhotorealSvg({ config }: { config: BuilderConfig }) {
 
       {config.accent === "tassel" && <g data-photoreal-layer="accent"><circle cx="468" cy="252" r="10" fill="url(#pr-metal)"/><path d="M470 259 Q486 270 481 293" fill="none" stroke={bag} strokeWidth="10" strokeLinecap="round"/>{Array.from({length:13},(_,index) => <path key={index} d={`M${456 + index * 3} 289 Q${459 + index * 3} ${350 + (index % 3) * 4} ${451 + index * 4} 409`} fill="none" stroke={index % 3 === 0 ? light : index % 3 === 1 ? bag : dark} strokeWidth={index % 2 ? 4.8 : 5.6} strokeLinecap="round" opacity={.82 + (index % 4) * .04}/>)}</g>}
 
-      {config.accent === "scarf" && <g data-photoreal-layer="accent"><path d="M187 177 C136 134 103 158 129 207 C153 250 198 220 205 191 C216 231 260 251 281 211 C304 165 260 137 211 175 Z" fill="#F2C3CF" stroke="#FFFFFF" strokeWidth="3"/><path d="M197 191 L144 360 Q175 372 201 350 L220 207 Z" fill="#F8DCE4"/><path d="M211 194 L256 346 Q280 334 288 309 L224 202 Z" fill="#C96784" opacity=".92"/><path d="M160 222 Q174 204 188 221 M229 233 Q244 214 259 233 M176 278 Q192 258 207 278 M237 290 Q250 274 265 291" fill="none" stroke="#5E536E" strokeWidth="5" strokeLinecap="round"/><circle cx="172" cy="188" r="9" fill="#9A5266"/><circle cx="239" cy="195" r="7" fill="#C79A4A"/></g>}
+      {(config.accent === "scarf" || config.accent === "bow") && <g data-photoreal-layer="accent"><path d="M187 177 C136 134 103 158 129 207 C153 250 198 220 205 191 C216 231 260 251 281 211 C304 165 260 137 211 175 Z" fill="#F2C3CF" stroke="#FFFFFF" strokeWidth="3"/><path d="M197 191 L144 360 Q175 372 201 350 L220 207 Z" fill="#F8DCE4"/><path d="M211 194 L256 346 Q280 334 288 309 L224 202 Z" fill="#C96784" opacity=".92"/><path d="M160 222 Q174 204 188 221 M229 233 Q244 214 259 233 M176 278 Q192 258 207 278 M237 290 Q250 274 265 291" fill="none" stroke="#5E536E" strokeWidth="5" strokeLinecap="round"/><circle cx="172" cy="188" r="9" fill="#9A5266"/><circle cx="239" cy="195" r="7" fill="#C79A4A"/></g>}
 
       {config.accent === "charm" && <g data-photoreal-layer="accent"><path d="M454 246 Q493 263 487 302" fill="none" stroke="url(#pr-metal)" strokeWidth="6"/><path d="M487 300 C469 277 443 301 487 338 C531 301 505 277 487 300 Z" fill="#B87880" stroke={metalDark} strokeWidth="3"/><path d="M477 297 Q487 288 497 297" fill="none" stroke="#FFF" strokeWidth="2" opacity=".6"/></g>}
 

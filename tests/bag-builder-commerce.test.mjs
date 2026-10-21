@@ -32,7 +32,7 @@ test("settings and live commerce are bounded by real Agata construction evidence
   assert.match(settings, /AGATA_BUILDER_HANDLE_COMPATIBILITY/);
   assert.match(settings, /agataHandleAllowed/);
   assert.match(fidelity, /AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY/);
-  assert.match(fidelity, /tote:\s*\{[\s\S]*?handles:\s*\["none", "wood-light", "wood-dark"\][\s\S]*?flaps:\s*\["none"\][\s\S]*?straps:\s*\["none", "woven", "chain"\][\s\S]*?accents:\s*\["none", "scarf"\]/);
+  assert.match(fidelity, /tote:\s*\{[\s\S]*?handles:\s*\["none", "wood-light", "wood-dark"\][\s\S]*?flaps:\s*\["none"\][\s\S]*?straps:\s*\["none", "woven", "chain"\][\s\S]*?accents:\s*\["none", "scarf", "bow"\]/);
   assert.match(fidelity, /round:\s*\{[\s\S]*?handles:\s*\["none"\][\s\S]*?flaps:\s*\["none", "crochet"\]/);
   assert.match(fidelity, /bucket:\s*\{[\s\S]*?flaps:\s*\["none", "leather-black", "suede-burgundy"\][\s\S]*?straps:\s*\["none", "leather"\]/);
   assert.match(fidelity, /mini:\s*\{[\s\S]*?handles:\s*\["none", "wood-light"\][\s\S]*?accents:\s*\["none", "tassel", "charm"\]/);

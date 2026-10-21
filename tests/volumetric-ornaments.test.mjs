@@ -3,7 +3,7 @@ import test from "node:test";
 import { geometry as g, specs } from "./helpers/fidelity-geometry.mjs";
 
 const families = Object.keys(specs);
-const accents = ["tassel", "scarf", "charm"];
+const accents = ["tassel", "scarf", "bow", "charm"];
 const config = (family, accent, handles = "none") => ({ family, accent, handles });
 const emptyMesh = () => ({ positions: [], normals: [], uvs: [], indices: [] });
 
