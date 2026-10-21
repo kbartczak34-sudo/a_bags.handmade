@@ -85,6 +85,9 @@ function assertViewEvidence(label, view, evidence, frontEvidence) {
   if (evidence.overlayCanvases?.length !== 4 || evidence.overlayCanvases.some((canvas) => canvas.width !== webgl.width || canvas.height !== webgl.height)) {
     throw new Error(`${label} ${view}: all four accessory canvases must share the WebGL pixel grid: ${JSON.stringify(evidence.overlayCanvases)}`);
   }
+  if (evidence.overlayCanvases.some((canvas) => !canvas.visible)) {
+    throw new Error(`${label} ${view}: accessory canvases are painted but hidden from the customer: ${JSON.stringify(evidence.overlayCanvases)}`);
+  }
   if (back.width !== webgl.width || back.height !== webgl.height || front.width !== webgl.width || front.height !== webgl.height) {
     throw new Error(`${label} ${view}: accessory canvases do not share the verified WebGL pixel grid: ${JSON.stringify(evidence)}`);
   }
@@ -441,7 +444,15 @@ const analyze=(overlay)=>{
         webgl:{width:gw,height:gh},
         legacyChainCount:stage.querySelectorAll('.abags-chain-realism').length,
         overlayCanvases:[...stage.querySelectorAll('.abags-accessory-fidelity-back, .abags-accessory-fidelity-front, .abags-accessory-material-finish-back, .abags-accessory-material-finish-front')]
-          .map((canvas)=>({className:canvas.className,width:canvas.width,height:canvas.height})),
+          .map((canvas)=>{
+            let visible=canvas.isConnected;
+            for(let node=canvas;node;node=node.parentElement){
+              const style=getComputedStyle(node);
+              if(style.display==='none'||style.visibility!=='visible'||Number(style.opacity)<.05)visible=false;
+            }
+            const rect=canvas.getBoundingClientRect();
+            return {className:canvas.className,width:canvas.width,height:canvas.height,visible:visible&&rect.width>0&&rect.height>0};
+          }),
         handle:analyzeRigidHandle(),
         ornament:ornamentContact(),
         back:analyze(back),
@@ -452,6 +463,57 @@ const analyze=(overlay)=>{
     const capture = async (name) => {
       const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
       await writeFile(path.join(qaDir, name), Buffer.from(shot.data, "base64"));
+    };
+
+    // Compare real browser screenshots with the ornament visible and hidden.
+    // Reading a canvas framebuffer alone cannot detect CSS or stacking masks.
+    const verifyAccessoryAppearance = async (label, evidence) => {
+      const state = await evaluate(`(() => {
+        const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front');
+        if(!(canvas instanceof HTMLCanvasElement))return null;
+        for(let node=canvas;node;node=node.parentElement){
+          const style=getComputedStyle(node);
+          if(style.display==='none'||style.visibility!=='visible'||Number(style.opacity)<.05)return null;
+        }
+        const rect=canvas.getBoundingClientRect();
+        return {style:canvas.getAttribute('style'),rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};
+      })()`);
+      const bounds = evidence?.front?.bounds;
+      if (!state || !bounds) throw new Error(`${label}: customer ornament layer is not visible.`);
+      const rect = state.rect, grid = evidence.webgl;
+      const x = Math.max(0, rect.x + (bounds.minX - 8) / grid.width * rect.width);
+      const y = Math.max(0, rect.y + (bounds.minY - 8) / grid.height * rect.height);
+      const clip = { x, y, width: Math.max(1, (bounds.maxX - bounds.minX + 16) / grid.width * rect.width), height: Math.max(1, (bounds.maxY - bounds.minY + 16) / grid.height * rect.height), scale: 1 };
+      const screenshot = () => send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false, clip });
+      const visible = await screenshot();
+      let hidden;
+      try {
+        await evaluate(`(() => {
+          document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front').style.setProperty('visibility','hidden','important');
+          return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));
+        })()`);
+        hidden = await screenshot();
+      } finally {
+        await evaluate(`(() => {
+          const canvas=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-accessory-fidelity-front');
+          const original=${JSON.stringify(state.style)};
+          if(original===null)canvas.removeAttribute('style');else canvas.setAttribute('style',original);
+          return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));
+        })()`);
+      }
+      const difference = await evaluate(`(async () => {
+        const load=data=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Cannot decode accessory screenshot'));image.src='data:image/png;base64,'+data;});
+        const [a,b]=await Promise.all([load(${JSON.stringify(visible.data)}),load(${JSON.stringify(hidden.data)})]);
+        const canvas=document.createElement('canvas');canvas.width=a.naturalWidth;canvas.height=a.naturalHeight;
+        const context=canvas.getContext('2d',{willReadFrequently:true});
+        context.drawImage(a,0,0);const first=context.getImageData(0,0,canvas.width,canvas.height).data;
+        context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(b,0,0);const second=context.getImageData(0,0,canvas.width,canvas.height).data;
+        let changed=0;for(let i=0;i<first.length;i+=4)if(Math.abs(first[i]-second[i])+Math.abs(first[i+1]-second[i+1])+Math.abs(first[i+2]-second[i+2])>20)changed++;
+        return {changed,width:canvas.width,height:canvas.height};
+      })()`);
+      await writeFile(path.join(qaDir, `appearance-${label.replaceAll(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), Buffer.from(visible.data, "base64"));
+      if (difference.changed < 12) throw new Error(`${label}: selected ornament does not change the customer-visible image: ${JSON.stringify(difference)}`);
+      return difference;
     };
 
     const runScenario = async ({ label, viewport, choices }) => {
@@ -491,6 +553,8 @@ const analyze=(overlay)=>{
           throw new Error(`${label} ${view}: both accessory canvases did not redraw for the requested camera: ${JSON.stringify(evidence)}`);
         }
         assertViewEvidence(label, view, evidence, results[0]);
+        evidence.appearance = await verifyAccessoryAppearance(`${label}-${view}`, evidence);
+        await writeFile(path.join(qaDir, `anchor-${label.toLowerCase()}-evidence.json`), JSON.stringify(results, null, 2));
       }
       if (new Set(results.map((item) => item.back.hash)).size !== 3) {
         throw new Error(`${label}: rear accessory canvas did not redraw uniquely for Przód / 3/4 / Bok: ${JSON.stringify(results.map((item) => item.back.hash))}`);
@@ -498,6 +562,20 @@ const analyze=(overlay)=>{
       if (new Set(results.map((item) => item.front.hash)).size !== 3) {
         throw new Error(`${label}: front accessory canvas did not redraw uniquely for Przód / 3/4 / Bok: ${JSON.stringify(results.map((item) => item.front.hash))}`);
       }
+      await choose("accent", "none");
+      await waitFor(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        const canvas=stage?.querySelector('.abags-accessory-fidelity-front');
+        if(stage?.dataset.accent!=='none'||stage.dataset.abagsFidelity3dFrame!==stage.dataset.builderSignature||!(canvas instanceof HTMLCanvasElement))return false;
+        const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+        for(let i=3;i<pixels.length;i+=4)if(pixels[i]>24)return false;
+        return true;
+      })()`, `${label} remove selected ornament`);
+      await choose("accent", choices.find(([key]) => key === "accent")[1]);
+      await waitFor(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        return stage?.dataset.accent!=='none'&&stage?.dataset.abagsFidelity3dFrame===stage?.dataset.builderSignature&&Boolean(stage?.dataset.abagsFidelityAccessoryAnchor);
+      })()`, `${label} restore selected ornament`);
       return results;
     };
 
@@ -534,7 +612,8 @@ const analyze=(overlay)=>{
         return stage?.dataset.abagsFidelityAccessorySignature===stage?.dataset.builderSignature && Boolean(stage?.dataset.abagsFidelityAccessoryAnchor);
       })()`, "current scarf attachment metadata");
       const evidence = await anchorEvidence();
-      scarf.push({ view, ornament: evidence?.ornament });
+      const appearance = await verifyAccessoryAppearance(`scarf-${view}`, evidence);
+      scarf.push({ view, ornament: evidence?.ornament, appearance });
       await capture(`anchor-scarf-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
       const contact = evidence?.ornament;
       if (!contact?.current || contact.point[1] < .7 || contact.wood < 2 || contact.knot < 4) {
@@ -549,6 +628,7 @@ const analyze=(overlay)=>{
     console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
     console.log("- scarf knot touches the wooden handle in Przód / 3/4 / Bok: yes");
+    console.log("- all ornaments change the actual customer-visible screenshot in every tested view: yes");
   console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
   console.log("- rigid wood handle remains one coherent arch in Przód / 3/4 on desktop/mobile: yes");
   console.log("- desktop side handle evidence:", desktop.find((item) => item.view === "Bok")?.handle);

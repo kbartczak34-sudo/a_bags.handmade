@@ -117,6 +117,25 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-ph
   pointer-events:auto!important;
 }
 
+/* Ornaments are part of the accepted model's compositor. They share its camera
+   but live beside the WebGL layer; the legacy-renderer mask must not hide them.
+   Keep them transparent and non-interactive, and suppress them while the model
+   is unverified or the customer is viewing a real product photograph. */
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage > .abags-accessory-fidelity-canvas,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-bag-builder-stage > .abags-accessory-material-finish {
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-accessory-fidelity-canvas,
+body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-bag-builder-stage[data-abags-final3d="ready"] > .abags-accessory-material-finish {
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:none!important;
+}
+
 
 /* Spatial fallback safety net: never expose an empty product stage on mobile.
    The fallback is hidden automatically once Fidelity3D reaches the verified ready state. */
