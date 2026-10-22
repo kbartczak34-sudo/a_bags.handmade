@@ -37,6 +37,7 @@ type Mesh = {
 };
 
 type Renderer = {
+  interiorEvidence?: { family: FidelityV4Family; topY: number; bottomY: number; probe: YarnPoint };
   rimKey?: string;
   rimTriangles?: number;
   groundPoints?: YarnPoint[];
@@ -60,7 +61,7 @@ type Renderer = {
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
   attribs: { position: number; normal: number; uv: number };
-  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light", WebGLUniformLocation>;
+  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds", WebGLUniformLocation>;
 };
 
 type Point = [number, number];
@@ -1058,37 +1059,80 @@ function groundContactFrame(points: YarnPoint[], model: Float32Array, aspect: nu
     blur: clamp(height * cssHeight * .22, 2, 7), visible: Number(bottom > .15 && bottom < 1.025) };
 }
 
-function makeOpeningInterior(family: Exclude<Family, "">) {
-  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const width = spec.rx;
-  const depth = depthAt(family, spec.ry);
-  const topY = spec.bodyY + spec.ry;
-  const bottomY = topY - Math.min(.43, spec.ry * .6);
-  const points = openingPath(family);
-  const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
-  const count = points.length;
-  // The lining starts immediately under the same seam and descends into the bag.
-  points.forEach(([x, y, z], i) => {
-    const normal = normalize(-x / width, .06, -z / Math.max(depth * .5, .001));
-    for (const [height, factor, v] of [[y - .018, .96, 0], [bottomY, .83, 1]] as const) {
-      positions.push(x * factor, height, z * factor);
-      normals.push(...normal);
-      uvs.push(i / count, v);
+function openingLiningLayout(family: Exclude<Family, "">) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family], points = openingPath(family);
+  const lengths = [0];
+  for (let i = 0; i < points.length; i++) lengths.push(lengths[i] + Math.hypot(...points[i].map((n, axis) => n - points[(i + 1) % points.length][axis])));
+  const perimeter = lengths[lengths.length - 1];
+  const sample = (u: number): YarnPoint => {
+    const distance = ((u % 1 + 1) % 1) * perimeter;
+    let i = 0;
+    while (i < points.length - 1 && lengths[i + 1] < distance) i++;
+    const f = (distance - lengths[i]) / Math.max(.0001, lengths[i + 1] - lengths[i]);
+    return points[i].map((n, axis) => n + (points[(i + 1) % points.length][axis] - n) * f) as YarnPoint;
+  };
+  return { family, spec, sample, perimeter, topY: Math.max(...points.map(p => p[1])), bottomY: spec.bodyY - spec.ry * .72 };
+}
+
+function liningWallPoint(layout: ReturnType<typeof openingLiningLayout>, u: number, t: number): YarnPoint {
+  const [x, top, z] = layout.sample(u), { family, spec, bottomY } = layout;
+  const y = (top - .025) * (1 - t) + bottomY * t;
+  // A lining hangs into the existing bag. Small inward pleats relax between the
+  // stitched mouth and base; neither the silhouette nor the opening is enlarged.
+  const phase = ((u % 1 + 1) % 1) * Math.PI * 2;
+  const fold = .012 * Math.sin(Math.PI * t) * (Math.sin(phase * 11 + t * .75) + .45 * Math.sin(phase * 17 - t));
+  const depthRatio = depthAt(family, y - spec.bodyY) / depthAt(family, spec.ry);
+  return [x * (.96 - .13 * t - fold), y, z * depthRatio * (.92 - .08 * t - fold * 2)];
+}
+
+function makeOpeningInterior(family: Exclude<Family, "">): FabricMesh {
+  const layout = openingLiningLayout(family), columns = 96, rows = 24;
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  for (let row = 0; row <= rows; row++) for (let col = 0; col <= columns; col++) {
+    const u = col / columns, t = row / rows, p = liningWallPoint(layout, u, t);
+    const left = liningWallPoint(layout, u - .001, t), right = liningWallPoint(layout, u + .001, t);
+    const up = liningWallPoint(layout, u, Math.max(0, t - .001)), down = liningWallPoint(layout, u, Math.min(1, t + .001));
+    const a = right.map((n, i) => n - left[i]), b = down.map((n, i) => n - up[i]);
+    let normal = normalize(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]);
+    if (normal[0] * p[0] + normal[2] * p[2] > 0) normal = normal.map(n => -n) as YarnPoint;
+    mesh.positions.push(...p); mesh.normals.push(...normal);
+    // Both axes follow physical cloth distances, including the duplicated U seam.
+    mesh.uvs.push(u * layout.perimeter, layout.topY - p[1]);
+    if (row < rows && col < columns) {
+      const a = row * (columns + 1) + col, b = a + columns + 1;
+      mesh.indices.push(a, b, a + 1, a + 1, b, b + 1);
     }
-  });
-  for (let i = 0; i < count; i++) {
-    const j = (i + 1) % count, a = i * 2, b = j * 2;
-    indices.push(a, a + 1, b, b, a + 1, b + 1);
   }
-  const floorCenter = positions.length / 3;
-  positions.push(0, bottomY, 0); normals.push(0, 1, 0); uvs.push(.5, .5);
-  const floorRing = positions.length / 3;
-  points.forEach(([x, , z]) => {
-    positions.push(x * .83, bottomY, z * .83); normals.push(0, 1, 0);
-    uvs.push(.5 + x / (width * 2), .5 + z / depth);
-  });
-  for (let i = 0; i < count; i++) indices.push(floorCenter, floorRing + (i + 1) % count, floorRing + i);
-  return { positions, normals, uvs, indices };
+  const center = mesh.positions.length / 3;
+  mesh.positions.push(0, layout.bottomY, 0); mesh.normals.push(0, 1, 0); mesh.uvs.push(0, 0);
+  const floorStart = mesh.positions.length / 3, floorRows = 10;
+  for (let row = 1; row <= floorRows; row++) for (let col = 0; col <= columns; col++) {
+    const u = col / columns, r = row / floorRows, edge = liningWallPoint(layout, u, 1);
+    const x = edge[0] * r, z = edge[2] * r;
+    mesh.positions.push(x, layout.bottomY, z); mesh.normals.push(0, 1, 0); mesh.uvs.push(x, z);
+    const current = floorStart + (row - 1) * (columns + 1) + col;
+    if (col < columns) {
+      if (row === 1) mesh.indices.push(center, current + 1, current);
+      else {
+        const inner = current - columns - 1;
+        mesh.indices.push(inner, current + 1, current, inner, inner + 1, current + 1);
+      }
+    }
+  }
+  return mesh;
+}
+
+function makeOpeningLiningSeam(family: Exclude<Family, "">): FabricMesh {
+  const layout = openingLiningLayout(family), mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const stitches = Math.round(layout.perimeter / .032);
+  for (let i = 0; i < stitches; i++) {
+    const path = [0, .28, .56].map(f => {
+      const p = liningWallPoint(layout, (i + f) / stitches, .018);
+      return [p[0] * .997, p[1], p[2] * .990] as YarnPoint;
+    });
+    appendCord(mesh, path, .0014, () => [0, 1, 0], () => true, 6);
+  }
+  return mesh;
 }
 
 function makeExtrudedContour(contour: Point[], depth: number, softness = 0) {
@@ -1424,11 +1468,12 @@ attribute vec3 aNormal;
 attribute vec2 aUv;
 uniform mat4 uProjection,uView,uModel;
 uniform mat3 uNormalMatrix;
+uniform vec2 uInteriorBounds;
 uniform mediump float uRelief;
 uniform mediump float uStitch;
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
-varying float vFaceWeight;
+varying float vFaceWeight,vLiningDepth;
 varying vec2 vUv;
 ${CROCHET_SURFACE}
 void main(){
@@ -1447,6 +1492,7 @@ void main(){
   vTangent=normalize(mat3(uModel)*localTangent);
   vBitangent=normalize(mat3(uModel)*localBitangent);
   vFaceWeight=frontFace;
+  vLiningDepth=clamp((uInteriorBounds.x-aPosition.y)/max(.001,uInteriorBounds.x-uInteriorBounds.y),0.0,1.0);
   vUv=aUv;
   gl_Position=uProjection*uView*world;
 }`;
@@ -1462,7 +1508,7 @@ precision mediump float;
 #endif
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
-varying float vFaceWeight;
+varying float vFaceWeight,vLiningDepth;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
@@ -1566,8 +1612,16 @@ void main(){
     rough=mix(.27,.38,darkCoating);
     rough=mix(rough,.19,coolSilver*(1.0-darkCoating));
   } else if(uMaterial<5.5){
-    vec2 checker=floor(vUv*vec2(22.0,10.0));
-    detail=mix(.56,.94,mod(checker.x+checker.y,2.0));
+    // Gingham follows physical cloth distances and soft folds, with screen-space
+    // filtering instead of the stretched, hard checkerboard of the old cavity.
+    vec2 clothUv=vUv*20.0;
+    float resolved=0.0;
+#ifdef ABAGS_HAS_DERIVATIVES
+    float footprint=max(length(dFdx(clothUv)),length(dFdy(clothUv)));
+    resolved=1.0-smoothstep(.28,.75,footprint);
+#endif
+    vec2 bands=mix(vec2(.5),smoothstep(vec2(.35),vec2(.65),.5+.5*cos(clothUv*6.2831853)),resolved);
+    detail=1.0-.18*bands.x-.18*bands.y;
     rough=.95;
   } else if(uMaterial<6.5){
     detail=.88+.025*sin(vUv.x*118.0+vUv.y*97.0);
@@ -1594,7 +1648,7 @@ void main(){
     float vein=sin(vUv.x*23.0+sin(vUv.y*17.0)*1.8);
     detail=.94+.045*vein;
     rough=.30;
-  } else {
+  } else if(uMaterial<10.5){
     // Webbing has broad woven faces and bound edges, rather than a cord skin.
     vec2 frequency=vec2(120.0,34.0);
     float resolved=0.0;
@@ -1609,6 +1663,10 @@ void main(){
     detail=(.97+.025*weave*resolved)*(1.0-.16*selvedge);
     rough=.87;
     fibreSheen=.025;
+  } else {
+    // Solid matte lining for the remaining constructions.
+    detail=.98;
+    rough=.95;
   }
   float ndl=max(dot(n,l),0.0);
   float fillLight=max(dot(n,fill),0.0);
@@ -1620,6 +1678,10 @@ void main(){
   vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
   color+=specularGGX(n,l,v,rough,f0)*1.6;
   color+=vec3(fibreSheen)*pow(1.0-facing,2.0)*(.3+.7*ndl);
+  // Cavity light is tied to local fabric depth, so the mouth stays readable
+  // while the lining darkens toward its actual base during any rotation.
+  if((uMaterial>4.5 && uMaterial<5.5) || uMaterial>10.5)
+    color*=mix(1.0,.28,smoothstep(0.0,1.0,vLiningDepth));
   // A restrained warm atelier bounce stays in linear light, preserving cord hue.
   color+=base*vec3(.025,.020,.016);
   color=color/(1.0+color*.18);
@@ -1679,6 +1741,10 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundInterior: createMesh(gl, makeOpeningInterior("round")),
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
       miniInterior: createMesh(gl, makeOpeningInterior("mini")),
+      toteLiningSeam: createMesh(gl, makeOpeningLiningSeam("tote")),
+      roundLiningSeam: createMesh(gl, makeOpeningLiningSeam("round")),
+      bucketLiningSeam: createMesh(gl, makeOpeningLiningSeam("bucket")),
+      miniLiningSeam: createMesh(gl, makeOpeningLiningSeam("mini")),
       woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.042, 96, 16, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteChain: createMesh(gl, familyShoulderChainMesh("tote")),
@@ -1697,7 +1763,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       uv: gl.getAttribLocation(program, "aUv"),
     },
     uniforms: {
-      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"),
+      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"),
     },
   };
 }
@@ -2133,6 +2199,7 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsFidelityStrapOwner = canvas.dataset.abagsFidelityStrapOwner || "";
   stage.dataset.abagsFidelityStrapBounds = canvas.dataset.abagsFidelityStrapBounds || "";
   stage.dataset.abagsFidelityStrapTriangles = canvas.dataset.abagsFidelityStrapTriangles || "0";
+  stage.dataset.abagsFidelityInterior = canvas.dataset.abagsFidelityInterior || "";
   stage.dataset.abagsFidelityRimTriangles = canvas.dataset.abagsFidelityRimTriangles || "0";
   stage.dataset.abagsFidelityGrounding = canvas.dataset.abagsFidelityGrounding || "";
   const ground = JSON.parse(canvas.dataset.abagsFidelityGrounding || "null");
@@ -2166,6 +2233,7 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
     node.removeAttribute("data-abags-fidelity-strap-owner");
     node.removeAttribute("data-abags-fidelity-strap-bounds");
     node.removeAttribute("data-abags-fidelity-strap-triangles");
+    node.removeAttribute("data-abags-fidelity-interior");
     node.removeAttribute("data-abags-fidelity-rim-triangles");
     node.removeAttribute("data-abags-fidelity-grounding");
   }
@@ -2206,10 +2274,21 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   const openingColor = config.color ? body : "#d8cec4";
   const agataOpenWoodTote = renderFamily === "tote" && config.handles.startsWith("wood");
-  const interiorColor = agataOpenWoodTote ? "#f0e7d9" : darken(openingColor, 0.58);
+  const interiorColor = agataOpenWoodTote ? "#f0e7d9" : darken(openingColor, .22);
+  if (renderer.interiorEvidence?.family !== renderFamily) {
+    const layout = openingLiningLayout(renderFamily);
+    const backU = Array.from({ length: 96 }, (_, i) => i / 96).filter(u => layout.sample(u)[2] < 0)
+      .reduce((best, u) => Math.abs(layout.sample(u)[0]) < Math.abs(layout.sample(best)[0]) ? u : best, .75);
+    renderer.interiorEvidence = { family: renderFamily, topY: layout.topY, bottomY: layout.bottomY, probe: liningWallPoint(layout, backU, .10) };
+  }
+  const interiorLayout = renderer.interiorEvidence;
+  gl.uniform2f(uniforms.interiorBounds, interiorLayout.topY, interiorLayout.bottomY);
   // The red and brown wooden-handle versions share one silhouette and geometry.
   // The checked lining is visible when the customer rotates the same model to look inside.
-  drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, agataOpenWoodTote ? 5 : 6, stitch, 0);
+  drawMesh(renderer, meshes[renderFamily + "Interior"], root, interiorColor, agataOpenWoodTote ? 5 : 11, stitch, 0);
+  drawMesh(renderer, meshes[renderFamily + "LiningSeam"], root, darken(interiorColor, .24), 3, stitch, 0);
+  canvas.dataset.abagsFidelityInterior = JSON.stringify({ ...interiorLayout, finish: agataOpenWoodTote ? "gingham" : "solid",
+    triangles: meshes[renderFamily + "Interior"].count / 3, seamTriangles: meshes[renderFamily + "LiningSeam"].count / 3 });
   ensureOpeningRim(renderer, renderFamily);
   drawMesh(renderer, meshes.yarnRim, root, openingColor, 7, stitch, 0);
 
