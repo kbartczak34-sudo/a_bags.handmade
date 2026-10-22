@@ -757,6 +757,57 @@ const analyze=(overlay,renderedPixels)=>{
     }
     await writeFile(path.join(qaDir, "anchor-scarf-evidence.json"), JSON.stringify(scarf, null, 2));
 
+
+    // The new standalone Kokarda must be tested independently from the longer scarf.
+    // Compare actual customer screenshots against accent=none on both device classes,
+    // then verify its physical bounds are shorter than the long apaszka.
+    const verifyStandaloneBow = async (label, viewport) => {
+      await setViewport(viewport);
+      await clearAndReload();
+      await openBuilder();
+      for (const [key, value] of [
+        ["family", "tote"], ["color", "#E4A9B5"], ["stitch", "classic"],
+        ["handles", "wood-light"], ["accent", "bow"],
+      ]) await choose(key, value);
+      const accentOrder = await evaluate(`(() => [...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls button[data-builder-key="accent"]')].filter(button=>!button.disabled).map(button=>button.dataset.builderValue))()`);
+      if (accentOrder[0] !== "none" || accentOrder[1] !== "bow") {
+        throw new Error(`${label}: Kokarda must be first after Bez ozdoby on mobile/desktop: ${JSON.stringify(accentOrder)}`);
+      }
+      const results = [];
+      for (const view of ["Przód", "3/4", "Bok"]) {
+        await clickView(view);
+        const evidence = await anchorEvidence();
+        if (evidence?.ornamentOwner !== "webgl" || evidence.ornamentTriangles < 100 || evidence.duplicateOrnament) {
+          throw new Error(`${label} Kokarda ${view}: missing the single physical WebGL bow: ${JSON.stringify(evidence)}`);
+        }
+        const appearance = await verifyAccessoryAppearance(`${label}-kokarda-${view}`, evidence, view === "Bok");
+        const after = await anchorEvidence();
+        if (!after?.ornament?.current || after.ornament.wood < 2 || after.ornament.knot < 4) {
+          throw new Error(`${label} Kokarda ${view}: fabric knot is detached from the real wooden handle: ${JSON.stringify(after?.ornament)}`);
+        }
+        results.push({ view, owner: evidence.ornamentOwner, triangles: evidence.ornamentTriangles, appearance, ornament: after.ornament });
+        await capture(`kokarda-${label.toLowerCase()}-${view === "Przód" ? "front" : view === "Bok" ? "side" : "three-quarter"}.png`);
+      }
+      const bounds = await evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        return JSON.parse(stage?.dataset.abagsFidelityOrnamentBounds||'null');
+      })()`);
+      await choose("accent", "scarf");
+      const scarfBounds = await evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        return JSON.parse(stage?.dataset.abagsFidelityOrnamentBounds||'null');
+      })()`);
+      if (!bounds || !scarfBounds || bounds.min[1] <= scarfBounds.min[1] + .12) {
+        throw new Error(`${label}: Kokarda has the same long tails as Apaszka: ${JSON.stringify({ bounds, scarfBounds })}`);
+      }
+      await writeFile(path.join(qaDir,`kokarda-${label.toLowerCase()}-evidence.json`), JSON.stringify({ bow: bounds, scarf: scarfBounds, views: results }, null, 2));
+      await choose("accent", "bow");
+    };
+
+    await verifyStandaloneBow("desktop", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await verifyStandaloneBow("mobile", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+
+    await setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     for(const [key,value] of [['family','bucket'],['handles','none'],['color','#E8DDCC'],['flap','leather-black'],['strap','leather'],['accent','tassel']])await choose(key,value);
     await probeShoulderBand('desktop-leather');
 
@@ -766,6 +817,7 @@ const analyze=(overlay,renderedPixels)=>{
     console.log("- front flap/accent remains attached to the WebGL body on desktop/mobile: yes");
     console.log("- both accessory depth canvases redraw uniquely for all three views: yes");
     console.log("- scarf knot touches the wooden handle in Przód / 3/4 / Bok: yes");
+    console.log("- Kokarda visible in customer WebGL, anchored to wood, and shorter than Apaszka on desktop/mobile: yes");
     console.log("- ornaments visibly change front / three-quarter / near-side screenshots and obey far-side occlusion: yes");
     console.log("- woven and leather bands have visible 3D surfaces, no flat duplicate, and attached ends in all customer views: yes");
   console.log("- rigid wood handle retains two side-view WebGL depth clusters on desktop/mobile: yes");
