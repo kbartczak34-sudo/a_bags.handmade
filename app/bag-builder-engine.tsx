@@ -97,9 +97,10 @@ const HARDWARE: Option<Hardware>[] = [
 
 const ACCENTS: Option<Accent>[] = [
   { value: "none", label: "Bez ozdoby" },
-  { value: "tassel", label: "Chwost" },
-  { value: "scarf", label: "Apaszka" },
+  // Keep the bow beside the empty choice in the first mobile accessory row.
   { value: "bow", label: "Kokarda" },
+  { value: "scarf", label: "Apaszka" },
+  { value: "tassel", label: "Chwost" },
   { value: "charm", label: "Zawieszka" },
 ];
 
