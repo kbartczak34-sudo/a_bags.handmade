@@ -767,6 +767,48 @@ const analyze=(overlay,renderedPixels)=>{
     await writeFile(path.join(qaDir, "anchor-scarf-evidence.json"), JSON.stringify(scarf, null, 2));
 
 
+    const probeOpeningInterior = async (label) => {
+      for (const [key, value] of [['family','tote'],['color','#B93A42'],['stitch','classic'],['flap','none'],['handles','wood-dark'],['strap','none'],['accent','none']]) await choose(key, value);
+      await clickView('3/4');
+      const point = await evaluate(`(() => { const r=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-fidelity3d-canvas').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}; })()`);
+      if (mobileViewport) await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...point,id:1}]});
+      else await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
+      for (let i=1;i<=5;i++) {
+        const next={x:point.x,y:point.y+i*20};
+        if (mobileViewport) await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...next,id:1}]});
+        else await send('Input.dispatchMouseEvent',{type:'mouseMoved',...next,button:'left',buttons:1});
+        await sleep(40);
+      }
+      if (mobileViewport) await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+      else await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x,y:point.y+100,button:'left',clickCount:1});
+      await waitFor(`Number(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage')?.dataset.abagsFidelity3dRotationX)>.50`,`${label} real pointer reveals lining`);
+      await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))');
+      const proof=await evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage');
+        const canvas=stage.querySelector('.abags-fidelity3d-canvas'),gl=canvas.getContext('webgl');
+        const interior=JSON.parse(stage.dataset.abagsFidelityInterior||'null');
+        if(!interior?.probe||!gl||gl.isContextLost())return null;
+        const zoom=Number(stage.dataset.abagsFidelity3dZoom),yaw=Number(stage.dataset.abagsFidelity3dRotationY),pitch=Number(stage.dataset.abagsFidelity3dRotationX);
+        let [x,y,z]=interior.probe.map(n=>n*zoom);
+        [x,z]=[x*Math.cos(yaw)+z*Math.sin(yaw),-x*Math.sin(yaw)+z*Math.cos(yaw)];
+        [y,z]=[y*Math.cos(pitch)-z*Math.sin(pitch),y*Math.sin(pitch)+z*Math.cos(pitch)];
+        y-=.02;z-=5;
+        const w=gl.drawingBufferWidth,h=gl.drawingBufferHeight,f=1/Math.tan(Math.PI/5.3/2);
+        const px=Math.round((.5+x*f/(w/h)/-z*.5)*w),py=Math.round((.5-y*f/-z*.5)*h),radius=4,size=radius*2+1;
+        if(px<radius||py<radius||px>=w-radius||py>=h-radius)return null;
+        const pixels=new Uint8Array(size*size*4);
+        gl.readPixels(px-radius,h-1-py-radius,size,size,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+        let clothPixels=0;
+        for(let i=0;i<pixels.length;i+=4){const [r,g,b,a]=pixels.subarray(i,i+4);if(a>24&&r>130&&g>120&&b>100&&Math.abs(r-g)<35&&Math.abs(g-b)<40)clothPixels++;}
+        return {interior,pitch,yaw,clothPixels,point:{x:px,y:py},error:gl.getError(),current:stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature,visible:getComputedStyle(canvas).visibility!=='hidden'&&Number(getComputedStyle(canvas).opacity)>.05};
+      })()`);
+      await capture(`interior-${label}-open.png`);
+      await writeFile(path.join(qaDir,`interior-${label}-evidence.json`),JSON.stringify(proof,null,2));
+      if(!proof?.current||!proof.visible||proof.error||proof.interior.family!=='tote'||proof.interior.finish!=='gingham'||proof.interior.topY-proof.interior.bottomY<1.2||proof.interior.triangles<5000||proof.interior.seamTriangles<500||proof.clothPixels<8)throw new Error(`${label}: missing visible physical fabric lining after customer rotation: ${JSON.stringify(proof)}`);
+      console.log(`${label}: deep fabric lining and fine sewn mouth visible after real pointer rotation PASS`);
+    };
+    await probeOpeningInterior('desktop');
+
     // The new standalone Kokarda must be tested independently from the longer scarf.
     // Compare actual customer screenshots against accent=none on both device classes,
     // then verify its physical bounds are shorter than the long apaszka.
@@ -815,6 +857,7 @@ const analyze=(overlay,renderedPixels)=>{
 
     await verifyStandaloneBow("desktop", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await verifyStandaloneBow("mobile", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await probeOpeningInterior('mobile');
 
     await setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     for(const [key,value] of [['family','bucket'],['handles','none'],['color','#E8DDCC'],['flap','leather-black'],['strap','leather'],['accent','tassel']])await choose(key,value);

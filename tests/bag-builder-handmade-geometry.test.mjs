@@ -11,8 +11,8 @@ test("the active customer renderer tessellates both crochet panels rather than a
 });
 test("the bag has an open mouth and actual matte fabric interior", () => {
   assert.match(renderer, /spec\.ry \* \.90/);
-  assert.match(renderer, /const bottomY = topY - Math\.min\(\.43/);
-  assert.match(renderer, /agataOpenWoodTote \? 5 : 6/);
+  assert.match(renderer, /bottomY: spec\.bodyY - spec\.ry \* \.72/);
+  assert.match(renderer, /agataOpenWoodTote \? 5 : 11/);
   assert.match(renderer, /uMaterial<5\.5/);
   assert.match(renderer, /const points = openingPath\(family\)/);
 });
