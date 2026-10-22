@@ -105,6 +105,28 @@ test("wooden-handle scarf wraps behind its ring while the bow and tails remain i
   }
 });
 
+
+test("standalone bow has short folded tails, physical thickness and an anchored knot distinct from the scarf", () => {
+  for (const family of ["tote", "mini"]) for (const handles of ["none", "wood-light"]) {
+    const bow = g.makeOrnamentGeometry(config(family, "bow", handles));
+    const scarf = g.makeOrnamentGeometry(config(family, "scarf", handles));
+    const anchor = g.fidelityAccessoryAnchor(config(family, "bow", handles));
+    const bowFabric = bow.parts.find(part => part.tone === "scarf")?.mesh;
+    const hem = bow.parts.find(part => part.tone === "hem")?.mesh;
+    assert.ok(bowFabric && hem, "bow loops and separately finished fabric edges are real meshes");
+    assert.ok(bowFabric.indices.length > 600 && hem.indices.length > 100);
+    assert.ok(bow.bounds.max[2] - bow.bounds.min[2] > .12, "folded textile bow must have real depth");
+    assert.ok(bow.bounds.min[1] > scarf.bounds.min[1] + .12,
+      `${family}/${handles}: bow must not inherit the scarf's long hanging tails`);
+    assert.ok(bow.bounds.min[0] < anchor[0] - .10 && bow.bounds.max[0] > anchor[0] + .10,
+      "bow has two opposite fabric loops around the knot");
+    if (handles === "wood-light") {
+      assert.ok(bow.bounds.min[2] < anchor[2] - .09, "fabric actually wraps behind the wooden handle");
+      assert.ok(bow.bounds.max[2] > anchor[2] + .12, "folded bow stays in front of its handle");
+    }
+  }
+});
+
 test("removing an ornament or leaving the family has no geometry or residual bounds", () => {
   for (const c of [config("mini", "none"), config("", "tassel")]) {
     const data = g.makeOrnamentGeometry(c);
