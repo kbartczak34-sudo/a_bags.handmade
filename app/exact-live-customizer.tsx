@@ -70,7 +70,7 @@ import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
-const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-21-stitched-shoulder-bands";
+const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-22-braided-rim-ground-contact";
 
 export default function ExactLiveCustomizer() {
   useEffect(() => {

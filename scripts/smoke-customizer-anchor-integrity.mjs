@@ -95,6 +95,9 @@ function assertViewEvidence(label, view, evidence, frontEvidence) {
   if (!evidence?.back || !evidence?.front) throw new Error(`${label} ${view}: missing accessory depth evidence.`);
   const { webgl, back, front } = evidence;
   assertRearAccessory(label, view, evidence);
+  if(evidence.rimTriangles<1000||!evidence.ground||evidence.ground.opacity<.05||evidence.ground.display==='none'||Math.abs(evidence.ground.top-evidence.ground.pixelBottom)>5){
+    throw new Error(`${label} ${view}: braided mouth and customer-visible ground contact must follow the rendered bag: ${JSON.stringify(evidence.ground)}`);
+  }
   if (evidence.ornamentOwner === "webgl" && (evidence.duplicateOrnament || evidence.ornamentTriangles < 100)) {
     throw new Error(`${label} ${view}: the selected ornament must have one volumetric renderer.`);
   }
@@ -478,7 +481,13 @@ const analyze=(overlay,renderedPixels)=>{
         };
       };
 
+      const layer=stage.querySelector('.abags-fidelity3d-layer'),shadow=getComputedStyle(layer,'::after'),rect=canvas.getBoundingClientRect();
+      const top=shadow.top.endsWith('%')?parseFloat(shadow.top)/100*layer.getBoundingClientRect().height:parseFloat(shadow.top);
+      let lowest=Infinity;
+      for(let i=3;i<glPixels.length;i+=16)if(glPixels[i]>24)lowest=Math.min(lowest,Math.floor((i-3)/4/gw));
       return {
+        rimTriangles:Number(stage.dataset.abagsFidelityRimTriangles||0),
+        ground:{top,pixelBottom:(1-lowest/gh)*rect.height,opacity:Number(shadow.opacity),display:shadow.display},
         view:[...stage.querySelectorAll('.abags-pro3d-view-controls button')]
           .find((button)=>button.getAttribute('aria-pressed')==='true')?.textContent?.trim()||'',
         rotationX:Number(stage.dataset.abagsFidelity3dRotationX),

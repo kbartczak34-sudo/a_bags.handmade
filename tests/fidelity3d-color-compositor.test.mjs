@@ -113,11 +113,10 @@ test("Fidelity3D body has physical rounded edge construction and family-specific
   assert.match(renderer, /const frontEdge = addRing\(1, 1, 0, "bevel"\)/);
   assert.match(renderer, /const backEdge = addRing\(1, -1, 0, "bevel"\)/);
   assert.match(renderer, /function makeOpeningRim\(family/);
-  assert.match(renderer, /makeOpeningRim\("tote"\)/);
-  assert.match(renderer, /makeOpeningRim\("round"\)/);
-  assert.match(renderer, /makeOpeningRim\("bucket"\)/);
-  assert.match(renderer, /makeOpeningRim\("mini"\)/);
-  assert.match(renderer, /meshes\[config\.family \+ "Rim"\]/);
+  assert.match(renderer, /ensureOpeningRim\(renderer, renderFamily\)/);
+  assert.match(renderer, /if \(renderer\.rimKey === family\) return/);
+  assert.match(renderer, /const data = makeOpeningRim\(family\)/);
+  assert.match(renderer, /meshes\.yarnRim/);
   assert.match(renderer, /function makeOpeningInterior\(family/);
   assert.match(renderer, /toteInterior: createMesh\(gl, makeOpeningInterior\("tote"\)\)/);
   assert.match(renderer, /roundInterior: createMesh\(gl, makeOpeningInterior\("round"\)\)/);
