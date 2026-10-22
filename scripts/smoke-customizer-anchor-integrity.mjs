@@ -769,6 +769,10 @@ const analyze=(overlay,renderedPixels)=>{
         ["family", "tote"], ["color", "#E4A9B5"], ["stitch", "classic"],
         ["handles", "wood-light"], ["accent", "bow"],
       ]) await choose(key, value);
+      const accentOrder = await evaluate(`(() => [...document.querySelectorAll('.abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls button[data-builder-key="accent"]')].filter(button=>!button.disabled).map(button=>button.dataset.builderValue))()`);
+      if (accentOrder[0] !== "none" || accentOrder[1] !== "bow") {
+        throw new Error(`${label}: Kokarda must be first after Bez ozdoby on mobile/desktop: ${JSON.stringify(accentOrder)}`);
+      }
       const results = [];
       for (const view of ["Przód", "3/4", "Bok"]) {
         await clickView(view);
