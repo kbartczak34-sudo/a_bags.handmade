@@ -95,15 +95,20 @@ async function main() {
       const rect=canvas?.getBoundingClientRect();
       const style=canvas?getComputedStyle(canvas):null;
       const pixels=gl && !gl.isContextLost()?new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4):null;
-      let opaque=0,hash=2166136261>>>0;
+      let opaque=0,hash=2166136261>>>0,lowest=Infinity;
       if(pixels){
         gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
         for(let i=0;i<pixels.length;i+=16){
-          if(pixels[i+3]>24)opaque++;
+          if(pixels[i+3]>24){opaque++;lowest=Math.min(lowest,Math.floor(i/4/gl.drawingBufferWidth));}
           for(let j=0;j<4;j++){hash^=pixels[i+j];hash=Math.imul(hash,16777619)>>>0;}
         }
       }
+      const layer=stage.querySelector('.abags-fidelity3d-layer'),shadow=layer?getComputedStyle(layer,'::after'):null;
+      const ground=JSON.parse(stage.dataset.abagsFidelityGrounding||'null');
+      const shadowTop=shadow?.top.endsWith('%')?parseFloat(shadow.top)/100*layer.getBoundingClientRect().height:parseFloat(shadow?.top||'NaN');
       return {
+        grounding:ground&&gl&&rect?{...ground,shadowTop,shadowOpacity:Number(shadow?.opacity),shadowDisplay:shadow?.display,pointerEvents:shadow?.pointerEvents,pixelBottom:(1-lowest/gl.drawingBufferHeight)*rect.height,height:rect.height}:null,
+        rimTriangles:Number(stage.dataset.abagsFidelityRimTriangles||0),
         family:stage.dataset.family,color:stage.dataset.color,stitch:stage.dataset.stitch,
         signature:stage.dataset.builderSignature,frame:stage.dataset.abagsFidelity3dFrame,
         frameAt:stage.dataset.abagsFidelity3dFrameAt,canvasFrame:canvas?.dataset.abagsFidelity3dFrame,
@@ -124,6 +129,9 @@ async function main() {
       if (!state?.visible || state.lost || state.pixels < 100 || state.canvasFrame !== state.signature) {
         throw new Error(`${label}: missing visible rendered model: ${JSON.stringify(state)}`);
       }
+      const ground=state.grounding;
+      if(!ground||state.rimTriangles<1000)throw new Error(`${label}: missing braided rim or projected ground contact.`);
+      if(ground.visible&&ground.pixelBottom<ground.height-4&&(ground.shadowDisplay==='none'||ground.shadowOpacity<.05||ground.pointerEvents!=='none'||Math.abs(ground.shadowTop-ground.pixelBottom)>5))throw new Error(`${label}: studio shadow drifted from the visible bag base: ${JSON.stringify(ground)}`);
       return state;
     };
     const waitRepaint = (before, label) => waitFor(`${stageExpression}?.dataset.abagsFidelity3dFrameAt!==${JSON.stringify(before.frameAt)}`, `${label} fresh framebuffer`);

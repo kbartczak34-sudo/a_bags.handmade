@@ -37,6 +37,9 @@ type Mesh = {
 };
 
 type Renderer = {
+  rimKey?: string;
+  rimTriangles?: number;
+  groundPoints?: YarnPoint[];
   shoulderBandKey?: string;
   shoulderBandParts?: Array<{ name: string; tone: BandTone; material: number }>;
   shoulderBandBounds?: { min: YarnPoint; max: YarnPoint };
@@ -537,13 +540,14 @@ function woodHandleMatrix(family: Exclude<Family, "">, z: number) {
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
 type YarnPoint = [number, number, number];
 
-function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10) {
+function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10, closed = false) {
   let previous = -1;
   let distance = 0;
   points.forEach((point, index) => {
     if (index > 0) distance += Math.hypot(...point.map((value, axis) => value - points[index - 1][axis]));
     if (!contains(point)) { previous = -1; return; }
-    const before = points[Math.max(0, index - 1)], after = points[Math.min(points.length - 1, index + 1)];
+    const before = points[index ? index - 1 : closed ? points.length - 2 : 0];
+    const after = points[index < points.length - 1 ? index + 1 : closed ? 1 : points.length - 1];
     const tangent = normalize(after[0] - before[0], after[1] - before[1], after[2] - before[2]);
     const normal = guide(point);
     const across = normalize(normal[1] * tangent[2] - normal[2] * tangent[1], normal[2] * tangent[0] - normal[0] * tangent[2], normal[0] * tangent[1] - normal[1] * tangent[0]);
@@ -713,8 +717,37 @@ function ensureCrochetMeshes(renderer: Renderer, family: Exclude<Family, "">, st
   };
   renderer.meshes.yarnFront = createMesh(renderer.gl, front);
   renderer.meshes.yarnBack = createMesh(renderer.gl, back);
-  renderer.meshes.yarnSide = createMesh(renderer.gl, makeCrochetGusset(family, stitch));
+  const side = makeCrochetGusset(family, stitch);
+  renderer.meshes.yarnSide = createMesh(renderer.gl, side);
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  // Keep the actual lower cord vertices for studio contact. No pixel readback
+  // or reconstruction from a generic family rectangle is needed while dragging.
+  renderer.groundPoints = [];
+  for (const mesh of [front, back, side]) for (let i = 0; i < mesh.positions.length; i += 3) {
+    if (mesh.positions[i + 1] < -spec.ry * .70) renderer.groundPoints.push([mesh.positions[i], mesh.positions[i + 1] + spec.bodyY, mesh.positions[i + 2]]);
+  }
+  renderer.groundPoints = groundSupportPoints(renderer.groundPoints);
   renderer.yarnKey = key;
+}
+
+function groundSupportPoints(points: YarnPoint[]) {
+  // Select real extreme vertices once per construction. The camera may rotate
+  // freely in yaw and tilt through its full range without scanning thousands
+  // of hidden cord vertices on every pointer movement.
+  const selected = new Set<number>();
+  for (let elevation = 0; elevation <= 12; elevation++) {
+    const angle = elevation * .09, horizontal = Math.sin(angle), ny = -Math.cos(angle);
+    for (let azimuth = 0; azimuth < (elevation ? 48 : 1); azimuth++) {
+      const a = azimuth / 48 * Math.PI * 2, nx = horizontal * Math.cos(a), nz = horizontal * Math.sin(a);
+      let best = -Infinity, index = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i], value = nx * p[0] + ny * p[1] + nz * p[2];
+        if (value > best) { best = value; index = i; }
+      }
+      selected.add(index);
+    }
+  }
+  return [...selected].map(i => points[i]);
 }
 
 function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
@@ -957,33 +990,72 @@ function ensureCrochetFlapMesh(renderer: Renderer, family: Exclude<Family, "">, 
   renderer.crochetFlapKey = key;
 }
 
-function makeOpeningRim(family: Exclude<Family, "">, minor = 0.022, tube = 10) {
+function openingBraidPaths(family: Exclude<Family, "">) {
   const points = openingPath(family);
-  const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
-  for (let i = 0; i <= points.length; i++) {
-    const point = points[i % points.length];
-    const prev = points[(i + points.length - 1) % points.length];
-    const next = points[(i + 1) % points.length];
-    const tangent = normalize(next[0] - prev[0], next[1] - prev[1], next[2] - prev[2]);
+  const radius = ABAGS_FIDELITY_V4_FAMILY_SPECS[family].rx * 5 / 160;
+  const arc = [0];
+  for (let i = 0; i < points.length; i++) arc.push(arc[i] + Math.hypot(...points[(i + 1) % points.length].map((v, axis) => v - points[i][axis])));
+  const total = arc[arc.length - 1], turns = Math.max(1, Math.round(total / (radius * 3.5))), samples = turns * 12;
+  const at = (distance: number): YarnPoint => {
+    const d = (distance % total + total) % total;
+    let i = 0;
+    while (i + 1 < arc.length - 1 && arc[i + 1] < d) i++;
+    const t = (d - arc[i]) / (arc[i + 1] - arc[i]);
+    return points[i].map((v, axis) => v + (points[(i + 1) % points.length][axis] - v) * t) as YarnPoint;
+  };
+  const smooth = (d: number): YarnPoint => {
+    const a = at(d - radius * .5), b = at(d), c = at(d + radius * .5);
+    return b.map((v, axis) => (a[axis] + 2 * v + c[axis]) / 4) as YarnPoint;
+  };
+  const paths = [0, Math.PI].map(phase => Array.from({ length: samples + 1 }, (_, i): YarnPoint => {
+    const d = total * i / samples, center = smooth(d), a = smooth(d - radius * .4), b = smooth(d + radius * .4);
+    const tangent = normalize(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
     const outward = normalize(-tangent[2], 0, tangent[0]);
-    const up = normalize(
-      tangent[1] * outward[2] - tangent[2] * outward[1],
-      tangent[2] * outward[0] - tangent[0] * outward[2],
-      tangent[0] * outward[1] - tangent[1] * outward[0],
-    );
-    for (let j = 0; j <= tube; j++) {
-      const angle = j / tube * Math.PI * 2;
-      const normal = normalize(...outward.map((v, axis) => v * Math.cos(angle) + up[axis] * Math.sin(angle)) as [number, number, number]);
-      positions.push(...point.map((v, axis) => v + minor * normal[axis]));
-      normals.push(...normal);
-      uvs.push(i / points.length, j / tube);
-      if (i < points.length && j < tube) {
-        const a = i * (tube + 1) + j, b = a + tube + 1;
-        indices.push(a, b, a + 1, b, b + 1, a + 1);
-      }
-    }
+    const up = normalize(tangent[1] * outward[2] - tangent[2] * outward[1], tangent[2] * outward[0] - tangent[0] * outward[2], tangent[0] * outward[1] - tangent[1] * outward[0]);
+    const angle = i / samples * turns * Math.PI * 2 + phase;
+    return center.map((v, axis) => v + radius * .42 * (outward[axis] * Math.cos(angle) + up[axis] * Math.sin(angle))) as YarnPoint;
+  }));
+  return { paths, radius: radius * .58 };
+}
+
+function makeOpeningRim(family: Exclude<Family, "">): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const { paths, radius } = openingBraidPaths(family);
+  for (const path of paths) appendCord(mesh, path, radius, () => [0, 1, 0], () => true, 8, true);
+  return mesh;
+}
+
+function ensureOpeningRim(renderer: Renderer, family: Exclude<Family, "">) {
+  if (renderer.rimKey === family) return;
+  const old = renderer.meshes.yarnRim;
+  if (old) for (const buffer of [old.position, old.normal, old.uv, old.index]) renderer.gl.deleteBuffer(buffer);
+  const data = makeOpeningRim(family);
+  renderer.meshes.yarnRim = createMesh(renderer.gl, data);
+  renderer.rimTriangles = data.indices.length / 3;
+  renderer.rimKey = family;
+}
+
+function groundContactFrame(points: YarnPoint[], model: Float32Array, aspect: number, cssHeight: number) {
+  cssHeight = Math.max(1, cssHeight);
+  if (!points.length) return { x: .5, y: 1, width: .2, height: .02, coreWidth: .05, coreHeight: .005, blur: 2, visible: 0 };
+  const f = 1 / Math.tan(Math.PI / 5.3 / 2), projected = new Float32Array(points.length * 2);
+  let bottom = -Infinity, minX = Infinity, maxX = -Infinity;
+  points.forEach(([x, y, z], i) => {
+    const wx = model[0] * x + model[4] * y + model[8] * z + model[12];
+    const wy = model[1] * x + model[5] * y + model[9] * z + model[13] - .02;
+    const wz = model[2] * x + model[6] * y + model[10] * z + model[14] - 5;
+    const px = .5 + wx * f / aspect / -wz * .5, py = .5 - wy * f / -wz * .5;
+    projected[i * 2] = px; projected[i * 2 + 1] = py;
+    bottom = Math.max(bottom, py); minX = Math.min(minX, px); maxX = Math.max(maxX, px);
+  });
+  let footMin = Infinity, footMax = -Infinity;
+  for (let i = 0; i < projected.length; i += 2) if (projected[i + 1] >= bottom - 2 / cssHeight) {
+    footMin = Math.min(footMin, projected[i]); footMax = Math.max(footMax, projected[i]);
   }
-  return { positions, normals, uvs, indices };
+  const width = Math.max(.035, maxX - minX), height = clamp(width * .075, .018, .046);
+  return { x: (footMin + footMax) / 2, y: bottom + .5 / cssHeight,
+    width, height, coreWidth: clamp(footMax - footMin + .008, .018, width), coreHeight: clamp(3 / cssHeight, .004, .012),
+    blur: clamp(height * cssHeight * .22, 2, 7), visible: Number(bottom > .15 && bottom < 1.025) };
 }
 
 function makeOpeningInterior(family: Exclude<Family, "">) {
@@ -1507,8 +1579,8 @@ void main(){
     n=cordBraidNormal(n,braidSlope*resolved);
     detail=mix(.97,.88+.15*braid,resolved);
     cordOcclusion=mix(1.0,.88+.12*braid,resolved);
-    rough=.80+.04*(1.0-braid)*resolved;
-    fibreSheen=.018;
+    rough=.70+.04*(1.0-braid)*resolved;
+    fibreSheen=.022;
   } else if(uMaterial<8.5){
     // Woven satin on the physical folds: narrow borders and a restrained print.
     float border=1.0-smoothstep(.025,.055,min(vUv.y,1.0-vUv.y));
@@ -1603,10 +1675,6 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       round: createMesh(gl, makeVariableDepthBody("round")),
       bucket: createMesh(gl, makeVariableDepthBody("bucket")),
       mini: createMesh(gl, makeVariableDepthBody("mini")),
-      toteRim: createMesh(gl, makeOpeningRim("tote")),
-      roundRim: createMesh(gl, makeOpeningRim("round")),
-      bucketRim: createMesh(gl, makeOpeningRim("bucket")),
-      miniRim: createMesh(gl, makeOpeningRim("mini")),
       toteInterior: createMesh(gl, makeOpeningInterior("tote")),
       roundInterior: createMesh(gl, makeOpeningInterior("round")),
       bucketInterior: createMesh(gl, makeOpeningInterior("bucket")),
@@ -2065,6 +2133,16 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsFidelityStrapOwner = canvas.dataset.abagsFidelityStrapOwner || "";
   stage.dataset.abagsFidelityStrapBounds = canvas.dataset.abagsFidelityStrapBounds || "";
   stage.dataset.abagsFidelityStrapTriangles = canvas.dataset.abagsFidelityStrapTriangles || "0";
+  stage.dataset.abagsFidelityRimTriangles = canvas.dataset.abagsFidelityRimTriangles || "0";
+  stage.dataset.abagsFidelityGrounding = canvas.dataset.abagsFidelityGrounding || "";
+  const ground = JSON.parse(canvas.dataset.abagsFidelityGrounding || "null");
+  if (ground) {
+    for (const [name, key] of [["x", "x"], ["y", "y"], ["width", "width"], ["height", "height"], ["core-width", "coreWidth"], ["core-height", "coreHeight"]]) {
+      stage.style.setProperty("--abags-ground-" + name, (ground[key] * 100).toFixed(4) + "%");
+    }
+    stage.style.setProperty("--abags-ground-blur", ground.blur.toFixed(3) + "px");
+    stage.style.setProperty("--abags-ground-visible", String(ground.visible));
+  }
   stage.dataset.abagsFidelity3dFrameAt = canvas.dataset.abagsFidelity3dFrameAt || String(Date.now());
   stage.removeAttribute("data-abags-fidelity3d-error");
 }
@@ -2088,7 +2166,10 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
     node.removeAttribute("data-abags-fidelity-strap-owner");
     node.removeAttribute("data-abags-fidelity-strap-bounds");
     node.removeAttribute("data-abags-fidelity-strap-triangles");
+    node.removeAttribute("data-abags-fidelity-rim-triangles");
+    node.removeAttribute("data-abags-fidelity-grounding");
   }
+  stage.style.setProperty("--abags-ground-visible", "0");
 }
 
 function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
@@ -2129,7 +2210,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // The red and brown wooden-handle versions share one silhouette and geometry.
   // The checked lining is visible when the customer rotates the same model to look inside.
   drawMesh(renderer, config.family ? meshes[config.family + "Interior"] : meshes.toteInterior, root, interiorColor, agataOpenWoodTote ? 5 : 6, stitch, 0);
-  drawMesh(renderer, config.family ? meshes[config.family + "Rim"] : meshes.toteRim, root, openingColor, 3, stitch, 0);
+  ensureOpeningRim(renderer, renderFamily);
+  drawMesh(renderer, meshes.yarnRim, root, openingColor, 7, stitch, 0);
 
   ensureShoulderBandMeshes(renderer, config);
   if (config.strap === "woven" || config.strap === "leather") {
@@ -2261,6 +2343,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityStrapOwner = config.strap === "woven" || config.strap === "leather" ? "webgl-band" : "";
   canvas.dataset.abagsFidelityStrapBounds = renderer.shoulderBandBounds ? JSON.stringify(renderer.shoulderBandBounds) : "";
   canvas.dataset.abagsFidelityStrapTriangles = String(renderer.shoulderBandTriangles ?? 0);
+  canvas.dataset.abagsFidelityRimTriangles = String(renderer.rimTriangles ?? 0);
+  canvas.dataset.abagsFidelityGrounding = JSON.stringify(groundContactFrame(renderer.groundPoints ?? [], root, width / height, canvas.clientHeight));
   const accessoryAnchor = fidelityAccessoryAnchor(config);
   canvas.dataset.abagsFidelityAccessoryAnchor = accessoryAnchor ? JSON.stringify(accessoryAnchor) : "";
   canvas.dataset.abagsFidelityAccessorySignature = renderSignature(config);
