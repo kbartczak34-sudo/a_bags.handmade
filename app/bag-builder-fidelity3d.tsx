@@ -1985,14 +1985,14 @@ function foldedRibbonLoop(u: number, v: number, side: number, compact: boolean):
 
 function foldedRibbonTail(u: number, v: number, side: number, compact: boolean): YarnPoint {
   const arch = Math.sin(Math.PI * u), length = compact ? (side < 0 ? .205 : .175) : (side < 0 ? 1.30 : 1.10);
-  const width = .018 + (compact ? .044 : .122) * (1 - Math.exp(-u * (compact ? 9 : 4)));
+  const width = .018 + (compact ? .044 : .122) * (1 - Math.exp(-u * (compact ? 5 : 4)));
   const twist = side * .25 * arch + .42 * Math.sin(Math.PI * 2 * u) * arch;
   const notch = (compact ? .027 * (1 - Math.abs(v)) : .12 * (1 - side * v)) * Math.pow(u, 12);
-  return [side * (.012 + (compact ? .095 : .24) * u + .022 * arch) + width * v * Math.cos(twist),
+  return [side * (.012 + (compact ? .15 : .24) * u + .022 * arch) + width * v * Math.cos(twist),
     -.022 - length * u + notch + side * .010 * v * arch,
     .045 + .035 * arch + .018 * Math.sin(Math.PI * 3 * u) * arch
       + width * v * Math.sin(twist) + .014 * Math.cos(v * Math.PI * 1.5 + side * .4) * arch
-      + (!compact && side < 0 ? .075 * Math.sin(Math.PI * u * .85) : 0)];
+      + (side < 0 ? (compact ? .028 : .075) * Math.sin(Math.PI * u * .85) : 0)];
 }
 
 function foldedRibbonKnot(u: number, v: number): YarnPoint {
@@ -2089,7 +2089,7 @@ function makeOrnamentGeometry(config: Config) {
     };
     const compact = config.accent === "bow";
     for (const side of [-1, 1]) ribbon((u, v) => point(...foldedRibbonLoop(u, v, side, compact), .006), 48);
-    for (const side of [-1, 1]) ribbon((u, v) => point(...foldedRibbonTail(u, v, side, compact), !compact && side < 0 ? .018 : .007), 48);
+    for (const side of [-1, 1]) ribbon((u, v) => point(...foldedRibbonTail(u, v, side, compact), side < 0 ? .018 : .007), 48);
     if (config.handles.startsWith("wood")) {
       appendOrnamentRibbon(fabric, (u, v) => woodHandleRibbonPoint(family, u, v), 40, 8);
     }
