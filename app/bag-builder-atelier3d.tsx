@@ -80,7 +80,7 @@ const PROFILES: Record<Exclude<Family, "">, Profile> = {
 
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
     color: stage.dataset.color || "",
     stitch: (stage.dataset.stitch || "") as Stitch,
     flap: (stage.dataset.flap || "none") as Flap,

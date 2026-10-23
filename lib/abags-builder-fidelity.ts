@@ -17,6 +17,12 @@ export const AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY = {
     straps: ["none", "leather"],
     accents: ["none", "tassel"],
   },
+  satchel: {
+    handles: ["none", "leather-braid"],
+    flaps: ["none", "leather-cognac"],
+    straps: ["none", "woven-ornament", "leather"],
+    accents: ["none"],
+  },
   mini: {
     handles: ["none", "wood-light"],
     flaps: ["none", "crochet"],
@@ -30,11 +36,12 @@ export const AGATA_BUILDER_HANDLE_COMPATIBILITY = {
   round: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.round.handles,
   bucket: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.bucket.handles,
   mini: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.mini.handles,
+  satchel: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.satchel.handles,
 } as const;
 
 export type AgataBuilderFamily = keyof typeof AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY;
 export type AgataBuilderConstructionKey = "handles" | "flaps" | "straps" | "accents";
-export type AgataBuilderHandle = "none" | "wood-light" | "wood-dark" | "crochet";
+export type AgataBuilderHandle = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
 
 export function isAgataBuilderConstructionSupported(
   family: string,

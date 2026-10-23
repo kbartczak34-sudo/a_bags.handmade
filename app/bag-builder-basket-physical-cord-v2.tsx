@@ -370,7 +370,7 @@ function uploadMesh(renderer: Renderer, family: Exclude<Family, "">) {
 
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
     stitch: stage.dataset.stitch || "classic",
     color: stage.dataset.color || "#eadfd7",
   };

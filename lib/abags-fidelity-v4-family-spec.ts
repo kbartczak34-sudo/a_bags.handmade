@@ -1,4 +1,4 @@
-export type FidelityV4Family = "tote" | "round" | "bucket" | "mini";
+export type FidelityV4Family = "tote" | "round" | "bucket" | "mini" | "satchel";
 
 /** Approximate measured width of the physical bag body for each current family.
  * Height/depth are intentionally NOT inferred from the renderer's arbitrary units.
@@ -38,6 +38,8 @@ export type FidelityV4FamilySpec = {
   flapScale: readonly [number, number];
   /** Family-specific flap position; null means an optional flap uses the generic position. */
   flapY: number | null;
+  /** Independent closure height for a flap with a hanging leather tongue. */
+  lockY?: number;
   /** Renderer calibration factors for the soft handmade silhouette and hardware anchors. */
   softnessFactor: number;
   attachmentWidthFactor: number;
@@ -134,6 +136,16 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
     handleScaleFactor: 1,
     handleYScaleFactor: 1.08,
     chain: [1.08, 1.68, 34, 0.043, 0.011],
+  },
+  satchel: {
+    label: "Kuferek koniakowy",
+    reference: "cognac-ombre-braided-satchel",
+    rx: 1.04, ry: .78, power: 5.3, taper: -.085, bodyY: -.10,
+    depth: .58, bevel: .055, topY: .78, sideAnchor: .97, ringY: .57,
+    handleScale: [.98, .65], flapScale: [.88, .66], flapY: .42, lockY: .02,
+    softnessFactor: .90, attachmentWidthFactor: .94, attachmentYOffset: -.015,
+    attachmentZFactor: .74, handleSpanFactor: .84, handleScaleFactor: 1,
+    handleYScaleFactor: 1, chain: [1.12, 1.66, 34, .043, .011],
   },
   mini: {
     label: "Strukturalna / mini",

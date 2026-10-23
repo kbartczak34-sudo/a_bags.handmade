@@ -173,7 +173,7 @@ test("Fidelity3D uses soft-body deformation for the crocheted silhouette and fla
   assert.match(renderer, /zSign > 0[\s\S]*\+ softness\.z/);
   assert.match(renderer, /function makeExtrudedContour\(contour: Point\[], depth: number, softness = 0\)/);
   assert.match(renderer, /softened = contour\.map/);
-  assert.match(renderer, /makeExtrudedContour\(flapContour\(\), 0\.105, 0\.085\)/);
+  assert.match(renderer, /makeExtrudedContour\(flapContour\(family\), 0\.105, 0\.085\)/);
 });
 
 

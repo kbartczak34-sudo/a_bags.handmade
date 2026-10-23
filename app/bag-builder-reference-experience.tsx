@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
+import { ABAGS_COGNAC_PRESET, ABAGS_COGNAC_REFERENCE_ID, ABAGS_COGNAC_REFERENCE_IMAGE } from "../lib/abags-cognac-model";
 import { EXACT_ATELIER_LIBRARY, EXACT_ATELIER_SPRITE_PARTS } from "../lib/exact-customizer-library";
 
 type Preset = {
@@ -29,11 +30,11 @@ const STEPS = [
 ] as const;
 
 const LABELS: Record<string, Record<string, string>> = {
-  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" },
+  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy" },
   stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
   flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skóra czarna", "leather-cognac": "Skóra koniak", "suede-burgundy": "Zamsz bordo" },
-  handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
-  strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
+  handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy", "leather-braid": "Pleciona rączka skórzana" },
+  strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy" },
   hardware: { gold: "Złote", silver: "Srebrne", black: "Czarne" },
   accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" },
 };
@@ -49,9 +50,11 @@ const COLOR_LABELS: Record<string, string> = {
   "#275C4A": "Butelkowa zieleń",
   "#087E81": "Turkus",
   "#A88AE0": "Lawendowy",
+  "#C7652F": "Miedziany ombré",
 };
 
 const PRESETS: Preset[] = [
+  { id: "cognac-ombre", label: "Kuferek koniakowy", referenceId: ABAGS_COGNAC_REFERENCE_ID, ...ABAGS_COGNAC_PRESET },
   { id: "navy", label: "Granat", referenceId: "navy-wood-scarf-chain", family: "tote", color: "#24324D", stitch: "classic", flap: "none", handles: "wood-light", strap: "chain", hardware: "gold", accent: "scarf" },
   { id: "red", label: "Czerwień", referenceId: "red-wood-scarf", family: "tote", color: "#B93A42", stitch: "classic", flap: "none", handles: "wood-dark", strap: "woven", hardware: "gold", accent: "scarf" },
   { id: "black", label: "Czerń", referenceId: "black-leather-flap", family: "bucket", color: "#222124", stitch: "classic", flap: "leather-black", handles: "none", strap: "leather", hardware: "gold", accent: "tassel" },
@@ -177,9 +180,10 @@ function spritePosition(index: number) {
 function applySpriteCell(element: HTMLElement, spriteUrl: string, referenceId: string) {
   const reference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
   if (!reference || !spriteUrl) return;
-  element.style.backgroundImage = `url(${JSON.stringify(spriteUrl)})`;
-  element.style.backgroundSize = "500% 400%";
-  element.style.backgroundPosition = spritePosition(reference.index);
+  const direct = reference.id === ABAGS_COGNAC_REFERENCE_ID;
+  element.style.backgroundImage = `url(${JSON.stringify(direct ? ABAGS_COGNAC_REFERENCE_IMAGE : spriteUrl)})`;
+  element.style.backgroundSize = direct ? "cover" : "500% 400%";
+  element.style.backgroundPosition = direct ? "center" : spritePosition(reference.index);
   element.dataset.referenceId = reference.id;
   element.title = `Rzeczywisty wzorzec A-Bags: ${reference.label}`;
 }
@@ -207,9 +211,9 @@ function decorateFamilyButtons(dialog: HTMLElement, spriteUrl: string) {
       applySpriteCell(photoThumb, spriteUrl, referenceId);
       // Older important backgrounds on the illustrated thumb must not repaint
       // over the actual photo. Keep the same true sprite cell.
-      photoThumb.style.setProperty("background-image", `url(${JSON.stringify(spriteUrl)})`, "important");
-      photoThumb.style.setProperty("background-size", "500% 400%", "important");
-      photoThumb.style.setProperty("background-position", spritePosition(realReference.index), "important");
+      photoThumb.style.setProperty("background-image", `url(${JSON.stringify(referenceId === ABAGS_COGNAC_REFERENCE_ID ? ABAGS_COGNAC_REFERENCE_IMAGE : spriteUrl)})`, "important");
+      photoThumb.style.setProperty("background-size", referenceId === ABAGS_COGNAC_REFERENCE_ID ? "cover" : "500% 400%", "important");
+      photoThumb.style.setProperty("background-position", referenceId === ABAGS_COGNAC_REFERENCE_ID ? "center" : spritePosition(realReference.index), "important");
     }
   });
 }

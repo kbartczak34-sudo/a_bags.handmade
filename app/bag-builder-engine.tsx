@@ -6,13 +6,15 @@ import { isAgataBuilderConstructionSupported, isAgataBuilderHandleSupported } fr
 import { ABAGS_AGATA_REAL_BAG_MEASUREMENTS } from "../lib/abags-fidelity-v4-family-spec";
 import { usePublicContact, whatsappHref } from "./public-contact";
 
+import { ABAGS_COGNAC_PRESET } from "../lib/abags-cognac-model";
+
 const DRAFT_KEY = "abags-bag-builder-v3";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini";
+type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
 type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
-type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
-type Strap = "none" | "leather" | "woven" | "chain";
+type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
+type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament";
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
@@ -41,6 +43,7 @@ const EMPTY: BagBuilderConfig = {
 };
 
 const FAMILIES: Option<Family>[] = [
+  { value: "satchel", label: "Kuferek koniakowy", description: "Model ze zdjęcia · ombré, skórzana klapa i pleciona rączka" },
   { value: "tote", label: "Kuferek / tote", description: "Fason kalibrowany do rzeczywistych kuferków Agaty" },
   { value: "round", label: "Okrągła", description: "Okrągły fason Agaty z promienistym prowadzeniem ściegu" },
   { value: "bucket", label: "Z klapą", description: "Zwarty fason Agaty przygotowany pod klapę i pasek" },
@@ -48,6 +51,7 @@ const FAMILIES: Option<Family>[] = [
 ];
 
 const COLORS: Option<string>[] = [
+  { value: "#C7652F", label: "Miedziany ombré", swatch: "linear-gradient(0deg,#422921,#A74828 55%,#D7752E)" },
   { value: "#E8DDCC", label: "Naturalny beż", swatch: "#E8DDCC" },
   { value: "#E4A9B5", label: "Pudrowy róż", swatch: "#E4A9B5" },
   { value: "#24324D", label: "Głęboki granat", swatch: "#24324D" },
@@ -76,6 +80,7 @@ const FLAPS: Option<Flap>[] = [
 ];
 
 const HANDLES: Option<Handles>[] = [
+  { value: "leather-braid", label: "Pleciona rączka skórzana" },
   { value: "none", label: "Bez uchwytu" },
   { value: "wood-light", label: "Drewno jasne" },
   { value: "wood-dark", label: "Drewno ciemne" },
@@ -83,6 +88,7 @@ const HANDLES: Option<Handles>[] = [
 ];
 
 const STRAPS: Option<Strap>[] = [
+  { value: "woven-ornament", label: "Pasek ornamentowy", description: "Czarno-kremowy wzór z miedzianymi detalami" },
   { value: "none", label: "Bez paska" },
   { value: "leather", label: "Pasek skórzany" },
   { value: "woven", label: "Pasek tkany" },
@@ -272,6 +278,7 @@ export default function BagBuilderEngine() {
 
   const update = <K extends keyof BagBuilderConfig>(key: K, value: BagBuilderConfig[K]) => {
     setConfig((current) => {
+      if (key === "family" && value === "satchel") return { ...ABAGS_COGNAC_PRESET };
       const next = { ...current, [key]: value };
       if (key === "family") {
         const family = value as Family;

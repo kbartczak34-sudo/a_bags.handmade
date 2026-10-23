@@ -26,6 +26,7 @@ const FAMILY_LABELS: Record<string, string> = {
   round: "Okrągła",
   bucket: "Z klapą",
   mini: "Strukturalna / mini",
+  satchel: "Kuferek koniakowy",
 };
 
 const COLOR_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ const COLOR_LABELS: Record<string, string> = {
   "#275C4A": "Butelkowa zieleń",
   "#087E81": "Turkus",
   "#A88AE0": "Lawendowy",
+  "#C7652F": "Miedziany ombré",
 };
 
 const STITCH_LABELS: Record<string, string> = {
@@ -60,14 +62,14 @@ const HANDLE_LABELS: Record<string, string> = {
   none: "Bez uchwytu",
   "wood-light": "Drewno jasne",
   "wood-dark": "Drewno ciemne",
-  crochet: "Uchwyt szydełkowy",
+  crochet: "Uchwyt szydełkowy", "leather-braid": "Pleciona rączka skórzana",
 };
 
 const STRAP_LABELS: Record<string, string> = {
   none: "Bez paska",
   leather: "Pasek skórzany",
   woven: "Pasek tkany",
-  chain: "Łańcuszek",
+  chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy",
 };
 
 const HARDWARE_LABELS: Record<string, string> = {

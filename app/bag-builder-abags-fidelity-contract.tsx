@@ -5,6 +5,11 @@ import { useEffect } from "react";
 type Copy = { label: string; description: string; reference: string };
 
 const FAMILY_COPY: Record<string, Copy> = {
+  satchel: {
+    label: "Kuferek koniakowy",
+    description: "Model na podstawie zdjęcia: miedziano-czekoladowe ombré, koniakowa klapa z przeszyciem, pleciona rączka i ornamentowy pasek.",
+    reference: "cognac-ombre-braided-satchel",
+  },
   tote: {
     label: "Kuferek / tote",
     description: "Fason odtwarzany wyłącznie z rzeczywistych torebek Agaty: szeroki, uporządkowany korpus i charakterystyczna linia uchwytów.",

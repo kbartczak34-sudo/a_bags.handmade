@@ -415,7 +415,7 @@ export default function BagBuilderSidewallCrochetDepth() {
 
     const paintFrame = () => {
       frameRef.current = null;
-      const family = (stage.dataset.family || "") as Family;
+      const family = (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family;
       const stitch = (stage.dataset.stitch || "classic") as Stitch;
       if (
         source.dataset.abagsCrochetOwner === "webgl-yarn" ||
