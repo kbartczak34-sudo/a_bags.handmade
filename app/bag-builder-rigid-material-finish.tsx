@@ -17,7 +17,7 @@ const FINISH_VERSION = "rigid-natural-material-v2-flap-depth";
 
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
     handles: stage.dataset.handles || "none",
     flap: stage.dataset.flap || "none",
   };

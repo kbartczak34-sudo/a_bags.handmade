@@ -1,14 +1,21 @@
 {
   "format": "webp-sprite-base64-parts",
-  "variantCount": 19,
+  "variantCount": 20,
   "columns": 5,
   "rows": 4,
   "spriteWidth": 400,
   "spriteHeight": 320,
   "cellWidth": 80,
   "cellHeight": 80,
-  "partLengths": [5000, 5000, 5000, 5000, 5000, 4720],
-  "encodedLength": 29720,
-  "decodedBytes": 22290,
-  "sha256Encoded": "aa3997c69e7d6cac53bdc8cf99bd8b1329a1a84a972ec748f16cce4d02a406df"
+  "partLengths": [
+    39034,
+    39034,
+    39034,
+    39034,
+    39034,
+    39034
+  ],
+  "encodedLength": 234204,
+  "decodedBytes": 175652,
+  "sha256Encoded": "d1081f2eb54ad7d77df88668b1199b76efe7cb5cf4c992402f3b8679e1fb99fe"
 }

@@ -327,7 +327,7 @@ export default function BagBuilderCrochetReliefOverlay() {
 
     const paint = () => {
       frameRef.current = null;
-      const family = (stage.dataset.family || "") as Family;
+      const family = (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family;
       const stitch = (stage.dataset.stitch || "classic") as Stitch;
       if (source.dataset.abagsCrochetOwner === "webgl-yarn" || stage.dataset.abagsFinal3d !== "ready" || !family) {
         output.getContext("2d")?.clearRect(0, 0, output.width, output.height);

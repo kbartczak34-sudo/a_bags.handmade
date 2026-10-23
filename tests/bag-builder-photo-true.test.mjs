@@ -61,7 +61,7 @@ test("canonical Exact Live library is preferred, while catalog photos remain val
   assert.match(component, /canonical: false/);
   assert.match(component, /Zdjęcie produktu z aktualnego katalogu/);
   assert.match(exactLibrary, /EXACT_ATELIER_LIBRARY/);
-  assert.equal((exactLibrary.match(/\{ id:/g) || []).length, 19);
+  assert.equal((exactLibrary.match(/\{ id:/g) || []).length, 20);
 });
 
 test("legacy family is only an internal compatibility bridge, not the visible model source", () => {

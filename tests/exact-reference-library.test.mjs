@@ -9,11 +9,12 @@ const library = fs.readFileSync("lib/exact-customizer-library.ts", "utf8");
 const layout = fs.readFileSync("app/layout.tsx", "utf8");
 const parts = Array.from({ length: 6 }, (_, i) => fs.readFileSync(`public/images/configurator/exact-live-v4/sprite-part-${String(i).padStart(2, "0")}.txt`, "utf8"));
 const sprite = Buffer.from(parts.join(""), "base64");
+const metadata = JSON.parse(fs.readFileSync("public/images/configurator/exact-live-v4/integrity.json", "utf8"));
 
 test("legacy photographic reference library remains intact as atelier source material", () => {
-  assert.equal((library.match(/index:\d+/g) || []).length, 19);
-  assert.equal(parts.reduce((n, part) => n + part.length, 0), 29720);
-  assert.equal(sprite.length, 22290);
+  assert.equal((library.match(/index:\d+/g) || []).length, 20);
+  assert.equal(parts.reduce((n, part) => n + part.length, 0), metadata.encodedLength);
+  assert.equal(sprite.length, metadata.decodedBytes);
   assert.equal(sprite.subarray(0, 4).toString("ascii"), "RIFF");
   assert.equal(sprite.subarray(8, 12).toString("ascii"), "WEBP");
 });

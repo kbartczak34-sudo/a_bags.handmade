@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-type Family = "tote" | "round" | "bucket" | "mini";
+type Family = "tote" | "round" | "bucket" | "mini" | "satchel";
 type Settings = {
   pricingEnabled: boolean;
   familyBaseCents: Record<Family, number | null>;
   familyProductIds: Record<Family, string | null>;
   stitchCents: Record<"classic" | "herringbone" | "basket" | "shell", number>;
   flapCents: Record<"none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy", number>;
-  handlesCents: Record<"none" | "wood-light" | "wood-dark" | "crochet", number>;
-  strapCents: Record<"none" | "leather" | "woven" | "chain", number>;
+  handlesCents: Record<"none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid", number>;
+  strapCents: Record<"none" | "leather" | "woven" | "chain" | "woven-ornament", number>;
   hardwareCents: Record<"gold" | "silver" | "black", number>;
   accentCents: Record<"none" | "tassel" | "scarf" | "bow" | "charm", number>;
   compatibility: {
@@ -23,12 +23,12 @@ type Settings = {
 
 type ProductOption = { id: string; name: string; price: number };
 
-const FAMILY_LABELS: Record<Family, string> = { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" };
+const FAMILY_LABELS: Record<Family, string> = { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy" };
 const PRICE_GROUPS = [
   ["stitchCents", "Ścieg szydełkowy", { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" }],
   ["flapCents", "Klapa", { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skórzana czarna", "leather-cognac": "Skórzana koniak", "suede-burgundy": "Zamszowa bordo" }],
-  ["handlesCents", "Uchwyty", { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Szydełkowy" }],
-  ["strapCents", "Pasek", { none: "Bez paska", leather: "Skórzany", woven: "Tkany", chain: "Łańcuszek" }],
+  ["handlesCents", "Uchwyty", { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Szydełkowy", "leather-braid": "Pleciona skórzana" }],
+  ["strapCents", "Pasek", { none: "Bez paska", leather: "Skórzany", woven: "Tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy" }],
   ["hardwareCents", "Okucia", { gold: "Złote", silver: "Srebrne", black: "Czarne" }],
   ["accentCents", "Detal", { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" }],
 ] as const;

@@ -20,7 +20,7 @@ const DEFAULT_ZOOM = 0.92;
 
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
     color: stage.dataset.color || "#E8DDCC",
     stitch: stage.dataset.stitch || "classic",
     flap: stage.dataset.flap || "none",

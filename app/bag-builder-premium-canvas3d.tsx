@@ -36,7 +36,7 @@ const REFERENCE_FOR_FAMILY: Record<Exclude<Family, "">, string> = {
 function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)); }
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
     color: stage.dataset.color || "",
     stitch: (stage.dataset.stitch || "") as Config["stitch"],
     flap: (stage.dataset.flap || "none") as Config["flap"],

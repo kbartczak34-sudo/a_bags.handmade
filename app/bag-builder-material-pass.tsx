@@ -34,7 +34,7 @@ function clamp(value: number, min: number, max: number) {
 
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
     color: stage.dataset.color || "#e8ddcc",
     stitch: (stage.dataset.stitch || "classic") as Stitch,
     flap: stage.dataset.flap || "none",

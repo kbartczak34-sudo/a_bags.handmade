@@ -725,6 +725,72 @@ const analyze=(overlay,renderedPixels)=>{
     await send("Page.enable");
     await waitFor("document.readyState === 'complete'", "initial load");
 
+    const probeCognac = async (label, viewport) => {
+      await setViewport(viewport);
+      await clearAndReload();
+      await openBuilder();
+      // One customer selection must restore the complete photograph preset.
+      await choose('family', 'satchel');
+      const signature = 'satchel|#C7652F|classic|leather-cognac|leather-braid|woven-ornament|gold|none';
+      const frame = async (remember = false) => evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        const canvas=stage?.querySelector('.abags-fidelity3d-canvas'),gl=canvas?.getContext('webgl');
+        if(!gl||gl.isContextLost())return null;
+        const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
+        gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+        let hash=2166136261,opaque=0,changed=0;
+        const baseline=canvas.__abagsCognacFullFrame;
+        for(let i=0;i<pixels.length;i+=4){
+          if(pixels[i+3]>24)opaque++;
+          if(baseline?.length===pixels.length&&Math.abs(pixels[i]-baseline[i])+Math.abs(pixels[i+1]-baseline[i+1])+Math.abs(pixels[i+2]-baseline[i+2])+Math.abs(pixels[i+3]-baseline[i+3])>24)changed++;
+          for(let j=0;j<4;j++){hash^=pixels[i+j];hash=Math.imul(hash,16777619)>>>0;}
+        }
+        if(${remember})canvas.__abagsCognacFullFrame=pixels;
+        const rect=canvas.getBoundingClientRect(),style=getComputedStyle(canvas);
+        return {signature:stage.dataset.builderSignature,current:stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature,
+          proof:JSON.parse(stage.dataset.abagsFidelityCognac||'null'),error:gl.getError(),hash,opaque,changed,
+          reference:stage.dataset.abagsRealFamilyReference,visible:rect.width>40&&rect.height>40&&style.visibility==='visible'&&Number(style.opacity)>.05};
+      })()`);
+      const views=[];
+      for(const view of ['Przód','3/4','Bok']){
+        await clickView(view);
+        const evidence=await frame();
+        if(!evidence?.current||!evidence.visible||evidence.error||evidence.signature!==signature||evidence.opaque<1000||
+          evidence.reference!=='cognac-ombre-braided-satchel'||evidence.proof?.version!=='cognac-ombre-v1'||!evidence.proof.ombre||
+          evidence.proof.handleTriangles<1000||evidence.proof.flapTriangles<1000||evidence.proof.badgeTriangles<100||evidence.proof.jacquardTriangles<1000){
+          throw new Error(`${label} cognac ${view}: missing the complete visible reference model: ${JSON.stringify(evidence)}`);
+        }
+        views.push({view,...evidence});
+        await capture(`cognac-${label}-${view==='Przód'?'front':view==='Bok'?'side':'three-quarter'}.png`);
+      }
+      if(new Set(views.map(v=>v.hash)).size!==3)throw new Error(`${label}: cognac views did not rotate the real model`);
+      await clickView('Przód');
+      const removals=[];
+      for(const [key,value,proofKey] of [['handles','leather-braid','handleTriangles'],['strap','woven-ornament','jacquardTriangles'],['flap','leather-cognac','flapTriangles']]){
+        await frame(true);
+        await choose(key,'none');
+        const evidence=await frame();
+        if(!evidence?.current||evidence.error||evidence.proof?.[proofKey]!==0||evidence.changed<80)throw new Error(`${label}: ${key} removal did not change customer pixels: ${JSON.stringify(evidence)}`);
+        removals.push({key,...evidence});
+        await choose(key,value);
+      }
+      await waitFor(`JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}').strap==='woven-ornament'`,`${label} cognac draft saved`);
+      await send('Page.reload',{ignoreCache:true});
+      await waitFor("document.readyState === 'complete'",`${label} saved model reload`);
+      await openBuilder();
+      await waitFor(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset.abagsFidelity3dFrame===${JSON.stringify(signature)}`,`${label} complete saved model restored`);
+      const restored=await frame();
+      if(restored?.signature!==signature||!restored.proof?.ombre)throw new Error(`${label}: saved cognac model was lost`);
+      await choose('family','tote');
+      if((await frame())?.proof)throw new Error(`${label}: cognac geometry proof leaked into the old tote model`);
+      await choose('family','satchel');
+      await writeFile(path.join(qaDir,`cognac-${label}-evidence.json`),JSON.stringify({views,removals,restored},null,2));
+      console.log(`${label}: cognac ombre satchel, braid, push-lock, badge and jacquard visible in three views; removals and saved preset PASS`);
+    };
+    await probeCognac('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    await probeCognac('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+
+
     const desktop = await runScenario({
       label: "Desktop",
       viewport: { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
@@ -863,6 +929,7 @@ const analyze=(overlay,renderedPixels)=>{
     await setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     for(const [key,value] of [['family','bucket'],['handles','none'],['color','#E8DDCC'],['flap','leather-black'],['strap','leather'],['accent','tassel']])await choose(key,value);
     await probeShoulderBand('desktop-leather');
+
 
     console.log("ACCESSORY ANCHOR INTEGRITY PASS:", productionUrl);
     console.log("- Przód / 3/4 / Bok use the authoritative Fidelity3D transform: yes");

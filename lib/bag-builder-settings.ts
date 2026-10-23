@@ -1,12 +1,12 @@
 import { AGATA_BUILDER_HANDLE_COMPATIBILITY, isAgataBuilderConstructionSupported } from "./abags-builder-fidelity";
 import { getProductDb } from "./products";
 
-export const BUILDER_FAMILIES = ["tote", "round", "bucket", "mini"] as const;
-export const BUILDER_COLORS = ["#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0"] as const;
+export const BUILDER_FAMILIES = ["tote", "round", "bucket", "mini", "satchel"] as const;
+export const BUILDER_COLORS = ["#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0", "#C7652F"] as const;
 export const BUILDER_STITCHES = ["classic", "herringbone", "basket", "shell"] as const;
 export const BUILDER_FLAPS = ["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"] as const;
-export const BUILDER_HANDLES = ["none", "wood-light", "wood-dark", "crochet"] as const;
-export const BUILDER_STRAPS = ["none", "leather", "woven", "chain"] as const;
+export const BUILDER_HANDLES = ["none", "wood-light", "wood-dark", "crochet", "leather-braid"] as const;
+export const BUILDER_STRAPS = ["none", "leather", "woven", "chain", "woven-ornament"] as const;
 export const BUILDER_HARDWARE = ["gold", "silver", "black"] as const;
 export const BUILDER_ACCENTS = ["none", "tassel", "scarf", "bow", "charm"] as const;
 
@@ -58,12 +58,12 @@ const ALL_STRAPS = [...BUILDER_STRAPS];
 export const DEFAULT_BAG_BUILDER_SETTINGS: BagBuilderSettings = {
   pricingEnabled: false,
   currency: "PLN",
-  familyBaseCents: { tote: null, round: null, bucket: null, mini: null },
-  familyProductIds: { tote: null, round: null, bucket: null, mini: null },
+  familyBaseCents: { tote: null, round: null, bucket: null, mini: null, satchel: null },
+  familyProductIds: { tote: null, round: null, bucket: null, mini: null, satchel: null },
   stitchCents: { classic: 0, herringbone: 0, basket: 0, shell: 0 },
   flapCents: { none: 0, crochet: 0, "leather-black": 0, "leather-cognac": 0, "suede-burgundy": 0 },
-  handlesCents: { none: 0, "wood-light": 0, "wood-dark": 0, crochet: 0 },
-  strapCents: { none: 0, leather: 0, woven: 0, chain: 0 },
+  handlesCents: { none: 0, "wood-light": 0, "wood-dark": 0, crochet: 0, "leather-braid": 0 },
+  strapCents: { none: 0, leather: 0, woven: 0, chain: 0, "woven-ornament": 0 },
   hardwareCents: { gold: 0, silver: 0, black: 0 },
   accentCents: { none: 0, tassel: 0, scarf: 0, bow: 0, charm: 0 },
   compatibility: {
@@ -72,18 +72,21 @@ export const DEFAULT_BAG_BUILDER_SETTINGS: BagBuilderSettings = {
       round: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.round],
       bucket: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.bucket],
       mini: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.mini],
+      satchel: [...AGATA_BUILDER_HANDLE_COMPATIBILITY.satchel],
     },
     straps: {
       tote: [...ALL_STRAPS],
       round: [...ALL_STRAPS],
       bucket: [...ALL_STRAPS],
       mini: [...ALL_STRAPS],
+      satchel: [...ALL_STRAPS],
     },
     flaps: {
       tote: [...ALL_FLAPS],
       round: [...ALL_FLAPS],
       bucket: [...ALL_FLAPS],
       mini: [...ALL_FLAPS],
+      satchel: [...ALL_FLAPS],
     },
   },
   updatedAt: null,
@@ -159,12 +162,14 @@ export function normalizeBagBuilderSettings(source: unknown): BagBuilderSettings
       round: optionalCents(familyRaw.round),
       bucket: optionalCents(familyRaw.bucket),
       mini: optionalCents(familyRaw.mini),
+      satchel: optionalCents(familyRaw.satchel),
     },
     familyProductIds: {
       tote: optionalProductId(familyProductsRaw.tote),
       round: optionalProductId(familyProductsRaw.round),
       bucket: optionalProductId(familyProductsRaw.bucket),
       mini: optionalProductId(familyProductsRaw.mini),
+      satchel: optionalProductId(familyProductsRaw.satchel),
     },
     stitchCents: priceRecord(raw.stitchCents, BUILDER_STITCHES, DEFAULT_BAG_BUILDER_SETTINGS.stitchCents),
     flapCents: priceRecord(raw.flapCents, BUILDER_FLAPS, DEFAULT_BAG_BUILDER_SETTINGS.flapCents),
@@ -231,12 +236,12 @@ export function bagBuilderProjectCode(config: BagBuilderProjectConfig) {
 
 export function bagBuilderProjectSummary(config: BagBuilderProjectConfig) {
   const labels = {
-    family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini" },
-    color: { "#E8DDCC": "Naturalny beż", "#E4A9B5": "Pudrowy róż", "#24324D": "Głęboki granat", "#65493D": "Czekoladowy brąz", "#C7962F": "Musztardowy", "#222124": "Czarny", "#B93A42": "Czerwony", "#275C4A": "Butelkowa zieleń", "#087E81": "Turkus", "#A88AE0": "Lawendowy" },
+    family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy" },
+    color: { "#E8DDCC": "Naturalny beż", "#E4A9B5": "Pudrowy róż", "#24324D": "Głęboki granat", "#65493D": "Czekoladowy brąz", "#C7962F": "Musztardowy", "#222124": "Czarny", "#B93A42": "Czerwony", "#275C4A": "Butelkowa zieleń", "#087E81": "Turkus", "#A88AE0": "Lawendowy", "#C7652F": "Miedziany ombré" },
     stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
     flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skórzana czarna", "leather-cognac": "Skórzana koniak", "suede-burgundy": "Zamszowa bordo" },
-    handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy" },
-    strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek" },
+    handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy", "leather-braid": "Pleciona rączka skórzana" },
+    strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy" },
     hardware: { gold: "Okucia złote", silver: "Okucia srebrne", black: "Okucia czarne" },
     accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" },
   } as const;

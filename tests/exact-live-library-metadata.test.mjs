@@ -6,9 +6,9 @@ const metadata = JSON.parse(fs.readFileSync("public/images/configurator/exact-li
 const library = fs.readFileSync("lib/exact-customizer-library.ts", "utf8");
 
 test("exact photographic library metadata matches the selector map", () => {
-  assert.equal(metadata.variantCount, 19);
+  assert.equal(metadata.variantCount, 20);
   assert.equal(metadata.columns, 5);
   assert.equal(metadata.rows, 4);
-  assert.equal(metadata.encodedLength, 29720);
+  assert.equal(metadata.encodedLength, 234204);
   assert.equal((library.match(/index:\d+/g) || []).length, metadata.variantCount);
 });

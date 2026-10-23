@@ -3,12 +3,12 @@
 import { useSyncExternalStore } from "react";
 
 export type BagBuilderClientConfig = {
-  family: "" | "tote" | "round" | "bucket" | "mini";
-  color: "" | "#E8DDCC" | "#E4A9B5" | "#24324D" | "#65493D" | "#C7962F" | "#222124" | "#B93A42" | "#275C4A" | "#087E81" | "#A88AE0";
+  family: "" | "tote" | "round" | "bucket" | "mini" | "satchel";
+  color: "" | "#E8DDCC" | "#E4A9B5" | "#24324D" | "#65493D" | "#C7962F" | "#222124" | "#B93A42" | "#275C4A" | "#087E81" | "#A88AE0" | "#C7652F";
   stitch: "" | "classic" | "herringbone" | "basket" | "shell";
   flap: "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
-  handles: "none" | "wood-light" | "wood-dark" | "crochet";
-  strap: "none" | "leather" | "woven" | "chain";
+  handles: "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
+  strap: "none" | "leather" | "woven" | "chain" | "woven-ornament";
   hardware: "gold" | "silver" | "black";
   accent: "none" | "tassel" | "scarf" | "bow" | "charm";
   baseProductId: string;
@@ -46,12 +46,12 @@ export const EMPTY_BAG_BUILDER_CLIENT_CONFIG: BagBuilderClientConfig = {
   baseProductId: "",
 };
 
-const FAMILIES = new Set<BagBuilderClientConfig["family"]>(["", "tote", "round", "bucket", "mini"]);
-const COLORS = new Set<BagBuilderClientConfig["color"]>(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0"]);
+const FAMILIES = new Set<BagBuilderClientConfig["family"]>(["", "tote", "round", "bucket", "mini", "satchel"]);
+const COLORS = new Set<BagBuilderClientConfig["color"]>(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0", "#C7652F"]);
 const STITCHES = new Set<BagBuilderClientConfig["stitch"]>(["", "classic", "herringbone", "basket", "shell"]);
 const FLAPS = new Set<BagBuilderClientConfig["flap"]>(["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"]);
-const HANDLES = new Set<BagBuilderClientConfig["handles"]>(["none", "wood-light", "wood-dark", "crochet"]);
-const STRAPS = new Set<BagBuilderClientConfig["strap"]>(["none", "leather", "woven", "chain"]);
+const HANDLES = new Set<BagBuilderClientConfig["handles"]>(["none", "wood-light", "wood-dark", "crochet", "leather-braid"]);
+const STRAPS = new Set<BagBuilderClientConfig["strap"]>(["none", "leather", "woven", "chain", "woven-ornament"]);
 const HARDWARE = new Set<BagBuilderClientConfig["hardware"]>(["gold", "silver", "black"]);
 const ACCENTS = new Set<BagBuilderClientConfig["accent"]>(["none", "tassel", "scarf", "bow", "charm"]);
 

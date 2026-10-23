@@ -9,11 +9,11 @@ import {
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini";
+type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
 type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
-type Handles = "none" | "wood-light" | "wood-dark" | "crochet";
-type Strap = "none" | "leather" | "woven" | "chain";
+type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
+type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament";
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
@@ -37,6 +37,8 @@ type Mesh = {
 };
 
 type Renderer = {
+  ombre?: boolean;
+  cognacParts?: CognacPart[];
   interiorEvidence?: { family: FidelityV4Family; topY: number; bottomY: number; probe: YarnPoint };
   rimKey?: string;
   rimTriangles?: number;
@@ -61,7 +63,7 @@ type Renderer = {
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
   attribs: { position: number; normal: number; uv: number };
-  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds", WebGLUniformLocation>;
+  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds" | "yarnGradientAxis" | "yarnGradientRange" | "yarnOmbre", WebGLUniformLocation>;
 };
 
 type Point = [number, number];
@@ -119,17 +121,17 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
     return [family, {
       bodyY: spec.bodyY,
       topY: spec.topY,
-      frontZ: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1) / 2,
-      baseDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1),
-      topDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1) * 0.92,
-      bottomDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1) * 1.12,
+      frontZ: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1) / 2,
+      baseDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1),
+      topDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1) * 0.92,
+      bottomDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1) * 1.12,
       width: spec.rx,
       handleScale: spec.handleScale[0],
       handleScaleY: spec.handleScale[1],
       handleY: spec.topY + 0.14,
       flapScale: [spec.flapScale[0], spec.flapScale[1], 1],
       flapY: spec.flapY ?? spec.topY * 0.34,
-      lockY: spec.ringY - 0.32,
+      lockY: spec.lockY ?? spec.ringY - 0.32,
       sideX: spec.sideAnchor,
       accentX: -spec.sideAnchor * 0.92,
       accentY: spec.flapY ?? spec.topY * 0.34,
@@ -298,8 +300,17 @@ function familyContour(family: Exclude<Family, "">): Point[] {
   return points;
 }
 
-function flapContour(): Point[] {
+function flapContour(family?: Exclude<Family, "">): Point[] {
   const p: Point[] = [];
+  if (family === "satchel") {
+    quad(p, [-.95, .55], [0, .57], [.95, .55], 18);
+    quad(p, [.95, .55], [1.04, .16], [.72, -.28], 16);
+    quad(p, [.72, -.28], [.62, -.48], [.40, -.48], 12);
+    quad(p, [.40, -.48], [0, -.50], [-.40, -.48], 16);
+    quad(p, [-.40, -.48], [-.62, -.48], [-.72, -.28], 12);
+    quad(p, [-.72, -.28], [-1.04, .16], [-.95, .55], 16);
+    return p;
+  }
   quad(p, [-0.94, 0.4], [0, 0.46], [0.94, 0.4], 18);
   quad(p, [0.94, 0.4], [0.9, 0.04], [0.67, -0.27], 9);
   quad(p, [0.67, -0.27], [0.35, -0.56], [0, -0.64], 11);
@@ -314,7 +325,7 @@ function depthAt(family: Exclude<Family, "">, y: number) {
   const edge = Math.abs(normalizedY);
   const belly = 1 + Math.sin((1 - edge) * Math.PI * 0.5) * (0.035 + spec.depth * 0.035);
   const topCompression = 1 - Math.max(0, normalizedY) * 0.04;
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1;
   return spec.depth * depthScale * belly * topCompression;
 }
 
@@ -327,7 +338,7 @@ function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
   const softness = (0.022 + spec.ry * 0.018) * familyFactor;
   const sagY = -softness * center * lower;
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1;
   const bulgeZ = spec.depth * depthScale * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
   return { y: sagY, z: bulgeZ };
 }
@@ -348,7 +359,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1;
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
 
@@ -826,7 +837,7 @@ type ClosedFlapSurface = {
   mesh: FabricMesh; contour: YarnPoint[]; rx: number; ry: number; centerY: number; thickness: number;
   sample: (x: number, y: number) => { z: number; normal: YarnPoint } | null;
 };
-// Eight immutable surfaces cover the four families and two constructions.
+// Immutable fitted surfaces are cached per family and construction.
 const closedFlapSurfaces = new Map<string, ClosedFlapSurface>();
 
 function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean): ClosedFlapSurface {
@@ -836,9 +847,9 @@ function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean): Close
   const profile = PROFILES[family];
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   // Preserve the calibrated front outline; only its depth is fitted to the bag.
-  const base = crochet ? makeExtrudedContour(flapContour(), .04, .085) : makeExtrudedContour(flapContour(), 0.105, 0.085);
+  const base = crochet ? makeExtrudedContour(flapContour(family), .04, .085) : makeExtrudedContour(flapContour(family), 0.105, 0.085);
   const transform = matrix([0, profile.flapY, profile.frontZ + .13], profile.flapScale, [.02, 0, 0]);
-  const outline = flapContour().map((_, index): Point => {
+  const outline = flapContour(family).map((_, index): Point => {
     const [x, y, z] = base.positions.slice((index + 1) * 3, (index + 2) * 3);
     return [transform[0] * x + transform[4] * y + transform[8] * z + transform[12],
       transform[1] * x + transform[5] * y + transform[9] * z + transform[13]];
@@ -1473,11 +1484,12 @@ attribute vec2 aUv;
 uniform mat4 uProjection,uView,uModel;
 uniform mat3 uNormalMatrix;
 uniform vec2 uInteriorBounds;
+uniform vec3 uYarnGradientAxis;
 uniform mediump float uRelief;
 uniform mediump float uStitch;
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
-varying float vFaceWeight,vLiningDepth;
+varying float vFaceWeight,vLiningDepth,vYarnHeight;
 varying vec2 vUv;
 ${CROCHET_SURFACE}
 void main(){
@@ -1489,6 +1501,7 @@ void main(){
   vec3 sidedReliefNormal=vec3(aNormal.xy,abs(aNormal.z)*faceSign);
   vec4 world=uModel*vec4(aPosition+aNormal*h,1.0);
   vWorld=world.xyz;
+  vYarnHeight=dot(world.xyz,uYarnGradientAxis);
   vNormal=normalize(uNormalMatrix*sidedReliefNormal);
   // The gusset has its own arc-length UVs, so its tangent follows the perimeter.
   vec3 localTangent=normalize(mix(vec3(-aNormal.y,aNormal.x,.001),vec3(1.0,0.0,0.0),frontFace));
@@ -1512,10 +1525,12 @@ precision mediump float;
 #endif
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
-varying float vFaceWeight,vLiningDepth;
+varying float vFaceWeight,vLiningDepth,vYarnHeight;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
+uniform float uYarnOmbre;
+uniform vec2 uYarnGradientRange;
 uniform mediump float uRelief;
 uniform mediump float uStitch;
 ${CROCHET_SURFACE}
@@ -1577,6 +1592,11 @@ void main(){
   float rough=.76,metal=0.0,detail=1.0,cordOcclusion=1.0;
   float fibreSheen=0.0;
   vec3 pigment=uColor;
+  if(uYarnOmbre>0.0){
+    float height=clamp((vYarnHeight-uYarnGradientRange.x)/max(.001,uYarnGradientRange.y-uYarnGradientRange.x),0.0,1.0);
+    vec3 chocolate=vec3(.25,.14,.11),rust=vec3(.64,.23,.10),copper=vec3(.84,.39,.14);
+    pigment=mix(mix(chocolate,rust,smoothstep(.12,.62,height)),copper,smoothstep(.65,.97,height))*uYarnOmbre;
+  }
   if(uMaterial<.5){
     float cord=knit(vUv,uStitch);
     float e=.0012;
@@ -1615,6 +1635,7 @@ void main(){
     metal=mix(.97,.72,darkCoating);
     rough=mix(.27,.38,darkCoating);
     rough=mix(rough,.19,coolSilver*(1.0-darkCoating));
+    if(uMaterial>4.1)rough=.38;
   } else if(uMaterial<5.5){
     // Gingham follows physical cloth distances and soft folds, with screen-space
     // filtering instead of the stretched, hard checkerboard of the old cavity.
@@ -1680,10 +1701,24 @@ void main(){
     detail=(.97+.025*weave*resolved)*(1.0-.16*selvedge);
     rough=.87;
     fibreSheen=.025;
-  } else {
+  } else if(uMaterial<11.5){
     // Solid matte lining for the remaining constructions.
     detail=.98;
     rough=.95;
+  } else {
+    // Jacquard ornament, woven into a broad black band. The repeated flower
+    // and diamond motifs follow the physical strap rather than the screen.
+    vec2 p=vec2(fract(vUv.x)-.5,(vUv.y-.5)*.60);
+    float a=atan(p.y,p.x),r=length(p);
+    float petals=1.0-smoothstep(.24,.28,r-.055*cos(a*8.0));
+    float flowerCentre=1.0-smoothstep(.065,.09,r);
+    float diamond=1.0-smoothstep(.012,.034,abs(abs(p.x)+abs(p.y)-.47));
+    float selvedge=1.0-smoothstep(.025,.05,min(vUv.y,1.0-vUv.y));
+    pigment=mix(vec3(.075,.065,.06),vec3(.91,.86,.74),max(diamond,selvedge)*.95);
+    pigment=mix(pigment,vec3(.66,.34,.18),petals*.95);
+    pigment=mix(pigment,vec3(.91,.86,.74),flowerCentre*.95);
+    detail=.96+.025*sin(vUv.x*820.0)*sin(vUv.y*240.0);
+    rough=.88;fibreSheen=.02;
   }
   float ndl=max(dot(n,l),0.0);
   float fillLight=max(dot(n,fill),0.0);
@@ -1694,10 +1729,13 @@ void main(){
   vec3 f0=mix(vec3(.035),base,metal);
   vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
   color+=specularGGX(n,l,v,rough,f0)*1.6;
+  // Broad studio reflection on the satchel's small brushed metal plates.
+  // Without an environment term, flat polished faces become almost black.
+  if(uMaterial>4.1 && uMaterial<4.5)color+=base*(.20+.48*facing);
   color+=vec3(fibreSheen)*pow(1.0-facing,2.0)*(.3+.7*ndl);
   // Cavity light is tied to local fabric depth, so the mouth stays readable
   // while the lining darkens toward its actual base during any rotation.
-  if((uMaterial>4.5 && uMaterial<5.5) || uMaterial>10.5)
+  if((uMaterial>4.5 && uMaterial<5.5) || (uMaterial>10.5 && uMaterial<11.5))
     color*=mix(1.0,.28,smoothstep(0.0,1.0,vLiningDepth));
   // A restrained warm atelier bounce stays in linear light, preserving cord hue.
   color+=base*vec3(.025,.020,.016);
@@ -1780,7 +1818,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       uv: gl.getAttribLocation(program, "aUv"),
     },
     uniforms: {
-      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"),
+      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"), yarnGradientAxis: req("uYarnGradientAxis"), yarnGradientRange: req("uYarnGradientRange"), yarnOmbre: req("uYarnOmbre"),
     },
   };
 }
@@ -1797,6 +1835,7 @@ function drawMesh(renderer: Renderer, mesh: Mesh, model: Float32Array, color: st
   gl.uniform1f(uniforms.material, material);
   gl.uniform1f(uniforms.stitch, stitch);
   gl.uniform1f(uniforms.relief, relief);
+  gl.uniform1f(uniforms.yarnOmbre, renderer.ombre && (material === 6 || material === 7) ? (material === 6 ? .78 : 1) : 0);
   gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
 }
 
@@ -2137,37 +2176,191 @@ function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
   renderer.ornamentKey = key;
 }
 
-type BandTone = "surface" | "edge" | "stitch";
+type CognacPart = { name: string; tone: "leather" | "edge" | "seam" | "metal" | "recess" | "engraving"; section: "handle" | "flap" | "badge"; mesh: FabricMesh };
 
-function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: "woven" | "leather" = "woven") {
+function roundedRectangle(width: number, height: number, radius: number): Point[] {
+  const p: Point[] = [], x = width / 2, y = height / 2;
+  quad(p, [-x + radius, y], [0, y], [x - radius, y], 8);
+  quad(p, [x - radius, y], [x, y], [x, y - radius], 8);
+  quad(p, [x, y - radius], [x, 0], [x, -y + radius], 8);
+  quad(p, [x, -y + radius], [x, -y], [x - radius, -y], 8);
+  quad(p, [x - radius, -y], [0, -y], [-x + radius, -y], 8);
+  quad(p, [-x + radius, -y], [-x, -y], [-x, -y + radius], 8);
+  quad(p, [-x, -y + radius], [-x, 0], [-x, y - radius], 8);
+  quad(p, [-x, y - radius], [-x, y], [-x + radius, y], 8);
+  return p;
+}
+
+function cognacHandlePoint(t: number, lane = -1): YarnPoint {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS.satchel;
+  const x = -.60 + 1.20 * t, y = spec.topY + .075 - .285 * Math.sin(Math.PI * t);
+  const tangent = normalize(1.20, -.285 * Math.PI * Math.cos(Math.PI * t), 0);
+  const across = [-tangent[1], tangent[0], 0];
+  const seat = closedFlapSurface("satchel", false).sample(x, y);
+  const z = (seat?.z ?? depthAt("satchel", spec.ry) * .5 + .045) + .042;
+  if (lane < 0) return [x, y, z];
+  // Three flat leather ribbons alternate over/under at each crossing.
+  // The doubled depth rhythm makes a plait, rather than a cylindrical helix.
+  const a = t * Math.PI * 14 + lane * Math.PI * 2 / 3;
+  return [x + across[0] * .033 * Math.sin(a), y + across[1] * .033 * Math.sin(a), z + .018 * Math.sin(2 * a)];
+}
+
+function appendLeatherStrand(mesh: FabricMesh, path: YarnPoint[]) {
+  const start = mesh.positions.length / 3, sides = 12;
+  path.forEach((p, row) => {
+    const a = path[Math.max(0, row - 1)], b = path[Math.min(path.length - 1, row + 1)];
+    const tangent = normalize(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    const across = normalize(-tangent[1], tangent[0], 0);
+    const face = normalize(tangent[1] * across[2] - tangent[2] * across[1], tangent[2] * across[0] - tangent[0] * across[2], tangent[0] * across[1] - tangent[1] * across[0]);
+    for (let column = 0; column <= sides; column++) {
+      const a = column / sides * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      mesh.positions.push(...p.map((n, i) => n + across[i] * c * .019 + face[i] * s * .009));
+      mesh.normals.push(...normalize(...across.map((n, i) => n * c / .019 + face[i] * s / .009) as YarnPoint));
+      mesh.uvs.push(row / (path.length - 1), column / sides);
+      if (row && column < sides) {
+        const i = start + row * (sides + 1) + column, j = i - sides - 1;
+        mesh.indices.push(j, i, j + 1, j + 1, i, i + 1);
+      }
+    }
+  });
+}
+
+function makeCognacPlate(outline: Point[], depth: number) {
+  const mesh = makeExtrudedContour(outline, depth);
+  // Small metal plates and mounting tabs are almost flat. The main flap
+  // deliberately has more volume; reusing that dome would bury the engraving.
+  for (let i = 0; i < mesh.positions.length; i += 3) {
+    if (mesh.positions[i + 2] > depth * .5) mesh.positions[i + 2] = depth * .5 + .001;
+    if (mesh.normals[i + 2] > .1) mesh.normals.splice(i, 3, 0, 0, 1);
+  }
+  return mesh;
+}
+
+function makeCognacConstruction(): CognacPart[] {
+  const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
+  const parts: CognacPart[] = [];
+  const part = (tone: CognacPart["tone"], section: CognacPart["section"]) => {
+    let p = parts.find(p => p.tone === tone && p.section === section);
+    if (!p) { p = { name: `cognac-${section}-${tone}`, tone, section, mesh: empty() }; parts.push(p); }
+    return p.mesh;
+  };
+  const tube = (mesh: FabricMesh, path: YarnPoint[], radius: number, closed = false) => appendCord(mesh, path, radius, () => [0, 0, 1], () => true, 8, closed);
+  const solid = (mesh: FabricMesh, outline: Point[], at: YarnPoint, depth: number) => appendOrnamentMesh(mesh, makeCognacPlate(outline, depth), matrix(at, [1, 1, 1]));
+  const bead = (mesh: FabricMesh, at: YarnPoint, size: YarnPoint) => appendOrnamentMesh(mesh, makeEllipsoid(1, 1, 1, 10, 14), matrix(at, size));
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS.satchel, surface = closedFlapSurface("satchel", false);
+  for (let lane = 0; lane < 3; lane++) appendLeatherStrand(part("leather", "handle"), Array.from({ length: 145 }, (_, i) => cognacHandlePoint(i / 144, lane)));
+  for (const side of [-1, 1]) {
+    const endpoint = cognacHandlePoint(side < 0 ? 0 : 1);
+    const mount: YarnPoint = [side * .60, spec.topY + .025, endpoint[2] - .035];
+    solid(part("leather", "handle"), roundedRectangle(.063, .20, .020), mount, .012);
+    appendOrnamentMesh(part("metal", "handle"), makeArchTube(.054, .066, 0, .009, 40, 10, true), matrix([endpoint[0], endpoint[1] + .065, endpoint[2]], [1, 1, 1]));
+    appendOrnamentMesh(part("metal", "handle"), makeLobsterClaspMesh(), matrix([endpoint[0], endpoint[1] + .12, endpoint[2] - .012], [.78, .78, .78], [0, 0, side * -.20]));
+    bead(part("metal", "handle"), [mount[0], spec.topY - .033, mount[2] + .012], [.009, .009, .005]);
+  }
+  // Edge paint and real interrupted saddle stitches follow the fitted flap.
+  const cx = 0, cy = surface.centerY;
+  const edge = surface.contour.map(([x,y,z]): YarnPoint => [x, y, z + .001]);
+  tube(part("edge", "flap"), [...edge, edge[0]], .0030, true);
+  const inset = surface.contour.map(([x,y]): YarnPoint => {
+    const px = cx + (x - cx) * .975, py = cy + (y - cy) * .95;
+    return [px, py, (surface.sample(px, py)?.z ?? .4) + .0025];
+  });
+  for (let i = 0; i < inset.length; i++) {
+    const a = inset[i], b = inset[(i + 1) % inset.length], distance = Math.hypot(...b.map((n,j) => n - a[j]));
+    const count = Math.max(1, Math.ceil(distance / .022));
+    for (let j = 0; j < count; j++) tube(part("seam", "flap"), [j / count, (j + .55) / count].map(t => a.map((n,k) => n + (b[k] - n) * t) as YarnPoint), .0014);
+  }
+  const lockY = spec.lockY ?? .02, radius = spec.rx * 5 / 160;
+  const lockZ = crochetPanelPoint("satchel", 0, lockY - spec.bodyY)[2] + radius * 1.75 + .034;
+  const tongue = makeCognacPlate(roundedRectangle(.30, .34, .12), .018);
+  appendOrnamentMesh(part("leather", "flap"), tongue, matrix([0, lockY + .025, lockZ - .012], [1, 1, 1]));
+  const tongueSeam = roundedRectangle(.258, .296, .10).map(([x,y]): YarnPoint => [x, y + lockY + .025, lockZ + .008]);
+  for (let i = 0; i < tongueSeam.length; i += 2) tube(part("seam", "flap"), [tongueSeam[i], tongueSeam[(i + 1) % tongueSeam.length]], .0013);
+  solid(part("recess", "flap"), roundedRectangle(.185, .225, .075), [0, lockY + .012, lockZ + .020], .012);
+  const lockRim = roundedRectangle(.171, .207, .065).map(([x,y]): YarnPoint => [x, y + lockY + .012, lockZ + .035]);
+  tube(part("metal", "flap"), [...lockRim, lockRim[0]], .010, true);
+  solid(part("metal", "flap"), roundedRectangle(.112, .139, .042), [0, lockY + .006, lockZ + .045], .014);
+  solid(part("metal", "flap"), roundedRectangle(.223, .057, .025), [0, lockY + .133, lockZ + .048], .019);
+  const badgeY = spec.bodyY - .57;
+  const badgeZ = crochetPanelPoint("satchel", 0, badgeY - spec.bodyY)[2] + radius * 1.75 + .012;
+  solid(part("metal", "badge"), roundedRectangle(.32, .085, .034), [0, badgeY, badgeZ], .009);
+  for (const side of [-1,1]) bead(part("metal", "badge"), [side * .136, badgeY, badgeZ + .010], [.009, .009, .004]);
+  const glyphs: Record<string, Point[][]> = {
+    A: [[[0,0],[1.5,5],[3,0]],[[.6,2],[2.4,2]]], B: [[[0,0],[0,5],[2,5],[3,4],[2,2.5],[0,2.5]],[[2,2.5],[3,1],[2,0],[0,0]]],
+    G: [[[3,4.4],[2,5],[.5,5],[0,4],[0,1],[.5,0],[2.5,0],[3,1],[3,2.2],[1.8,2.2]]], S: [[[3,4.5],[2.5,5],[.5,5],[0,4],[.5,3],[2.5,2],[3,1],[2.5,0],[.5,0],[0,.5]]],
+    H: [[[0,0],[0,5]],[[3,0],[3,5]],[[0,2.5],[3,2.5]]], N: [[[0,0],[0,5],[3,0],[3,5]]], D: [[[0,0],[0,5],[2,5],[3,4],[3,1],[2,0],[0,0]]],
+    M: [[[0,0],[0,5],[1.5,2.5],[3,5],[3,0]]], E: [[[3,0],[0,0],[0,5],[3,5]],[[0,2.5],[2.5,2.5]]], "-": [[[.3,2.5],[2.7,2.5]]],
+  };
+  for (const [label, scale, offset] of [["A-BAGS", .0085, .007], ["HANDMADE", .0055, -.029]] as const) {
+    const width = (label.length * 4 - 1) * scale;
+    [...label].forEach((letter, index) => {
+      for (const stroke of glyphs[letter] ?? []) tube(part("engraving", "badge"), stroke.map(([x,y]): YarnPoint => [-width / 2 + index * 4 * scale + x * scale, badgeY + offset + y * scale, badgeZ + .010]), .0008);
+    });
+  }
+  return parts;
+}
+
+function ensureCognacConstruction(renderer: Renderer) {
+  if (renderer.cognacParts) return;
+  renderer.meshes.satchel = createMesh(renderer.gl, makeVariableDepthBody("satchel"));
+  renderer.meshes.satchelInterior = createMesh(renderer.gl, makeOpeningInterior("satchel"));
+  renderer.meshes.satchelLiningSeam = createMesh(renderer.gl, makeOpeningLiningSeam("satchel"));
+  renderer.meshes.satchelChain = createMesh(renderer.gl, familyShoulderChainMesh("satchel"));
+  renderer.cognacParts = makeCognacConstruction();
+  for (const part of renderer.cognacParts) renderer.meshes[part.name] = createMesh(renderer.gl, part.mesh);
+}
+
+type BandTone = "surface" | "edge" | "stitch";
+type BandKind = "woven" | "leather" | "ornament";
+
+function ornamentStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family], span = spec.rx * spec.attachmentWidthFactor;
+  const back = -PROFILES[family].baseDepth - .10;
+  const points: YarnPoint[] = [[-span,0,0],[-span-.16,.02,-.35],[-span*.50,.06,back],[span*.55,.05,back],
+    [span+.30,-.10,-.18],[span+.38,-1.27,-.08],[span+.26,-1.46,.08],[span+.15,-1.27,.24],[span,0,0]];
+  const u = clamp(t,0,1) * (points.length - 1), i = Math.min(points.length - 2, Math.floor(u)), f = u - i;
+  const a = points[Math.max(0,i-1)], b = points[i], c = points[i+1], d = points[Math.min(points.length-1,i+2)];
+  return b.map((n,k) => .5 * (2*n + (-a[k]+c[k])*f + (2*a[k]-5*n+4*c[k]-d[k])*f*f + (-a[k]+3*n-3*c[k]+d[k])*f*f*f)) as YarnPoint;
+}
+
+function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: BandKind = "woven") {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const span = spec.rx * spec.attachmentWidthFactor;
   const rise = clamp(spec.ry * 0.48, 0.28, 0.44);
   const a = Math.PI * progress, bow = Math.min(.13, spec.depth * .28);
-  const center: YarnPoint = [-span * Math.cos(a), rise * Math.sin(a), -bow * Math.sin(a)];
-  const tangent = normalize(span * Math.sin(a), rise * Math.cos(a), -bow * Math.cos(a));
+  const center: YarnPoint = kind === "ornament" ? ornamentStrapPoint(family, progress) : [-span * Math.cos(a), rise * Math.sin(a), -bow * Math.sin(a)];
+  let tangent = normalize(span * Math.sin(a), rise * Math.cos(a), -bow * Math.cos(a));
+  if (kind === "ornament") {
+    const before = ornamentStrapPoint(family, Math.max(0, progress - .001)), after = ornamentStrapPoint(family, Math.min(1, progress + .001));
+    tangent = normalize(...after.map((n,i) => n - before[i]) as YarnPoint);
+  }
   const across = normalize(-tangent[1], tangent[0], 0);
   const face = normalize(tangent[1] * across[2] - tangent[2] * across[1], tangent[2] * across[0] - tangent[0] * across[2], tangent[0] * across[1] - tangent[1] * across[0]);
   const twist = .12 * Math.sin(a * 2), c = Math.cos(twist), s = Math.sin(twist);
   const widthAxis = across.map((n, axis) => n * c + face[axis] * s) as YarnPoint;
   const normal = face.map((n, axis) => n * c - across[axis] * s) as YarnPoint;
-  const halfWidth = (kind === "leather" ? .050 : .062) * (.67 + .33 * Math.sin(a));
+  const halfWidth = (kind === "leather" ? .050 : kind === "ornament" ? .095 : .062) * (.67 + .33 * Math.sin(a));
   const halfThickness = kind === "leather" ? .009 : .006;
   return { center, tangent, widthAxis, normal, halfWidth, halfThickness };
 }
 
-function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: "woven" | "leather" = "woven"): FabricMesh {
+function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: BandKind = "woven"): FabricMesh {
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   // A rounded rectangular section gives the band two broad faces and a thin
   // finished edge. It tapers into the same calibrated clasp at both ends.
+  let distance = 0;
+  let previous: YarnPoint | undefined;
   for (let row = 0; row <= 84; row++) {
     const f = shoulderBandFrame(family, row / 84, kind), w = f.halfWidth, h = f.halfThickness, r = h * .65, q = Math.SQRT1_2;
+    if (previous) distance += Math.hypot(...f.center.map((n,i) => n - previous![i]));
+    previous = f.center;
+    const uProgress = kind === "ornament" ? distance / .32 : row / 84;
     const section = [[w-r,-h,0,-1],[w-r+r*q,-h+r-r*q,q,-q],[w,-h+r,1,0],[w,h-r,1,0],[w-r+r*q,h-r+r*q,q,q],[w-r,h,0,1],[-w+r,h,0,1],[-w+r-r*q,h-r+r*q,-q,q],[-w,h-r,-1,0],[-w,-h+r,-1,0],[-w+r-r*q,-h+r-r*q,-q,-q],[-w+r,-h,0,-1]];
     for (let column = 0; column <= 12; column++) {
       const [u, z, nx, nz] = section[column % 12];
       mesh.positions.push(...f.center.map((n, axis) => n + f.widthAxis[axis] * u + f.normal[axis] * z));
       mesh.normals.push(...normalize(...f.widthAxis.map((n, axis) => n * nx + f.normal[axis] * nz) as YarnPoint));
-      mesh.uvs.push(row / 84, (u / w + 1) * .5);
+      mesh.uvs.push(uProgress, (u / w + 1) * .5);
       if (row < 84 && column < 12) {
         const a = row * 13 + column, b = a + 13;
         mesh.indices.push(a, b, a + 1, b, b + 1, a + 1);
@@ -2189,7 +2382,7 @@ function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: "woven" | "l
   return mesh;
 }
 
-function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: "woven" | "leather") {
+function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
   const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
   const edge = empty(), seam = empty();
   const point = (t: number, side: number, face: number, inset: number, lift = 0): YarnPoint => {
@@ -2206,7 +2399,7 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: "woven" | "
     }
   }
   const parts: Array<{ name: string; tone: BandTone; material: number; mesh: FabricMesh }> = [
-    { name: "shoulderBandSurface", tone: "surface", material: kind === "leather" ? 2 : 10, mesh: familyShoulderStrapMesh(family, kind) },
+    { name: "shoulderBandSurface", tone: "surface", material: kind === "leather" ? 2 : kind === "ornament" ? 12 : 10, mesh: familyShoulderStrapMesh(family, kind) },
     { name: "shoulderBandEdge", tone: "edge", material: kind === "leather" ? 2 : 3, mesh: edge },
     { name: "shoulderBandStitch", tone: "stitch", material: 3, mesh: seam },
   ];
@@ -2219,7 +2412,7 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: "woven" | "
 }
 
 function ensureShoulderBandMeshes(renderer: Renderer, config: Config) {
-  const kind = config.strap === "woven" || config.strap === "leather" ? config.strap : null;
+  const kind = config.strap === "woven-ornament" ? "ornament" : config.strap === "woven" || config.strap === "leather" ? config.strap : null;
   const key = kind && config.family ? config.family + "|" + kind : "none";
   if (renderer.shoulderBandKey === key) return;
   for (const part of renderer.shoulderBandParts ?? []) {
@@ -2290,6 +2483,7 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsFidelityOrnamentBounds = canvas.dataset.abagsFidelityOrnamentBounds || "";
   stage.dataset.abagsFidelityOrnamentTriangles = canvas.dataset.abagsFidelityOrnamentTriangles || "0";
   stage.dataset.abagsFidelityOrnamentConstruction = canvas.dataset.abagsFidelityOrnamentConstruction || "";
+  stage.dataset.abagsFidelityCognac = canvas.dataset.abagsFidelityCognac || "";
   stage.dataset.abagsFidelityStrapOwner = canvas.dataset.abagsFidelityStrapOwner || "";
   stage.dataset.abagsFidelityStrapBounds = canvas.dataset.abagsFidelityStrapBounds || "";
   stage.dataset.abagsFidelityStrapTriangles = canvas.dataset.abagsFidelityStrapTriangles || "0";
@@ -2325,6 +2519,7 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
     node.removeAttribute("data-abags-fidelity-ornament-bounds");
     node.removeAttribute("data-abags-fidelity-ornament-triangles");
     node.removeAttribute("data-abags-fidelity-ornament-construction");
+    node.removeAttribute("data-abags-fidelity-cognac");
     node.removeAttribute("data-abags-fidelity-strap-owner");
     node.removeAttribute("data-abags-fidelity-strap-bounds");
     node.removeAttribute("data-abags-fidelity-strap-triangles");
@@ -2357,6 +2552,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
+  if (renderFamily === "satchel") ensureCognacConstruction(renderer);
+  renderer.ombre = config.color === "#C7652F";
+  // Recover height in bag coordinates, so ombré stays attached to the yarn
+  // through camera rotation and zoom rather than sliding across the screen.
+  const axisLength2 = root[4] * root[4] + root[5] * root[5] + root[6] * root[6];
+  gl.uniform3fv(uniforms.yarnGradientAxis, new Float32Array([root[4], root[5], root[6]].map(n => n / Math.max(.001, axisLength2))));
+  const familySpec = ABAGS_FIDELITY_V4_FAMILY_SPECS[renderFamily];
+  gl.uniform2f(uniforms.yarnGradientRange, familySpec.bodyY - familySpec.ry, familySpec.bodyY + familySpec.ry);
   const body = config.color || "#b87880";
   const stitch = stitchId(config.stitch || "classic");
   ensureCrochetMeshes(renderer, renderFamily, config.stitch || "classic");
@@ -2388,8 +2591,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, meshes.yarnRim, root, openingColor, 7, stitch, 0);
 
   ensureShoulderBandMeshes(renderer, config);
-  if (config.strap === "woven" || config.strap === "leather") {
-    const surface = config.strap === "leather" ? "#6b4738" : "#a77d87";
+  if (config.strap === "woven" || config.strap === "leather" || config.strap === "woven-ornament") {
+    const surface = config.strap === "woven-ornament" ? "#18140F" : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const colors: Record<BandTone, string> = { surface, edge: darken(surface, .28), stitch: config.strap === "leather" ? "#C3A38A" : "#D3B9AD" };
     const pose = multiply(root, shoulderStrapMatrix(renderFamily));
     for (const part of renderer.shoulderBandParts ?? []) drawMesh(renderer, meshes[part.name], pose, colors[part.tone], part.material, stitch, 0);
@@ -2409,7 +2612,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     );
   }
 
-  if (config.handles !== "none") {
+  if (config.handles !== "none" && config.handles !== "leather-braid") {
     const handleColor = config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const isWoodHandle = config.handles.startsWith("wood");
@@ -2457,7 +2660,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (config.flap !== "none") {
-    const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? "#7c5034" : config.flap === "suede-burgundy" ? "#803248" : body;
+    const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? (renderFamily === "satchel" ? "#BC683B" : "#7c5034") : config.flap === "suede-burgundy" ? "#803248" : body;
     const crochet = config.flap === "crochet";
     const material = crochet ? 6 : config.flap === "suede-burgundy" ? 3 : 2;
     ensureClosedFlapShell(renderer, renderFamily, crochet);
@@ -2470,7 +2673,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
   // Closure hardware is only present when a flap/closure is selected.
-  if (config.flap !== "none") {
+  if (config.flap !== "none" && renderFamily !== "satchel") {
     const lockZ = (config.flap === "crochet" ? renderer.crochetFlapLockZ : renderer.flapLockZ) ?? profile.frontZ;
     // A seated press stud has a raised rim and a smaller domed cap. Both share
     // the measured flap normal: the closure must not flatten at three-quarter.
@@ -2500,6 +2703,16 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     }
   }
 
+  if (renderFamily === "satchel") {
+    const colors: Record<CognacPart["tone"], string> = { leather: "#BC683B", edge: "#713B20", seam: "#E4BC8B", metal, recess: darken(metal, .32), engraving: "#513325" };
+    for (const part of renderer.cognacParts ?? []) {
+      if (part.section === "handle" && config.handles !== "leather-braid") continue;
+      if (part.section === "flap" && config.flap === "none") continue;
+      const material = part.tone === "metal" || part.tone === "recess" ? 4.25 : part.tone === "leather" || part.tone === "edge" ? 2 : 3;
+      drawMesh(renderer, meshes[part.name], root, colors[part.tone], material, stitch, 0);
+    }
+  }
+
   // The selected ornament uses the same depth buffer, lighting and camera as
   // the bag. The compatibility canvas is suppressed for this exact signature.
   ensureOrnamentMeshes(renderer, config);
@@ -2515,9 +2728,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityOrnamentBounds = renderer.ornamentBounds ? JSON.stringify(renderer.ornamentBounds) : "";
   canvas.dataset.abagsFidelityOrnamentTriangles = String(renderer.ornamentTriangles ?? 0);
   canvas.dataset.abagsFidelityOrnamentConstruction = renderer.ornamentTriangles ? "folded-fabric-gravity-fringe-v3" : "";
-  canvas.dataset.abagsFidelityStrapOwner = config.strap === "woven" || config.strap === "leather" ? "webgl-band" : "";
+  canvas.dataset.abagsFidelityStrapOwner = config.strap === "woven" || config.strap === "leather" || config.strap === "woven-ornament" ? "webgl-band" : "";
   canvas.dataset.abagsFidelityStrapBounds = renderer.shoulderBandBounds ? JSON.stringify(renderer.shoulderBandBounds) : "";
   canvas.dataset.abagsFidelityStrapTriangles = String(renderer.shoulderBandTriangles ?? 0);
+  canvas.dataset.abagsFidelityCognac = renderFamily === "satchel" ? JSON.stringify({ version: "cognac-ombre-v1", source: "1000020714.png", ombre: renderer.ombre,
+    handleTriangles: config.handles === "leather-braid" ? renderer.cognacParts?.filter(p => p.section === "handle").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,
+    flapTriangles: config.flap !== "none" ? renderer.cognacParts?.filter(p => p.section === "flap").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,
+    badgeTriangles: renderer.cognacParts?.filter(p => p.section === "badge").reduce((n,p) => n + p.mesh.indices.length / 3, 0),
+    jacquardTriangles: config.strap === "woven-ornament" ? renderer.shoulderBandTriangles : 0 }) : "";
   canvas.dataset.abagsFidelityRimTriangles = String(renderer.rimTriangles ?? 0);
   canvas.dataset.abagsFidelityGrounding = JSON.stringify(groundContactFrame(renderer.groundPoints ?? [], root, width / height, canvas.clientHeight));
   const accessoryAnchor = fidelityAccessoryAnchor(config);

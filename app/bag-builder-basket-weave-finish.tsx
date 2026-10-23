@@ -414,7 +414,7 @@ export default function BagBuilderBasketWeaveFinish() {
 
     const paintFrame = () => {
       frameRef.current = null;
-      const family = (stage.dataset.family || "") as Family;
+      const family = (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family;
       const stitch = stage.dataset.stitch || "classic";
       if (
         source.dataset.abagsCrochetOwner === "webgl-yarn" ||

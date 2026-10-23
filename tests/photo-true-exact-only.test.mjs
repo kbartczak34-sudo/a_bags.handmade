@@ -26,6 +26,6 @@ assert.match(guard, /source === "exact-live-v4" \? "exact"/);
 assert.match(customizer, /BagBuilderPhotoTrueExactOnly/);
 assert.match(customizer, /<BagBuilderPhotoTrueExactOnly \/>/);
 assert.match(library, /EXACT_ATELIER_LIBRARY/);
-assert.equal((library.match(/\{ id:/g) || []).length, 19);
+assert.equal((library.match(/\{ id:/g) || []).length, 20);
 
 console.log("photo-true-exact-only: PASS");
