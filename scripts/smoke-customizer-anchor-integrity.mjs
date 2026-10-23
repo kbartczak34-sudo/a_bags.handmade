@@ -98,7 +98,7 @@ function assertViewEvidence(label, view, evidence, frontEvidence) {
   if(evidence.rimTriangles<1000||!evidence.ground||evidence.ground.opacity<.05||evidence.ground.display==='none'||Math.abs(evidence.ground.top-evidence.ground.pixelBottom)>5){
     throw new Error(`${label} ${view}: braided mouth and customer-visible ground contact must follow the rendered bag: ${JSON.stringify(evidence.ground)}`);
   }
-  if (evidence.ornamentOwner === "webgl" && (evidence.duplicateOrnament || evidence.ornamentTriangles < 100)) {
+  if (evidence.ornamentOwner === "webgl" && (evidence.duplicateOrnament || evidence.ornamentTriangles < 100 || evidence.ornamentConstruction !== 'folded-fabric-gravity-fringe-v3')) {
     throw new Error(`${label} ${view}: the selected ornament must have one volumetric renderer.`);
   }
   if (evidence.legacyChainCount !== 0) {
@@ -497,6 +497,7 @@ const analyze=(overlay,renderedPixels)=>{
         legacyChainCount:stage.querySelectorAll('.abags-chain-realism').length,
         ornamentOwner:ornamentInWebgl?'webgl':'canvas',
         ornamentTriangles:Number(stage.dataset.abagsFidelityOrnamentTriangles||0),
+        ornamentConstruction:stage.dataset.abagsFidelityOrnamentConstruction||'',
         ornamentBounds:ornamentInWebgl?JSON.parse(stage.dataset.abagsFidelityOrnamentBounds||'null'):null,
         duplicateOrnament:ornamentInWebgl&&analyze(front).sampled>0,
         strapOwner:strapInWebgl?'webgl-band':'canvas',
@@ -828,7 +829,7 @@ const analyze=(overlay,renderedPixels)=>{
       for (const view of ["Przód", "3/4", "Bok"]) {
         await clickView(view);
         const evidence = await anchorEvidence();
-        if (evidence?.ornamentOwner !== "webgl" || evidence.ornamentTriangles < 100 || evidence.duplicateOrnament) {
+        if (evidence?.ornamentOwner !== "webgl" || evidence.ornamentTriangles < 100 || evidence.duplicateOrnament || evidence.ornamentConstruction !== 'folded-fabric-gravity-fringe-v3') {
           throw new Error(`${label} Kokarda ${view}: missing the single physical WebGL bow: ${JSON.stringify(evidence)}`);
         }
         const appearance = await verifyAccessoryAppearance(`${label}-kokarda-${view}`, evidence, view === "Bok");
