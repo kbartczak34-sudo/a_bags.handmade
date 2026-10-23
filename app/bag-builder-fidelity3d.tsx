@@ -837,7 +837,7 @@ type ClosedFlapSurface = {
   mesh: FabricMesh; contour: YarnPoint[]; rx: number; ry: number; centerY: number; thickness: number;
   sample: (x: number, y: number) => { z: number; normal: YarnPoint } | null;
 };
-// Eight immutable surfaces cover the four families and two constructions.
+// Immutable fitted surfaces are cached per family and construction.
 const closedFlapSurfaces = new Map<string, ClosedFlapSurface>();
 
 function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean): ClosedFlapSurface {
@@ -1635,6 +1635,7 @@ void main(){
     metal=mix(.97,.72,darkCoating);
     rough=mix(.27,.38,darkCoating);
     rough=mix(rough,.19,coolSilver*(1.0-darkCoating));
+    if(uMaterial>4.1)rough=.38;
   } else if(uMaterial<5.5){
     // Gingham follows physical cloth distances and soft folds, with screen-space
     // filtering instead of the stretched, hard checkerboard of the old cavity.
@@ -1728,6 +1729,9 @@ void main(){
   vec3 f0=mix(vec3(.035),base,metal);
   vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
   color+=specularGGX(n,l,v,rough,f0)*1.6;
+  // Broad studio reflection on the satchel's small brushed metal plates.
+  // Without an environment term, flat polished faces become almost black.
+  if(uMaterial>4.1 && uMaterial<4.5)color+=base*(.20+.48*facing);
   color+=vec3(fibreSheen)*pow(1.0-facing,2.0)*(.3+.7*ndl);
   // Cavity light is tied to local fabric depth, so the mouth stays readable
   // while the lining darkens toward its actual base during any rotation.
@@ -2704,7 +2708,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     for (const part of renderer.cognacParts ?? []) {
       if (part.section === "handle" && config.handles !== "leather-braid") continue;
       if (part.section === "flap" && config.flap === "none") continue;
-      const material = part.tone === "metal" || part.tone === "recess" ? 4 : part.tone === "leather" || part.tone === "edge" ? 2 : 3;
+      const material = part.tone === "metal" || part.tone === "recess" ? 4.25 : part.tone === "leather" || part.tone === "edge" ? 2 : 3;
       drawMesh(renderer, meshes[part.name], root, colors[part.tone], material, stitch, 0);
     }
   }
