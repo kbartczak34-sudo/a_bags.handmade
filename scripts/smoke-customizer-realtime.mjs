@@ -380,11 +380,18 @@ async function main() {
     await clearDraftAndReload();
     await openBuilder();
     await choose("family", "bucket");
-    await waitVerified3d("Bucket family");
+    const bucketPreset = await waitVerified3d("Bucket family");
+    if (bucketPreset.signature !== "bucket|#E8DDCC|classic|suede-burgundy|none|leather|gold|none") {
+      throw new Error(`Bucket family did not create its complete supported preset: ${JSON.stringify(bucketPreset)}`);
+    }
     await choose("color", "#E4A9B5");
     await waitVerified3d("Bucket color");
     await choose("stitch", "classic");
-    const bucket = await waitVerified3d("Bucket stitch");
+    await waitVerified3d("Bucket stitch");
+    // The family now starts with its own supported suede flap. Explicitly
+    // remove it before checking the existing flap-free renderer contract.
+    await choose("flap", "none");
+    const bucket = await waitVerified3d("Bucket without flap");
     const bucketOverlayState = await evaluate(`(() => {
       const dialog=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4');
       const stage=dialog?.querySelector('.abags-vc-preview .abags-bag-builder-stage[data-abags-engine-stage="true"]');
