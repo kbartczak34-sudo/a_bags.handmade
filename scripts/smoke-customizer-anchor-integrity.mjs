@@ -725,6 +725,79 @@ const analyze=(overlay,renderedPixels)=>{
     await send("Page.enable");
     await waitFor("document.readyState === 'complete'", "initial load");
 
+    const probeFamilyCards = async (label, viewport) => {
+      await setViewport(viewport);
+      await clearAndReload();
+      await openBuilder();
+      const signatures = [
+        'tote|#E4A9B5|classic|none|wood-light|none|gold|bow',
+        'round|#E8DDCC|shell|crochet|none|woven|gold|tassel',
+        'bucket|#E8DDCC|classic|suede-burgundy|none|leather|gold|none',
+        'mini|#A88AE0|basket|crochet|none|chain|gold|tassel',
+        'satchel|#C7652F|classic|leather-cognac|leather-braid|woven-ornament|gold|none',
+      ];
+      const currentFamily = await evaluate(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset.family`);
+      if (currentFamily) throw new Error(`${label}: family cards did not start from an empty selection.`);
+      const results = [];
+      // Each model must appear after just one real Fason card click/tap.
+      // Return from the cognac satchel to tote to cover component replacement.
+      for (const signature of [...signatures, signatures[0]]) {
+        const family = signature.split('|')[0];
+        const point = await waitFor(`(() => {
+          const button=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-builder-controls button[data-builder-key="family"][data-builder-value="${family}"]');
+          if(!button||button.disabled)return null;
+          button.scrollIntoView({block:'nearest',inline:'nearest'});
+          const rect=button.getBoundingClientRect(),style=getComputedStyle(button);
+          const x=rect.left+rect.width/2,y=rect.top+rect.height/2,hit=document.elementFromPoint(x,y);
+          if(rect.width<20||rect.height<20||style.visibility!=='visible'||!button.contains(hit))return null;
+          return {x,y};
+        })()`, `${label} visible ${family} Fason card`);
+        if (mobileViewport) {
+          await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...point,id:1}]});
+          await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        } else {
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+          await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
+          await send('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});
+        }
+        await waitFor(`(() => {
+          const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+          return stage?.dataset.builderSignature===${JSON.stringify(signature)}&&
+            stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&
+            stage.dataset.abagsFinal3d==='ready'&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature&&
+            !stage.dataset.abagsFidelity3dError;
+        })()`, `${label} ${family} complete model from one family selection`, 20_000);
+        await sleep(180);
+        const evidence = await evaluate(`(() => {
+          const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+          const canvas=stage?.querySelector('.abags-fidelity3d-canvas'),gl=canvas?.getContext('webgl');
+          if(!gl||gl.isContextLost())return null;
+          const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
+          gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+          let hash=2166136261,opaque=0;
+          for(let i=0;i<pixels.length;i++){hash^=pixels[i];hash=Math.imul(hash,16777619)>>>0;if(i%4===3&&pixels[i]>24)opaque++;}
+          const rect=canvas.getBoundingClientRect(),style=getComputedStyle(canvas);
+          const button=document.querySelector('.abags-builder-controls button[data-builder-key="family"][data-builder-value="${family}"]');
+          const save=document.querySelector('button[data-builder-save-state]');
+          return {family:stage.dataset.family,signature:stage.dataset.builderSignature,hash,opaque,error:gl.getError(),
+            selected:button?.getAttribute('aria-pressed')==='true',canSave:Boolean(save&&!save.disabled),
+            cognacProof:Boolean(stage.dataset.abagsFidelityCognac),
+            visible:rect.width>40&&rect.height>40&&rect.bottom>0&&rect.top<innerHeight&&style.visibility==='visible'&&Number(style.opacity)>.05};
+        })()`);
+        if(!evidence?.visible||!evidence.selected||!evidence.canSave||evidence.error||evidence.opaque<1000||
+          evidence.signature!==signature||(family!=='satchel'&&evidence.cognacProof)) {
+          throw new Error(`${label} ${family}: family card did not create a complete visible editable bag: ${JSON.stringify(evidence)}`);
+        }
+        results.push(evidence);
+        await capture(`family-${label}-${family}.png`);
+        await writeFile(path.join(qaDir,`family-${label}-evidence.json`),JSON.stringify(results,null,2));
+      }
+      if(new Set(results.slice(0,5).map(item=>item.hash)).size!==5)throw new Error(`${label}: Fason cards reused the same rendered model.`);
+      console.log(`${label}: all five complete editable models generated by single visible Fason card clicks/taps PASS`);
+    };
+    await probeFamilyCards('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    await probeFamilyCards('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+
     const probeCognac = async (label, viewport) => {
       await setViewport(viewport);
       await clearAndReload();

@@ -334,6 +334,18 @@ async function main() {
     };
 
     const chooseVisible = async (key, value, label) => {
+      // A family now supplies complete defaults. Exercise a real edit even
+      // when the scenario's requested value is already that family's default.
+      if ((await state())?.[key] === value) {
+        const alternative = await evaluate(`(() => {
+          const button=[...document.querySelectorAll('button[data-builder-key=${JSON.stringify(key)}]')]
+            .find((node)=>!node.disabled&&node.dataset.builderValue!==${JSON.stringify(value)});
+          return button?.dataset.builderValue??null;
+        })()`);
+        if (alternative === null) throw new Error(`${label}: no supported alternative for ${key}=${value}.`);
+        await choose(key, alternative);
+        await waitReady(`${label} ${key} alternative baseline`);
+      }
       const beforeState = await state();
       const beforePixels = await fingerprint();
       // The empty configurator intentionally has no WebGL bag or accessory
