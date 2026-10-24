@@ -38,6 +38,7 @@ type Mesh = {
 
 type Renderer = {
   ombre?: boolean;
+  ombrePalette?: number;
   cognacParts?: CognacPart[];
   interiorEvidence?: { family: FidelityV4Family; topY: number; bottomY: number; probe: YarnPoint };
   rimKey?: string;
@@ -1594,8 +1595,18 @@ void main(){
   vec3 pigment=uColor;
   if(uYarnOmbre>0.0){
     float height=clamp((vYarnHeight-uYarnGradientRange.x)/max(.001,uYarnGradientRange.y-uYarnGradientRange.x),0.0,1.0);
-    vec3 chocolate=vec3(.25,.14,.11),rust=vec3(.64,.23,.10),copper=vec3(.84,.39,.14);
-    pigment=mix(mix(chocolate,rust,smoothstep(.12,.62,height)),copper,smoothstep(.65,.97,height))*uYarnOmbre;
+    vec3 low=vec3(.25,.14,.11),mid=vec3(.64,.23,.10),high=vec3(.84,.39,.14);
+    // Palette identifiers are selected by the customer color option. The
+    // height is evaluated in physical bag space, not screen coordinates.
+    if(uYarnOmbre>1.5 && uYarnOmbre<2.5){
+      low=vec3(.22,.125,.10);mid=vec3(.51,.34,.25);high=vec3(.76,.59,.45);
+    }else if(uYarnOmbre>2.5 && uYarnOmbre<3.5){
+      low=vec3(.475,.17,.294);mid=vec3(.741,.396,.533);high=vec3(.937,.733,.776);
+    }else if(uYarnOmbre>3.5){
+      low=vec3(.529,.388,.671);mid=vec3(.886,.651,.749);high=vec3(.918,.831,.671);
+    }
+    vec3 dyed=mix(mix(low,mid,smoothstep(.12,.62,height)),high,smoothstep(.65,.97,height));
+    pigment=dyed*(uMaterial<6.5?.78:1.0);
   }
   if(uMaterial<.5){
     float cord=knit(vUv,uStitch);
@@ -1835,7 +1846,7 @@ function drawMesh(renderer: Renderer, mesh: Mesh, model: Float32Array, color: st
   gl.uniform1f(uniforms.material, material);
   gl.uniform1f(uniforms.stitch, stitch);
   gl.uniform1f(uniforms.relief, relief);
-  gl.uniform1f(uniforms.yarnOmbre, renderer.ombre && (material === 6 || material === 7) ? (material === 6 ? .78 : 1) : 0);
+  gl.uniform1f(uniforms.yarnOmbre, material === 6 || material === 7 ? (renderer.ombrePalette ?? 0) : 0);
   gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
 }
 
@@ -2553,7 +2564,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
   const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   if (renderFamily === "satchel") ensureCognacConstruction(renderer);
-  renderer.ombre = config.color === "#C7652F";
+  const yarnPalettes: Record<string, number> = {
+    "#C7652F": 1, // miedziany ombré
+    "#88583F": 2, // brąz ombré z referencji Agaty
+    "#D58FAA": 3, // róż ombré z referencji Agaty
+    "#BA9ECF": 4, // pastel wielokolorowy
+  };
+  renderer.ombrePalette = yarnPalettes[config.color] ?? 0;
+  renderer.ombre = renderer.ombrePalette !== 0;
   // Recover height in bag coordinates, so ombré stays attached to the yarn
   // through camera rotation and zoom rather than sliding across the screen.
   const axisLength2 = root[4] * root[4] + root[5] * root[5] + root[6] * root[6];

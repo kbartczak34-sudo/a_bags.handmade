@@ -41,6 +41,9 @@ const COLOR_LABELS: Record<string, string> = {
   "#087E81": "Turkus",
   "#A88AE0": "Lawendowy",
   "#C7652F": "Miedziany ombré",
+  "#88583F": "Brąz ombré",
+  "#D58FAA": "Róż ombré",
+  "#BA9ECF": "Pastel wielokolorowy",
 };
 
 const STITCH_LABELS: Record<string, string> = {
