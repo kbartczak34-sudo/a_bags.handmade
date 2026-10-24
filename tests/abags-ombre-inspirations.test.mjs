@@ -81,3 +81,12 @@ test("new inspirations refer to genuine Agata photos and use compatible componen
   assert.doesNotMatch(css, /button:last-child\{display:none\}/);
   assert.match(css, /overflow-x:auto/);
 });
+
+test("slowly loaded photo atlas hydrates the existing inspiration cards in place", () => {
+  assert.match(inspirations, /function hydrateInspirations\(section: HTMLElement, spriteUrl: string\)/);
+  assert.match(inspirations, /hydrateInspirations\(inspirations, spriteUrl\)/);
+  assert.match(inspirations, /photo\.dataset\.referenceId === preset\.referenceId/);
+  assert.match(inspirations, /photo\.classList\.remove\("is-loading"\)/);
+  assert.match(inspirations, /photo\.style\.removeProperty\("--ref-bag"\)/);
+  assert.match(inspirations, /if \(!photo \|\| photo\.dataset\.referenceId === preset\.referenceId\) continue/);
+});
