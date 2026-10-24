@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 export type BagBuilderClientConfig = {
   family: "" | "tote" | "round" | "bucket" | "mini" | "satchel";
-  color: "" | "#E8DDCC" | "#E4A9B5" | "#24324D" | "#65493D" | "#C7962F" | "#222124" | "#B93A42" | "#275C4A" | "#087E81" | "#A88AE0" | "#C7652F";
+  color: "" | "#E8DDCC" | "#E4A9B5" | "#24324D" | "#65493D" | "#C7962F" | "#222124" | "#B93A42" | "#275C4A" | "#087E81" | "#A88AE0" | "#C7652F" | "#88583F" | "#D58FAA" | "#BA9ECF";
   stitch: "" | "classic" | "herringbone" | "basket" | "shell";
   flap: "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
   handles: "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
@@ -47,7 +47,7 @@ export const EMPTY_BAG_BUILDER_CLIENT_CONFIG: BagBuilderClientConfig = {
 };
 
 const FAMILIES = new Set<BagBuilderClientConfig["family"]>(["", "tote", "round", "bucket", "mini", "satchel"]);
-const COLORS = new Set<BagBuilderClientConfig["color"]>(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0", "#C7652F"]);
+const COLORS = new Set<BagBuilderClientConfig["color"]>(["", "#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0", "#C7652F", "#88583F", "#D58FAA", "#BA9ECF"]);
 const STITCHES = new Set<BagBuilderClientConfig["stitch"]>(["", "classic", "herringbone", "basket", "shell"]);
 const FLAPS = new Set<BagBuilderClientConfig["flap"]>(["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"]);
 const HANDLES = new Set<BagBuilderClientConfig["handles"]>(["none", "wood-light", "wood-dark", "crochet", "leather-braid"]);
