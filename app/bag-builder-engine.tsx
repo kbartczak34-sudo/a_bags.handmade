@@ -52,6 +52,9 @@ const FAMILIES: Option<Family>[] = [
 
 const COLORS: Option<string>[] = [
   { value: "#C7652F", label: "Miedziany ombré", swatch: "linear-gradient(0deg,#422921,#A74828 55%,#D7752E)" },
+  { value: "#88583F", label: "Brąz ombré", swatch: "linear-gradient(0deg,#38201A,#815640 55%,#C19672)" },
+  { value: "#D58FAA", label: "Róż ombré", swatch: "linear-gradient(0deg,#792C4B,#BD6588 55%,#EFBBC6)" },
+  { value: "#BA9ECF", label: "Pastel wielokolorowy", swatch: "linear-gradient(0deg,#8763AB,#E2A6BF 52%,#EAD4AB)" },
   { value: "#E8DDCC", label: "Naturalny beż", swatch: "#E8DDCC" },
   { value: "#E4A9B5", label: "Pudrowy róż", swatch: "#E4A9B5" },
   { value: "#24324D", label: "Głęboki granat", swatch: "#24324D" },
@@ -274,6 +277,34 @@ export default function BagBuilderEngine() {
       observer.disconnect();
       document.querySelectorAll<HTMLElement>(".abags-vc-dialog.abags-vc-builder-active").forEach((dialog) => dialog.classList.remove("abags-vc-exact-live-active", "abags-vc-builder-active"));
     };
+  }, []);
+
+  useEffect(() => {
+    // Reference cards must update all eight controls at once. Eight separate
+    // simulated clicks briefly rendered an incomplete/mismatched bag.
+    const applyReferencePreset = (event: Event) => {
+      const detail = (event as CustomEvent<BagBuilderConfig>).detail;
+      if (!detail || !FAMILIES.some(item => item.value === detail.family) ||
+          !COLORS.some(item => item.value === detail.color) ||
+          !STITCHES.some(item => item.value === detail.stitch) ||
+          !FLAPS.some(item => item.value === detail.flap) ||
+          !HANDLES.some(item => item.value === detail.handles) ||
+          !STRAPS.some(item => item.value === detail.strap) ||
+          !HARDWARE.some(item => item.value === detail.hardware) ||
+          !ACCENTS.some(item => item.value === detail.accent)) return;
+      if (!isAgataBuilderHandleSupported(detail.family, detail.handles) ||
+          !isAgataBuilderConstructionSupported(detail.family, "flaps", detail.flap) ||
+          !isAgataBuilderConstructionSupported(detail.family, "straps", detail.strap) ||
+          !isAgataBuilderConstructionSupported(detail.family, "accents", detail.accent)) return;
+      setConfig({
+        family: detail.family, color: detail.color, stitch: detail.stitch,
+        flap: detail.flap, handles: detail.handles, strap: detail.strap,
+        hardware: detail.hardware, accent: detail.accent,
+      });
+      setSaved(false);
+    };
+    window.addEventListener("abags:apply-reference-preset", applyReferencePreset);
+    return () => window.removeEventListener("abags:apply-reference-preset", applyReferencePreset);
   }, []);
 
   const update = <K extends keyof BagBuilderConfig>(key: K, value: BagBuilderConfig[K]) => {
