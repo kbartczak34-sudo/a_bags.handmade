@@ -1,6 +1,8 @@
-/* Last-in-stack customer gallery rules: previous cleanroom/mobile styles
-   hid the entire reference carousel, even when its data and photos loaded. */
-body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspirations {
+/* Last-in-stack customer 3D gallery rules: previous cleanroom/mobile styles
+   hid the entire reference carousel, even when its data and photos loaded.
+   Photo-True is a separate QA reference flow: never expose these legacy
+   3D inspiration cards when the real-product photo mode is active. */
+body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspirations {
   display: grid !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -8,23 +10,23 @@ body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layo
   width: 100% !important;
   max-height: none !important;
 }
-body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-track {
+body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-track {
   display: flex !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
   scroll-snap-type: x proximity !important;
   overscroll-behavior-x: contain !important;
 }
-body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-track button {
+body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-track button {
   flex-shrink: 0 !important;
 }
-body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-track button:focus-visible {
+body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-track button:focus-visible {
   outline: 3px solid #a35d72 !important;
   outline-offset: 2px !important;
 }
 @media (max-width: 1100px), (pointer: coarse) {
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4.abags-mobile-forced .abags-ref-inspirations,
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspirations {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]).abags-mobile-forced .abags-ref-inspirations,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspirations {
     display: grid !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -35,20 +37,20 @@ body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layo
     overflow: visible !important;
     padding: 10px 12px 12px !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-head {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-head {
     display: flex !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-head strong {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-head strong {
     font-size: 11px !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-track {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-track {
     display: flex !important;
     height: auto !important;
     min-height: 0 !important;
     padding: 2px 2px 6px !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-track button,
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-track button:last-child {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-track button,
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-track button:last-child {
     display: grid !important;
     grid-template-rows: 65px auto !important;
     flex: 0 0 108px !important;
@@ -59,21 +61,21 @@ body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layo
     padding: 5px !important;
     border-radius: 12px !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-photo {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-photo {
     height: 65px !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-copy {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-copy {
     display: grid !important;
     gap: 2px !important;
     padding: 4px 2px 3px !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-copy strong {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-copy strong {
     font-size: 10px !important;
     line-height: 1.15 !important;
     white-space: normal !important;
     overflow-wrap: anywhere !important;
   }
-  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4 .abags-ref-inspiration-copy small {
+  body.abags-vc-open .abags-vc-dialog.abags-vc-builder-active.abags-reference-layout-v4:not([data-abags-photo-true="active"]) .abags-ref-inspiration-copy small {
     display: none !important;
   }
 }
