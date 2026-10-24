@@ -103,4 +103,11 @@ test("customer CSS makes all inspiration cards visible after legacy mobile overr
   assert.match(overrides, /\.abags-ref-inspiration-copy\s*\{[\s\S]*?display: grid !important/);
   assert.match(overrides, /\.abags-ref-inspiration-track button:last-child/);
   assert.match(overrides, /:focus-visible/);
+  const photoTrueExclusion = ':not([data-abags-photo-true="active"])';
+  const selectors = overrides.split(".abags-reference-layout-v4").slice(1);
+  assert.ok(selectors.length > 10, "Every mobile and desktop gallery selector is covered");
+  assert.ok(selectors.every((selector) => selector.startsWith(photoTrueExclusion)), "Photo-True must never inherit the 3D carousel overrides");
+  const photoTrueAcceptance = await read("scripts/smoke-customizer-photo-true-v5-strict.mjs");
+  assert.match(photoTrueAcceptance, /legacyInspirationsVisible/);
+  assert.match(photoTrueAcceptance, /value\.legacyInspirationsVisible/);
 });
