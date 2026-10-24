@@ -276,13 +276,23 @@ async function main() {
       }
       if (afterFamily.signature === initialSignature || afterFamily.family !== family) throw new Error(`${label} family selection did not create verified 3D.`);
 
+      let beforeColor = afterFamily;
+      if (beforeColor.color.toUpperCase() === color.toUpperCase()) {
+        await choose("color", color === "#24324D" ? "#E4A9B5" : "#24324D");
+        beforeColor = await waitVerified3d(`${label} alternative color baseline`);
+      }
       await choose("color", color);
       const afterColor = await waitVerified3d(`${label} after color`);
-      if (afterColor.signature === afterFamily.signature || afterColor.color.toUpperCase() !== color.toUpperCase()) throw new Error(`${label} color selection did not redraw verified 3D.`);
+      if (afterColor.signature === beforeColor.signature || afterColor.color.toUpperCase() !== color.toUpperCase()) throw new Error(`${label} color selection did not redraw verified 3D.`);
 
+      let beforeStitch = afterColor;
+      if (beforeStitch.stitch === stitch) {
+        await choose("stitch", stitch === "classic" ? "herringbone" : "classic");
+        beforeStitch = await waitVerified3d(`${label} alternative stitch baseline`);
+      }
       await choose("stitch", stitch);
       const afterStitch = await waitVerified3d(`${label} after stitch`);
-      if (afterStitch.signature === afterColor.signature || afterStitch.stitch !== stitch) throw new Error(`${label} stitch selection did not redraw verified 3D.`);
+      if (afterStitch.signature === beforeStitch.signature || afterStitch.stitch !== stitch) throw new Error(`${label} stitch selection did not redraw verified 3D.`);
 
       await clickView("Bok");
       const side = await stageState();

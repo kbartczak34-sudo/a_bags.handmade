@@ -6,7 +6,7 @@ import { isAgataBuilderConstructionSupported, isAgataBuilderHandleSupported } fr
 import { ABAGS_AGATA_REAL_BAG_MEASUREMENTS } from "../lib/abags-fidelity-v4-family-spec";
 import { usePublicContact, whatsappHref } from "./public-contact";
 
-import { ABAGS_COGNAC_PRESET } from "../lib/abags-cognac-model";
+import { createBagBuilderFamilyConfig } from "../lib/abags-family-presets";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
@@ -278,16 +278,11 @@ export default function BagBuilderEngine() {
 
   const update = <K extends keyof BagBuilderConfig>(key: K, value: BagBuilderConfig[K]) => {
     setConfig((current) => {
-      if (key === "family" && value === "satchel") return { ...ABAGS_COGNAC_PRESET };
-      const next = { ...current, [key]: value };
       if (key === "family") {
         const family = value as Family;
-        if (family && !isAgataBuilderHandleSupported(family, current.handles)) next.handles = "none";
-        if (family && !isAgataBuilderConstructionSupported(family, "flaps", current.flap)) next.flap = "none";
-        if (family && !isAgataBuilderConstructionSupported(family, "straps", current.strap)) next.strap = "none";
-        if (family && !isAgataBuilderConstructionSupported(family, "accents", current.accent)) next.accent = "none";
+        return family ? createBagBuilderFamilyConfig(family) : { ...EMPTY };
       }
-      return next;
+      return { ...current, [key]: value };
     });
     setSaved(false);
   };
@@ -320,7 +315,7 @@ export default function BagBuilderEngine() {
 
   return <>
     {createPortal(<section className="abags-exact-live abags-builder-controls" aria-labelledby="abags-builder-title" data-abags-exact-workspace="controls">
-      <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Najpierw wybierz fason. Potem nadaj mu kolor i ścieg szydełkowy, a następnie dodawaj klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
+      <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Wybierz fason, aby od razu zobaczyć kompletną torebkę. Następnie dopasuj kolor, ścieg szydełkowy, klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
       <ChoiceGroup title="Fason" step={1} options={FAMILIES.filter((item): item is Option<Exclude<Family, "">> => Boolean(item.value))} value={config.family} onChange={(value) => update("family", value)} dataKey="family" />
       <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
       <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
