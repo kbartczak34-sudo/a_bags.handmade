@@ -90,3 +90,17 @@ test("slowly loaded photo atlas hydrates the existing inspiration cards in place
   assert.match(inspirations, /photo\.style\.removeProperty\("--ref-bag"\)/);
   assert.match(inspirations, /if \(!photo \|\| photo\.dataset\.referenceId === preset\.referenceId\) continue/);
 });
+
+test("customer CSS makes all inspiration cards visible after legacy mobile overrides", async () => {
+  const overrides = await read("app/bag-builder-inspirations-visible.css");
+  const stack = await read("app/exact-live-customizer.tsx");
+  const hidden = await read("app/bag-builder-customer-cleanroom.css");
+  const oldMobile = await read("app/bag-builder-premium-mobile-final.css");
+  assert.match(hidden, /abags-ref-inspirations[\s\S]*?display:none!important/);
+  assert.match(oldMobile, /abags-ref-inspirations\{display:none!important\}/);
+  assert.ok(stack.lastIndexOf('import "./bag-builder-inspirations-visible.css"') > stack.lastIndexOf('import "./bag-builder-premium-mobile-final.css"'));
+  assert.match(overrides, /\.abags-ref-inspirations\s*\{[\s\S]*?display: grid !important/);
+  assert.match(overrides, /\.abags-ref-inspiration-copy\s*\{[\s\S]*?display: grid !important/);
+  assert.match(overrides, /\.abags-ref-inspiration-track button:last-child/);
+  assert.match(overrides, /:focus-visible/);
+});
