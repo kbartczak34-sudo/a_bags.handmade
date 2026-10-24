@@ -2184,7 +2184,10 @@ function makeOrnamentGeometry(config: Config) {
       if(family === "tall-tote" || family === "shoulder"){p[0]*=family === "tall-tote"?1.12:1;p[1]*=1.35;}
       return point(...p,.006);
     },48);
-    for (const side of [-1, 1]) ribbon((u, v) => point(...foldedRibbonTail(u, v, side, compact), side < 0 ? .018 : .007), 48);
+    for (const side of [-1, 1]) ribbon((u, v) => {
+      const p=foldedRibbonTail(u,v,side,compact);if(family === "shoulder")p[1]*=.84;
+      return point(...p,side < 0 ? .018 : .007);
+    },48);
     if (config.handles.startsWith("wood")) {
       appendOrnamentRibbon(fabric, (u, v) => woodHandleRibbonPoint(family, u, v), 40, 8);
     }
@@ -2471,7 +2474,7 @@ function crochetShoulderStrapPoint(family: Exclude<Family, "">, t: number): Yarn
     [-span*.55,-1.78,.69],[span*.45,-1.72,.72],[span*1.12,-1.36,.48],[span+.10,-.40,.18],[span,0,0]];
   const u=clamp(t,0,1)*(points.length-1),i=Math.min(points.length-2,Math.floor(u)),f=u-i;
   const a=points[Math.max(0,i-1)],b=points[i],c=points[i+1],d=points[Math.min(points.length-1,i+2)];
-  return b.map((n,k)=>.5*(2*n+(-a[k]+c[k])*f+(2*a[k]-5*n+4*c[k]-d[k])*f*f+(-a[k]+3*n-3*c[k]+d[k])*f*f*f)) as YarnPoint;
+  return b.map((n,k)=>.5*(2*n+(-a[k]+c[k])*f+(2*a[k]-5*n+4*c[k]-d[k])*f*f+(-a[k]+3*n-3*c[k]+d[k])*f*f*f)*(k===1?.70:1)) as YarnPoint;
 }
 
 function ornamentStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
@@ -2481,7 +2484,7 @@ function ornamentStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
     [span+.30,-.10,-.18],[span+.38,-1.27,-.08],[span+.26,-1.46,.08],[span+.15,-1.27,.24],[span,0,0]];
   const u = clamp(t,0,1) * (points.length - 1), i = Math.min(points.length - 2, Math.floor(u)), f = u - i;
   const a = points[Math.max(0,i-1)], b = points[i], c = points[i+1], d = points[Math.min(points.length-1,i+2)];
-  return b.map((n,k) => .5 * (2*n + (-a[k]+c[k])*f + (2*a[k]-5*n+4*c[k]-d[k])*f*f + (-a[k]+3*n-3*c[k]+d[k])*f*f*f) * (family === "tall-tote" && k === 1 ? 1.38 : 1)) as YarnPoint;
+  return b.map((n,k) => .5 * (2*n + (-a[k]+c[k])*f + (2*a[k]-5*n+4*c[k]-d[k])*f*f + (-a[k]+3*n-3*c[k]+d[k])*f*f*f) * (family === "tall-tote" && k === 1 ? 1.12 : 1)) as YarnPoint;
 }
 
 function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: BandKind = "woven") {
@@ -2666,6 +2669,17 @@ function renderSignature(config: Config) {
   ].join("|");
 }
 
+function referenceYarnProbePoints(family: Exclude<Family, "">, root: Float32Array, width: number, height: number) {
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family],f=1/Math.tan(Math.PI/10.6),aspect=width/height;
+  return [.12,.38,.64,.90].map(level=>{
+    const p=crochetPanelPoint(family,spec.rx*.34,spec.ry*(level*2-1));
+    p[1]+=spec.bodyY;
+    const world=[0,1,2].map(i=>root[i]*p[0]+root[4+i]*p[1]+root[8+i]*p[2]+root[12+i]);
+    const distance=5-world[2];
+    return {level,x:(.5+world[0]*f/(aspect*distance)*.5)*width,y:(.5-(world[1]-.02)*f/distance*.5)*height};
+  });
+}
+
 // The verifier owns the stage, while draw() owns the WebGL canvas. Publish the
 // canvas proof onto the stage that Final3DController actually inspects.
 function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, config: Config) {
@@ -2754,7 +2768,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // WebGL surface switches to the live configuration.
   const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
-  const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
+  const fittedZoom = zoom * (renderFamily === "tall-tote" ? .86 : 1);
+  const root = multiply(scale(fittedZoom, fittedZoom, fittedZoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   if (renderFamily === "satchel") ensureCognacConstruction(renderer);
   const yarnPalettes: Record<string, number> = {
     "#C7652F": 1, // miedziany ombré
@@ -2958,7 +2973,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityStrapOwner = config.strap !== "none" && config.strap !== "chain" ? "webgl-band" : "";
   canvas.dataset.abagsFidelityStrapBounds = renderer.shoulderBandBounds ? JSON.stringify(renderer.shoulderBandBounds) : "";
   canvas.dataset.abagsFidelityStrapTriangles = String(renderer.shoulderBandTriangles ?? 0);
-  canvas.dataset.abagsFidelityReferenceModel = reference ? JSON.stringify({ id: reference.id, source: reference.sourceFile, palette: palette?.id ?? "solid", fabric: reference.fabric, constructionTriangles: renderer.referenceTriangles ?? 0, strapTriangles: renderer.shoulderBandTriangles ?? 0 }) : "";
+  canvas.dataset.abagsFidelityReferenceModel = reference ? JSON.stringify({ id: reference.id, source: reference.sourceFile, palette: palette?.id ?? "solid", fabric: reference.fabric, probes: referenceYarnProbePoints(renderFamily,root,width,height), constructionTriangles: renderer.referenceTriangles ?? 0, strapTriangles: renderer.shoulderBandTriangles ?? 0 }) : "";
   canvas.dataset.abagsFidelityCognac = renderFamily === "satchel" ? JSON.stringify({ version: "cognac-ombre-v1", source: "1000020714.png", ombre: renderer.ombre,
     handleTriangles: config.handles === "leather-braid" ? renderer.cognacParts?.filter(p => p.section === "handle").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,
     flapTriangles: config.flap !== "none" ? renderer.cognacParts?.filter(p => p.section === "flap").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,

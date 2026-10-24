@@ -35,6 +35,7 @@ export const ABAGS_REFERENCE_MODELS = [
 ] as const satisfies readonly ReferenceModel[];
 
 export function getAbagsReferenceModel(config: { family: string; color: string }) {
+  if (!config || typeof config.color !== "string") return undefined;
   return ABAGS_REFERENCE_MODELS.find(model => model.config.family === config.family && model.config.color === config.color.toUpperCase());
 }
 

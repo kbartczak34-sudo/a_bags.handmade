@@ -16,6 +16,7 @@ export const ABAGS_YARN_PALETTES = [
 
 export type AbagsYarnPalette = typeof ABAGS_YARN_PALETTES[number];
 export function getAbagsYarnPalette(color: string) {
+  if (typeof color !== "string") return undefined;
   return ABAGS_YARN_PALETTES.find(palette => palette.color === color.toUpperCase());
 }
 

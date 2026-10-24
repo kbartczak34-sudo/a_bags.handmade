@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:

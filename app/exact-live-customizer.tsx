@@ -27,6 +27,7 @@ import "./bag-builder-premium-mobile-final.css";
 import "./bag-builder-real-reference.css";
 // Must load after the legacy cleanroom/mobile rules that hid atelier inspirations.
 import "./bag-builder-inspirations-visible.css";
+import "./bag-builder-reference-models.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAccessoryMaterialFinish from "./bag-builder-accessory-material-finish";
@@ -72,7 +73,7 @@ import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
-const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-24-family-presets";
+const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-24-six-reference-models";
 
 export default function ExactLiveCustomizer() {
   useEffect(() => {

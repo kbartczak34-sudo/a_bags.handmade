@@ -1,0 +1,16 @@
+.abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-abags-reference-models="true"] .abags-builder-options {
+  max-height: min(48vh, 440px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  align-content: start !important;
+  scrollbar-width: thin;
+  scrollbar-color: #c78d9d #f5eded;
+  padding: 2px 5px 5px 2px;
+  touch-action: pan-y;
+}
+
+@media (max-width: 720px) {
+  .abags-vc-dialog.abags-reference-layout-v4 .abags-builder-group[data-abags-reference-models="true"] .abags-builder-options {
+    max-height: 360px !important;
+  }
+}

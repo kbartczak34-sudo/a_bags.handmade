@@ -211,7 +211,7 @@ function FamilyChoices({ config, onFamily, onModel }: {
   config: BagBuilderConfig; onFamily: (family: Family) => void; onModel: (id: string) => void;
 }) {
   const selected = getAbagsReferenceModel(config);
-  return <fieldset className="abags-builder-group">
+  return <fieldset className="abags-builder-group" data-abags-reference-models="true">
     <legend><span>01</span>Fason</legend>
     <div className="abags-builder-options">
       {ABAGS_REFERENCE_MODELS.map(model => <button key={model.id} type="button"

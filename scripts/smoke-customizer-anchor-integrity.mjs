@@ -725,6 +725,117 @@ const analyze=(overlay,renderedPixels)=>{
     await send("Page.enable");
     await waitFor("document.readyState === 'complete'", "initial load");
 
+
+    const probeReferenceModels = async (label, viewport) => {
+      await setViewport(viewport);
+      await clearAndReload();
+      await openBuilder();
+      const cases = [
+        ['chocolate-crossbody-bow','shoulder|#65493D|classic|none|none|crochet-braid|gold|bow','solid','model-3d'],
+        ['forest-ocean-wood-bow','tall-tote|#0E9AA7|classic|none|wood-light|woven-striped|gold|bow','forest-ocean','model-3d'],
+        ['navy-tall-wood-bow','tall-tote|#24324D|classic|none|wood-light|chain-leather|gold|bow','solid','photograph'],
+        ['cacao-cream-wood-bow','tall-tote|#88583F|classic|none|wood-light|none|gold|bow','cacao-cream','photograph'],
+        ['pastel-striped-wood-bow','tall-tote|#BA9ECF|classic|none|wood-light|none|gold|bow','pastel-bands','photograph'],
+        ['rose-cream-dark-wood','tall-tote|#D58FAA|classic|none|wood-dark|woven-floral|gold|bow','rose-cream','photograph'],
+      ];
+      const native = async () => evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        const canvas=stage?.querySelector('.abags-fidelity3d-canvas'),gl=canvas?.getContext('webgl');
+        if(!gl||gl.isContextLost())return null;
+        const proof=JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null');
+        const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
+        gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+        let hash=2166136261,opaque=0;
+        for(let i=0;i<pixels.length;i++){hash^=pixels[i];hash=Math.imul(hash,16777619)>>>0;if(i%4===3&&pixels[i]>24)opaque++;}
+        const colors=(proof?.probes||[]).map(point=>{
+          const x=Math.max(4,Math.min(gl.drawingBufferWidth-5,Math.round(point.x)));
+          const y=Math.max(4,Math.min(gl.drawingBufferHeight-5,gl.drawingBufferHeight-1-Math.round(point.y)));
+          const channels=[[],[],[]];
+          for(let row=-4;row<=4;row++)for(let col=-4;col<=4;col++){
+            const i=((y+row)*gl.drawingBufferWidth+x+col)*4;
+            if(pixels[i+3]<200)continue;
+            for(let c=0;c<3;c++)channels[c].push(pixels[i+c]);
+          }
+          if(channels[0].length<20)return null;
+          const rgb=channels.map(values=>values.sort((a,b)=>a-b)[Math.floor(values.length/2)]);
+          const [r,g,b]=rgb,max=Math.max(...rgb),min=Math.min(...rgb),d=max-min;
+          let hue=d?max===r?60*(((g-b)/d)%6):max===g?60*((b-r)/d+2):60*((r-g)/d+4):0;
+          if(hue<0)hue+=360;
+          return {level:point.level,rgb,hue,sat:max?d/max:0,luma:.2126*r+.7152*g+.0722*b};
+        });
+        const rect=canvas.getBoundingClientRect(),style=getComputedStyle(canvas);
+        const card=proof&&document.querySelector('button[data-abags-photo-model="'+proof.id+'"]');
+        const thumb=card?.querySelector('.abags-ref-family-photo');
+        return {signature:stage.dataset.builderSignature,current:stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature,
+          proof,colors,hash,opaque,error:gl.getError(),selected:card?.getAttribute('aria-pressed')==='true',thumbnail:thumb?.dataset.referenceKind||'',
+          canSave:Boolean(document.querySelector('button[data-builder-save-state]:not(:disabled)')),
+          visible:rect.width>40&&rect.height>40&&rect.top<innerHeight&&rect.bottom>0&&style.visibility==='visible'&&Number(style.opacity)>.05};
+      })()`);
+      const waitModel = async (id,signature) => waitFor(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        return stage?.dataset.builderSignature===${JSON.stringify(signature)}&&stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&
+          stage.dataset.abagsFinal3d==='ready'&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature&&
+          JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.id===${JSON.stringify(id)}&&!stage.dataset.abagsFidelity3dError;
+      })()`,`${label} reference model ${id}`,25_000);
+      const results=[];
+      for(const [id,signature,palette,thumbnail] of cases){
+        const point=await waitFor(`(() => {
+          const button=document.querySelector('.abags-builder-controls button[data-abags-photo-model="${id}"]');
+          if(!button||button.disabled)return null;
+          const legend=button.closest('fieldset')?.querySelector('legend');
+          if(legend&&legend.getAttribute('aria-expanded')!=='true'){legend.click();return null;}
+          button.scrollIntoView({block:'nearest',inline:'nearest'});
+          const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+          if(r.width<20||r.height<20||!button.contains(document.elementFromPoint(x,y)))return null;
+          return {x,y};
+        })()`,`${label} visible reference card ${id}`);
+        if(mobileViewport){
+          await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...point,id:1}]});
+          await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        }else{
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+          await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
+          await send('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});
+        }
+        await waitModel(id,signature);
+        await waitFor(`document.querySelector('button[data-abags-photo-model="${id}"] .abags-ref-family-photo')?.dataset.referenceKind===${JSON.stringify(thumbnail)}`,`${label} reference thumbnail ${id}`);
+        await sleep(180);
+        const evidence=await native();
+        if(!evidence?.visible||!evidence.current||!evidence.selected||!evidence.canSave||evidence.error||evidence.opaque<1000||
+          evidence.proof?.palette!==palette||evidence.proof.constructionTriangles<100||evidence.thumbnail!==thumbnail){
+          throw new Error(`${label} ${id}: reference card did not generate complete visible 3D: ${JSON.stringify(evidence)}`);
+        }
+        const [low,blue,pink,high]=evidence.colors;
+        if(palette!=='solid'&&(!low||!blue||!pink||!high))throw new Error(`${label} ${id}: yarn probe pixels missing`);
+        const hueBetween=(color,a,b)=>color.hue>=a&&color.hue<=b;
+        if(palette==='forest-ocean'&&(!hueBetween(low,185,255)||!hueBetween(high,55,145)||low.sat<.3||high.sat<.25))throw new Error(`${label}: green/ocean dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
+        if(palette==='cacao-cream'&&(high.luma<low.luma*1.7||high.sat>.28))throw new Error(`${label}: cream-to-chocolate dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
+        if(palette==='pastel-bands'&&(!hueBetween(low,255,320)||!hueBetween(blue,180,245)||!(pink.hue>=315||pink.hue<=12)||high.sat>.24||high.luma<100))throw new Error(`${label}: four ordered pastel bands absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
+        if(palette==='rose-cream'&&(low.sat<.45||high.sat>.30||high.luma<low.luma*1.3))throw new Error(`${label}: cream/pink/fuchsia dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
+        await capture(`model-${label}-${id}-three-quarter.png`);
+        if(palette==='forest-ocean'){
+          await waitFor(`JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}').color==='#0E9AA7'`,`${label} green model persisted`);
+          await send('Page.reload',{ignoreCache:true});await waitFor("document.readyState==='complete'",`${label} restored green model load`);
+          await openBuilder();await waitModel(id,signature);await sleep(180);
+          const restored=await native();
+          if(!restored?.current||restored.signature!==signature||restored.hash!==evidence.hash)throw new Error(`${label}: saved reference model did not restore the same visible pixels: ${JSON.stringify(restored)}`);
+          evidence.restored={signature:restored.signature,hash:restored.hash};
+        }
+        if(palette!=='solid'){
+          await clickView('Bok');const side=await native();
+          if(!side?.current||side.error||side.opaque<1000||side.hash===evidence.hash)throw new Error(`${label} ${id}: side rotation did not redraw real geometry`);
+          evidence.side={hash:side.hash,error:side.error,opaque:side.opaque};
+          await capture(`model-${label}-${id}-side.png`);await clickView('3/4');
+        }
+        results.push(evidence);
+        await writeFile(path.join(qaDir,`model-${label}-evidence.json`),JSON.stringify(results,null,2));
+      }
+      if(new Set(results.map(item=>item.hash)).size!==6)throw new Error(`${label}: photographed model cards reused one rendered image`);
+      console.log(`${label}: six photographed model presets, actual gradient pixels, real taps/clicks, side views and persisted green model PASS`);
+    };
+    await probeReferenceModels('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    await probeReferenceModels('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+
     const probeFamilyCards = async (label, viewport) => {
       await setViewport(viewport);
       await clearAndReload();
