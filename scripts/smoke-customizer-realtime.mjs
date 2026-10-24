@@ -189,8 +189,14 @@ async function main() {
       };
     })()`);
     const tapSelector = async (selector, label) => {
-      const point = await evaluate('(() => { const el=document.querySelector('+JSON.stringify(selector)+'); if(!el)return null; const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
-      if(!point) throw new Error('Could not locate tappable target: '+label);
+      // A real mobile user scrolls to the next step before tapping. The
+      // expanded Fason gallery grows when new reference models are added,
+      // pushing later accordions (notably Kolor) below the viewport.
+      const found = await evaluate('(() => { const el=document.querySelector('+JSON.stringify(selector)+'); if(!el)return false; el.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}); return true; })()');
+      if (!found) throw new Error('Could not locate tappable target: '+label);
+      await sleep(160);
+      const point = await evaluate('(() => { const el=document.querySelector('+JSON.stringify(selector)+'); if(!el)return null; const r=el.getBoundingClientRect(); const x=r.left+r.width/2,y=r.top+r.height/2; const hit=document.elementFromPoint(x,y); return {x,y,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight,hitTag:hit?.tagName||"",inViewport:r.width>0&&r.height>0&&x>=0&&x<innerWidth&&y>=0&&y<innerHeight}; })()');
+      if (!point?.inViewport) throw new Error('Touch target is not in the visible mobile viewport after scrolling: '+label+' '+JSON.stringify(point));
       await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:point.x,y:point.y,radiusX:1,radiusY:1,force:1,id:1}],modifiers:0});
       await sleep(80);
       await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[],modifiers:0});
