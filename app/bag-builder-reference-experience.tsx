@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ABAGS_REFERENCE_MODELS, getAbagsReferenceModel } from "../lib/abags-reference-models";
+import { getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 import { ABAGS_COGNAC_PRESET, ABAGS_COGNAC_REFERENCE_ID, ABAGS_COGNAC_REFERENCE_IMAGE } from "../lib/abags-cognac-model";
 import { EXACT_ATELIER_LIBRARY, EXACT_ATELIER_SPRITE_PARTS } from "../lib/exact-customizer-library";
@@ -54,9 +56,11 @@ const COLOR_LABELS: Record<string, string> = {
   "#88583F": "Brąz ombré",
   "#D58FAA": "Róż ombré",
   "#BA9ECF": "Pastel wielokolorowy",
+  "#0E9AA7": "Zieleń · turkus · niebieski",
 };
 
 const PRESETS: Preset[] = [
+  ...ABAGS_REFERENCE_MODELS.map(model => ({ id: model.id, label: model.label, referenceId: model.id, ...model.config })),
   { id: "cognac-ombre", label: "Kuferek koniakowy", referenceId: ABAGS_COGNAC_REFERENCE_ID, ...ABAGS_COGNAC_PRESET },
   { id: "navy", label: "Granat", referenceId: "navy-wood-scarf-chain", family: "tote", color: "#24324D", stitch: "classic", flap: "none", handles: "wood-light", strap: "chain", hardware: "gold", accent: "scarf" },
   { id: "red", label: "Czerwień", referenceId: "red-wood-scarf", family: "tote", color: "#B93A42", stitch: "classic", flap: "none", handles: "wood-dark", strap: "woven", hardware: "gold", accent: "scarf" },
@@ -155,7 +159,7 @@ function syncLayers(stage: HTMLElement, panel: HTMLElement) {
     button.type = "button";
     button.className = "abags-ref-layer-row";
     button.dataset.refEditKey = key;
-    button.innerHTML = `<span class="abags-ref-layer-dot"${key === "color" ? ` style="background:${value}"` : ""}></span><span><strong>${title}</strong><small>${valueLabel(key, value)}</small></span><span class="abags-ref-layer-edit">Edytuj</span>`;
+    button.innerHTML = `<span class="abags-ref-layer-dot"${key === "color" ? ` style="background:${getAbagsYarnPalette(value)?.swatch ?? value}"` : ""}></span><span><strong>${title}</strong><small>${valueLabel(key, value)}</small></span><span class="abags-ref-layer-edit">Edytuj</span>`;
     list.appendChild(button);
   });
   panel.classList.toggle("is-empty", list.childElementCount === 0);
@@ -174,21 +178,26 @@ function spritePosition(index: number) {
 }
 
 function applySpriteCell(element: HTMLElement, spriteUrl: string, referenceId: string) {
-  const reference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
-  if (!reference || !spriteUrl) return;
-  const direct = reference.id === ABAGS_COGNAC_REFERENCE_ID;
-  element.style.backgroundImage = `url(${JSON.stringify(direct ? ABAGS_COGNAC_REFERENCE_IMAGE : spriteUrl)})`;
+  const model = ABAGS_REFERENCE_MODELS.find(model => model.id === referenceId);
+  const reference = EXACT_ATELIER_LIBRARY.find(item => item.id === (model?.referenceId ?? referenceId));
+  const modelPreview = model && !model.referenceId ? model.image : null;
+  if ((!reference || !spriteUrl) && !modelPreview) return;
+  const direct = Boolean(modelPreview) || reference?.id === ABAGS_COGNAC_REFERENCE_ID;
+  const url = modelPreview ?? (reference?.id === ABAGS_COGNAC_REFERENCE_ID ? ABAGS_COGNAC_REFERENCE_IMAGE : spriteUrl);
+  element.style.backgroundImage = `url(${JSON.stringify(url)})`;
   element.style.backgroundSize = direct ? "cover" : "500% 400%";
-  element.style.backgroundPosition = direct ? "center" : spritePosition(reference.index);
-  element.dataset.referenceId = reference.id;
-  element.title = `Rzeczywisty wzorzec A-Bags: ${reference.label}`;
+  element.style.backgroundPosition = direct ? "center" : spritePosition(reference!.index);
+  element.dataset.referenceId = referenceId;
+  element.dataset.referenceKind = modelPreview ? "model-3d" : "photograph";
+  element.title = modelPreview ? `Podgląd modelu 3D na podstawie zdjęcia: ${model!.label}` : `Rzeczywisty wzorzec A-Bags: ${model?.label ?? reference!.label}`;
 }
 
 function decorateFamilyButtons(dialog: HTMLElement, spriteUrl: string) {
   if (!spriteUrl) return;
   dialog.querySelectorAll<HTMLButtonElement>('button[data-builder-key="family"]').forEach((button) => {
     const value = button.dataset.builderValue || "";
-    const referenceId = FAMILY_REFERENCE[value];
+    const model = ABAGS_REFERENCE_MODELS.find(model => model.id === button.dataset.abagsPhotoModel);
+    const referenceId = model?.id ?? FAMILY_REFERENCE[value];
     if (!referenceId) return;
     let thumb = button.querySelector<HTMLElement>(".abags-ref-family-photo");
     if (!thumb) {
@@ -202,6 +211,13 @@ function decorateFamilyButtons(dialog: HTMLElement, spriteUrl: string) {
     // though we already have Agata's real atelier photographs in this sprite.
     const photoThumb = button.querySelector<HTMLElement>(".abags-builder-family-thumb");
     if (photoThumb) {
+      if (model) {
+        applySpriteCell(photoThumb, spriteUrl, model.id);
+        photoThumb.style.setProperty("background-image", photoThumb.style.backgroundImage, "important");
+        photoThumb.style.setProperty("background-size", photoThumb.style.backgroundSize, "important");
+        photoThumb.style.setProperty("background-position", photoThumb.style.backgroundPosition, "important");
+        return;
+      }
       const realReference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
       if (!realReference) return;
       applySpriteCell(photoThumb, spriteUrl, referenceId);
@@ -221,7 +237,8 @@ function decorateFamilyButtons(dialog: HTMLElement, spriteUrl: string) {
  */
 function ensureAtelierExample(preview: HTMLElement, stage: HTMLElement, spriteUrl: string) {
   const family = stage.dataset.family || "";
-  const referenceId = FAMILY_REFERENCE[family];
+  const model = getAbagsReferenceModel({family,color:stage.dataset.color||""});
+  const referenceId = model ? model.referenceId : FAMILY_REFERENCE[family];
   const realReference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
   let viewer = preview.querySelector<HTMLElement>(':scope > [data-abags-example-ui]');
   if (!spriteUrl || !realReference) {

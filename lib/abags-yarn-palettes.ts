@@ -18,3 +18,15 @@ export type AbagsYarnPalette = typeof ABAGS_YARN_PALETTES[number];
 export function getAbagsYarnPalette(color: string) {
   return ABAGS_YARN_PALETTES.find(palette => palette.color === color.toUpperCase());
 }
+
+export function getAbagsYarnSvgStops(color: string) {
+  const palette = getAbagsYarnPalette(color);
+  if (!palette) return null;
+  if (palette.mode === "bands") return [
+    {offset:0,color:palette.colors[3]},{offset:.22,color:palette.colors[3]},
+    {offset:.22,color:palette.colors[2]},{offset:.47,color:palette.colors[2]},
+    {offset:.47,color:palette.colors[1]},{offset:.73,color:palette.colors[1]},
+    {offset:.73,color:palette.colors[0]},{offset:1,color:palette.colors[0]},
+  ];
+  return [...palette.colors].reverse().map((color,index)=>({offset:index/4,color}));
+}

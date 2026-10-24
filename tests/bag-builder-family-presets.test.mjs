@@ -17,7 +17,7 @@ const settings = await moduleFrom("lib/bag-builder-settings.ts", fidelity);
 const store = await moduleFrom("app/bag-builder-config-store.ts");
 const cognac = await moduleFrom("lib/abags-cognac-model.ts");
 const presets = await moduleFrom("lib/abags-family-presets.ts", cognac);
-const families = ["tote", "round", "bucket", "mini", "satchel"];
+const families = ["tote", "round", "bucket", "mini", "satchel", "tall-tote", "shoulder"];
 
 test("every Fason has a complete supported client and server configuration", () => {
   assert.deepEqual(Object.keys(presets.ABAGS_FAMILY_PRESETS).sort(), [...families].sort());

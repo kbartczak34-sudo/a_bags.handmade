@@ -7,6 +7,8 @@ import { ABAGS_AGATA_REAL_BAG_MEASUREMENTS } from "../lib/abags-fidelity-v4-fami
 import { usePublicContact, whatsappHref } from "./public-contact";
 
 import { createBagBuilderFamilyConfig } from "../lib/abags-family-presets";
+import { ABAGS_REFERENCE_MODELS, createAbagsReferenceModelConfig, getAbagsReferenceModel } from "../lib/abags-reference-models";
+import { getAbagsYarnPalette, getAbagsYarnSvgStops } from "../lib/abags-yarn-palettes";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
@@ -43,6 +45,8 @@ const EMPTY: BagBuilderConfig = {
 };
 
 const FAMILIES: Option<Family>[] = [
+  { value: "tall-tote", label: "Wysoki kuferek", description: "Wysoki korpus i para płaskich drewnianych uchwytów" },
+  { value: "shoulder", label: "Listonoszka", description: "Miękki prostokątny korpus z zamkiem i szydełkowym paskiem" },
   { value: "satchel", label: "Kuferek koniakowy", description: "Model ze zdjęcia · ombré, skórzana klapa i pleciona rączka" },
   { value: "tote", label: "Kuferek / tote", description: "Fason kalibrowany do rzeczywistych kuferków Agaty" },
   { value: "round", label: "Okrągła", description: "Okrągły fason Agaty z promienistym prowadzeniem ściegu" },
@@ -51,6 +55,7 @@ const FAMILIES: Option<Family>[] = [
 ];
 
 const COLORS: Option<string>[] = [
+  { value: "#0E9AA7", label: "Zieleń · turkus · niebieski", swatch: "linear-gradient(0deg,#193BA5,#24AA99,#B2C63F)" },
   { value: "#C7652F", label: "Miedziany ombré", swatch: "linear-gradient(0deg,#422921,#A74828 55%,#D7752E)" },
   { value: "#88583F", label: "Brąz ombré", swatch: "linear-gradient(0deg,#38201A,#815640 55%,#C19672)" },
   { value: "#D58FAA", label: "Róż ombré", swatch: "linear-gradient(0deg,#792C4B,#BD6588 55%,#EFBBC6)" },
@@ -91,6 +96,10 @@ const HANDLES: Option<Handles>[] = [
 ];
 
 const STRAPS: Option<Strap>[] = [
+  { value: "crochet-braid", label: "Szydełkowy pasek", description: "Trójwymiarowy pasek pleciony ze sznurka" },
+  { value: "woven-floral", label: "Pasek kwiatowy" },
+  { value: "woven-striped", label: "Pasek w pasy" },
+  { value: "chain-leather", label: "Łańcuszek ze skórą" },
   { value: "woven-ornament", label: "Pasek ornamentowy", description: "Czarno-kremowy wzór z miedzianymi detalami" },
   { value: "none", label: "Bez paska" },
   { value: "leather", label: "Pasek skórzany" },
@@ -143,6 +152,8 @@ function labelFor<T extends string>(options: Option<T>[], value: T | string) {
 }
 
 function bodyPath(family: Family) {
+  if (family === "tall-tote") return "M170 160 Q170 135 205 135 L395 135 Q430 135 430 160 L438 475 Q438 522 395 525 L205 525 Q162 522 162 475 Z";
+  if (family === "shoulder") return "M120 200 Q120 170 155 170 L445 170 Q480 170 480 200 L485 455 Q485 505 440 510 L160 510 Q115 505 115 455 Z";
   if (family === "round") return "M135 235 Q140 185 205 165 Q300 132 395 165 Q460 185 465 235 L478 335 Q486 414 432 470 Q378 525 300 525 Q222 525 168 470 Q114 414 122 335 Z";
   if (family === "bucket") return "M165 160 Q300 130 435 160 L468 456 Q472 505 424 520 Q300 548 176 520 Q128 505 132 456 Z";
   if (family === "mini") return "M175 220 Q180 185 218 175 L382 175 Q420 185 425 220 L440 430 Q442 470 405 485 Q300 510 195 485 Q158 470 160 430 Z";
@@ -195,6 +206,32 @@ function ChoiceGroup<T extends string>({ title, step, options, value, onChange, 
   </fieldset>;
 }
 
+
+function FamilyChoices({ config, onFamily, onModel }: {
+  config: BagBuilderConfig; onFamily: (family: Family) => void; onModel: (id: string) => void;
+}) {
+  const selected = getAbagsReferenceModel(config);
+  return <fieldset className="abags-builder-group">
+    <legend><span>01</span>Fason</legend>
+    <div className="abags-builder-options">
+      {ABAGS_REFERENCE_MODELS.map(model => <button key={model.id} type="button"
+        className={selected?.id === model.id ? "is-active" : ""} aria-pressed={selected?.id === model.id}
+        data-builder-key="family" data-builder-value={model.config.family} data-abags-photo-model={model.id}
+        onClick={() => onModel(model.id)}>
+        <span className="abags-builder-family-thumb" data-family={model.config.family} aria-hidden="true"><span /></span>
+        <span className="abags-builder-option-copy"><strong>{model.label}</strong><small>{model.description}</small></span>
+      </button>)}
+      {FAMILIES.filter(option => option.value && option.value !== "tall-tote" && option.value !== "shoulder").map(option => <button
+        key={option.value} type="button" className={!selected && config.family === option.value ? "is-active" : ""}
+        aria-pressed={!selected && config.family === option.value} data-builder-key="family" data-builder-value={option.value}
+        onClick={() => onFamily(option.value)}>
+        <span className="abags-builder-family-thumb" data-family={option.value} aria-hidden="true"><span /></span>
+        <span className="abags-builder-option-copy"><strong>{option.label}</strong><small>{option.description}</small></span>
+      </button>)}
+    </div>
+  </fieldset>;
+}
+
 function BagPreview({ config }: { config: BagBuilderConfig }) {
   const supportedFlap = config.family && isAgataBuilderConstructionSupported(config.family, "flaps", config.flap) ? config.flap : "none";
   const body = bodyPath(config.family);
@@ -211,16 +248,14 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
     "#D58FAA": ["#EFBBC6", "#BD6588", "#792C4B"],
     "#BA9ECF": ["#EAD4AB", "#E2A6BF", "#8763AB"],
   };
-  const yarnStops = yarnGradients[bagColor];
+  const yarnStops = getAbagsYarnSvgStops(bagColor) ?? yarnGradients[bagColor]?.map((color,index)=>({offset:index/2,color}));
   const yarnBaseFill = yarnStops ? "url(#abags-yarn-ombre)" : bagColor;
 
   return <div className="abags-bag-builder-stage" data-abags-live-stage="true" data-abags-engine-stage="true" data-builder-signature={signature} data-approx-width-cm={config.family ? ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm : ""} data-matching-crochet-back="true" data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
         {yarnStops && <linearGradient id="abags-yarn-ombre" gradientUnits="userSpaceOnUse" x1="0" y1="140" x2="0" y2="520">
-          <stop offset="0%" stopColor={yarnStops[0]} />
-          <stop offset="54%" stopColor={yarnStops[1]} />
-          <stop offset="100%" stopColor={yarnStops[2]} />
+          {yarnStops.map((stop,index)=><stop key={index} offset={`${stop.offset*100}%`} stopColor={stop.color} />)}
         </linearGradient>}
         <filter id="abags-shadow" x="-30%" y="-25%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="16" floodColor="#4C3438" floodOpacity="0.16" /></filter>
         <linearGradient id="abags-wood-light" x1="0" x2="1"><stop offset="0" stopColor="#E7C995" /><stop offset=".48" stopColor="#F3DDAF" /><stop offset="1" stopColor="#CFA96D" /></linearGradient>
@@ -360,8 +395,8 @@ export default function BagBuilderEngine() {
   return <>
     {createPortal(<section className="abags-exact-live abags-builder-controls" aria-labelledby="abags-builder-title" data-abags-exact-workspace="controls">
       <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Wybierz fason, aby od razu zobaczyć kompletną torebkę. Następnie dopasuj kolor, ścieg szydełkowy, klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
-      <ChoiceGroup title="Fason" step={1} options={FAMILIES.filter((item): item is Option<Exclude<Family, "">> => Boolean(item.value))} value={config.family} onChange={(value) => update("family", value)} dataKey="family" />
-      <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
+      <FamilyChoices config={config} onFamily={(family) => update("family", family)} onModel={(id) => { const next = createAbagsReferenceModelConfig(id); if (next) { setConfig(next); setSaved(false); } }} />
+      <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS.map(option => ({ ...option, swatch: getAbagsYarnPalette(option.value)?.swatch ?? option.swatch }))} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
       <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
       <ChoiceGroup title="Klapa" step={4} options={familyFlaps} value={supportedFlap} onChange={(value) => update("flap", value)} disabled={!canCustomize} dataKey="flap" />
       <ChoiceGroup title="Uchwyty" step={5} options={familyHandles} value={config.handles} onChange={(value) => update("handles", value)} disabled={!canCustomize} dataKey="handles" />

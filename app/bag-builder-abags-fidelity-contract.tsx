@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { ABAGS_REFERENCE_MODELS, getAbagsReferenceModel } from "../lib/abags-reference-models";
 
 type Copy = { label: string; description: string; reference: string };
 
 const FAMILY_COPY: Record<string, Copy> = {
+  "tall-tote": { label: "Wysoki kuferek", description: "Wysoki korpus z parą płaskich drewnianych uchwytów i kokardą.", reference: "forest-ocean-wood-bow" },
+  shoulder: { label: "Listonoszka", description: "Prostokątny korpus z zamkiem, plecionym paskiem i dużą kokardą.", reference: "chocolate-crossbody-bow" },
   satchel: {
     label: "Kuferek koniakowy",
     description: "Model na podstawie zdjęcia: miedziano-czekoladowe ombré, koniakowa klapa z przeszyciem, pleciona rączka i ornamentowy pasek.",
@@ -66,7 +69,8 @@ function syncButtonCopy(dialog: HTMLElement) {
   dialog.querySelectorAll<HTMLButtonElement>("button[data-builder-key][data-builder-value]").forEach((button) => {
     const key = button.dataset.builderKey || "";
     const value = button.dataset.builderValue || "";
-    const copy = key === "family" ? FAMILY_COPY[value] : key === "stitch" ? STITCH_COPY[value] : undefined;
+    const model = ABAGS_REFERENCE_MODELS.find(model => model.id === button.dataset.abagsPhotoModel);
+    const copy = model ? { label: model.label, description: model.description, reference: model.id } : key === "family" ? FAMILY_COPY[value] : key === "stitch" ? STITCH_COPY[value] : undefined;
     if (!copy) return;
 
     const strong = button.querySelector(".abags-builder-option-copy strong");
@@ -83,7 +87,8 @@ function syncButtonCopy(dialog: HTMLElement) {
 function syncStageTruth(stage: HTMLElement) {
   const family = stage.dataset.family || "";
   const stitch = stage.dataset.stitch || "";
-  const familyCopy = FAMILY_COPY[family];
+  const model = getAbagsReferenceModel({family,color:stage.dataset.color||""});
+  const familyCopy = model ? {label:model.label,description:model.description,reference:model.id} : FAMILY_COPY[family];
   const stitchCopy = STITCH_COPY[stitch];
 
   stage.dataset.abagsProductOwner = "Agata";
@@ -116,7 +121,7 @@ function syncRendererClasses(stage: HTMLElement) {
 }
 
 function sync(dialog: HTMLElement) {
-  const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
+  const stage = dialog.querySelector<HTMLElement>('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]') ?? dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
   if (!stage) return;
   dialog.dataset.abagsFidelityContract = FIDELITY_VERSION;
   dialog.dataset.abagsProductScope = "agata-only";
@@ -153,7 +158,7 @@ export default function BagBuilderAbagsFidelityContract() {
       document.querySelectorAll<HTMLElement>(".abags-vc-dialog[data-abags-fidelity-contract]").forEach((dialog) => {
         delete dialog.dataset.abagsFidelityContract;
         delete dialog.dataset.abagsProductScope;
-        const stage = dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
+        const stage = dialog.querySelector<HTMLElement>('.abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]') ?? dialog.querySelector<HTMLElement>(".abags-bag-builder-stage");
         if (!stage) return;
         delete stage.dataset.abagsRealFamily;
         delete stage.dataset.abagsRealFamilyReference;
