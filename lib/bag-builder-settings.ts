@@ -2,7 +2,7 @@ import { AGATA_BUILDER_HANDLE_COMPATIBILITY, isAgataBuilderConstructionSupported
 import { getProductDb } from "./products";
 
 export const BUILDER_FAMILIES = ["tote", "round", "bucket", "mini", "satchel"] as const;
-export const BUILDER_COLORS = ["#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0", "#C7652F"] as const;
+export const BUILDER_COLORS = ["#E8DDCC", "#E4A9B5", "#24324D", "#65493D", "#C7962F", "#222124", "#B93A42", "#275C4A", "#087E81", "#A88AE0", "#C7652F", "#88583F", "#D58FAA", "#BA9ECF"] as const;
 export const BUILDER_STITCHES = ["classic", "herringbone", "basket", "shell"] as const;
 export const BUILDER_FLAPS = ["none", "crochet", "leather-black", "leather-cognac", "suede-burgundy"] as const;
 export const BUILDER_HANDLES = ["none", "wood-light", "wood-dark", "crochet", "leather-braid"] as const;
@@ -237,7 +237,7 @@ export function bagBuilderProjectCode(config: BagBuilderProjectConfig) {
 export function bagBuilderProjectSummary(config: BagBuilderProjectConfig) {
   const labels = {
     family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy" },
-    color: { "#E8DDCC": "Naturalny beż", "#E4A9B5": "Pudrowy róż", "#24324D": "Głęboki granat", "#65493D": "Czekoladowy brąz", "#C7962F": "Musztardowy", "#222124": "Czarny", "#B93A42": "Czerwony", "#275C4A": "Butelkowa zieleń", "#087E81": "Turkus", "#A88AE0": "Lawendowy", "#C7652F": "Miedziany ombré" },
+    color: { "#E8DDCC": "Naturalny beż", "#E4A9B5": "Pudrowy róż", "#24324D": "Głęboki granat", "#65493D": "Czekoladowy brąz", "#C7962F": "Musztardowy", "#222124": "Czarny", "#B93A42": "Czerwony", "#275C4A": "Butelkowa zieleń", "#087E81": "Turkus", "#A88AE0": "Lawendowy", "#C7652F": "Miedziany ombré", "#88583F": "Brąz ombré", "#D58FAA": "Róż ombré", "#BA9ECF": "Pastel wielokolorowy" },
     stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
     flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skórzana czarna", "leather-cognac": "Skórzana koniak", "suede-burgundy": "Zamszowa bordo" },
     handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy", "leather-braid": "Pleciona rączka skórzana" },
