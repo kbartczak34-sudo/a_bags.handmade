@@ -205,20 +205,33 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
   const signature = [config.family, config.color, config.stitch, supportedFlap, config.handles, config.strap, config.hardware, config.accent].join("|");
   const handleTop = topY(config.family);
   const bagColor = config.color || "#EFE6DE";
+  const yarnGradients: Record<string, readonly [string, string, string]> = {
+    "#C7652F": ["#D7752E", "#A74828", "#422921"],
+    "#88583F": ["#C19672", "#815640", "#38201A"],
+    "#D58FAA": ["#EFBBC6", "#BD6588", "#792C4B"],
+    "#BA9ECF": ["#EAD4AB", "#E2A6BF", "#8763AB"],
+  };
+  const yarnStops = yarnGradients[bagColor];
+  const yarnBaseFill = yarnStops ? "url(#abags-yarn-ombre)" : bagColor;
 
   return <div className="abags-bag-builder-stage" data-abags-live-stage="true" data-abags-engine-stage="true" data-builder-signature={signature} data-approx-width-cm={config.family ? ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm : ""} data-matching-crochet-back="true" data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
+        {yarnStops && <linearGradient id="abags-yarn-ombre" gradientUnits="userSpaceOnUse" x1="0" y1="140" x2="0" y2="520">
+          <stop offset="0%" stopColor={yarnStops[0]} />
+          <stop offset="54%" stopColor={yarnStops[1]} />
+          <stop offset="100%" stopColor={yarnStops[2]} />
+        </linearGradient>}
         <filter id="abags-shadow" x="-30%" y="-25%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="16" floodColor="#4C3438" floodOpacity="0.16" /></filter>
         <linearGradient id="abags-wood-light" x1="0" x2="1"><stop offset="0" stopColor="#E7C995" /><stop offset=".48" stopColor="#F3DDAF" /><stop offset="1" stopColor="#CFA96D" /></linearGradient>
         <linearGradient id="abags-wood-dark" x1="0" x2="1"><stop offset="0" stopColor="#4B251A" /><stop offset=".5" stopColor="#7B4530" /><stop offset="1" stopColor="#32170F" /></linearGradient>
         <linearGradient id="abags-leather" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={flapColor(config)} stopOpacity=".96" /><stop offset="1" stopColor={flapColor(config)} stopOpacity=".78" /></linearGradient>
         <linearGradient id="abags-woven" x1="0" x2="1"><stop offset="0" stopColor="#E6D6C0" /><stop offset=".22" stopColor="#8A666C" /><stop offset=".44" stopColor="#F2E7DB" /><stop offset=".66" stopColor="#C7962F" /><stop offset=".88" stopColor="#8A666C" /><stop offset="1" stopColor="#E6D6C0" /></linearGradient>
         <pattern id="abags-empty" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#FFFDFC" /><path d="M-2 16 L16 -2 M6 18 L18 6" stroke="#D8C9C5" strokeWidth="2" opacity=".48" /></pattern>
-        <pattern id="abags-yarn-classic" width="28" height="24" patternUnits="userSpaceOnUse"><rect width="28" height="24" fill={bagColor} /><path d="M-3 23 C4 12 9 6 15 -2 M12 27 C19 16 24 10 31 1" fill="none" stroke="#FFFFFF" strokeWidth="5.8" strokeLinecap="round" opacity=".24" /><path d="M-3 21 C4 10 9 4 15 -4 M12 25 C19 14 24 8 31 -1" fill="none" stroke="#2A1D20" strokeWidth="1.8" strokeLinecap="round" opacity=".18" /></pattern>
-        <pattern id="abags-yarn-herringbone" width="36" height="30" patternUnits="userSpaceOnUse"><rect width="36" height="30" fill={bagColor} /><path d="M-2 2 L9 15 L-2 28 M18 2 L29 15 L18 28 M38 2 L27 15 L38 28 M18 2 L7 15 L18 28" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity=".22" /><path d="M-2 3 L9 15 L-2 27 M18 3 L29 15 L18 27 M38 3 L27 15 L38 27 M18 3 L7 15 L18 27" fill="none" stroke="#261A1C" strokeWidth="1.4" opacity=".2" /></pattern>
-        <pattern id="abags-yarn-basket" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill={bagColor} /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" opacity=".2" /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#2A1D20" strokeWidth="1.5" strokeLinecap="round" opacity=".18" /></pattern>
-        <pattern id="abags-yarn-shell" width="42" height="34" patternUnits="userSpaceOnUse"><rect width="42" height="34" fill={bagColor} /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity=".22" /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#2A1D20" strokeWidth="1.5" opacity=".18" /></pattern>
+        <pattern id="abags-yarn-classic" width="28" height="24" patternUnits="userSpaceOnUse"><rect width="28" height="24" fill={yarnBaseFill} /><path d="M-3 23 C4 12 9 6 15 -2 M12 27 C19 16 24 10 31 1" fill="none" stroke="#FFFFFF" strokeWidth="5.8" strokeLinecap="round" opacity=".24" /><path d="M-3 21 C4 10 9 4 15 -4 M12 25 C19 14 24 8 31 -1" fill="none" stroke="#2A1D20" strokeWidth="1.8" strokeLinecap="round" opacity=".18" /></pattern>
+        <pattern id="abags-yarn-herringbone" width="36" height="30" patternUnits="userSpaceOnUse"><rect width="36" height="30" fill={yarnBaseFill} /><path d="M-2 2 L9 15 L-2 28 M18 2 L29 15 L18 28 M38 2 L27 15 L38 28 M18 2 L7 15 L18 28" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity=".22" /><path d="M-2 3 L9 15 L-2 27 M18 3 L29 15 L18 27 M38 3 L27 15 L38 27 M18 3 L7 15 L18 27" fill="none" stroke="#261A1C" strokeWidth="1.4" opacity=".2" /></pattern>
+        <pattern id="abags-yarn-basket" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill={yarnBaseFill} /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" opacity=".2" /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#2A1D20" strokeWidth="1.5" strokeLinecap="round" opacity=".18" /></pattern>
+        <pattern id="abags-yarn-shell" width="42" height="34" patternUnits="userSpaceOnUse"><rect width="42" height="34" fill={yarnBaseFill} /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity=".22" /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#2A1D20" strokeWidth="1.5" opacity=".18" /></pattern>
       </defs>
       <ellipse cx="300" cy="526" rx="168" ry="20" fill="#5A4245" opacity=".10" filter="url(#abags-shadow)" />
       {!hasShape && <g className="abags-builder-empty-state"><path d="M190 190 Q300 135 410 190 L430 440 Q300 500 170 440 Z" fill="none" stroke="#CDBABD" strokeWidth="4" strokeDasharray="10 10" /><text x="300" y="315" textAnchor="middle" className="abags-builder-svg-title">Wybierz fason</text><text x="300" y="342" textAnchor="middle" className="abags-builder-svg-copy">Tutaj zbudujesz torebkę od podstaw</text></g>}
