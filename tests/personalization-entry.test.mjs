@@ -56,7 +56,8 @@ test("builder composes independent construction layers in realtime", () => {
 });
 
 test("builder exposes all requested construction decisions", () => {
-  assert.match(builder, /title="Fason"/);
+  assert.match(builder, /<FamilyChoices config=\{config\}/);
+  assert.match(builder, /<legend><span>01<\/span>Fason<\/legend>/);
   assert.match(builder, /title="Kolor sznurka"/);
   assert.match(builder, /title="Ścieg szydełkowy"/);
   assert.match(builder, /title="Klapa"/);

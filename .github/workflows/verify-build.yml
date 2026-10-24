@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
     steps:
@@ -71,7 +71,7 @@ jobs:
           done
           curl --fail --silent --max-time 5 http://127.0.0.1:5173/ -o /dev/null
           node scripts/smoke-customizer-lifecycle.mjs
-          node scripts/smoke-customizer-anchor-integrity.mjs
+          ABAGS_ANCHOR_QA_SUITE=legacy node scripts/smoke-customizer-anchor-integrity.mjs
 
       - name: Upload customizer browser evidence
         if: ${{ always() }}
@@ -89,5 +89,52 @@ jobs:
         with:
           name: regression-tests-${{ github.run_number }}
           path: artifacts/regression-tests.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  reference-model-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
+      ABAGS_PRODUCTION_URL: "http://127.0.0.1:5173"
+      ABAGS_REALTIME_QA_DIR: "artifacts/customizer-reference-browser"
+      ABAGS_ANCHOR_QA_SUITE: "reference"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Production build for customer browser
+        run: npm run build
+      - name: Browser acceptance for all six real reference-model selections
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node scripts/customizer-qa-server.mjs > artifacts/reference-qa-server.log 2>&1 &
+          qa_server=$!
+          trap 'kill "$qa_server" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --max-time 5 http://127.0.0.1:5173/ -o /dev/null; then break; fi
+            if ! kill -0 "$qa_server" 2>/dev/null; then cat artifacts/reference-qa-server.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent --max-time 5 http://127.0.0.1:5173/ -o /dev/null
+          node scripts/smoke-customizer-anchor-integrity.mjs
+      - name: Upload reference-model desktop/mobile browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: customizer-reference-${{ github.run_number }}
+          path: |
+            artifacts/customizer-reference-browser/
+            artifacts/reference-qa-server.log
           if-no-files-found: warn
           retention-days: 7

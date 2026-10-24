@@ -21,6 +21,14 @@ export const ABAGS_FAMILY_PRESETS = {
     handles: "none", strap: "chain", hardware: "gold", accent: "tassel",
   },
   satchel: ABAGS_COGNAC_PRESET,
+  "tall-tote": {
+    family: "tall-tote", color: "#0E9AA7", stitch: "classic", flap: "none",
+    handles: "wood-light", strap: "woven-striped", hardware: "gold", accent: "bow",
+  },
+  shoulder: {
+    family: "shoulder", color: "#65493D", stitch: "classic", flap: "none",
+    handles: "none", strap: "crochet-braid", hardware: "gold", accent: "bow",
+  },
 } as const satisfies Record<BuilderFamily, BagBuilderProjectConfig>;
 
 export function createBagBuilderFamilyConfig(family: BuilderFamily): BagBuilderProjectConfig {

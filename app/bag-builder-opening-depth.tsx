@@ -311,7 +311,7 @@ export default function BagBuilderOpeningDepth() {
 
     const paintFrame = () => {
       frameRef.current = null;
-      const family = (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family;
+      const family = (stage.dataset.family === "tall-tote" ? "tote" : (stage.dataset.family === "satchel" || stage.dataset.family === "shoulder") ? "bucket" : stage.dataset.family || "") as Family;
       if (
         source.dataset.abagsCrochetOwner === "webgl-yarn" ||
         stage.dataset.abagsFinal3d !== "ready" ||

@@ -16,6 +16,8 @@ test("each Fidelity V4 family is locked to a real Agata product reference", () =
     "cream-burgundy-flap",
     "small-multicolor-chain",
     "cognac-ombre-braided-satchel",
+    "chocolate-crossbody-bow",
+    "forest-ocean-wood-bow",
   ]) {
     assert.ok(spec.includes(`reference: "${reference}"`), `missing geometry reference ${reference}`);
     assert.ok(contract.includes(reference), `customer fidelity contract must expose ${reference}`);
@@ -25,7 +27,7 @@ test("each Fidelity V4 family is locked to a real Agata product reference", () =
 test("family contract owns hardware anchors instead of renderer guesses", () => {
   assert.match(spec, /ringY: number/);
   const ringValues = [...spec.matchAll(/ringY:\s*([0-9.]+)/g)].map((match) => match[1]);
-  assert.equal(ringValues.length, 5, "all five families must define a ringY anchor");
+  assert.equal(ringValues.length, 7, "all seven families must define a ringY anchor");
   assert.ok(ringValues.every((value) => Number.isFinite(Number(value))));
   assert.match(renderer, /function familyMetrics[\s\S]*ringY:s\.ringY/);
   assert.match(renderer, /const ringY\s*=\s*metrics\.ringY/);

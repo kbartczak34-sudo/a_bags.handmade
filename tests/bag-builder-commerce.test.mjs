@@ -14,7 +14,7 @@ const adminRoute = fs.readFileSync("app/api/admin/bag-builder-settings/route.ts"
 
 test("Bag Builder pricing is fail-safe until owner enables real prices", () => {
   assert.match(settings, /pricingEnabled:\s*false/);
-  assert.match(settings, /familyBaseCents:\s*\{ tote: null, round: null, bucket: null, mini: null, satchel: null \}/);
+  assert.match(settings, /familyBaseCents:\s*\{ tote: null, round: null, bucket: null, mini: null, satchel: null, "tall-tote": null, shoulder: null \}/);
   assert.match(commerce, /Wycena indywidualna/);
   assert.doesNotMatch(settings, /familyBaseCents:\s*\{[^}]*[1-9]\d{3}/);
 });

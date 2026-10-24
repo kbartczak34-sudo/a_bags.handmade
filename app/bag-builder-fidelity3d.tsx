@@ -8,12 +8,14 @@ import {
   type FidelityV4Family,
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
+import { ABAGS_YARN_PALETTES, getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
+import { getAbagsReferenceModel } from "../lib/abags-reference-models";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel";
+type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
 type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
-type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament";
+type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament" | "crochet-braid" | "woven-floral" | "woven-striped" | "chain-leather";
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
@@ -37,6 +39,10 @@ type Mesh = {
 };
 
 type Renderer = {
+  referenceKey?: string;
+  referenceParts?: Array<{ name: string; tone: "metal" | "engraving" | "zipper" | "fabric" | "cord" }>;
+  referenceTriangles?: number;
+  bandPrint?: number;
   ombre?: boolean;
   ombrePalette?: number;
   cognacParts?: CognacPart[];
@@ -64,7 +70,7 @@ type Renderer = {
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
   attribs: { position: number; normal: number; uv: number };
-  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds" | "yarnGradientAxis" | "yarnGradientRange" | "yarnOmbre", WebGLUniformLocation>;
+  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds" | "yarnGradientAxis" | "yarnGradientRange" | "yarnOmbre" | "fabricStyle" | "fabricFlower" | "fabricLeaf" | "fabricBorder" | "bandPrint", WebGLUniformLocation>;
 };
 
 type Point = [number, number];
@@ -122,10 +128,10 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
     return [family, {
       bodyY: spec.bodyY,
       topY: spec.topY,
-      frontZ: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1) / 2,
-      baseDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1),
-      topDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1) * 0.92,
-      bottomDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1) * 1.12,
+      frontZ: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1) / 2,
+      baseDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1),
+      topDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1) * 0.92,
+      bottomDepth: spec.depth * (family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1) * 1.12,
       width: spec.rx,
       handleScale: spec.handleScale[0],
       handleScaleY: spec.handleScale[1],
@@ -326,7 +332,7 @@ function depthAt(family: Exclude<Family, "">, y: number) {
   const edge = Math.abs(normalizedY);
   const belly = 1 + Math.sin((1 - edge) * Math.PI * 0.5) * (0.035 + spec.depth * 0.035);
   const topCompression = 1 - Math.max(0, normalizedY) * 0.04;
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1;
   return spec.depth * depthScale * belly * topCompression;
 }
 
@@ -339,7 +345,7 @@ function softBodyOffset(family: Exclude<Family, "">, x: number, y: number) {
   const lower = Math.pow(clamp((-yn + 0.02) / 1.02, 0, 1), 1.45);
   const softness = (0.022 + spec.ry * 0.018) * familyFactor;
   const sagY = -softness * center * lower;
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1;
   const bulgeZ = spec.depth * depthScale * (0.018 + 0.018 * familyFactor) * center * (1 - Math.min(1, Math.abs(yn))) * (0.72 + 0.28 * lower);
   return { y: sagY, z: bulgeZ };
 }
@@ -360,7 +366,7 @@ function makeVariableDepthBody(family: Exclude<Family, "">) {
   const cy = contour.reduce((sum, point) => sum + point[1], 0) / contour.length;
   const uvFor = (point: Point) => [(point[0] - minX) / Math.max(0.001, maxX - minX), (point[1] - minY) / Math.max(0.001, maxY - minY)] as const;
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : 1;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "mini" ? 1.42 : family === "satchel" ? 1.35 : family === "tall-tote" ? 1.55 : family === "shoulder" ? 1.42 : 1;
   const bevel = Math.min(spec.bevel, spec.depth * 0.14);
   const inset = 0.965;
 
@@ -546,7 +552,7 @@ function woodHandleMountHeight(family: Exclude<Family, "">) {
 function woodHandleMatrix(family: Exclude<Family, "">, z: number) {
   const profile = PROFILES[family];
   return matrix([0, woodHandleMountHeight(family), z],
-    [profile.width * .84, Math.max(.28, profile.handleScaleY * 1.35), 1],
+    [profile.width * (family === "tall-tote" ? 1.12 : .84), Math.max(.28, profile.handleScaleY * 1.35), 1],
     [z < 0 ? 0.40 : -0.40, 0, 0]);
 }
 
@@ -772,7 +778,8 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
   const transform = woodHandleMatrix(family, z);
   const side = z < 0 ? -1 : 1;
   const radius = spec.rx * 5 / 160 * .78;
-  const coil = .042 + radius * .72;
+  const coil = (family === "tall-tote" ? .055 : .042) + radius * .72;
+  const coilDepth = family === "tall-tote" ? .026 + radius * .72 : coil;
   const turns = Math.round(Math.PI * .44 / (radius * 2.06));
   const start = Math.PI + .10, span = Math.PI - .20;
   const world = (x: number, y: number, depth: number): YarnPoint => [
@@ -785,7 +792,7 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
     const phase = progress * turns * Math.PI * 2;
     const radial = normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0);
     return world(.46 * Math.cos(angle) + radial[0] * coil * Math.cos(phase),
-      .42 * Math.sin(angle) + radial[1] * coil * Math.cos(phase), side * coil * Math.sin(phase));
+      .42 * Math.sin(angle) + radial[1] * coil * Math.cos(phase), side * coilDepth * Math.sin(phase));
   };
   const winding = Array.from({ length: turns * 14 + 1 }, (_, i) => at(i / (turns * 14)));
   const seams: YarnPoint[][] = [];
@@ -1515,6 +1522,21 @@ void main(){
   gl_Position=uProjection*uView*world;
 }`;
 
+// Generate both smooth dye transitions and distinct pastel bands from the
+// same palette data used by the swatches and SVG fallback.
+const REFERENCE_YARN_RAMPS = ABAGS_YARN_PALETTES.map(palette => {
+  const id = palette.color === "#88583F" ? 2 : palette.color === "#D58FAA" ? 3 : palette.color === "#BA9ECF" ? 4 : 5;
+  const rgb = (color: string) => `vec3(${Array.from(hex(color)).map(n => n.toFixed(6)).join(",")})`;
+  let code = `if(uYarnOmbre>${id - .5}&&uYarnOmbre<${id + .5}){dyed=${rgb(palette.colors[0])};`;
+  for (let i = 1; i < palette.colors.length; i++) {
+    const edge = palette.edges[i - 1];
+    const start = palette.mode === "bands" ? edge - .012 : i === 1 ? 0 : palette.edges[i - 2];
+    const end = palette.mode === "bands" ? edge + .012 : edge;
+    code += `dyed=mix(dyed,${rgb(palette.colors[i])},smoothstep(${start.toFixed(4)},${end.toFixed(4)},height));`;
+  }
+  return code + "}";
+}).join("\n");
+
 const FRAGMENT = `
 #ifdef ABAGS_HAS_DERIVATIVES
 #extension GL_OES_standard_derivatives : enable
@@ -1531,6 +1553,8 @@ varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
 uniform float uYarnOmbre;
+uniform float uFabricStyle,uBandPrint;
+uniform vec3 uFabricFlower,uFabricLeaf,uFabricBorder;
 uniform vec2 uYarnGradientRange;
 uniform mediump float uRelief;
 uniform mediump float uStitch;
@@ -1598,14 +1622,8 @@ void main(){
     vec3 low=vec3(.25,.14,.11),mid=vec3(.64,.23,.10),high=vec3(.84,.39,.14);
     // Palette identifiers are selected by the customer color option. The
     // height is evaluated in physical bag space, not screen coordinates.
-    if(uYarnOmbre>1.5 && uYarnOmbre<2.5){
-      low=vec3(.22,.125,.10);mid=vec3(.51,.34,.25);high=vec3(.76,.59,.45);
-    }else if(uYarnOmbre>2.5 && uYarnOmbre<3.5){
-      low=vec3(.475,.17,.294);mid=vec3(.741,.396,.533);high=vec3(.937,.733,.776);
-    }else if(uYarnOmbre>3.5){
-      low=vec3(.529,.388,.671);mid=vec3(.886,.651,.749);high=vec3(.918,.831,.671);
-    }
     vec3 dyed=mix(mix(low,mid,smoothstep(.12,.62,height)),high,smoothstep(.65,.97,height));
+    ${REFERENCE_YARN_RAMPS}
     pigment=dyed*(uMaterial<6.5?.78:1.0);
   }
   if(uMaterial<.5){
@@ -1685,10 +1703,19 @@ void main(){
     vec2 leaf=flower-vec2(.22,-.17);
     float leaves=1.0-smoothstep(.80,1.0,length(vec2((leaf.x+leaf.y)*5.0,(leaf.y-leaf.x)*11.0)));
     float border=1.0-smoothstep(.035,.055,min(vUv.y,1.0-vUv.y));
-    pigment=mix(pigment,vec3(.31,.41,.30),leaves*.72);
-    pigment=mix(pigment,mix(vec3(.80,.40,.51),vec3(.98,.90,.80),step(.48,seed)),petals*.85);
+    if(uFabricStyle>1.5&&uFabricStyle<2.5){
+      float stem=1.0-smoothstep(.015,.035,abs(flower.x-.12*sin(flower.y*5.0)));
+      leaves=max(leaves,stem*.6);petals*=.32;
+    }
+    if(uFabricStyle>5.5){
+      petals=max(petals,1.0-smoothstep(.21,.27,radius-.04*cos(angle*9.0)));
+      petals*=.72+.28*cos(radius*54.0+angle*.7);
+    }
+    pigment=mix(pigment,uFabricStyle>0.0?uFabricLeaf:vec3(.31,.41,.30),leaves*.72);
+    vec3 flowerInk=uFabricStyle>0.0?mix(uFabricFlower,pigment,step(.65,seed)*.42):mix(vec3(.80,.40,.51),vec3(.98,.90,.80),step(.48,seed));
+    pigment=mix(pigment,flowerInk,petals*.85);
     pigment=mix(pigment,vec3(.72,.50,.23),center*.78);
-    pigment=mix(pigment,vec3(.28,.32,.34),border*.78);
+    pigment=mix(pigment,uFabricStyle>0.0?uFabricBorder:vec3(.28,.32,.34),border*.78);
     detail=.98+.012*sin(vUv.x*120.0)*sin(vUv.y*74.0);
     rough=.53;
     fibreSheen=.025;
@@ -1728,6 +1755,15 @@ void main(){
     pigment=mix(vec3(.075,.065,.06),vec3(.91,.86,.74),max(diamond,selvedge)*.95);
     pigment=mix(pigment,vec3(.66,.34,.18),petals*.95);
     pigment=mix(pigment,vec3(.91,.86,.74),flowerCentre*.95);
+    if(uBandPrint>.5&&uBandPrint<1.5){
+      pigment=mix(vec3(.96,.90,.86),uFabricFlower,petals*.86);
+      pigment=mix(pigment,uFabricLeaf,(1.0-smoothstep(.045,.08,abs(p.x-.24*sin(p.y*9.0))))*.5);
+      pigment=mix(pigment,uFabricBorder,selvedge*.9);
+    }else if(uBandPrint>1.5){
+      float band=step(.24,vUv.y)-step(.41,vUv.y)+step(.59,vUv.y)-step(.76,vUv.y);
+      pigment=mix(vec3(.89,.84,.75),vec3(.52,.49,.43),band*.65);
+      pigment=mix(pigment,vec3(.80,.66,.47),(step(.45,vUv.y)-step(.55,vUv.y))*.65);
+    }
     detail=.96+.025*sin(vUv.x*820.0)*sin(vUv.y*240.0);
     rough=.88;fibreSheen=.02;
   }
@@ -1829,7 +1865,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       uv: gl.getAttribLocation(program, "aUv"),
     },
     uniforms: {
-      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"), yarnGradientAxis: req("uYarnGradientAxis"), yarnGradientRange: req("uYarnGradientRange"), yarnOmbre: req("uYarnOmbre"),
+      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"), yarnGradientAxis: req("uYarnGradientAxis"), yarnGradientRange: req("uYarnGradientRange"), yarnOmbre: req("uYarnOmbre"), fabricStyle: req("uFabricStyle"), fabricFlower: req("uFabricFlower"), fabricLeaf: req("uFabricLeaf"), fabricBorder: req("uFabricBorder"), bandPrint: req("uBandPrint"),
     },
   };
 }
@@ -1936,6 +1972,10 @@ function ensureStrapBinding(renderer: Renderer, family: Exclude<Family, "">) {
 function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
   if (!config.family || config.accent === "none") return null;
   const family = config.family, spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  if (family === "shoulder" && (config.accent === "scarf" || config.accent === "bow")) {
+    const x = -spec.rx * .28, y = spec.bodyY + spec.ry * .58;
+    return [x, y, ornamentSurfaceZ(config, x, y, .018)];
+  }
   if ((config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")) {
     const model = woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]);
     const angle = Math.PI - .16;
@@ -2100,6 +2140,7 @@ function makeOrnamentGeometry(config: Config) {
     return current.mesh;
   };
   const point = (x: number, y: number, z: number, clearance = .012): YarnPoint => {
+    if (family === "shoulder") x *= 1.40;
     const wx = anchor[0] + x, wy = anchor[1] + y, localY = wy - spec.bodyY;
     const taper = 1 + spec.taper * localY / spec.ry;
     const fraction = Math.pow(Math.pow(Math.abs(wx / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(localY / spec.ry), spec.power), 1 / spec.power);
@@ -2137,9 +2178,16 @@ function makeOrnamentGeometry(config: Config) {
       appendOrnamentRibbon(fabric, sample, rows);
       for (const edge of [-1, 1]) tube(hem, Array.from({ length: rows + 1 }, (_, i) => sample(i / rows, edge)), .0018);
     };
-    const compact = config.accent === "bow";
-    for (const side of [-1, 1]) ribbon((u, v) => point(...foldedRibbonLoop(u, v, side, compact), .006), 48);
-    for (const side of [-1, 1]) ribbon((u, v) => point(...foldedRibbonTail(u, v, side, compact), side < 0 ? .018 : .007), 48);
+    const compact = config.accent === "bow" && family !== "tall-tote" && family !== "shoulder";
+    for (const side of [-1, 1]) ribbon((u, v) => {
+      const p=foldedRibbonLoop(u,v,side,compact);
+      if(family === "tall-tote" || family === "shoulder"){p[0]*=family === "tall-tote"?1.12:1;p[1]*=1.35;}
+      return point(...p,.006);
+    },48);
+    for (const side of [-1, 1]) ribbon((u, v) => {
+      const p=foldedRibbonTail(u,v,side,compact);if(family === "shoulder")p[1]*=.84;
+      return point(...p,side < 0 ? .018 : .007);
+    },48);
     if (config.handles.startsWith("wood")) {
       appendOrnamentRibbon(fabric, (u, v) => woodHandleRibbonPoint(family, u, v), 40, 8);
     }
@@ -2321,8 +2369,113 @@ function ensureCognacConstruction(renderer: Renderer) {
   for (const part of renderer.cognacParts) renderer.meshes[part.name] = createMesh(renderer.gl, part.mesh);
 }
 
-type BandTone = "surface" | "edge" | "stitch";
-type BandKind = "woven" | "leather" | "ornament";
+function makeReferenceWoodHandle(): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const w = .055, h = .026, r = .007, q = Math.SQRT1_2;
+  const section = [[w-r,-h,0,-1],[w-r+r*q,-h+r-r*q,q,-q],[w,-h+r,1,0],
+    [w,h-r,1,0],[w-r+r*q,h-r+r*q,q,q],[w-r,h,0,1],[-w+r,h,0,1],
+    [-w+r-r*q,h-r+r*q,-q,q],[-w,h-r,-1,0],[-w,-h+r,-1,0],
+    [-w+r-r*q,-h+r-r*q,-q,-q],[-w+r,-h,0,-1]];
+  for (let row = 0; row <= 96; row++) {
+    const a = row / 96 * Math.PI * 2, radial = normalize(Math.cos(a) / .46, Math.sin(a) / .42, 0);
+    for (let col = 0; col <= 12; col++) {
+      const [u,z,nx,nz] = section[col % 12];
+      mesh.positions.push(.46*Math.cos(a)+radial[0]*u,.42*Math.sin(a)+radial[1]*u,z);
+      mesh.normals.push(...normalize(radial[0]*nx,radial[1]*nx,nz));
+      mesh.uvs.push(row/96,col/12);
+      if(row<96&&col<12){const i=row*13+col,j=i+13;mesh.indices.push(i,j,i+1,j,j+1,i+1);}
+    }
+  }
+  return mesh;
+}
+
+function makeReferenceConstruction(config: Config) {
+  const family = config.family as "tall-tote" | "shoulder", spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const model = getAbagsReferenceModel(config);
+  const empty = (): FabricMesh => ({positions:[],normals:[],uvs:[],indices:[]});
+  const metal = empty(), engraving = empty(), zipper = empty(), fabric = empty(), cord = empty();
+  const plate = (target: FabricMesh, width: number, height: number, at: YarnPoint, depth = .008, rotation: YarnPoint = [0,0,0]) =>
+    appendOrnamentMesh(target,makeCognacPlate(roundedRectangle(width,height,Math.min(height*.4,.032)),depth),matrix(at,[1,1,1],rotation));
+  const tube = (target: FabricMesh, points: YarnPoint[], radius: number) => appendCord(target,points,radius,()=>[0,0,1],()=>true,8);
+  const badgeX = family === "shoulder" ? spec.rx*.32 : 0;
+  const badgeY = model?.fabric === 5 ? spec.bodyY+spec.ry*.72 : spec.bodyY-spec.ry*.73;
+  const badgeZ = ornamentSurfaceZ({...config,flap:"none"},badgeX,badgeY,.015);
+  plate(metal,.32,.080,[badgeX,badgeY,badgeZ]);
+  for(const side of [-1,1])appendOrnamentMesh(metal,makeEllipsoid(1,1,1,8,12),matrix([badgeX+side*.137,badgeY,badgeZ+.009],[.007,.007,.004]));
+  const glyphs: Record<string,Point[][]> = {
+    H:[[[0,0],[0,5]],[[3,0],[3,5]],[[0,2.5],[3,2.5]]], A:[[[0,0],[1.5,5],[3,0]],[[.6,2],[2.4,2]]],
+    N:[[[0,0],[0,5],[3,0],[3,5]]], D:[[[0,0],[0,5],[2,5],[3,4],[3,1],[2,0],[0,0]]],
+    M:[[[0,0],[0,5],[1.5,2.5],[3,5],[3,0]]], E:[[[3,0],[0,0],[0,5],[3,5]],[[0,2.5],[2.5,2.5]]],
+  };
+  const label="HANDMADE",scale=.0068,width=(label.length*4-1)*scale;
+  [...label].forEach((letter,index)=>{
+    for(const stroke of glyphs[letter])tube(engraving,stroke.map(([x,y]):YarnPoint=>[badgeX-width/2+index*4*scale+x*scale,badgeY-.017+y*scale,badgeZ+.010]),.0009);
+  });
+  if(family === "shoulder"){
+    const top = Math.max(...openingPath(family).map(p=>p[1]))+.008;
+    plate(fabric,spec.rx*1.78,depthAt(family,spec.ry)*.94,[0,top-.006,0],.009,[-Math.PI/2,0,0]);
+    const rows=12,halfDepth=depthAt(family,spec.ry)*.43;
+    for(let row=0;row<=rows;row++){
+      const z=-halfDepth+2*halfDepth*row/rows;if(Math.abs(z)<.047)continue;
+      tube(cord,Array.from({length:49},(_,i):YarnPoint=>[-spec.rx*.88+spec.rx*1.76*i/48,top+.002+.006*Math.sin(i*Math.PI/3),z]),spec.rx*5/160*.50);
+    }
+    plate(zipper,spec.rx*1.76,.075,[0,top+.011,0],.009,[-Math.PI/2,0,0]);
+    for(let i=0;i<64;i++){
+      const x=-spec.rx*.85+i/63*spec.rx*1.70;
+      for(const side of [-1,1])appendOrnamentMesh(metal,makeEllipsoid(1,1,1,6,8),matrix([x+(side<0?.009:0),top+.008,side*.016],[.010,.006,.018]));
+    }
+    plate(metal,.10,.061,[-spec.rx*.78,top+.014,0],.011,[-Math.PI/2,0,.08]);
+    appendOrnamentMesh(metal,makeArchTube(.025,.070,0,.006,28,8,true),matrix([-spec.rx*.84,top+.052,.012],[1,1,1],[-.8,0,.65]));
+  }
+  return [
+    {name:"reference-metal",tone:"metal" as const,mesh:metal},
+    {name:"reference-engraving",tone:"engraving" as const,mesh:engraving},
+    ...(zipper.indices.length?[
+      {name:"reference-zipper",tone:"zipper" as const,mesh:zipper},
+      {name:"reference-fabric",tone:"fabric" as const,mesh:fabric},
+      {name:"reference-cord",tone:"cord" as const,mesh:cord},
+    ]:[]),
+  ];
+}
+
+function ensureReferenceConstruction(renderer: Renderer, config: Config) {
+  const family = config.family;
+  const active = family === "tall-tote" || family === "shoulder";
+  const reference = getAbagsReferenceModel(config);
+  const key = active ? family+":"+(reference?.id??"custom") : "none";
+  if(renderer.referenceKey===key)return;
+  for(const part of renderer.referenceParts??[]){
+    const mesh=renderer.meshes[part.name];
+    for(const buffer of [mesh.position,mesh.normal,mesh.uv,mesh.index])renderer.gl.deleteBuffer(buffer);
+    delete renderer.meshes[part.name];
+  }
+  renderer.referenceParts=[];renderer.referenceTriangles=0;renderer.referenceKey=key;
+  if(!active)return;
+  if(!renderer.meshes[family]){
+    renderer.meshes[family]=createMesh(renderer.gl,makeVariableDepthBody(family));
+    renderer.meshes[family+"Interior"]=createMesh(renderer.gl,makeOpeningInterior(family));
+    renderer.meshes[family+"LiningSeam"]=createMesh(renderer.gl,makeOpeningLiningSeam(family));
+    renderer.meshes[family+"Chain"]=createMesh(renderer.gl,familyShoulderChainMesh(family));
+  }
+  if(family==="tall-tote"&&!renderer.meshes.referenceWoodHandle)renderer.meshes.referenceWoodHandle=createMesh(renderer.gl,makeReferenceWoodHandle());
+  renderer.referenceParts=makeReferenceConstruction(config).map(({name,tone,mesh})=>{
+    renderer.meshes[name]=createMesh(renderer.gl,mesh);
+    renderer.referenceTriangles=(renderer.referenceTriangles??0)+mesh.indices.length/3;
+    return {name,tone};
+  });
+}
+
+type BandTone = "surface" | "edge" | "stitch" | "metal";
+type BandKind = "woven" | "leather" | "ornament" | "crochet" | "floral" | "striped" | "chain-leather";
+
+function crochetShoulderStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family],span=spec.rx*spec.attachmentWidthFactor;
+  const points:YarnPoint[]=[[-span,0,0],[-span-.13,-.35,.18],[-span*1.10,-1.40,.43],
+    [-span*.55,-1.78,.69],[span*.45,-1.72,.72],[span*1.12,-1.36,.48],[span+.10,-.40,.18],[span,0,0]];
+  const u=clamp(t,0,1)*(points.length-1),i=Math.min(points.length-2,Math.floor(u)),f=u-i;
+  const a=points[Math.max(0,i-1)],b=points[i],c=points[i+1],d=points[Math.min(points.length-1,i+2)];
+  return b.map((n,k)=>.5*(2*n+(-a[k]+c[k])*f+(2*a[k]-5*n+4*c[k]-d[k])*f*f+(-a[k]+3*n-3*c[k]+d[k])*f*f*f)*(k===1?.70:1)) as YarnPoint;
+}
 
 function ornamentStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family], span = spec.rx * spec.attachmentWidthFactor;
@@ -2331,7 +2484,7 @@ function ornamentStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
     [span+.30,-.10,-.18],[span+.38,-1.27,-.08],[span+.26,-1.46,.08],[span+.15,-1.27,.24],[span,0,0]];
   const u = clamp(t,0,1) * (points.length - 1), i = Math.min(points.length - 2, Math.floor(u)), f = u - i;
   const a = points[Math.max(0,i-1)], b = points[i], c = points[i+1], d = points[Math.min(points.length-1,i+2)];
-  return b.map((n,k) => .5 * (2*n + (-a[k]+c[k])*f + (2*a[k]-5*n+4*c[k]-d[k])*f*f + (-a[k]+3*n-3*c[k]+d[k])*f*f*f)) as YarnPoint;
+  return b.map((n,k) => .5 * (2*n + (-a[k]+c[k])*f + (2*a[k]-5*n+4*c[k]-d[k])*f*f + (-a[k]+3*n-3*c[k]+d[k])*f*f*f) * (family === "tall-tote" && k === 1 ? 1.12 : 1)) as YarnPoint;
 }
 
 function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: BandKind = "woven") {
@@ -2339,10 +2492,12 @@ function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: 
   const span = spec.rx * spec.attachmentWidthFactor;
   const rise = clamp(spec.ry * 0.48, 0.28, 0.44);
   const a = Math.PI * progress, bow = Math.min(.13, spec.depth * .28);
-  const center: YarnPoint = kind === "ornament" ? ornamentStrapPoint(family, progress) : [-span * Math.cos(a), rise * Math.sin(a), -bow * Math.sin(a)];
+  const hanging = kind !== "woven" && kind !== "leather";
+  const at = (t: number) => kind === "crochet" ? crochetShoulderStrapPoint(family,t) : ornamentStrapPoint(family,t);
+  const center: YarnPoint = hanging ? at(progress) : [-span * Math.cos(a), rise * Math.sin(a), -bow * Math.sin(a)];
   let tangent = normalize(span * Math.sin(a), rise * Math.cos(a), -bow * Math.cos(a));
-  if (kind === "ornament") {
-    const before = ornamentStrapPoint(family, Math.max(0, progress - .001)), after = ornamentStrapPoint(family, Math.min(1, progress + .001));
+  if (hanging) {
+    const before = at(Math.max(0, progress - .001)), after = at(Math.min(1, progress + .001));
     tangent = normalize(...after.map((n,i) => n - before[i]) as YarnPoint);
   }
   const across = normalize(-tangent[1], tangent[0], 0);
@@ -2350,22 +2505,22 @@ function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: 
   const twist = .12 * Math.sin(a * 2), c = Math.cos(twist), s = Math.sin(twist);
   const widthAxis = across.map((n, axis) => n * c + face[axis] * s) as YarnPoint;
   const normal = face.map((n, axis) => n * c - across[axis] * s) as YarnPoint;
-  const halfWidth = (kind === "leather" ? .050 : kind === "ornament" ? .095 : .062) * (.67 + .33 * Math.sin(a));
+  const halfWidth = (kind === "leather" || kind === "chain-leather" ? .050 : hanging ? .095 : .062) * (.67 + .33 * Math.sin(a));
   const halfThickness = kind === "leather" ? .009 : .006;
   return { center, tangent, widthAxis, normal, halfWidth, halfThickness };
 }
 
-function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: BandKind = "woven"): FabricMesh {
+function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: BandKind = "woven", from = 0, to = 1): FabricMesh {
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   // A rounded rectangular section gives the band two broad faces and a thin
   // finished edge. It tapers into the same calibrated clasp at both ends.
   let distance = 0;
   let previous: YarnPoint | undefined;
   for (let row = 0; row <= 84; row++) {
-    const f = shoulderBandFrame(family, row / 84, kind), w = f.halfWidth, h = f.halfThickness, r = h * .65, q = Math.SQRT1_2;
+    const f = shoulderBandFrame(family, from+(to-from)*row / 84, kind), w = f.halfWidth, h = f.halfThickness, r = h * .65, q = Math.SQRT1_2;
     if (previous) distance += Math.hypot(...f.center.map((n,i) => n - previous![i]));
     previous = f.center;
-    const uProgress = kind === "ornament" ? distance / .32 : row / 84;
+    const uProgress = kind !== "woven" && kind !== "leather" ? distance / .32 : row / 84;
     const section = [[w-r,-h,0,-1],[w-r+r*q,-h+r-r*q,q,-q],[w,-h+r,1,0],[w,h-r,1,0],[w-r+r*q,h-r+r*q,q,q],[w-r,h,0,1],[-w+r,h,0,1],[-w+r-r*q,h-r+r*q,-q,q],[-w,h-r,-1,0],[-w,-h+r,-1,0],[-w+r-r*q,-h+r-r*q,-q,-q],[-w+r,-h,0,-1]];
     for (let column = 0; column <= 12; column++) {
       const [u, z, nx, nz] = section[column % 12];
@@ -2381,7 +2536,7 @@ function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: BandKind = "
   // End caps share the face positions with separate normals, closing the
   // physical cross section without rounding the band into a rope again.
   for (const row of [0, 84]) {
-    const f = shoulderBandFrame(family, row / 84, kind), start = mesh.positions.length / 3;
+    const f = shoulderBandFrame(family, from+(to-from)*row / 84, kind), start = mesh.positions.length / 3;
     mesh.positions.push(...f.center); mesh.normals.push(...f.tangent.map(n => n * (row ? 1 : -1))); mesh.uvs.push(row / 84, .5);
     for (let j = 0; j < 12; j++) {
       mesh.positions.push(...mesh.positions.slice((row * 13 + j) * 3, (row * 13 + j + 1) * 3));
@@ -2395,6 +2550,44 @@ function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: BandKind = "
 
 function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
   const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
+  type Part = {name:string;tone:BandTone;material:number;mesh:FabricMesh};
+  const finish = (parts: Part[]) => {
+    const min:YarnPoint=[Infinity,Infinity,Infinity],max:YarnPoint=[-Infinity,-Infinity,-Infinity],pose=shoulderStrapMatrix(family);
+    for(const {mesh} of parts)for(let i=0;i<mesh.positions.length;i++){
+      const axis=i%3,value=mesh.positions[i]+pose[12+axis];min[axis]=Math.min(min[axis],value);max[axis]=Math.max(max[axis],value);
+    }
+    return {parts,bounds:{min,max}};
+  };
+  if(kind === "crochet"){
+    const mesh=empty(),radius=ABAGS_FIDELITY_V4_FAMILY_SPECS[family].rx*5/160*.84;
+    for(let lane=0;lane<3;lane++){
+      const points=Array.from({length:321},(_,i):YarnPoint=>{
+        const t=i/320,f=shoulderBandFrame(family,t,"crochet"),a=t*Math.PI*34+lane*Math.PI*2/3;
+        const width=.062*Math.sin(a)*(.40+.60*Math.sin(Math.PI*t)),depth=.022*Math.sin(2*a);
+        return f.center.map((n,j)=>n+f.widthAxis[j]*width+f.normal[j]*depth) as YarnPoint;
+      });
+      appendCord(mesh,points,radius,()=>[0,0,1],()=>true,8);
+    }
+    return finish([{name:"shoulderBandSurface",tone:"surface",material:7.1,mesh}]);
+  }
+  if(kind === "chain-leather"){
+    const chain=empty(),samples=Array.from({length:401},(_,i)=>shoulderBandFrame(family,i/400,kind));
+    const arc=[0];for(let i=1;i<samples.length;i++)arc.push(arc[i-1]+Math.hypot(...samples[i].center.map((n,j)=>n-samples[i-1].center[j])));
+    const link=makeArchTube(.023,.039,0,.006,24,8,true);
+    let cursor=0,index=0;
+    for(let distance=0;distance<arc[400];distance+=.060,index++){
+      while(cursor<399&&arc[cursor+1]<distance)cursor++;
+      const t=(cursor+(distance-arc[cursor])/Math.max(.0001,arc[cursor+1]-arc[cursor]))/400;
+      if(t>.28&&t<.65)continue;
+      const f=shoulderBandFrame(family,t,kind);
+      const pose=new Float32Array([...f.widthAxis,0,...f.tangent,0,...f.normal,0,...f.center,1]);
+      appendOrnamentMesh(chain,link,multiply(pose,rotY(index%2?Math.PI/2:0)));
+    }
+    return finish([
+      {name:"shoulderBandSurface",tone:"surface",material:2,mesh:familyShoulderStrapMesh(family,kind,.28,.65)},
+      {name:"shoulderBandMetal",tone:"metal",material:4.25,mesh:chain},
+    ]);
+  }
   const edge = empty(), seam = empty();
   const point = (t: number, side: number, face: number, inset: number, lift = 0): YarnPoint => {
     const f = shoulderBandFrame(family, t, kind);
@@ -2410,7 +2603,7 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
     }
   }
   const parts: Array<{ name: string; tone: BandTone; material: number; mesh: FabricMesh }> = [
-    { name: "shoulderBandSurface", tone: "surface", material: kind === "leather" ? 2 : kind === "ornament" ? 12 : 10, mesh: familyShoulderStrapMesh(family, kind) },
+    { name: "shoulderBandSurface", tone: "surface", material: kind === "leather" ? 2 : kind === "ornament" || kind === "floral" || kind === "striped" ? 12 : 10, mesh: familyShoulderStrapMesh(family, kind) },
     { name: "shoulderBandEdge", tone: "edge", material: kind === "leather" ? 2 : 3, mesh: edge },
     { name: "shoulderBandStitch", tone: "stitch", material: 3, mesh: seam },
   ];
@@ -2423,7 +2616,7 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
 }
 
 function ensureShoulderBandMeshes(renderer: Renderer, config: Config) {
-  const kind = config.strap === "woven-ornament" ? "ornament" : config.strap === "woven" || config.strap === "leather" ? config.strap : null;
+  const kind = config.strap === "crochet-braid" ? "crochet" : config.strap === "woven-floral" ? "floral" : config.strap === "woven-striped" ? "striped" : config.strap === "chain-leather" ? "chain-leather" : config.strap === "woven-ornament" ? "ornament" : config.strap === "woven" || config.strap === "leather" ? config.strap : null;
   const key = kind && config.family ? config.family + "|" + kind : "none";
   if (renderer.shoulderBandKey === key) return;
   for (const part of renderer.shoulderBandParts ?? []) {
@@ -2476,6 +2669,17 @@ function renderSignature(config: Config) {
   ].join("|");
 }
 
+function referenceYarnProbePoints(family: Exclude<Family, "">, root: Float32Array, width: number, height: number) {
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family],f=1/Math.tan(Math.PI/10.6),aspect=width/height;
+  return [.12,.38,.64,.90].map(level=>{
+    const p=crochetPanelPoint(family,spec.rx*.34,spec.ry*(level*2-1));
+    p[1]+=spec.bodyY;
+    const world=[0,1,2].map(i=>root[i]*p[0]+root[4+i]*p[1]+root[8+i]*p[2]+root[12+i]);
+    const distance=5-world[2];
+    return {level,x:(.5+world[0]*f/(aspect*distance)*.5)*width,y:(.5-(world[1]-.02)*f/distance*.5)*height};
+  });
+}
+
 // The verifier owns the stage, while draw() owns the WebGL canvas. Publish the
 // canvas proof onto the stage that Final3DController actually inspects.
 function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, config: Config) {
@@ -2495,6 +2699,7 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsFidelityOrnamentTriangles = canvas.dataset.abagsFidelityOrnamentTriangles || "0";
   stage.dataset.abagsFidelityOrnamentConstruction = canvas.dataset.abagsFidelityOrnamentConstruction || "";
   stage.dataset.abagsFidelityCognac = canvas.dataset.abagsFidelityCognac || "";
+  stage.dataset.abagsFidelityReferenceModel = canvas.dataset.abagsFidelityReferenceModel || "";
   stage.dataset.abagsFidelityStrapOwner = canvas.dataset.abagsFidelityStrapOwner || "";
   stage.dataset.abagsFidelityStrapBounds = canvas.dataset.abagsFidelityStrapBounds || "";
   stage.dataset.abagsFidelityStrapTriangles = canvas.dataset.abagsFidelityStrapTriangles || "0";
@@ -2531,6 +2736,7 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
     node.removeAttribute("data-abags-fidelity-ornament-triangles");
     node.removeAttribute("data-abags-fidelity-ornament-construction");
     node.removeAttribute("data-abags-fidelity-cognac");
+    node.removeAttribute("data-abags-fidelity-reference-model");
     node.removeAttribute("data-abags-fidelity-strap-owner");
     node.removeAttribute("data-abags-fidelity-strap-bounds");
     node.removeAttribute("data-abags-fidelity-strap-triangles");
@@ -2562,13 +2768,15 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // WebGL surface switches to the live configuration.
   const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
-  const root = multiply(scale(zoom, zoom, zoom), multiply(rotX(rotation.x), rotY(rotation.y)));
+  const fittedZoom = zoom * (renderFamily === "tall-tote" ? .86 : 1);
+  const root = multiply(scale(fittedZoom, fittedZoom, fittedZoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   if (renderFamily === "satchel") ensureCognacConstruction(renderer);
   const yarnPalettes: Record<string, number> = {
     "#C7652F": 1, // miedziany ombré
     "#88583F": 2, // brąz ombré z referencji Agaty
     "#D58FAA": 3, // róż ombré z referencji Agaty
     "#BA9ECF": 4, // pastel wielokolorowy
+    "#0E9AA7": 5, // zieleń, turkus i niebieski
   };
   renderer.ombrePalette = yarnPalettes[config.color] ?? 0;
   renderer.ombre = renderer.ombrePalette !== 0;
@@ -2578,7 +2786,16 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   gl.uniform3fv(uniforms.yarnGradientAxis, new Float32Array([root[4], root[5], root[6]].map(n => n / Math.max(.001, axisLength2))));
   const familySpec = ABAGS_FIDELITY_V4_FAMILY_SPECS[renderFamily];
   gl.uniform2f(uniforms.yarnGradientRange, familySpec.bodyY - familySpec.ry, familySpec.bodyY + familySpec.ry);
-  const body = config.color || "#b87880";
+  const palette = getAbagsYarnPalette(config.color);
+  const reference = getAbagsReferenceModel(config);
+  const body = palette?.colors[4] ?? (config.color || "#b87880");
+  gl.uniform1f(uniforms.fabricStyle, reference?.fabric ?? 0);
+  gl.uniform3fv(uniforms.fabricFlower, hex(reference?.fabricFlower ?? "#CC6682"));
+  gl.uniform3fv(uniforms.fabricLeaf, hex(reference?.fabricLeaf ?? "#50694D"));
+  gl.uniform3fv(uniforms.fabricBorder, hex(reference?.fabricEdge ?? "#475257"));
+  renderer.bandPrint = config.strap === "woven-floral" ? 1 : config.strap === "woven-striped" ? 2 : 0;
+  gl.uniform1f(uniforms.bandPrint, renderer.bandPrint);
+  ensureReferenceConstruction(renderer, config);
   const stitch = stitchId(config.stitch || "classic");
   ensureCrochetMeshes(renderer, renderFamily, config.stitch || "classic");
   const bodyModel = multiply(root, matrix([0, profile.bodyY, 0], [1, 1, 1]));
@@ -2609,9 +2826,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   drawMesh(renderer, meshes.yarnRim, root, openingColor, 7, stitch, 0);
 
   ensureShoulderBandMeshes(renderer, config);
-  if (config.strap === "woven" || config.strap === "leather" || config.strap === "woven-ornament") {
-    const surface = config.strap === "woven-ornament" ? "#18140F" : config.strap === "leather" ? "#6b4738" : "#a77d87";
-    const colors: Record<BandTone, string> = { surface, edge: darken(surface, .28), stitch: config.strap === "leather" ? "#C3A38A" : "#D3B9AD" };
+  if (config.strap !== "none" && config.strap !== "chain") {
+    const surface = config.strap === "crochet-braid" || config.strap === "chain-leather" ? body : config.strap === "woven-floral" ? "#F3E6DD" : config.strap === "woven-striped" ? "#D9CEBA" : config.strap === "woven-ornament" ? "#18140F" : config.strap === "leather" ? "#6b4738" : "#a77d87";
+    const bandMetal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
+    const colors: Record<BandTone, string> = { surface, metal: bandMetal, edge: darken(surface, .28), stitch: config.strap === "leather" ? "#C3A38A" : "#D3B9AD" };
     const pose = multiply(root, shoulderStrapMatrix(renderFamily));
     for (const part of renderer.shoulderBandParts ?? []) drawMesh(renderer, meshes[part.name], pose, colors[part.tone], part.material, stitch, 0);
   } else if (config.strap === "chain") {
@@ -2634,7 +2852,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const handleColor = config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const isWoodHandle = config.handles.startsWith("wood");
-    const mesh = isWoodHandle ? meshes.woodHandle : meshes.crochetHandle;
+    const mesh = isWoodHandle ? (renderFamily === "tall-tote" ? meshes.referenceWoodHandle : meshes.woodHandle) : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.30;
     // The wooden tote has one ring at the front rim and one at the back rim.
     // They are separated through the bag depth, not arranged left/right across
@@ -2734,8 +2952,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // The selected ornament uses the same depth buffer, lighting and camera as
   // the bag. The compatibility canvas is suppressed for this exact signature.
   ensureOrnamentMeshes(renderer, config);
-  const ornamentColors: Record<OrnamentTone, string> = { cord: body, metal, scarf: "#E9C5CB", hem: "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
+  const ornamentColors: Record<OrnamentTone, string> = { cord: body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
   for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
+
+  for (const part of renderer.referenceParts ?? []) {
+    const color = part.tone === "metal" ? metal : part.tone === "engraving" ? "#49382C" : part.tone === "fabric" || part.tone === "cord" ? body : "#302423";
+    const material = part.tone === "metal" ? 4.25 : part.tone === "zipper" ? 2 : part.tone === "fabric" ? 6 : part.tone === "cord" ? 7.1 : 3;
+    drawMesh(renderer, meshes[part.name], root, color, material, stitch, 0);
+  }
 
   const renderError = gl.getError();
   if (renderError !== gl.NO_ERROR) throw new Error(`webgl-render-error-${renderError}`);
@@ -2746,9 +2970,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityOrnamentBounds = renderer.ornamentBounds ? JSON.stringify(renderer.ornamentBounds) : "";
   canvas.dataset.abagsFidelityOrnamentTriangles = String(renderer.ornamentTriangles ?? 0);
   canvas.dataset.abagsFidelityOrnamentConstruction = renderer.ornamentTriangles ? "folded-fabric-gravity-fringe-v3" : "";
-  canvas.dataset.abagsFidelityStrapOwner = config.strap === "woven" || config.strap === "leather" || config.strap === "woven-ornament" ? "webgl-band" : "";
+  canvas.dataset.abagsFidelityStrapOwner = config.strap !== "none" && config.strap !== "chain" ? "webgl-band" : "";
   canvas.dataset.abagsFidelityStrapBounds = renderer.shoulderBandBounds ? JSON.stringify(renderer.shoulderBandBounds) : "";
   canvas.dataset.abagsFidelityStrapTriangles = String(renderer.shoulderBandTriangles ?? 0);
+  canvas.dataset.abagsFidelityReferenceModel = reference ? JSON.stringify({ id: reference.id, source: reference.sourceFile, palette: palette?.id ?? "solid", fabric: reference.fabric, probes: referenceYarnProbePoints(renderFamily,root,width,height), constructionTriangles: renderer.referenceTriangles ?? 0, strapTriangles: renderer.shoulderBandTriangles ?? 0 }) : "";
   canvas.dataset.abagsFidelityCognac = renderFamily === "satchel" ? JSON.stringify({ version: "cognac-ombre-v1", source: "1000020714.png", ombre: renderer.ombre,
     handleTriangles: config.handles === "leather-braid" ? renderer.cognacParts?.filter(p => p.section === "handle").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,
     flapTriangles: config.flap !== "none" ? renderer.cognacParts?.filter(p => p.section === "flap").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,

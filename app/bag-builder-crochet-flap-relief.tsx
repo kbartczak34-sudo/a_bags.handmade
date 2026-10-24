@@ -237,7 +237,7 @@ export default function BagBuilderCrochetFlapRelief() {
     const paintFrame = () => {
       frameRef.current = null;
       const canvas = canvasRef.current;
-      const family = (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family;
+      const family = (stage.dataset.family === "tall-tote" ? "tote" : (stage.dataset.family === "satchel" || stage.dataset.family === "shoulder") ? "bucket" : stage.dataset.family || "") as Family;
       if (
         !canvas ||
         !family ||
