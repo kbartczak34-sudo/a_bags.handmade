@@ -314,6 +314,23 @@ function makeInspirations(spriteUrl: string) {
   return section;
 }
 
+// The dialog often mounts before the segmented reference atlas finishes
+// loading. Hydrate existing cards in place when the asset arrives instead of
+// leaving fallback gradients stuck for the rest of the customer session.
+function hydrateInspirations(section: HTMLElement, spriteUrl: string) {
+  if (!spriteUrl) return;
+  for (const preset of PRESETS) {
+    const photo = [...section.querySelectorAll<HTMLElement>(".abags-ref-photo")]
+      .find((node) => node.parentElement?.getAttribute("data-ref-preset") === preset.id);
+    if (!photo || photo.dataset.referenceId === preset.referenceId) continue;
+    applySpriteCell(photo, spriteUrl, preset.referenceId);
+    if (photo.dataset.referenceId === preset.referenceId) {
+      photo.classList.remove("is-loading");
+      photo.style.removeProperty("--ref-bag");
+    }
+  }
+}
+
 function makeTrust() {
   const bar = document.createElement("div");
   bar.className = "abags-ref-trust";
@@ -385,6 +402,7 @@ export default function BagBuilderReferenceExperience() {
         inspirations = makeInspirations(spriteUrl);
         previewColumn.appendChild(inspirations);
       }
+      hydrateInspirations(inspirations, spriteUrl);
 
       let trust = dialog.querySelector<HTMLElement>(":scope > .abags-ref-trust");
       if (!trust) {
