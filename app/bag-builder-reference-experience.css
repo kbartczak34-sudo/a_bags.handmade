@@ -145,13 +145,15 @@
 .abags-ref-inspiration-head{display:flex;align-items:end;justify-content:space-between;gap:12px}
 .abags-ref-inspiration-head strong{color:#4d373c;font:850 7px/1 var(--font-sans);letter-spacing:.05em;text-transform:uppercase}
 .abags-ref-inspiration-head small{color:#9b878b;font:600 5.5px/1.25 var(--font-sans);text-align:right}
-.abags-ref-inspiration-track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.abags-ref-inspiration-track{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;padding-bottom:7px;overscroll-behavior-x:contain}
 .abags-ref-inspiration-track button{
   position:relative;
   display:grid;
   grid-template-rows:92px auto;
   gap:5px;
+  flex:0 0 clamp(112px,11vw,156px);
   min-width:0;
+  scroll-snap-align:start;
   padding:5px;
   overflow:hidden;
   border:1px solid rgba(90,66,69,.1);
@@ -207,8 +209,7 @@
   .abags-ref-step-rail button{grid-template-columns:20px 1fr;gap:5px;padding:5px}
   .abags-ref-step-rail button>span{width:20px;height:20px}
   .abags-ref-layers{width:160px}
-  .abags-ref-inspiration-track{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .abags-ref-inspiration-track button:last-child{display:none}
+  .abags-ref-inspiration-track button{flex-basis:118px}
 }
 
 @media(max-width:980px){
@@ -223,7 +224,7 @@
   .abags-ref-inspiration-head small{display:none}
   .abags-ref-inspiration-track{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:2px;scrollbar-width:none}
   .abags-ref-inspiration-track::-webkit-scrollbar{display:none}
-  .abags-ref-inspiration-track button,.abags-ref-inspiration-track button:last-child{display:grid;flex:0 0 102px;grid-template-rows:78px auto;scroll-snap-align:start}
+  .abags-ref-inspiration-track button{display:grid;flex:0 0 102px;grid-template-rows:78px auto;scroll-snap-align:start}
   .abags-ref-photo{height:78px}
 }
 
@@ -237,7 +238,7 @@
   .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-canvas3d-active,
   .abags-vc-dialog.abags-reference-experience-active .abags-bag-builder-stage.abags-pro3d-active{min-height:390px!important}
   .abags-ref-inspiration-head{padding:0 2px}
-  .abags-ref-inspiration-track button,.abags-ref-inspiration-track button:last-child{flex-basis:88px;grid-template-rows:66px auto;padding:4px}
+  .abags-ref-inspiration-track button{flex-basis:88px;grid-template-rows:66px auto;padding:4px}
   .abags-ref-photo{height:66px;border-radius:8px}
   .abags-ref-trust{display:none}
   .abags-ref-family-photo{height:66px}

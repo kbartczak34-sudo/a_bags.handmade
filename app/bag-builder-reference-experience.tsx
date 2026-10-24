@@ -51,6 +51,9 @@ const COLOR_LABELS: Record<string, string> = {
   "#087E81": "Turkus",
   "#A88AE0": "Lawendowy",
   "#C7652F": "Miedziany ombré",
+  "#88583F": "Brąz ombré",
+  "#D58FAA": "Róż ombré",
+  "#BA9ECF": "Pastel wielokolorowy",
 };
 
 const PRESETS: Preset[] = [
@@ -59,16 +62,20 @@ const PRESETS: Preset[] = [
   { id: "red", label: "Czerwień", referenceId: "red-wood-scarf", family: "tote", color: "#B93A42", stitch: "classic", flap: "none", handles: "wood-dark", strap: "woven", hardware: "gold", accent: "scarf" },
   { id: "black", label: "Czerń", referenceId: "black-leather-flap", family: "bucket", color: "#222124", stitch: "classic", flap: "leather-black", handles: "none", strap: "leather", hardware: "gold", accent: "tassel" },
   { id: "teal", label: "Turkus", referenceId: "teal-wood-chain-stones", family: "mini", color: "#087E81", stitch: "herringbone", flap: "none", handles: "wood-light", strap: "chain", hardware: "gold", accent: "charm" },
+  // Additional real photographed A-Bags inspirations. Where the photograph
+  // includes unsupported bespoke details, the rendered variant stays editable
+  // within the atelier's validated component options.
+  { id: "brown-ombre", label: "Brąz ombré", referenceId: "brown-ombre-wood-scarf", family: "tote", color: "#88583F", stitch: "classic", flap: "none", handles: "wood-light", strap: "none", hardware: "gold", accent: "scarf" },
+  { id: "pink-ombre", label: "Róż ombré", referenceId: "pink-ombre-dark-wood", family: "tote", color: "#D58FAA", stitch: "classic", flap: "none", handles: "wood-dark", strap: "woven", hardware: "gold", accent: "scarf" },
+  { id: "pastel-tote", label: "Pastelowy kuferek", referenceId: "pastel-tote-wood-bow", family: "tote", color: "#BA9ECF", stitch: "classic", flap: "none", handles: "wood-light", strap: "none", hardware: "gold", accent: "bow" },
+  { id: "mustard-round", label: "Musztardowa okrągła", referenceId: "mustard-round-navy-flap", family: "round", color: "#C7962F", stitch: "shell", flap: "crochet", handles: "none", strap: "woven", hardware: "gold", accent: "tassel" },
+  { id: "cream-burgundy", label: "Kremowa z klapą", referenceId: "cream-burgundy-flap", family: "bucket", color: "#E8DDCC", stitch: "classic", flap: "suede-burgundy", handles: "none", strap: "leather", hardware: "gold", accent: "none" },
+  { id: "pastel-mini", label: "Pastelowa mini", referenceId: "small-multicolor-chain", family: "mini", color: "#BA9ECF", stitch: "basket", flap: "crochet", handles: "none", strap: "chain", hardware: "gold", accent: "tassel" },
 ];
 
 const FAMILY_REFERENCE: Record<string, string> = Object.fromEntries(
   Object.entries(ABAGS_FIDELITY_V4_FAMILY_SPECS).map(([family, spec]) => [family, spec.reference]),
 );
-
-function getChoice(key: string, value: string) {
-  return [...document.querySelectorAll<HTMLButtonElement>(`button[data-builder-key="${key}"]`)]
-    .find((button) => button.dataset.builderValue === value) ?? null;
-}
 
 function scrollToKey(key: string) {
   const target = key === "summary"
@@ -154,21 +161,10 @@ function syncLayers(stage: HTMLElement, panel: HTMLElement) {
   panel.classList.toggle("is-empty", list.childElementCount === 0);
 }
 
-async function applyPreset(preset: Preset) {
-  const sequence: Array<[string, string]> = [
-    ["family", preset.family],
-    ["color", preset.color],
-    ["stitch", preset.stitch],
-    ["flap", preset.flap],
-    ["handles", preset.handles],
-    ["strap", preset.strap],
-    ["hardware", preset.hardware],
-    ["accent", preset.accent],
-  ];
-  for (const [key, value] of sequence) {
-    await new Promise((resolve) => window.setTimeout(resolve, 55));
-    getChoice(key, value)?.click();
-  }
+function applyPreset(preset: Preset) {
+  // A single verified construction replaces the previous model atomically,
+  // so there are no 55ms gaps, missing controls or old-family accessories.
+  window.dispatchEvent(new CustomEvent("abags:apply-reference-preset", { detail: preset }));
 }
 
 function spritePosition(index: number) {
@@ -300,6 +296,7 @@ function makeInspirations(spriteUrl: string) {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.refPreset = preset.id;
+    button.setAttribute("aria-label", `Wybierz wzorzec ${preset.label} i edytuj model 3D`);
     const photo = document.createElement("span");
     photo.className = "abags-ref-photo";
     photo.setAttribute("aria-hidden", "true");
@@ -310,11 +307,28 @@ function makeInspirations(spriteUrl: string) {
     }
     const copy = document.createElement("span");
     copy.className = "abags-ref-inspiration-copy";
-    copy.innerHTML = `<strong>${preset.label}</strong><small>Wzorzec atelier</small>`;
+    copy.innerHTML = `<strong>${preset.label}</strong><small>Inspiracja · edytowalna 3D</small>`;
     button.append(photo, copy);
     track?.appendChild(button);
   });
   return section;
+}
+
+// The dialog often mounts before the segmented reference atlas finishes
+// loading. Hydrate existing cards in place when the asset arrives instead of
+// leaving fallback gradients stuck for the rest of the customer session.
+function hydrateInspirations(section: HTMLElement, spriteUrl: string) {
+  if (!spriteUrl) return;
+  for (const preset of PRESETS) {
+    const photo = [...section.querySelectorAll<HTMLElement>(".abags-ref-photo")]
+      .find((node) => node.parentElement?.getAttribute("data-ref-preset") === preset.id);
+    if (!photo || photo.dataset.referenceId === preset.referenceId) continue;
+    applySpriteCell(photo, spriteUrl, preset.referenceId);
+    if (photo.dataset.referenceId === preset.referenceId) {
+      photo.classList.remove("is-loading");
+      photo.style.removeProperty("--ref-bag");
+    }
+  }
 }
 
 function makeTrust() {
@@ -388,6 +402,7 @@ export default function BagBuilderReferenceExperience() {
         inspirations = makeInspirations(spriteUrl);
         previewColumn.appendChild(inspirations);
       }
+      hydrateInspirations(inspirations, spriteUrl);
 
       let trust = dialog.querySelector<HTMLElement>(":scope > .abags-ref-trust");
       if (!trust) {
@@ -448,7 +463,7 @@ export default function BagBuilderReferenceExperience() {
           const presetButton = target?.closest<HTMLButtonElement>("button[data-ref-preset]");
           if (presetButton) {
             const preset = PRESETS.find((item) => item.id === presetButton.dataset.refPreset);
-            if (preset) void applyPreset(preset).then(requestSync);
+            if (preset) { applyPreset(preset); requestSync(); }
             return;
           }
 

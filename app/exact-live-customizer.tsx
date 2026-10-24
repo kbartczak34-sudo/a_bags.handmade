@@ -25,6 +25,8 @@ import "./bag-builder-opening-depth.css";
 import "./bag-builder-sidewall-crochet-depth.css";
 import "./bag-builder-premium-mobile-final.css";
 import "./bag-builder-real-reference.css";
+// Must load after the legacy cleanroom/mobile rules that hid atelier inspirations.
+import "./bag-builder-inspirations-visible.css";
 import BagBuilderAbagsFidelityContract from "./bag-builder-abags-fidelity-contract";
 import BagBuilderAccessoryFidelityOverlay from "./bag-builder-accessory-fidelity-overlay";
 import BagBuilderAccessoryMaterialFinish from "./bag-builder-accessory-material-finish";
