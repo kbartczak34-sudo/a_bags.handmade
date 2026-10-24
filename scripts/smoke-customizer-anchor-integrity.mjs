@@ -833,8 +833,18 @@ const analyze=(overlay,renderedPixels)=>{
       if(new Set(results.map(item=>item.hash)).size!==6)throw new Error(`${label}: photographed model cards reused one rendered image`);
       console.log(`${label}: six photographed model presets, actual gradient pixels, real taps/clicks, side views and persisted green model PASS`);
     };
-    await probeReferenceModels('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
-    await probeReferenceModels('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+    // Separate the expensive new reference-model GPU checks from the established
+    // accessory/family browser scenarios; both remain required in CI.
+    const qaSuite = process.env.ABAGS_ANCHOR_QA_SUITE || "all";
+    if (!["all", "reference", "legacy"].includes(qaSuite)) throw new Error(`Unknown anchor QA suite: ${qaSuite}`);
+    if (qaSuite !== "legacy") {
+      await probeReferenceModels('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+      await probeReferenceModels('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+    }
+    if (qaSuite === "reference") {
+      console.log("REFERENCE MODEL DESKTOP/MOBILE QA PASS:", productionUrl);
+      return;
+    }
 
     const probeFamilyCards = async (label, viewport) => {
       await setViewport(viewport);
