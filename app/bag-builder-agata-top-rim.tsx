@@ -354,7 +354,7 @@ export default function BagBuilderAgataTopRim() {
         clear();
         return;
       }
-      const family = (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family;
+      const family = (stage.dataset.family === "tall-tote" ? "tote" : (stage.dataset.family === "satchel" || stage.dataset.family === "shoulder") ? "bucket" : stage.dataset.family || "") as Family;
       if (!family) {
         clear();
         return;

@@ -30,11 +30,11 @@ const STEPS = [
 ] as const;
 
 const LABELS: Record<string, Record<string, string>> = {
-  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy" },
+  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy", "tall-tote": "Wysoki kuferek", shoulder: "Listonoszka" },
   stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
   flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skóra czarna", "leather-cognac": "Skóra koniak", "suede-burgundy": "Zamsz bordo" },
   handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy", "leather-braid": "Pleciona rączka skórzana" },
-  strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy" },
+  strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy", "crochet-braid": "Szydełkowy pasek", "woven-floral": "Pasek kwiatowy", "woven-striped": "Pasek w pasy", "chain-leather": "Łańcuszek ze skórą" },
   hardware: { gold: "Złote", silver: "Srebrne", black: "Czarne" },
   accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" },
 };

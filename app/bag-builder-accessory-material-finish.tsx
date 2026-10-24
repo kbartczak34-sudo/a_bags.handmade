@@ -20,7 +20,7 @@ const FINISH_VERSION = "accessory-material-finish-v2";
 
 function readConfig(stage: HTMLElement): Config {
   return {
-    family: (stage.dataset.family === "satchel" ? "bucket" : stage.dataset.family || "") as Family,
+    family: (stage.dataset.family === "tall-tote" ? "tote" : (stage.dataset.family === "satchel" || stage.dataset.family === "shoulder") ? "bucket" : stage.dataset.family || "") as Family,
     strap: stage.dataset.strap || "none",
     hardware: stage.dataset.hardware || "gold",
     flap: stage.dataset.flap || "none",

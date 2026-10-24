@@ -1,4 +1,16 @@
 export const AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY = {
+  "tall-tote": {
+    handles: ["none", "wood-light", "wood-dark"],
+    flaps: ["none"],
+    straps: ["none", "woven", "chain", "woven-floral", "woven-striped", "chain-leather"],
+    accents: ["none", "scarf", "bow"],
+  },
+  shoulder: {
+    handles: ["none"],
+    flaps: ["none"],
+    straps: ["none", "crochet-braid"],
+    accents: ["none", "scarf", "bow"],
+  },
   tote: {
     handles: ["none", "wood-light", "wood-dark"],
     flaps: ["none"],
@@ -32,6 +44,8 @@ export const AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY = {
 } as const;
 
 export const AGATA_BUILDER_HANDLE_COMPATIBILITY = {
+  "tall-tote": AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY["tall-tote"].handles,
+  shoulder: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.shoulder.handles,
   tote: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.tote.handles,
   round: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.round.handles,
   bucket: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.bucket.handles,

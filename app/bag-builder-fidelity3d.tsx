@@ -9,11 +9,11 @@ import {
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel";
+type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
 type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
-type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament";
+type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament" | "crochet-braid" | "woven-floral" | "woven-striped" | "chain-leather";
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 

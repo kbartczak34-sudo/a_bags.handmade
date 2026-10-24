@@ -10,11 +10,11 @@ import { createBagBuilderFamilyConfig } from "../lib/abags-family-presets";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel";
+type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
 type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
-type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament";
+type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament" | "crochet-braid" | "woven-floral" | "woven-striped" | "chain-leather";
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
