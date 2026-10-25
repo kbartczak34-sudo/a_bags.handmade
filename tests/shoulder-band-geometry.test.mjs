@@ -49,7 +49,7 @@ test("band ends retain the actual clasp positions while the shoulder section ben
 test("band faces, bound edges and sewn threads have valid portable WebGL meshes and complete world bounds", () => {
   for (const family of families) for (const kind of kinds) {
     const { parts, bounds } = g.makeShoulderBandGeometry(family, kind), pose = g.shoulderStrapMatrix(family);
-    assert.equal(parts.length, 3);
+    assert.equal(parts.length, kind === "leather" ? 3 : 4);
     for (const { mesh } of parts) {
       const vertices = mesh.positions.length / 3;
       assert.ok(vertices > 100 && vertices < 65536);
@@ -93,13 +93,13 @@ test("band GPU cache reuses appearance changes and frees all parts when replaced
   const renderer = { gl, meshes: {} }, c = { family: "mini", strap: "woven" };
   g.ensureShoulderBandMeshes(renderer, c);
   const first = renderer.shoulderBandParts;
-  assert.equal(allocated, 12);
+  assert.equal(allocated, 16);
   g.ensureShoulderBandMeshes(renderer, { ...c, color: "#087E81", hardware: "black", accent: "charm", stitch: "basket" });
   assert.equal(renderer.shoulderBandParts, first);
-  assert.equal(allocated, 12);
+  assert.equal(allocated, 16);
   g.ensureShoulderBandMeshes(renderer, { family: "bucket", strap: "leather" });
-  assert.equal(deleted.size, 12);
-  assert.equal(allocated, 24);
+  assert.equal(deleted.size, 16);
+  assert.equal(allocated, 28);
   assert.ok(renderer.shoulderBandTriangles > 100);
   for (const strap of ["none", "chain"]) {
     g.ensureShoulderBandMeshes(renderer, { family: "bucket", strap });

@@ -1702,7 +1702,13 @@ void main(){
     float center=1.0-smoothstep(.040,.065,radius);
     vec2 leaf=flower-vec2(.22,-.17);
     float leaves=1.0-smoothstep(.80,1.0,length(vec2((leaf.x+leaf.y)*5.0,(leaf.y-leaf.x)*11.0)));
-    float border=1.0-smoothstep(.035,.055,min(vUv.y,1.0-vUv.y));
+    // The bound hem also follows the pointed end of each scarf tail.
+    float borderDistance=min(min(vUv.y,1.0-vUv.y),min(vUv.x,1.0-vUv.x)*2.5);
+    float borderFilter=.002;
+#ifdef ABAGS_HAS_DERIVATIVES
+    borderFilter=max(borderFilter,fwidth(borderDistance)*.7);
+#endif
+    float border=1.0-smoothstep(.035-borderFilter,.055+borderFilter,borderDistance);
     if(uFabricStyle>1.5&&uFabricStyle<2.5){
       float stem=1.0-smoothstep(.015,.035,abs(flower.x-.12*sin(flower.y*5.0)));
       leaves=max(leaves,stem*.6);petals*=.32;
@@ -2091,6 +2097,36 @@ function foldedRibbonKnot(u: number, v: number): YarnPoint {
     .040 + .035 * Math.sin(a) + .005 * (1 - v * v) * Math.sin(a * 3)];
 }
 
+// The supplied bows are tied scarves with broad folded wings. Their return
+// face passes behind the outer fold instead of turning into an upright leaf.
+// Keep the small optional bow's existing construction on the other families.
+function referenceRibbonLoop(config: Config, u: number, v: number, side: number): YarnPoint {
+  const profile = getAbagsReferenceModel(config)?.ribbon;
+  if (!profile) return foldedRibbonLoop(u, v, side, false);
+  const arch = Math.sin(Math.PI * u), turn = Math.sin(Math.PI * 2 * u);
+  const span = profile.span * (side < 0 ? 1 : .94);
+  const width = .015 + profile.height * Math.pow(Math.max(0, arch), .66);
+  const twist = side * (.16 + .20 * turn);
+  const gather = .014 * Math.sin(v * Math.PI * 3 + side * .5) * Math.pow(1 - arch, 2);
+  return [side * span * arch * (1 - .09 * v * v) + width * v * Math.sin(twist) * .15,
+    (profile.tilt + side * .035) * arch + width * v * Math.cos(twist),
+    .070 + .080 * arch + .045 * turn + width * v * Math.sin(twist) + gather];
+}
+
+function referenceRibbonTail(config: Config, u: number, v: number, side: number): YarnPoint {
+  const profile = getAbagsReferenceModel(config)?.ribbon;
+  if (!profile) return foldedRibbonTail(u, v, side, false);
+  const arch = Math.sin(Math.PI * u), length = profile.tails[side < 0 ? 0 : 1];
+  const width = .016 + profile.width * (1 - Math.exp(-u * 5));
+  const twist = side * .22 * arch + .30 * Math.sin(Math.PI * 2 * u) * arch;
+  const pointedEnd = .15 * (1 - side * v) * Math.pow(u, 12);
+  return [side * (.012 + .18 * u + .035 * arch) + width * v * Math.cos(twist),
+    -.025 - length * u + pointedEnd,
+    .070 + .045 * arch + width * v * Math.sin(twist)
+      + .018 * Math.sin(v * Math.PI * 2 + side * .5) * arch
+      + (side < 0 ? .050 * Math.sin(Math.PI * u * .85) : 0)];
+}
+
 const woodRibbonFrames = new Map<Exclude<Family, "">, { model: Float32Array; radial: YarnPoint; tangent: YarnPoint; center: YarnPoint }>();
 function woodHandleRibbonPoint(family: Exclude<Family, "">, u: number, v: number): YarnPoint {
   let frame = woodRibbonFrames.get(family);
@@ -2179,13 +2215,15 @@ function makeOrnamentGeometry(config: Config) {
       for (const edge of [-1, 1]) tube(hem, Array.from({ length: rows + 1 }, (_, i) => sample(i / rows, edge)), .0018);
     };
     const compact = config.accent === "bow" && family !== "tall-tote" && family !== "shoulder";
+    const referenceBow = config.accent === "bow" && Boolean(getAbagsReferenceModel(config));
     for (const side of [-1, 1]) ribbon((u, v) => {
-      const p=foldedRibbonLoop(u,v,side,compact);
-      if(family === "tall-tote" || family === "shoulder"){p[0]*=family === "tall-tote"?1.12:1;p[1]*=1.35;}
+      const p = referenceBow ? referenceRibbonLoop(config, u, v, side) : foldedRibbonLoop(u,v,side,compact);
+      if(!referenceBow && (family === "tall-tote" || family === "shoulder")){p[0]*=family === "tall-tote"?1.12:1;p[1]*=1.35;}
       return point(...p,.006);
     },48);
     for (const side of [-1, 1]) ribbon((u, v) => {
-      const p=foldedRibbonTail(u,v,side,compact);if(family === "shoulder")p[1]*=.84;
+      const p = referenceBow ? referenceRibbonTail(config, u, v, side) : foldedRibbonTail(u,v,side,compact);
+      if(!referenceBow && family === "shoulder")p[1]*=.84;
       return point(...p,side < 0 ? .018 : .007);
     },48);
     if (config.handles.startsWith("wood")) {
@@ -2218,7 +2256,8 @@ function makeOrnamentGeometry(config: Config) {
 
 function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
   const flapConstruction = config.flap === "crochet" ? "crochet" : config.flap && config.flap !== "none" ? "rigid" : "none";
-  const key = [config.family, config.accent, (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood"), flapConstruction].join("|");
+  const key = [config.family, config.accent, (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood"), flapConstruction,
+    config.accent === "bow" ? getAbagsReferenceModel(config)?.id ?? "custom" : ""].join("|");
   if (renderer.ornamentKey === key) return;
   for (const part of renderer.ornamentParts ?? []) {
     const mesh = renderer.meshes[part.name];
@@ -2548,6 +2587,23 @@ function familyShoulderStrapMesh(family: Exclude<Family, "">, kind: BandKind = "
   return mesh;
 }
 
+function makeStrapAdjuster(family: Exclude<Family, "">, kind: BandKind): FabricMesh {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const frame = shoulderBandFrame(family, .90, kind);
+  const at = (x: number, y: number, z: number): YarnPoint => frame.center.map((n, axis) =>
+    n + frame.widthAxis[axis] * x + frame.tangent[axis] * y + frame.normal[axis] * z) as YarnPoint;
+  const width = frame.halfWidth * 2 + .032;
+  const outline = roundedRectangle(width, .128, .020);
+  const path = outline.map(([x,y]) => at(x,y,frame.halfThickness+.012));
+  path.push(path[0]);
+  appendCord(mesh, path, .007, () => frame.normal, () => true, 10);
+  // A separate middle bar divides the two open slots. The webbing and its
+  // stitching remain visible through them, including in a true side view.
+  appendCord(mesh, Array.from({length:13},(_,i)=>at(-width/2+width*i/12,0,frame.halfThickness+.017)),
+    .0065, () => frame.normal, () => true, 10);
+  return mesh;
+}
+
 function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
   const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
   type Part = {name:string;tone:BandTone;material:number;mesh:FabricMesh};
@@ -2583,6 +2639,13 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
       const pose=new Float32Array([...f.widthAxis,0,...f.tangent,0,...f.normal,0,...f.center,1]);
       appendOrnamentMesh(chain,link,multiply(pose,rotY(index%2?Math.PI/2:0)));
     }
+    // Domed rivets finish both leather-to-chain joins on both leather faces.
+    for (const t of [.30, .63]) for (const side of [-1, 1]) {
+      const f = shoulderBandFrame(family, t, kind);
+      const pose = new Float32Array([...f.widthAxis,0,...f.tangent,0,...f.normal,0,...f.center,1]);
+      appendOrnamentMesh(chain, makeEllipsoid(1,1,1,8,12),
+        multiply(pose,matrix([0,0,side*(f.halfThickness+.003)],[.013,.013,.0045])));
+    }
     return finish([
       {name:"shoulderBandSurface",tone:"surface",material:2,mesh:familyShoulderStrapMesh(family,kind,.28,.65)},
       {name:"shoulderBandMetal",tone:"metal",material:4.25,mesh:chain},
@@ -2607,6 +2670,8 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
     { name: "shoulderBandEdge", tone: "edge", material: kind === "leather" ? 2 : 3, mesh: edge },
     { name: "shoulderBandStitch", tone: "stitch", material: 3, mesh: seam },
   ];
+  if (kind !== "leather") parts.push({ name: "shoulderBandAdjuster", tone: "metal", material: 4.25,
+    mesh: makeStrapAdjuster(family, kind) });
   const min: YarnPoint = [Infinity, Infinity, Infinity], max: YarnPoint = [-Infinity, -Infinity, -Infinity], pose = shoulderStrapMatrix(family);
   for (const { mesh } of parts) for (let i = 0; i < mesh.positions.length; i++) {
     const axis = i % 3, value = mesh.positions[i] + pose[12 + axis];

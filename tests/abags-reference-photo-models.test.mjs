@@ -123,6 +123,60 @@ test("large reference bows retain folded faces, long tails and body clearance", 
   }
 });
 
+test("reference bows retain individually calibrated folds and tails instead of reusing the scarf", () => {
+  const silhouettes = new Set();
+  for (const model of models) {
+    const bow = geometry.makeOrnamentGeometry(model.config);
+    const scarf = geometry.makeOrnamentGeometry({...model.config,accent:"scarf"});
+    silhouettes.add(JSON.stringify(bow.bounds));
+    assert.notDeepEqual(plain(bow.bounds), plain(scarf.bounds), model.id);
+    assert.ok(bow.bounds.min[1] > specs[model.config.family].bodyY-specs[model.config.family].ry,
+      `${model.id}: falling fabric must not pass through the ground`);
+  }
+  assert.equal(silhouettes.size, models.length);
+});
+
+test("switching reference colors rebuilds their bow geometry and frees its former GPU buffers", () => {
+  let allocated=0;
+  const deleted=new Set(),gl={ARRAY_BUFFER:1,ELEMENT_ARRAY_BUFFER:2,STATIC_DRAW:3,
+    createBuffer:()=>({id:++allocated}),bindBuffer(){},bufferData(){},
+    deleteBuffer(buffer){assert.ok(!deleted.has(buffer));deleted.add(buffer);}};
+  const renderer={gl,meshes:{}};
+  for(const model of models.filter(m=>m.config.family==="tall-tote")) {
+    const previous=allocated;
+    geometry.ensureOrnamentMeshes(renderer,model.config);
+    assert.equal(deleted.size,previous,model.id);
+    const current=allocated;
+    geometry.ensureOrnamentMeshes(renderer,{...model.config,hardware:"silver"});
+    assert.equal(allocated,current,"metal recoloring reuses the same fabric geometry");
+  }
+  geometry.ensureOrnamentMeshes(renderer,{...models[1].config,accent:"none"});
+  assert.equal(deleted.size,allocated);
+});
+
+test("printed strap adjusters follow the actual webbing frame and keep both slots open", () => {
+  for(const kind of ["floral","striped","ornament","woven"]) {
+    const data=geometry.makeShoulderBandGeometry("tall-tote",kind);
+    const adjuster=data.parts.find(part=>part.name==="shoulderBandAdjuster");
+    assert.ok(adjuster && adjuster.tone==="metal");
+    assertMesh(adjuster.mesh,kind);
+    const f=geometry.shoulderBandFrame("tall-tote",.90,kind);
+    const local=[];
+    for(let i=0;i<adjuster.mesh.positions.length;i+=3) {
+      const offset=adjuster.mesh.positions.slice(i,i+3).map((n,j)=>n-f.center[j]);
+      local.push([f.widthAxis,f.tangent,f.normal].map(axis=>axis.reduce((sum,n,j)=>sum+n*offset[j],0)));
+    }
+    assert.ok(Math.max(...local.map(p=>p[0]))>f.halfWidth);
+    assert.ok(Math.min(...local.map(p=>p[0])) < -f.halfWidth);
+    for(let i=0;i<adjuster.mesh.indices.length;i+=3) {
+      const center=[0,1,2].map(axis=>adjuster.mesh.indices.slice(i,i+3).reduce((sum,index)=>sum+local[index][axis]/3,0));
+      assert.ok(center[2]>f.halfThickness,"slider seats on the webbing face");
+      assert.ok(!(Math.abs(center[0])<f.halfWidth*.65&&Math.abs(center[1])>.020&&Math.abs(center[1])<.045),
+        "solid metal must not fill either opening");
+    }
+  }
+});
+
 test("reference dye ramps and SVG fallback preserve cream tops and the four separate pastel bands", () => {
   assert.equal(palettes.ABAGS_YARN_PALETTES.length,4);
   for(const palette of palettes.ABAGS_YARN_PALETTES) {
