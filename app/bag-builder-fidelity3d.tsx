@@ -2104,7 +2104,7 @@ function referenceRibbonLoop(config: Config, u: number, v: number, side: number)
   const profile = getAbagsReferenceModel(config)?.ribbon;
   if (!profile) return foldedRibbonLoop(u, v, side, false);
   const arch = Math.sin(Math.PI * u), turn = Math.sin(Math.PI * 2 * u);
-  const span = profile.span * (side < 0 ? 1 : .94);
+  const span = profile.span * (config.family === "tall-tote" ? 1.35 : 1) * (side < 0 ? 1 : .94);
   const width = .015 + profile.height * Math.pow(Math.max(0, arch), .66);
   const twist = side * (.16 + .20 * turn);
   const gather = .014 * Math.sin(v * Math.PI * 3 + side * .5) * Math.pow(1 - arch, 2);
@@ -2117,7 +2117,7 @@ function referenceRibbonTail(config: Config, u: number, v: number, side: number)
   const profile = getAbagsReferenceModel(config)?.ribbon;
   if (!profile) return foldedRibbonTail(u, v, side, false);
   const arch = Math.sin(Math.PI * u), length = profile.tails[side < 0 ? 0 : 1];
-  const width = .016 + profile.width * (1 - Math.exp(-u * 5));
+  const width = .016 + profile.width * (config.family === "tall-tote" ? 1.18 : 1) * (1 - Math.exp(-u * 5));
   const twist = side * .22 * arch + .30 * Math.sin(Math.PI * 2 * u) * arch;
   const pointedEnd = .15 * (1 - side * v) * Math.pow(u, 12);
   return [side * (.012 + .18 * u + .035 * arch) + width * v * Math.cos(twist),
@@ -2231,7 +2231,11 @@ function makeOrnamentGeometry(config: Config) {
     }
     // A gathered band encircles the tied fabric. Its rear touches the handle
     // wrap, while the front catches the same soft satin light as the loops.
-    ribbon((u, v) => point(...foldedRibbonKnot(u, v), .006), 36);
+    ribbon((u, v) => {
+      const p = foldedRibbonKnot(u, v);
+      if (referenceBow) { p[0] *= 1.5; p[1] *= 1.25; }
+      return point(...p, .006);
+    }, 36);
   } else if (config.accent === "charm") {
     const metal = part("metal", 4);
     ring(metal, point(0, -.012, .028), .022, .028, .0055);
