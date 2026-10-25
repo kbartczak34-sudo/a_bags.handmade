@@ -87,6 +87,21 @@ test("flat wooden rings retain an open centre and broad faces through real depth
   }
 });
 
+test("photographic wood tones follow reference models while preserving the customer's handle selection", () => {
+  const wooden = models.filter(model => model.config.handles.startsWith("wood"));
+  assert.equal(new Set(wooden.map(model => reference.getAbagsWoodHandleTone(model.config))).size, wooden.length);
+  for (const model of wooden) {
+    const opposite = model.config.handles === "wood-light" ? "wood-dark" : "wood-light";
+    const custom = { ...model.config, handles: opposite };
+    const generic = { ...custom, color: "#123456" };
+    assert.equal(reference.getAbagsWoodHandleTone(custom), reference.getAbagsWoodHandleTone(generic));
+    for (const handles of ["none", "crochet", "leather-braid"]) {
+      assert.equal(reference.getAbagsWoodHandleTone({ ...model.config, handles }), null);
+    }
+  }
+  assert.equal(reference.getAbagsWoodHandleTone(models[0].config), null);
+});
+
 test("all reference badges and shoulder zipper parts are physical indexed geometry", () => {
   for (const model of models) {
     const parts = geometry.makeReferenceConstruction(model.config);
