@@ -193,10 +193,13 @@ async function main() {
       await evaluate(`document.querySelector(${JSON.stringify(selector)})?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'})`);
       const point = await waitFor(`(() => {
         const el=document.querySelector(${JSON.stringify(selector)}); if(!el)return null;
-        const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+        const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,s=getComputedStyle(el);
         if(r.width<1||r.height<1||x<0||y<0||x>=innerWidth||y>=innerHeight)return null;
+        if(s.display==='none'||s.visibility==='hidden'||Number(s.opacity)<.05)return null;
         const hit=document.elementFromPoint(x,y);
-        return hit&&(hit===el||el.contains(hit))?{x,y}:null;
+        // Android's existing coordinate rescue also handles an ancestor hit;
+        // the actual touch must still pass the configuration-state assertion.
+        return hit&&(hit===el||el.contains(hit)||hit.contains(el))?{x,y}:null;
       })()`, 'visible touch target '+label);
       await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:point.x,y:point.y,radiusX:1,radiusY:1,force:1,id:1}],modifiers:0});
       await sleep(80);
