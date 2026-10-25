@@ -6,7 +6,9 @@ const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade
 const outputDir = process.env.ABAGS_REALTIME_QA_DIR || "";
 const port = Number(process.env.ABAGS_REALTIME_CHROME_DEBUG_PORT || 9777);
 const timeoutMs = 60_000;
-const cdpTimeoutMs = 8_000;
+// Resizing a software-GPU browser can outlast a normal protocol request while
+// Vite compiles the first page. Product-frame acceptance keeps its own deadline.
+const cdpTimeoutMs = 20_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function chromeBinary() {
@@ -77,7 +79,7 @@ async function main() {
 
   try {
     await waitJson(`http://127.0.0.1:${port}/json/version`);
-    const target = await waitJson(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, { method: "PUT" });
+    const target = await waitJson(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" });
     const cdp = await connectCdp(target.webSocketDebuggerUrl);
     socket = cdp.socket;
     const send = cdp.send;
@@ -314,14 +316,19 @@ async function main() {
     await send("Runtime.enable");
     await send("Page.enable");
 
-    await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    // Set the initial viewport before navigation, avoiding a resize racing the
+    // cold page's first compilation and WebGL allocation on the CI runner.
+    console.log("Realtime QA: initial mobile viewport and navigation");
     await send("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await send("Page.navigate", { url });
+    await waitFor("document.readyState==='complete'&&Boolean(document.querySelector('#personalizacja'))", "initial mobile page");
     await clearDraftAndReload();
     await openBuilder();
     await chooseByTouch("family","round");
     await waitVerified3d("mobile after family");
     await chooseByTouch("color","#E4A9B5");
     await waitVerified3d("mobile after color");
+    console.log("Realtime QA: visible family and color touches passed");
     const pinchSnapshot = async () => evaluate(`(() => {
       const dialog=document.querySelector(".abags-vc-dialog.abags-reference-layout-v4.abags-vc-builder-active")||document.querySelector(".abags-vc-dialog.abags-reference-layout-v4");
       const candidates=[...(dialog?.querySelectorAll(".abags-vc-preview .abags-bag-builder-stage")||[])];
@@ -345,6 +352,7 @@ async function main() {
     const pinchAfter=await pinchSnapshot();
     const zoomAfter=pinchAfter?.zoom;
     if(!(Number.isFinite(zoomBefore)&&Number.isFinite(zoomAfter)&&zoomAfter>zoomBefore)) throw new Error("Mobile pinch zoom did not change on the canvas owner: "+JSON.stringify({before:pinchBefore,after:pinchAfter}));
+    console.log("Realtime QA: pinch passed; switching to desktop");
     await send("Emulation.setDeviceMetricsOverride",{width:1440,height:900,deviceScaleFactor:1,mobile:false});
     await clearDraftAndReload();
     await openBuilder();
