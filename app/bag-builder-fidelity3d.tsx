@@ -9,7 +9,7 @@ import {
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
 import { ABAGS_YARN_PALETTES, getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
-import { getAbagsReferenceModel } from "../lib/abags-reference-models";
+import { getAbagsReferenceModel, getAbagsWoodHandleTone } from "../lib/abags-reference-models";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -773,6 +773,30 @@ function groundSupportPoints(points: YarnPoint[]) {
   return [...selected].map(i => points[i]);
 }
 
+// A flat wooden ring needs a rectangular wrap with rounded corners. The former
+// elliptical winding cut through the wide faces and exposed strips of wood.
+function flatWoodWrapSection(halfWidth: number, halfDepth: number, clearance: number, progress: number): Point {
+  const arc = Math.PI * clearance / 2;
+  const perimeter = 4 * (halfWidth + halfDepth) + 4 * arc;
+  let distance = ((progress % 1) + 1) % 1 * perimeter;
+  if (distance <= halfDepth) return [halfWidth + clearance, distance];
+  distance -= halfDepth;
+  if (distance <= arc) { const a = distance / clearance; return [halfWidth + clearance * Math.cos(a), halfDepth + clearance * Math.sin(a)]; }
+  distance -= arc;
+  if (distance <= 2 * halfWidth) return [halfWidth - distance, halfDepth + clearance];
+  distance -= 2 * halfWidth;
+  if (distance <= arc) { const a = Math.PI / 2 + distance / clearance; return [-halfWidth + clearance * Math.cos(a), halfDepth + clearance * Math.sin(a)]; }
+  distance -= arc;
+  if (distance <= 2 * halfDepth) return [-halfWidth - clearance, halfDepth - distance];
+  distance -= 2 * halfDepth;
+  if (distance <= arc) { const a = Math.PI + distance / clearance; return [-halfWidth + clearance * Math.cos(a), -halfDepth + clearance * Math.sin(a)]; }
+  distance -= arc;
+  if (distance <= 2 * halfWidth) return [-halfWidth + distance, -halfDepth - clearance];
+  distance -= 2 * halfWidth;
+  if (distance <= arc) { const a = Math.PI * 1.5 + distance / clearance; return [halfWidth + clearance * Math.cos(a), -halfDepth + clearance * Math.sin(a)]; }
+  return [halfWidth + clearance, -halfDepth + distance - arc];
+}
+
 function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const transform = woodHandleMatrix(family, z);
@@ -780,21 +804,48 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
   const radius = spec.rx * 5 / 160 * .78;
   const coil = (family === "tall-tote" ? .055 : .042) + radius * .72;
   const coilDepth = family === "tall-tote" ? .026 + radius * .72 : coil;
-  const turns = Math.round(Math.PI * .44 / (radius * 2.06));
   const start = Math.PI + .10, span = Math.PI - .20;
   const world = (x: number, y: number, depth: number): YarnPoint => [
     transform[0] * x + transform[4] * y + transform[8] * depth + transform[12],
     transform[1] * x + transform[5] * y + transform[9] * depth + transform[13],
     transform[2] * x + transform[6] * y + transform[10] * depth + transform[14],
   ];
+  const flat = family === "tall-tote", arcs = [0], stepsPerTurn = flat ? 40 : 14;
+  if (flat) {
+    let previous = world(.46 * Math.cos(start), .42 * Math.sin(start), 0);
+    for (let i = 1; i <= 128; i++) {
+      const a = start + span * i / 128, next = world(.46 * Math.cos(a), .42 * Math.sin(a), 0);
+      arcs.push(arcs[i-1] + Math.hypot(...next.map((n,j)=>n-previous[j])));
+      previous = next;
+    }
+  }
+  const turns = flat ? Math.ceil(arcs[128] / (radius * 1.90)) : Math.round(Math.PI * .44 / (radius * 2.06));
+  const angleAt = (progress: number) => {
+    if (!flat) return start + span * progress;
+    const distance = progress * arcs[128];
+    let low = 0, high = 128;
+    while (low + 1 < high) { const middle = (low + high) >> 1; if (arcs[middle] <= distance) low = middle; else high = middle; }
+    const t = (low + (distance - arcs[low]) / Math.max(.00001, arcs[high] - arcs[low])) / 128;
+    return start + span * t;
+  };
   const at = (progress: number): YarnPoint => {
-    const angle = start + span * progress;
+    const angle = angleAt(progress);
     const phase = progress * turns * Math.PI * 2;
     const radial = normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0);
+    if (flat) {
+      const center = world(.46 * Math.cos(angle), .42 * Math.sin(angle), 0);
+      const tx = -.46 * Math.sin(angle), ty = .42 * Math.cos(angle);
+      const tangent = normalize(transform[0]*tx + transform[4]*ty, transform[1]*tx + transform[5]*ty, transform[2]*tx + transform[6]*ty);
+      const depth = normalize(transform[8], transform[9], transform[10]);
+      const outward = normalize(tangent[1]*depth[2]-tangent[2]*depth[1], tangent[2]*depth[0]-tangent[0]*depth[2], tangent[0]*depth[1]-tangent[1]*depth[0]);
+      const radialScale = Math.hypot(transform[0]*radial[0] + transform[4]*radial[1], transform[1]*radial[0] + transform[5]*radial[1], transform[2]*radial[0] + transform[6]*radial[1]);
+      const [r, d] = flatWoodWrapSection(.055 * radialScale, .026, radius + .003, progress * turns);
+      return center.map((n,j)=>n + outward[j]*r + depth[j]*side*d) as YarnPoint;
+    }
     return world(.46 * Math.cos(angle) + radial[0] * coil * Math.cos(phase),
       .42 * Math.sin(angle) + radial[1] * coil * Math.cos(phase), side * coilDepth * Math.sin(phase));
   };
-  const winding = Array.from({ length: turns * 14 + 1 }, (_, i) => at(i / (turns * 14)));
+  const winding = Array.from({ length: turns * stepsPerTurn + 1 }, (_, i) => at(i / (turns * stepsPerTurn)));
   const seams: YarnPoint[][] = [];
   for (let turn = 0; turn < turns; turn++) {
     // Each wrap is sewn into the actual crocheted front/back panel rather
@@ -2423,9 +2474,12 @@ function makeReferenceWoodHandle(): FabricMesh {
     const a = row / 96 * Math.PI * 2, radial = normalize(Math.cos(a) / .46, Math.sin(a) / .42, 0);
     for (let col = 0; col <= 12; col++) {
       const [u,z,nx,nz] = section[col % 12];
-      mesh.positions.push(.46*Math.cos(a)+radial[0]*u,.42*Math.sin(a)+radial[1]*u,z);
+      const x = .46*Math.cos(a)+radial[0]*u, y = .42*Math.sin(a)+radial[1]*u;
+      mesh.positions.push(x,y,z);
       mesh.normals.push(...normalize(radial[0]*nx,radial[1]*nx,nz));
-      mesh.uvs.push(row/96,col/12);
+      // Cut wood has grain across its broad face, rather than following the
+      // angular index of the ring or stretching around its cross section.
+      mesh.uvs.push(.5+x/1.1,.5+y);
       if(row<96&&col<12){const i=row*13+col,j=i+13;mesh.indices.push(i,j,i+1,j,j+1,i+1);}
     }
   }
@@ -2918,7 +2972,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (config.handles !== "none" && config.handles !== "leather-braid") {
-    const handleColor = config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : body;
+    const handleColor = getAbagsWoodHandleTone(config) ?? body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const isWoodHandle = config.handles.startsWith("wood");
     const mesh = isWoodHandle ? (renderFamily === "tall-tote" ? meshes.referenceWoodHandle : meshes.woodHandle) : meshes.crochetHandle;
