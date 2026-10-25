@@ -65,6 +65,7 @@ function valueOf(result) {
 }
 
 async function main() {
+  if (outputDir) mkdirSync(outputDir, { recursive: true });
   const binary = chromeBinary();
   const url = `${productionUrl}${productionUrl.includes("?") ? "&" : "?"}abags-realtime-builder-qa=${Date.now()}`;
   const chrome = spawn(binary, [
