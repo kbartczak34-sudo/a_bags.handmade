@@ -811,10 +811,26 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
     transform[2] * x + transform[6] * y + transform[10] * depth + transform[14],
   ];
   const flat = family === "tall-tote", arcs = [0], stepsPerTurn = flat ? 40 : 14;
+  const depth = normalize(transform[8], transform[9], transform[10]);
+  const flatFrame = (angle: number) => {
+    const center = world(.46 * Math.cos(angle), .42 * Math.sin(angle), 0);
+    const tx = -.46 * Math.sin(angle), ty = .42 * Math.cos(angle);
+    const tangent = normalize(transform[0]*tx + transform[4]*ty, transform[1]*tx + transform[5]*ty, transform[2]*tx + transform[6]*ty);
+    const outward = normalize(tangent[1]*depth[2]-tangent[2]*depth[1], tangent[2]*depth[0]-tangent[0]*depth[2], tangent[0]*depth[1]-tangent[1]*depth[0]);
+    const radial = normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0);
+    const halfWidth = .055 * Math.hypot(transform[0]*radial[0] + transform[4]*radial[1], transform[1]*radial[0] + transform[5]*radial[1], transform[2]*radial[0] + transform[6]*radial[1]);
+    return { center, outward, halfWidth };
+  };
   if (flat) {
-    let previous = world(.46 * Math.cos(start), .42 * Math.sin(start), 0);
+    // Space the turns along the outside of the bend: spacing only along the
+    // centreline spreads them apart on this longer edge and reveals the wood.
+    const outside = (angle: number) => {
+      const { center, outward, halfWidth } = flatFrame(angle);
+      return center.map((n,j)=>n + outward[j]*(halfWidth + radius + .003));
+    };
+    let previous = outside(start);
     for (let i = 1; i <= 128; i++) {
-      const a = start + span * i / 128, next = world(.46 * Math.cos(a), .42 * Math.sin(a), 0);
+      const next = outside(start + span * i / 128);
       arcs.push(arcs[i-1] + Math.hypot(...next.map((n,j)=>n-previous[j])));
       previous = next;
     }
@@ -833,13 +849,8 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
     const phase = progress * turns * Math.PI * 2;
     const radial = normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0);
     if (flat) {
-      const center = world(.46 * Math.cos(angle), .42 * Math.sin(angle), 0);
-      const tx = -.46 * Math.sin(angle), ty = .42 * Math.cos(angle);
-      const tangent = normalize(transform[0]*tx + transform[4]*ty, transform[1]*tx + transform[5]*ty, transform[2]*tx + transform[6]*ty);
-      const depth = normalize(transform[8], transform[9], transform[10]);
-      const outward = normalize(tangent[1]*depth[2]-tangent[2]*depth[1], tangent[2]*depth[0]-tangent[0]*depth[2], tangent[0]*depth[1]-tangent[1]*depth[0]);
-      const radialScale = Math.hypot(transform[0]*radial[0] + transform[4]*radial[1], transform[1]*radial[0] + transform[5]*radial[1], transform[2]*radial[0] + transform[6]*radial[1]);
-      const [r, d] = flatWoodWrapSection(.055 * radialScale, .026, radius + .003, progress * turns);
+      const { center, outward, halfWidth } = flatFrame(angle);
+      const [r, d] = flatWoodWrapSection(halfWidth, .026, radius + .003, progress * turns);
       return center.map((n,j)=>n + outward[j]*r + depth[j]*side*d) as YarnPoint;
     }
     return world(.46 * Math.cos(angle) + radial[0] * coil * Math.cos(phase),

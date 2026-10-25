@@ -38,6 +38,14 @@ test("flat-handle winding remains mirrored, tightly spaced and portable in WebGL
     assert.ok(Math.abs(a[0] - b[0]) < 1e-7 && Math.abs(a[1] - b[1]) < 1e-7 && Math.abs(a[2] + b[2]) < 1e-7);
     if (i) assert.ok(Math.hypot(...a.map((n,j)=>n-front.winding[i-1][j])) < front.radius * 1.1);
   }
+  // Compare neighbouring turns at the same cross-section phase, including the
+  // outside of the bend where equal centreline spacing can leave exposed wood.
+  const samplesPerTurn = (front.winding.length - 1) / front.seams.length;
+  for (let i = samplesPerTurn; i < front.winding.length; i++) {
+    const previous = front.winding[i - samplesPerTurn];
+    assert.ok(Math.hypot(...front.winding[i].map((n,j)=>n-previous[j])) < front.radius * 2,
+      "adjacent turns must cover the outside edge of the wooden ring");
+  }
   const mesh = g.makeWoodHandleBinding(family), count = mesh.positions.length / 3;
   assert.ok(count < 65536);
   assert.ok(mesh.positions.every(Number.isFinite));
