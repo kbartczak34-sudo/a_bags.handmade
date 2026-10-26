@@ -576,10 +576,18 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
     const across = normalize(normal[1] * tangent[2] - normal[2] * tangent[1], normal[2] * tangent[0] - normal[0] * tangent[2], normal[0] * tangent[1] - normal[1] * tangent[0]);
     const outward = normalize(tangent[1] * across[2] - tangent[2] * across[1], tangent[2] * across[0] - tangent[0] * across[2], tangent[0] * across[1] - tangent[1] * across[0]);
     const start = mesh.positions.length / 3;
+    // Handmade polyester cord is tensioned unevenly by adjacent crochet
+    // loops. Keep a genuinely round 5 mm cross-section, with only a gentle
+    // 1-3% variation in radius along the length of each strand. This adds
+    // physical soft-spun relief without more vertices, texture files, or
+    // random per-frame deformation during orbit/zoom.
+    const yarnRadius = thickness * (1
+      + .018 * Math.sin(distance * 19.3 + index * .19)
+      + .009 * Math.sin(distance * 43.7 - index * .11));
     for (let side = 0; side <= sides; side++) {
       const angle = side / sides * Math.PI * 2;
       const n = across.map((v, axis) => v * Math.cos(angle) + outward[axis] * Math.sin(angle)) as YarnPoint;
-      mesh.positions.push(...point.map((v, axis) => v + n[axis] * thickness));
+      mesh.positions.push(...point.map((v, axis) => v + n[axis] * yarnRadius));
       mesh.normals.push(...n);
       // The braid repeats at the same physical scale on short loops and long
       // bindings. A normalized 0..1 path stretched the fibres on every seam.
