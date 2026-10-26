@@ -562,6 +562,7 @@ type YarnPoint = [number, number, number];
 function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10, closed = false) {
   let previous = -1;
   let distance = 0;
+  const firstRingVertex = mesh.positions.length / 3;
   points.forEach((point, index) => {
     if (index > 0) distance += Math.hypot(...point.map((value, axis) => value - points[index - 1][axis]));
     if (!contains(point)) { previous = -1; return; }
@@ -604,8 +605,18 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
         n[1] - around[1] * angularSlope - tangent[1] * axialSlope,
         n[2] - around[2] * angularSlope - tangent[2] * axialSlope,
       );
-      mesh.positions.push(...point.map((v, axis) => v + n[axis] * yarnRadius * plyRadius));
-      mesh.normals.push(...surfaceNormal);
+      // The two ends of a sewn closed cord use identical position/normal
+      // rings. Helical yarn twist changes phase along the perimeter; without
+      // welding its duplicate end, the rim would acquire a tiny visible split.
+      // UVs are kept separate for a proper seam and existing index topology.
+      if (closed && index === points.length - 1) {
+        const first = (firstRingVertex + side) * 3;
+        mesh.positions.push(...mesh.positions.slice(first, first + 3));
+        mesh.normals.push(...mesh.normals.slice(first, first + 3));
+      } else {
+        mesh.positions.push(...point.map((v, axis) => v + n[axis] * yarnRadius * plyRadius));
+        mesh.normals.push(...surfaceNormal);
+      }
       // The braid repeats at the same physical scale on short loops and long
       // bindings. A normalized 0..1 path stretched the fibres on every seam.
       mesh.uvs.push(distance / (thickness * 1.6), side / sides);
