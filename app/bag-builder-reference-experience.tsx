@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ABAGS_REFERENCE_MODELS, getAbagsReferenceModel } from "../lib/abags-reference-models";
+import { ABAGS_REFERENCE_MODELS, getAbagsReferenceModel, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 import { getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
 import { ABAGS_FIDELITY_V4_FAMILY_SPECS } from "../lib/abags-fidelity-v4-family-spec";
 import { ABAGS_COGNAC_PRESET, ABAGS_COGNAC_REFERENCE_ID, ABAGS_COGNAC_REFERENCE_IMAGE } from "../lib/abags-cognac-model";
@@ -159,7 +159,8 @@ function syncLayers(stage: HTMLElement, panel: HTMLElement) {
     button.type = "button";
     button.className = "abags-ref-layer-row";
     button.dataset.refEditKey = key;
-    button.innerHTML = `<span class="abags-ref-layer-dot"${key === "color" ? ` style="background:${getAbagsYarnPalette(value)?.swatch ?? value}"` : ""}></span><span><strong>${title}</strong><small>${valueLabel(key, value)}</small></span><span class="abags-ref-layer-edit">Edytuj</span>`;
+    const text = key === "flap" && getAbagsCrochetFlapTone({ family: stage.dataset.family, color: stage.dataset.color, flap: stage.dataset.flap }) ? "Szydełkowa czarna" : valueLabel(key, value);
+    button.innerHTML = `<span class="abags-ref-layer-dot"${key === "color" ? ` style="background:${getAbagsYarnPalette(value, stage.dataset.family)?.swatch ?? value}"` : ""}></span><span><strong>${title}</strong><small>${text}</small></span><span class="abags-ref-layer-edit">Edytuj</span>`;
     list.appendChild(button);
   });
   panel.classList.toggle("is-empty", list.childElementCount === 0);

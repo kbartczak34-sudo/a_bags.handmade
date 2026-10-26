@@ -7,7 +7,7 @@ import { ABAGS_AGATA_REAL_BAG_MEASUREMENTS } from "../lib/abags-fidelity-v4-fami
 import { usePublicContact, whatsappHref } from "./public-contact";
 
 import { createBagBuilderFamilyConfig } from "../lib/abags-family-presets";
-import { ABAGS_REFERENCE_MODELS, createAbagsReferenceModelConfig, getAbagsReferenceModel } from "../lib/abags-reference-models";
+import { ABAGS_REFERENCE_MODELS, createAbagsReferenceModelConfig, getAbagsReferenceModel, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 import { getAbagsYarnPalette, getAbagsYarnSvgStops } from "../lib/abags-yarn-palettes";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
@@ -81,7 +81,7 @@ const STITCHES: Option<Stitch>[] = [
 
 const FLAPS: Option<Flap>[] = [
   { value: "none", label: "Bez klapy" },
-  { value: "crochet", label: "Szydełkowa", description: "W kolorze korpusu" },
+  { value: "crochet", label: "Szydełkowa", description: "Sznurek dopasowany do wybranego modelu" },
   { value: "leather-black", label: "Skórzana czarna" },
   { value: "leather-cognac", label: "Skórzana koniak" },
   { value: "suede-burgundy", label: "Zamszowa bordo" },
@@ -173,6 +173,8 @@ function hardwareColor(value: Hardware) {
 }
 
 function flapColor(config: BagBuilderConfig) {
+  const crochet = getAbagsCrochetFlapTone(config);
+  if (crochet) return crochet;
   if (config.flap === "leather-black") return "#242124";
   if (config.flap === "leather-cognac") return "#7B4F34";
   if (config.flap === "suede-burgundy") return "#7F3043";
@@ -248,13 +250,15 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
     "#D58FAA": ["#EFBBC6", "#BD6588", "#792C4B"],
     "#BA9ECF": ["#EAD4AB", "#E2A6BF", "#8763AB"],
   };
-  const yarnStops = getAbagsYarnSvgStops(bagColor) ?? yarnGradients[bagColor]?.map((color,index)=>({offset:index/2,color}));
+  const yarnStops = getAbagsYarnSvgStops(bagColor, config.family) ?? yarnGradients[bagColor]?.map((color,index)=>({offset:index/2,color}));
+  const verticalBands = getAbagsYarnPalette(bagColor, config.family)?.id === "pastel-mini-columns";
+  const blackCrochet = getAbagsCrochetFlapTone(config);
   const yarnBaseFill = yarnStops ? "url(#abags-yarn-ombre)" : bagColor;
 
   return <div className="abags-bag-builder-stage" data-abags-live-stage="true" data-abags-engine-stage="true" data-builder-signature={signature} data-approx-width-cm={config.family ? ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm : ""} data-matching-crochet-back="true" data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
-        {yarnStops && <linearGradient id="abags-yarn-ombre" gradientUnits="userSpaceOnUse" x1="0" y1="140" x2="0" y2="520">
+        {yarnStops && <linearGradient id="abags-yarn-ombre" gradientUnits="userSpaceOnUse" x1={verticalBands ? 160 : 0} y1={verticalBands ? 0 : 140} x2={verticalBands ? 440 : 0} y2={verticalBands ? 0 : 520}>
           {yarnStops.map((stop,index)=><stop key={index} offset={`${stop.offset*100}%`} stopColor={stop.color} />)}
         </linearGradient>}
         <filter id="abags-shadow" x="-30%" y="-25%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="16" floodColor="#4C3438" floodOpacity="0.16" /></filter>
@@ -267,6 +271,7 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
         <pattern id="abags-yarn-herringbone" width="36" height="30" patternUnits="userSpaceOnUse"><rect width="36" height="30" fill={yarnBaseFill} /><path d="M-2 2 L9 15 L-2 28 M18 2 L29 15 L18 28 M38 2 L27 15 L38 28 M18 2 L7 15 L18 28" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity=".22" /><path d="M-2 3 L9 15 L-2 27 M18 3 L29 15 L18 27 M38 3 L27 15 L38 27 M18 3 L7 15 L18 27" fill="none" stroke="#261A1C" strokeWidth="1.4" opacity=".2" /></pattern>
         <pattern id="abags-yarn-basket" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill={yarnBaseFill} /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" opacity=".2" /><path d="M3 8 H31 M3 25 H31 M8 3 V31 M25 3 V31" stroke="#2A1D20" strokeWidth="1.5" strokeLinecap="round" opacity=".18" /></pattern>
         <pattern id="abags-yarn-shell" width="42" height="34" patternUnits="userSpaceOnUse"><rect width="42" height="34" fill={yarnBaseFill} /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity=".22" /><path d="M2 29 Q10 8 21 29 Q32 8 40 29 M-19 12 Q-11 -9 0 12 Q11 -9 19 12 Q30 -9 38 12 Q49 -9 57 12" fill="none" stroke="#2A1D20" strokeWidth="1.5" opacity=".18" /></pattern>
+        {blackCrochet && <pattern id="abags-yarn-black-flap" width="28" height="24" patternUnits="userSpaceOnUse"><rect width="28" height="24" fill={blackCrochet}/><path d="M-3 23 Q7 1 15 23 M12 27 Q22 5 31 27" fill="none" stroke="#7E7B80" strokeWidth="4" strokeLinecap="round" opacity=".42"/></pattern>}
       </defs>
       <ellipse cx="300" cy="526" rx="168" ry="20" fill="#5A4245" opacity=".10" filter="url(#abags-shadow)" />
       {!hasShape && <g className="abags-builder-empty-state"><path d="M190 190 Q300 135 410 190 L430 440 Q300 500 170 440 Z" fill="none" stroke="#CDBABD" strokeWidth="4" strokeDasharray="10 10" /><text x="300" y="315" textAnchor="middle" className="abags-builder-svg-title">Wybierz fason</text><text x="300" y="342" textAnchor="middle" className="abags-builder-svg-copy">Tutaj zbudujesz torebkę od podstaw</text></g>}
@@ -274,9 +279,9 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
         {config.strap !== "none" && <g data-layer="strap" className="abags-builder-layer abags-builder-layer-strap" opacity=".94">{config.strap === "chain" ? <path d="M455 245 C520 300 548 390 520 490 C505 540 470 555 430 548" fill="none" stroke={metal} strokeWidth="10" strokeDasharray="3 10" strokeLinecap="round" /> : <path d="M454 244 C518 300 542 388 516 486 C501 535 468 552 428 545" fill="none" stroke={config.strap === "woven" ? "url(#abags-woven)" : strapColor(config)} strokeWidth={config.strap === "woven" ? 19 : 16} strokeLinecap="round" />}</g>}
         {config.handles !== "none" && <g data-layer="handles" className="abags-builder-layer abags-builder-layer-handles">{config.handles === "crochet" ? <path d={`M210 ${handleTop + 35} C205 ${handleTop - 75} 395 ${handleTop - 75} 390 ${handleTop + 35}`} fill="none" stroke={hasColor ? bagColor : "#D8C9C5"} strokeWidth="28" strokeLinecap="round" /> : <path d={`M215 ${handleTop + 28} C205 ${handleTop - 92} 395 ${handleTop - 92} 385 ${handleTop + 28}`} fill="none" stroke={config.handles === "wood-dark" ? "url(#abags-wood-dark)" : "url(#abags-wood-light)"} strokeWidth="30" strokeLinecap="round" />}</g>}
         <path data-layer="body" d={body} fill={hasColor ? `url(#abags-yarn-${stitch})` : "url(#abags-empty)"} stroke={hasColor ? bagColor : "#CDBABD"} strokeWidth="6" strokeLinejoin="round" />
-        {supportedFlap !== "none" && <g data-layer="flap" className="abags-builder-layer abags-builder-layer-flap">{supportedFlap === "crochet" ? <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 175 Q300 125 440 175 L420 315 Q300 360 180 315 Z"} fill={hasColor ? `url(#abags-yarn-${stitch})` : "url(#abags-empty)"} stroke={bagColor} strokeWidth="5" /> : <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 170 Q300 135 440 170 L425 300 Q300 350 175 300 Z"} fill="url(#abags-leather)" stroke="#FFFFFF" strokeOpacity=".18" strokeWidth="3" />}<circle cx="300" cy={config.family === "round" ? 286 : 274} r="18" fill={metal} /><circle cx="300" cy={config.family === "round" ? 286 : 274} r="8" fill="#FFF" opacity=".7" /></g>}
+        {supportedFlap !== "none" && <g data-layer="flap" className="abags-builder-layer abags-builder-layer-flap">{supportedFlap === "crochet" ? <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 175 Q300 125 440 175 L420 315 Q300 360 180 315 Z"} fill={blackCrochet ? "url(#abags-yarn-black-flap)" : hasColor ? `url(#abags-yarn-${stitch})` : "url(#abags-empty)"} stroke={blackCrochet ?? bagColor} strokeWidth="5" /> : <path d={config.family === "round" ? "M155 225 Q300 105 445 225 Q420 315 300 340 Q180 315 155 225 Z" : "M160 170 Q300 135 440 170 L425 300 Q300 350 175 300 Z"} fill="url(#abags-leather)" stroke="#FFFFFF" strokeOpacity=".18" strokeWidth="3" />}<circle cx="300" cy={config.family === "round" ? 286 : 274} r="18" fill={metal} /><circle cx="300" cy={config.family === "round" ? 286 : 274} r="8" fill="#FFF" opacity=".7" /></g>}
         {(config.strap !== "none" || config.handles !== "none") && <g data-layer="hardware" className="abags-builder-layer abags-builder-layer-hardware"><circle cx="150" cy="238" r="11" fill="none" stroke={metal} strokeWidth="7" /><circle cx="450" cy="238" r="11" fill="none" stroke={metal} strokeWidth="7" /></g>}
-        {config.accent === "tassel" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><circle cx="466" cy="250" r="9" fill={metal} /><path d="M472 258 Q488 270 482 292" fill="none" stroke={bagColor} strokeWidth="10" strokeLinecap="round" />{[0,1,2,3,4,5].map((index) => <path key={index} d={`M${473 + index * 4} 286 Q${478 + index * 4} 350 ${468 + index * 5} 405`} fill="none" stroke={index % 2 ? bagColor : "#F0D7DE"} strokeWidth="7" strokeLinecap="round" />)}</g>}
+        {config.accent === "tassel" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent" transform={blackCrochet ? "translate(-166 90)" : undefined}><circle cx="466" cy="250" r="9" fill={metal} /><path d="M472 258 Q488 270 482 292" fill="none" stroke={blackCrochet ?? bagColor} strokeWidth="10" strokeLinecap="round" />{[0,1,2,3,4,5].map((index) => <path key={index} d={`M${473 + index * 4} 286 Q${478 + index * 4} 350 ${468 + index * 5} 405`} fill="none" stroke={blackCrochet ?? (index % 2 ? bagColor : "#F0D7DE")} strokeWidth="7" strokeLinecap="round" />)}</g>}
         {config.accent === "scarf" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M186 176 C135 135 104 160 130 206 C154 248 197 220 205 191 C215 229 259 250 279 211 C302 167 261 139 211 176 Z" fill="#F2C6D0" stroke="#FFFFFF" strokeWidth="3" /><path d="M196 192 L146 353 Q174 368 199 348 L220 207 Z" fill="#F6DDE3" /><path d="M211 194 L254 340 Q279 330 286 307 L224 203 Z" fill="#D9829A" opacity=".9" /><circle cx="173" cy="189" r="8" fill="#B95B74" /><circle cx="238" cy="196" r="7" fill="#C7962F" /></g>}
         {config.accent === "bow" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M203 190 C166 147 111 152 128 206 C149 245 180 223 203 190 Z" fill="#F2C6D0" stroke="#FFF4F7" strokeWidth="4"/><path d="M203 190 C244 147 298 153 276 209 C250 247 221 219 203 190 Z" fill="#D7839A" stroke="#FFF4F7" strokeWidth="4"/><path d="M197 200 L172 266 L199 274 L217 204 Z" fill="#F6DDE3"/><path d="M214 202 L242 271 L263 259 L222 197 Z" fill="#B96780"/><ellipse cx="209" cy="197" rx="16" ry="19" fill="#B96780" stroke="#FFF4F7" strokeWidth="3"/></g>}
         {config.accent === "charm" && <g data-layer="accent" className="abags-builder-layer abags-builder-layer-accent"><path d="M455 246 Q492 265 487 302" fill="none" stroke={metal} strokeWidth="5" /><path d="M487 300 C470 278 444 301 487 336 C530 301 504 278 487 300 Z" fill="#B87880" stroke={metal} strokeWidth="4" /></g>}
@@ -370,7 +375,7 @@ export default function BagBuilderEngine() {
   const canCustomize = Boolean(config.family && config.color);
   const canSave = Boolean(config.family && config.color && config.stitch);
   const familyHandles = useMemo(() => config.family ? HANDLES.filter((item) => isAgataBuilderHandleSupported(config.family, item.value)) : HANDLES, [config.family]);
-  const familyFlaps = useMemo(() => config.family ? FLAPS.filter((item) => isAgataBuilderConstructionSupported(config.family, "flaps", item.value)) : FLAPS, [config.family]);
+  const familyFlaps = useMemo(() => (config.family ? FLAPS.filter((item) => isAgataBuilderConstructionSupported(config.family, "flaps", item.value)) : FLAPS).map(item => item.value === "crochet" && getAbagsCrochetFlapTone({ family: config.family, color: config.color, flap: "crochet" }) ? { ...item, label: "Szydełkowa czarna" } : item), [config.family, config.color]);
   const familyStraps = useMemo(() => config.family ? STRAPS.filter((item) => isAgataBuilderConstructionSupported(config.family, "straps", item.value)) : STRAPS, [config.family]);
   const familyAccents = useMemo(() => config.family ? ACCENTS.filter((item) => isAgataBuilderConstructionSupported(config.family, "accents", item.value)) : ACCENTS, [config.family]);
   const supportedFlap = config.family && isAgataBuilderConstructionSupported(config.family, "flaps", config.flap) ? config.flap : "none";
@@ -390,13 +395,13 @@ export default function BagBuilderEngine() {
 
   if (!mount || !preview) return null;
 
-  const message = config.family ? `Dzień dobry! Chciałabym zamówić torebkę zaprojektowaną w A-Bags Bag Builder. Fason: ${labelFor(FAMILIES, config.family)}. Kolor sznurka: ${labelFor(COLORS, config.color)}. Ścieg szydełkowy: ${labelFor(STITCHES, config.stitch)}. Klapa: ${labelFor(FLAPS, supportedFlap)}. Uchwyty: ${labelFor(HANDLES, config.handles)}. Pasek: ${labelFor(STRAPS, supportedStrap)}. Okucia: ${labelFor(HARDWARE, config.hardware)}. Detal: ${labelFor(ACCENTS, supportedAccent)}. Materiał: sznurek poliestrowy z Pimiotki. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym zaprojektować własną torebkę A-Bags.";
+  const message = config.family ? `Dzień dobry! Chciałabym zamówić torebkę zaprojektowaną w A-Bags Bag Builder. Fason: ${labelFor(FAMILIES, config.family)}. Kolor sznurka: ${labelFor(COLORS, config.color)}. Ścieg szydełkowy: ${labelFor(STITCHES, config.stitch)}. Klapa: ${labelFor(familyFlaps, supportedFlap)}. Uchwyty: ${labelFor(HANDLES, config.handles)}. Pasek: ${labelFor(STRAPS, supportedStrap)}. Okucia: ${labelFor(HARDWARE, config.hardware)}. Detal: ${labelFor(ACCENTS, supportedAccent)}. Materiał: sznurek poliestrowy z Pimiotki. Proszę o potwierdzenie możliwości wykonania, finalnej ceny i terminu.` : "Dzień dobry! Chciałabym zaprojektować własną torebkę A-Bags.";
 
   return <>
     {createPortal(<section className="abags-exact-live abags-builder-controls" aria-labelledby="abags-builder-title" data-abags-exact-workspace="controls">
       <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Wybierz fason, aby od razu zobaczyć kompletną torebkę. Następnie dopasuj kolor, ścieg szydełkowy, klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
       <FamilyChoices config={config} onFamily={(family) => update("family", family)} onModel={(id) => { const next = createAbagsReferenceModelConfig(id); if (next) { setConfig(next); setSaved(false); } }} />
-      <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS.map(option => ({ ...option, swatch: getAbagsYarnPalette(option.value)?.swatch ?? option.swatch }))} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
+      <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS.map(option => ({ ...option, swatch: getAbagsYarnPalette(option.value, config.family)?.swatch ?? option.swatch }))} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
       <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
       <ChoiceGroup title="Klapa" step={4} options={familyFlaps} value={supportedFlap} onChange={(value) => update("flap", value)} disabled={!canCustomize} dataKey="flap" />
       <ChoiceGroup title="Uchwyty" step={5} options={familyHandles} value={config.handles} onChange={(value) => update("handles", value)} disabled={!canCustomize} dataKey="handles" />
