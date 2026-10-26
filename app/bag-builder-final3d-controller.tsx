@@ -154,10 +154,15 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string, 
     // The geometry probe payload lives on the authoritative WebGL canvas,
     // not on its parent stage. Read precisely the frame we are inspecting.
     const raw = canvas.dataset.abagsFidelityOwnerCorrection;
-    let correction: { id?: string; probes?: Array<{ x: number; y: number }> } | null = null;
-    if (raw) {
-      try { correction = JSON.parse(raw) as typeof correction; } catch { /* No geometry proof: retain strict grid validation. */ }
-    }
+    const correction = (() => {
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as { id?: string; probes?: Array<{ x: number; y: number }> };
+      } catch {
+        // No geometry proof: retain strict grid validation.
+        return null;
+      }
+    })();
     if (correction?.id === "pastel-mini" && Array.isArray(correction.probes)) {
       const radius = 4, side = radius * 2 + 1;
       const patch = new Uint8Array(side * side * 4);
