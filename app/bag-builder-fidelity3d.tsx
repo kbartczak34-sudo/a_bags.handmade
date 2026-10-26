@@ -618,9 +618,15 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
   };
   for (let row = -1; row <= rows; row++) {
     for (let column = -1; column <= columns; column++) {
+      // Real hand-crocheted 5 mm cord does not keep machine-identical gauge.
+      // Low-amplitude, deterministic tension changes preserve the stitch and
+      // panel silhouette without randomising a saved model between frames.
       const variation = Math.sin((row + 7) * 17.31 + (column + 11) * 5.97);
-      const cx = -spec.rx * .97 + (column + .5 + (row % 2) * .5) * dx;
-      const cy = -spec.ry * .97 + (row + .5) * dy;
+      const crossTension = Math.sin((row + 3) * 7.47 - (column + 5) * 9.13);
+      const widthGauge = 1 + variation * .035;
+      const heightGauge = 1 + crossTension * .028;
+      const cx = -spec.rx * .97 + (column + .5 + (row % 2) * .5) * dx + variation * dx * .012;
+      const cy = -spec.ry * .97 + (row + .5) * dy + crossTension * dy * .012;
       if (stitch === "basket") {
         const verticalOver = (row + column) % 2 === 0;
         for (const axis of [0, 1]) for (const strand of [-1, 1]) {
@@ -636,11 +642,12 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
         }
       } else if (stitch === "shell") {
         // Rounded fans, with a crossing lower crown instead of a flat scallop icon.
-        curve(cx, cy, dx * 1.30, dy * .90, radius * .12, variation * dx * .035);
-        curve(cx, cy + dy * .28, dx * .78, dy * .72, radius * .24, -variation * dx * .025);
+        curve(cx, cy, dx * 1.30 * widthGauge, dy * .90 * heightGauge, radius * (.12 + variation * .055), variation * dx * .035);
+        curve(cx, cy + dy * .28, dx * .78 * widthGauge, dy * .72 * heightGauge, radius * (.24 + crossTension * .055), -variation * dx * .025);
       } else {
         const compact = stitch === "herringbone";
-        curve(cx, cy, dx * (compact ? 1.06 : 1.18), dy * (compact ? .84 : 1.06), variation * radius * .10, variation * dx * .035);
+        curve(cx, cy, dx * (compact ? 1.06 : 1.18) * widthGauge, dy * (compact ? .84 : 1.06) * heightGauge,
+          variation * radius * .14, variation * dx * .035);
       }
     }
   }
@@ -1642,6 +1649,19 @@ float braidVisibility(vec2 uv){
   return 0.0;
 #endif
 }
+// A second, finer level models the braided polyester filament bundles. Its
+// frequency is filtered in UV derivatives, preventing glitter and moire when
+// the customer zooms out or rotates a narrow 5 mm stitch on a phone.
+float yarnFilaments(vec2 uv){
+#ifdef ABAGS_HAS_DERIVATIVES
+  vec2 phase=vec2(uv.x*1.25+uv.y*26.0,uv.x*(-.88)+uv.y*31.0);
+  float footprint=max(length(dFdx(phase)),length(dFdy(phase)));
+  float visibility=1.0-smoothstep(.18,.72,footprint);
+  return (.5*sin(phase.x*6.2831853)+.5*sin(phase.y*6.2831853))*visibility;
+#else
+  return 0.0;
+#endif
+}
 vec3 cordBraidNormal(vec3 normal,vec2 slope){
 #ifdef ABAGS_HAS_DERIVATIVES
   vec3 dx=dFdx(vWorld),dy=dFdy(vWorld);
@@ -1747,10 +1767,13 @@ void main(){
     float braid=cordBraid(vUv,braidSlope);
     float resolved=braidVisibility(vUv);
     n=cordBraidNormal(n,braidSlope*resolved);
-    detail=mix(.97,.88+.15*braid,resolved);
+    float filament=yarnFilaments(vUv);
+    // Anisotropic lustre on the narrow plies, rather than a glossy plastic
+    // clearcoat. The low-amplitude microfibre pattern never changes yarn hue.
+    detail=mix(.97,.88+.15*braid,resolved)*(1.0+.035*filament);
     cordOcclusion=mix(1.0,.88+.12*braid,resolved);
-    rough=.70+.04*(1.0-braid)*resolved;
-    fibreSheen=.022;
+    rough=.735+.055*(1.0-braid)*resolved+.015*(1.0-filament);
+    fibreSheen=.018+.012*max(filament,0.0);
   } else if(uMaterial<8.5){
     // Floral satin and a slim bound border follow the fabric's own UVs.
     // The print remains attached to both faces as each loop turns in depth.
