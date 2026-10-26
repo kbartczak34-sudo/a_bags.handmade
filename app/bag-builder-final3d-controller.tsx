@@ -145,6 +145,40 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string, 
     }
   }
 
+  // Generic 9x9 screen probes can miss nearly every cord pixel on narrow
+  // vertical pastel mini stripes at mobile zoom. Use the renderer's OWN
+  // geometry-projected, multi-height yarn probes as additional evidence.
+  // We still require an opaque framebuffer and correctly dyed yarn pixels;
+  // this does not auto-promote a blank canvas or a wrong-color model.
+  if (palette?.id === "pastel-mini-columns" && family === "mini") {
+    const stage = canvas.closest<HTMLElement>(".abags-bag-builder-stage");
+    const raw = stage?.dataset.abagsFidelityOwnerCorrection;
+    let correction: { id?: string; probes?: Array<{ x: number; y: number }> } | null = null;
+    if (raw) {
+      try { correction = JSON.parse(raw) as typeof correction; } catch { /* No geometry proof: retain strict grid validation. */ }
+    }
+    if (correction?.id === "pastel-mini" && Array.isArray(correction.probes)) {
+      const radius = 4, side = radius * 2 + 1;
+      const patch = new Uint8Array(side * side * 4);
+      for (const point of correction.probes.slice(0, 12)) {
+        if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) continue;
+        if (point.x < 0 || point.x >= width || point.y < 0 || point.y >= height) continue;
+        const x = Math.max(radius, Math.min(width - radius - 1, Math.round(point.x)));
+        const y = Math.max(radius, Math.min(height - radius - 1, height - 1 - Math.round(point.y)));
+        gl.readPixels(x - radius, y - radius, side, side, gl.RGBA, gl.UNSIGNED_BYTE, patch);
+        for (let i = 0; i < patch.length; i += 4) {
+          if (patch[i + 3] <= 200) continue;
+          const rendered = hueSample(patch[i], patch[i + 1], patch[i + 2]);
+          if (rendered.saturation < .10) continue;
+          colorSamples += 1;
+          const delta = Math.min(...expectedHues.map(hue => hueDistance(rendered.hue, hue)));
+          hueDeltaTotal += delta;
+          if (delta <= 48) hueMatches += 1;
+        }
+      }
+    }
+  }
+
   const error = gl.getError();
   const lumaSpread = opaqueSamples ? Math.max(0, lumaMax - lumaMin) : 0;
   const averageHueDelta = colorSamples ? Math.round((hueDeltaTotal / colorSamples) * 10) / 10 : null;
