@@ -1348,7 +1348,7 @@ function makeExtrudedContour(contour: Point[], depth: number, softness = 0) {
   return { positions, normals, uvs, indices };
 }
 
-function makeArchTube(rx: number, ry: number, z: number, minor = 0.055, segments = 72, tube = 12, full = false) {
+function makeArchTube(rx: number, ry: number, z: number, minor = 0.055, segments = 72, tube = 12, full = false, woodGrain = false) {
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
@@ -1372,7 +1372,11 @@ function makeArchTube(rx: number, ry: number, z: number, minor = 0.055, segments
       const nz = sa;
       positions.push(cx + minor * nx, cy + minor * ny, z + minor * nz);
       normals.push(...normalize(nx, ny, nz));
-      uvs.push(progress, j / tube);
+      // Real wooden rings are cut in their X/Y plane. Map the hardwood
+      // surface in that plane, not as arbitrary long stripes around the
+      // torus circumference. Other materials retain their existing UVs.
+      uvs.push(woodGrain ? .5 + (cx + minor * nx) / 1.1 : progress,
+        woodGrain ? .5 + cy + minor * ny : j / tube);
     }
   }
   const stride = tube + 1;
@@ -1986,7 +1990,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       roundLiningSeam: createMesh(gl, makeOpeningLiningSeam("round")),
       bucketLiningSeam: createMesh(gl, makeOpeningLiningSeam("bucket")),
       miniLiningSeam: createMesh(gl, makeOpeningLiningSeam("mini")),
-      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.042, 96, 16, true)),
+      woodHandle: createMesh(gl, makeArchTube(0.46, 0.42, 0, 0.042, 96, 16, true, true)),
       crochetHandle: createMesh(gl, makeArchTube(0.72, 0.72, 0, 0.059, 72, 12, false)),
       toteChain: createMesh(gl, familyShoulderChainMesh("tote")),
       roundChain: createMesh(gl, familyShoulderChainMesh("round")),
