@@ -19,6 +19,8 @@ async function load(path, dependencies = {}, extra = "") {
 }
 const palettes = await load("lib/abags-yarn-palettes.ts");
 const references = await load("lib/abags-reference-models.ts");
+const cognac = await load("lib/abags-cognac-model.ts");
+const families = await load("lib/abags-family-presets.ts", cognac);
 const fidelity = await load("lib/abags-builder-fidelity.ts");
 const measurements = await load("lib/abags-fidelity-v4-family-spec.ts");
 const engine = await load("app/bag-builder-engine.tsx", { ...palettes, ...references, ...fidelity, ...measurements }, "\nexports.BagPreview = BagPreview;");
@@ -30,6 +32,8 @@ test("pastel mini has independent left-to-right columns while the wooden tote re
   assert.equal(palette.axis, "x");
   assert.equal(palette.id, "pastel-mini-columns");
   assert.match(palette.swatch, /90deg/);
+  const selected = families.createBagBuilderFamilyConfig("mini");
+  assert.equal(palettes.getAbagsYarnPalette(selected.color, selected.family).id, palette.id);
   const stops = palettes.getAbagsYarnSvgStops(mini.color, mini.family);
   assert.equal(stops.length, 8);
   assert.equal(stops[0].color, palette.colors[0]);

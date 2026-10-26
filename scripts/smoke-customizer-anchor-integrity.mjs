@@ -926,7 +926,7 @@ const analyze=(overlay,renderedPixels)=>{
         'tote|#E4A9B5|classic|none|wood-light|none|gold|bow',
         'round|#E8DDCC|shell|crochet|none|woven|gold|tassel',
         'bucket|#E8DDCC|classic|suede-burgundy|none|leather|gold|none',
-        'mini|#A88AE0|basket|crochet|none|chain|gold|tassel',
+        'mini|#BA9ECF|basket|crochet|none|chain|gold|tassel',
         'satchel|#C7652F|classic|leather-cognac|leather-braid|woven-ornament|gold|none',
       ];
       const currentFamily = await evaluate(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset.family`);
