@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ABAGS_FIDELITY_V4_RENDERER_VERSION } from "../lib/abags-fidelity-v4-family-spec";
+import { getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
 
 const MAX_ATTEMPTS = 20;
 const REQUIRED_RENDERER = ABAGS_FIDELITY_V4_RENDERER_VERSION;
@@ -80,7 +81,7 @@ function hueDistance(a: number, b: number) {
   return Math.min(direct, 360 - direct);
 }
 
-function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string): PixelInspection {
+function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string, family: string): PixelInspection {
   const gl = canvas.getContext("webgl");
   if (!gl || gl.isContextLost()) return emptyInspection("framebuffer-unavailable");
 
@@ -90,7 +91,19 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string):
 
   const expectedRgb = parseHexColor(expectedColor);
   const expectedSample = expectedRgb ? hueSample(...expectedRgb) : null;
-  const colorRequired = Boolean(expectedSample && expectedSample.saturation >= .16);
+  // A saved swatch names the construction, not the sole rendered pigment:
+  // pastel mini has vertical turquoise/pink/cream/lilac columns, while tall
+  // totes can have horizontal ombre bands. Keep chroma verification strict,
+  // but accept ANY genuinely selected yarn dye instead of demanding purple
+  // from a turquoise section and hiding otherwise valid real WebGL geometry.
+  const palette = getAbagsYarnPalette(expectedColor, family);
+  const expectedHues = (palette ? [...palette.colors] : [expectedColor])
+    .map(parseHexColor)
+    .filter((rgb): rgb is [number, number, number] => rgb !== null)
+    .map(rgb => hueSample(...rgb))
+    .filter(sample => sample.saturation >= .16)
+    .map(sample => sample.hue);
+  const colorRequired = Boolean(expectedSample && expectedSample.saturation >= .16) || expectedHues.length > 0;
   const expectedHue = colorRequired && expectedSample ? expectedSample.hue : null;
   const pixel = new Uint8Array(4);
   const columns = 9;
@@ -124,9 +137,51 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string):
       const rendered = hueSample(pixel[0], pixel[1], pixel[2]);
       if (rendered.saturation < .10) continue;
       colorSamples += 1;
-      const delta = hueDistance(rendered.hue, expectedHue);
+      const delta = expectedHues.length
+        ? Math.min(...expectedHues.map(hue => hueDistance(rendered.hue, hue)))
+        : hueDistance(rendered.hue, expectedHue);
       hueDeltaTotal += delta;
       if (delta <= 48) hueMatches += 1;
+    }
+  }
+
+  // Generic 9x9 screen probes can miss nearly every cord pixel on narrow
+  // vertical pastel mini stripes at mobile zoom. Use the renderer's OWN
+  // geometry-projected, multi-height yarn probes as additional evidence.
+  // We still require an opaque framebuffer and correctly dyed yarn pixels;
+  // this does not auto-promote a blank canvas or a wrong-color model.
+  if (palette?.id === "pastel-mini-columns" && family === "mini") {
+    // The geometry probe payload lives on the authoritative WebGL canvas,
+    // not on its parent stage. Read precisely the frame we are inspecting.
+    const raw = canvas.dataset.abagsFidelityOwnerCorrection;
+    const correction = (() => {
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as { id?: string; probes?: Array<{ x: number; y: number }> };
+      } catch {
+        // No geometry proof: retain strict grid validation.
+        return null;
+      }
+    })();
+    if (correction?.id === "pastel-mini" && Array.isArray(correction.probes)) {
+      const radius = 4, side = radius * 2 + 1;
+      const patch = new Uint8Array(side * side * 4);
+      for (const point of correction.probes.slice(0, 12)) {
+        if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) continue;
+        if (point.x < 0 || point.x >= width || point.y < 0 || point.y >= height) continue;
+        const x = Math.max(radius, Math.min(width - radius - 1, Math.round(point.x)));
+        const y = Math.max(radius, Math.min(height - radius - 1, height - 1 - Math.round(point.y)));
+        gl.readPixels(x - radius, y - radius, side, side, gl.RGBA, gl.UNSIGNED_BYTE, patch);
+        for (let i = 0; i < patch.length; i += 4) {
+          if (patch[i + 3] <= 200) continue;
+          const rendered = hueSample(patch[i], patch[i + 1], patch[i + 2]);
+          if (rendered.saturation < .10) continue;
+          colorSamples += 1;
+          const delta = Math.min(...expectedHues.map(hue => hueDistance(rendered.hue, hue)));
+          hueDeltaTotal += delta;
+          if (delta <= 48) hueMatches += 1;
+        }
+      }
     }
   }
 
@@ -292,7 +347,7 @@ export default function BagBuilderFinal3DController() {
         return;
       }
 
-      const firstPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
+      const firstPixels = inspectVisiblePixels(canvas, stage.dataset.color || "", stage.dataset.family || "");
       recordPixels(firstPixels);
       if (!firstPixels.ok && !isNeutralEmptyConstruction) {
         retryOrFallback(attempt, firstPixels.reason);
@@ -328,7 +383,7 @@ export default function BagBuilderFinal3DController() {
             return;
           }
 
-          const finalPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
+          const finalPixels = inspectVisiblePixels(canvas, stage.dataset.color || "", stage.dataset.family || "");
           recordPixels(finalPixels);
           if (!finalPixels.ok && !isNeutralEmptyConstruction) {
             retryOrFallback(attempt, finalPixels.reason);

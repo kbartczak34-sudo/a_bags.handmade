@@ -562,6 +562,7 @@ type YarnPoint = [number, number, number];
 function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10, closed = false) {
   let previous = -1;
   let distance = 0;
+  const firstRingVertex = mesh.positions.length / 3;
   points.forEach((point, index) => {
     if (index > 0) distance += Math.hypot(...point.map((value, axis) => value - points[index - 1][axis]));
     if (!contains(point)) { previous = -1; return; }
@@ -576,11 +577,46 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
     const across = normalize(normal[1] * tangent[2] - normal[2] * tangent[1], normal[2] * tangent[0] - normal[0] * tangent[2], normal[0] * tangent[1] - normal[1] * tangent[0]);
     const outward = normalize(tangent[1] * across[2] - tangent[2] * across[1], tangent[2] * across[0] - tangent[0] * across[2], tangent[0] * across[1] - tangent[1] * across[0]);
     const start = mesh.positions.length / 3;
+    // Handmade polyester cord is tensioned unevenly by adjacent crochet
+    // loops. Keep a genuinely round 5 mm cross-section, with only a gentle
+    // 1-3% variation in radius along the length of each strand. This adds
+    // physical soft-spun relief without more vertices, texture files, or
+    // random per-frame deformation during orbit/zoom.
+    const yarnRadius = thickness * (1
+      + .018 * Math.sin(distance * 19.3 + index * .19)
+      + .009 * Math.sin(distance * 43.7 - index * .11));
     for (let side = 0; side <= sides; side++) {
       const angle = side / sides * Math.PI * 2;
-      const n = across.map((v, axis) => v * Math.cos(angle) + outward[axis] * Math.sin(angle)) as YarnPoint;
-      mesh.positions.push(...point.map((v, axis) => v + n[axis] * thickness));
-      mesh.normals.push(...n);
+      const cosine = Math.cos(angle), sine = Math.sin(angle);
+      const n = across.map((v, axis) => v * cosine + outward[axis] * sine) as YarnPoint;
+      const around = across.map((v, axis) => -v * sine + outward[axis] * cosine) as YarnPoint;
+      // Three interlaced carriers change the TRUE tube cross-section. A
+      // low, seam-continuous helical profile catches side light during orbit.
+      // This works alongside the lengthwise hand-tension radius above.
+      const twist = distance / (thickness * 1.6) * Math.PI * 2;
+      const plyPhase = 3 * angle - twist * .8;
+      const finePhase = 5 * angle + twist * 1.3;
+      const plyRadius = 1 + .023 * Math.cos(plyPhase) + .007 * Math.sin(finePhase);
+      const angularSlope = -.023 * 3 * Math.sin(plyPhase) + .007 * 5 * Math.cos(finePhase);
+      const axialSlope = .023 * (.8 * Math.PI * 2 / 1.6) * Math.sin(plyPhase)
+        + .007 * (1.3 * Math.PI * 2 / 1.6) * Math.cos(finePhase);
+      const surfaceNormal = normalize(
+        n[0] - around[0] * angularSlope - tangent[0] * axialSlope,
+        n[1] - around[1] * angularSlope - tangent[1] * axialSlope,
+        n[2] - around[2] * angularSlope - tangent[2] * axialSlope,
+      );
+      // The two ends of a sewn closed cord use identical position/normal
+      // rings. Helical yarn twist changes phase along the perimeter; without
+      // welding its duplicate end, the rim would acquire a tiny visible split.
+      // UVs are kept separate for a proper seam and existing index topology.
+      if (closed && index === points.length - 1) {
+        const first = (firstRingVertex + side) * 3;
+        mesh.positions.push(...mesh.positions.slice(first, first + 3));
+        mesh.normals.push(...mesh.normals.slice(first, first + 3));
+      } else {
+        mesh.positions.push(...point.map((v, axis) => v + n[axis] * yarnRadius * plyRadius));
+        mesh.normals.push(...surfaceNormal);
+      }
       // The braid repeats at the same physical scale on short loops and long
       // bindings. A normalized 0..1 path stretched the fibres on every seam.
       mesh.uvs.push(distance / (thickness * 1.6), side / sides);
@@ -618,17 +654,23 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
   };
   for (let row = -1; row <= rows; row++) {
     for (let column = -1; column <= columns; column++) {
+      // Real hand-crocheted 5 mm cord does not keep machine-identical gauge.
+      // Low-amplitude, deterministic tension changes preserve the stitch and
+      // panel silhouette without randomising a saved model between frames.
       const variation = Math.sin((row + 7) * 17.31 + (column + 11) * 5.97);
-      const cx = -spec.rx * .97 + (column + .5 + (row % 2) * .5) * dx;
-      const cy = -spec.ry * .97 + (row + .5) * dy;
+      const crossTension = Math.sin((row + 3) * 7.47 - (column + 5) * 9.13);
+      const widthGauge = 1 + variation * .035;
+      const heightGauge = 1 + crossTension * .028;
+      const cx = -spec.rx * .97 + (column + .5 + (row % 2) * .5) * dx + variation * dx * .012;
+      const cy = -spec.ry * .97 + (row + .5) * dy + crossTension * dy * .012;
       if (stitch === "basket") {
         const verticalOver = (row + column) % 2 === 0;
         for (const axis of [0, 1]) for (const strand of [-1, 1]) {
           const points: YarnPoint[] = [];
           for (let i = 0; i <= Math.max(4, curveSteps / 2); i++) {
             const t = i / Math.max(4, curveSteps / 2) - .5;
-            const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10);
-            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19);
+            const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10) * widthGauge;
+            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19) * heightGauge;
             const over = (axis === 0) === verticalOver;
             points.push(seat(x, y, over ? radius * (.50 + .35 * Math.cos(t * Math.PI)) : -radius * .28));
           }
@@ -636,11 +678,12 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
         }
       } else if (stitch === "shell") {
         // Rounded fans, with a crossing lower crown instead of a flat scallop icon.
-        curve(cx, cy, dx * 1.30, dy * .90, radius * .12, variation * dx * .035);
-        curve(cx, cy + dy * .28, dx * .78, dy * .72, radius * .24, -variation * dx * .025);
+        curve(cx, cy, dx * 1.30 * widthGauge, dy * .90 * heightGauge, radius * (.12 + variation * .055), variation * dx * .035);
+        curve(cx, cy + dy * .28, dx * .78 * widthGauge, dy * .72 * heightGauge, radius * (.24 + crossTension * .055), -variation * dx * .025);
       } else {
         const compact = stitch === "herringbone";
-        curve(cx, cy, dx * (compact ? 1.06 : 1.18), dy * (compact ? .84 : 1.06), variation * radius * .10, variation * dx * .035);
+        curve(cx, cy, dx * (compact ? 1.06 : 1.18) * widthGauge, dy * (compact ? .84 : 1.06) * heightGauge,
+          variation * radius * .14, variation * dx * .035);
       }
     }
   }
@@ -1642,6 +1685,19 @@ float braidVisibility(vec2 uv){
   return 0.0;
 #endif
 }
+// A second, finer level models the braided polyester filament bundles. Its
+// frequency is filtered in UV derivatives, preventing glitter and moire when
+// the customer zooms out or rotates a narrow 5 mm stitch on a phone.
+float yarnFilaments(vec2 uv){
+#ifdef ABAGS_HAS_DERIVATIVES
+  vec2 phase=vec2(uv.x*1.25+uv.y*26.0,uv.x*(-.88)+uv.y*31.0);
+  float footprint=max(length(dFdx(phase)),length(dFdy(phase)));
+  float visibility=1.0-smoothstep(.18,.72,footprint);
+  return (.5*sin(phase.x*6.2831853)+.5*sin(phase.y*6.2831853))*visibility;
+#else
+  return 0.0;
+#endif
+}
 vec3 cordBraidNormal(vec3 normal,vec2 slope){
 #ifdef ABAGS_HAS_DERIVATIVES
   vec3 dx=dFdx(vWorld),dy=dFdy(vWorld);
@@ -1747,10 +1803,13 @@ void main(){
     float braid=cordBraid(vUv,braidSlope);
     float resolved=braidVisibility(vUv);
     n=cordBraidNormal(n,braidSlope*resolved);
-    detail=mix(.97,.88+.15*braid,resolved);
+    float filament=yarnFilaments(vUv);
+    // Anisotropic lustre on the narrow plies, rather than a glossy plastic
+    // clearcoat. The low-amplitude microfibre pattern never changes yarn hue.
+    detail=mix(.97,.88+.15*braid,resolved)*(1.0+.035*filament);
     cordOcclusion=mix(1.0,.88+.12*braid,resolved);
-    rough=.70+.04*(1.0-braid)*resolved;
-    fibreSheen=.022;
+    rough=.735+.055*(1.0-braid)*resolved+.015*(1.0-filament);
+    fibreSheen=.018+.012*max(filament,0.0);
   } else if(uMaterial<8.5){
     // Floral satin and a slim bound border follow the fabric's own UVs.
     // The print remains attached to both faces as each loop turns in depth.
