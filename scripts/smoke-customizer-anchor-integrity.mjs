@@ -60,7 +60,11 @@ async function connectCdp(webSocketDebuggerUrl) {
     const timer = setTimeout(() => {
       pending.delete(messageId);
       reject(new Error(`CDP command timed out: ${method}`));
-    }, cdpTimeoutMs);
+    // A viewport switch after 12 GPU-intensive 3D model probes can pause
+    // Chromium's compositor longer than the standard 8s command budget.
+    // Only resize commands get extra time; all user-visible drawing,
+    // interaction and framebuffer assertions retain their original limits.
+    }, method === "Emulation.setDeviceMetricsOverride" ? 25_000 : cdpTimeoutMs);
     pending.set(messageId, { resolve, reject, timer });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
