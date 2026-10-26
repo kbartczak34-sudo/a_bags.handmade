@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ABAGS_FIDELITY_V4_RENDERER_VERSION } from "../lib/abags-fidelity-v4-family-spec";
+import { getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
 
 const MAX_ATTEMPTS = 20;
 const REQUIRED_RENDERER = ABAGS_FIDELITY_V4_RENDERER_VERSION;
@@ -80,7 +81,7 @@ function hueDistance(a: number, b: number) {
   return Math.min(direct, 360 - direct);
 }
 
-function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string): PixelInspection {
+function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string, family: string): PixelInspection {
   const gl = canvas.getContext("webgl");
   if (!gl || gl.isContextLost()) return emptyInspection("framebuffer-unavailable");
 
@@ -90,7 +91,19 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string):
 
   const expectedRgb = parseHexColor(expectedColor);
   const expectedSample = expectedRgb ? hueSample(...expectedRgb) : null;
-  const colorRequired = Boolean(expectedSample && expectedSample.saturation >= .16);
+  // A saved swatch names the construction, not the sole rendered pigment:
+  // pastel mini has vertical turquoise/pink/cream/lilac columns, while tall
+  // totes can have horizontal ombre bands. Keep chroma verification strict,
+  // but accept ANY genuinely selected yarn dye instead of demanding purple
+  // from a turquoise section and hiding otherwise valid real WebGL geometry.
+  const palette = getAbagsYarnPalette(expectedColor, family);
+  const expectedHues = (palette ? [...palette.colors] : [expectedColor])
+    .map(parseHexColor)
+    .filter((rgb): rgb is [number, number, number] => rgb !== null)
+    .map(rgb => hueSample(...rgb))
+    .filter(sample => sample.saturation >= .16)
+    .map(sample => sample.hue);
+  const colorRequired = Boolean(expectedSample && expectedSample.saturation >= .16) || expectedHues.length > 0;
   const expectedHue = colorRequired && expectedSample ? expectedSample.hue : null;
   const pixel = new Uint8Array(4);
   const columns = 9;
@@ -124,7 +137,9 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string):
       const rendered = hueSample(pixel[0], pixel[1], pixel[2]);
       if (rendered.saturation < .10) continue;
       colorSamples += 1;
-      const delta = hueDistance(rendered.hue, expectedHue);
+      const delta = expectedHues.length
+        ? Math.min(...expectedHues.map(hue => hueDistance(rendered.hue, hue)))
+        : hueDistance(rendered.hue, expectedHue);
       hueDeltaTotal += delta;
       if (delta <= 48) hueMatches += 1;
     }
@@ -292,7 +307,7 @@ export default function BagBuilderFinal3DController() {
         return;
       }
 
-      const firstPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
+      const firstPixels = inspectVisiblePixels(canvas, stage.dataset.color || "", stage.dataset.family || "");
       recordPixels(firstPixels);
       if (!firstPixels.ok && !isNeutralEmptyConstruction) {
         retryOrFallback(attempt, firstPixels.reason);
@@ -328,7 +343,7 @@ export default function BagBuilderFinal3DController() {
             return;
           }
 
-          const finalPixels = inspectVisiblePixels(canvas, stage.dataset.color || "");
+          const finalPixels = inspectVisiblePixels(canvas, stage.dataset.color || "", stage.dataset.family || "");
           recordPixels(finalPixels);
           if (!finalPixels.ok && !isNeutralEmptyConstruction) {
             retryOrFallback(attempt, finalPixels.reason);
