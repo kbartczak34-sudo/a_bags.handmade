@@ -1761,11 +1761,23 @@ void main(){
     fibreSheen=.035*cord*(.7+.3*strandFibres);
     rough=.68;
   } else if(uMaterial<1.5){
-    // Fine longitudinal grain and pores follow the physical wooden ring.
-    float grain=sin(vUv.y*93.0+sin(vUv.x*31.0)*1.7);
-    float fine=sin(vUv.y*257.0+sin(vUv.x*47.0)*2.0);
-    detail=.92+.045*grain+.018*fine;
-    rough=.43;
+    // Wooden hoops are polished solid objects, not uniform brown plastic.
+    // Grain is mapped in the actual X/Y cut-wood plane on both front and back.
+    // Two gently warped growth directions stop the repeating zebra-stripe look.
+    float grainPath=vUv.y*99.0
+      +2.2*sin(vUv.x*18.0+vUv.y*9.0)
+      +.74*sin(vUv.x*51.0-vUv.y*12.0);
+    float rings=sin(grainPath), fibres=sin(grainPath*2.43+vUv.x*21.0);
+    float growth=pow(.5+.5*sin(grainPath*.28),5.0);
+    // When the carved wooden ring is small on a mobile screen, resolve
+    // only those pores the framebuffer can actually represent.
+    float grainVisibility=1.0;
+#ifdef ABAGS_HAS_DERIVATIVES
+    float footprint=max(length(dFdx(vUv*vec2(51.0,257.0))),length(dFdy(vUv*vec2(51.0,257.0))));
+    grainVisibility=1.0-smoothstep(.35,1.10,footprint);
+#endif
+    detail=.957+grainVisibility*(.035*rings+.012*fibres-.018*growth);
+    rough=.43+grainVisibility*(.050*growth+.012*(1.0-fibres));
   } else if(uMaterial<2.5){
     detail=.97+.035*(hash(floor(vUv*220.0))-.5);
     rough=.64;
