@@ -8,8 +8,8 @@ import {
   type FidelityV4Family,
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
-import { ABAGS_YARN_PALETTES, getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
-import { getAbagsReferenceModel, getAbagsWoodHandleTone } from "../lib/abags-reference-models";
+import { ABAGS_YARN_PALETTES, ABAGS_PASTEL_MINI_YARN_PALETTE, getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
+import { getAbagsReferenceModel, getAbagsWoodHandleTone, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -1586,8 +1586,8 @@ void main(){
 
 // Generate both smooth dye transitions and distinct pastel bands from the
 // same palette data used by the swatches and SVG fallback.
-const REFERENCE_YARN_RAMPS = ABAGS_YARN_PALETTES.map(palette => {
-  const id = palette.color === "#88583F" ? 2 : palette.color === "#D58FAA" ? 3 : palette.color === "#BA9ECF" ? 4 : 5;
+const REFERENCE_YARN_RAMPS = [...ABAGS_YARN_PALETTES, ABAGS_PASTEL_MINI_YARN_PALETTE].map(palette => {
+  const id = palette.id === "pastel-mini-columns" ? 6 : palette.color === "#88583F" ? 2 : palette.color === "#D58FAA" ? 3 : palette.color === "#BA9ECF" ? 4 : 5;
   const rgb = (color: string) => `vec3(${Array.from(hex(color)).map(n => n.toFixed(6)).join(",")})`;
   let code = `if(uYarnOmbre>${id - .5}&&uYarnOmbre<${id + .5}){dyed=${rgb(palette.colors[0])};`;
   for (let i = 1; i < palette.colors.length; i++) {
@@ -2044,6 +2044,10 @@ function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
     const x = -spec.rx * .28, y = spec.bodyY + spec.ry * .58;
     return [x, y, ornamentSurfaceZ(config, x, y, .018)];
   }
+  if (config.accent === "tassel" && getAbagsCrochetFlapTone(config)) {
+    const tip = closedFlapSurface(family, true).contour.reduce((a,b)=>b[1] < a[1] ? b : a);
+    return [tip[0], tip[1], ornamentSurfaceZ(config, tip[0], tip[1], .018)];
+  }
   if ((config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")) {
     const model = woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]);
     const angle = Math.PI - .16;
@@ -2251,6 +2255,11 @@ function makeOrnamentGeometry(config: Config) {
   const bead = (target: FabricMesh, at: YarnPoint, size: YarnPoint) => appendOrnamentMesh(target, makeEllipsoid(1, 1, 1, 10, 14), matrix(at, size));
   if (config.accent === "tassel") {
     const metal = part("metal", 4), cord = part("cord", 7);
+    const fanFringe = Boolean(getAbagsCrochetFlapTone(config));
+    const fringePoint = ([x,y,z]: YarnPoint) => {
+      const t = clamp((-y-.115)/.70,0,1);
+      return point(x*(fanFringe ? .75+2.75*t : 1),y,z,.011);
+    };
     ring(metal, point(0, -.015, .025), .025, .031, .006);
     const cap = makeOrnamentLathe([[.013, .038], [.027, .031], [.037, .016], [.040, -.023], [.038, -.035], [.031, -.035]]);
     appendOrnamentMesh(cord, cap, matrix(point(0, -.087, .060, .042), [1, 1, 1]));
@@ -2262,8 +2271,8 @@ function makeOrnamentGeometry(config: Config) {
       }), .003);
     }
     for (const { path, frays } of tasselFringeStrands()) {
-      tube(cord, path.map(([x,y,z]) => point(x,y,z,.011)), .0085);
-      for (const fray of frays) tube(cord, fray.map(([x,y,z]) => point(x,y,z,.011)), .0018);
+      tube(cord, path.map(fringePoint), .0085);
+      for (const fray of frays) tube(cord, fray.map(fringePoint), .0018);
     }
     const winding = Array.from({ length: 65 }, (_, i) => {
       const t = i / 64, a = t * Math.PI * 6;
@@ -2323,7 +2332,8 @@ function makeOrnamentGeometry(config: Config) {
 function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
   const flapConstruction = config.flap === "crochet" ? "crochet" : config.flap && config.flap !== "none" ? "rigid" : "none";
   const key = [config.family, config.accent, (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood"), flapConstruction,
-    config.accent === "bow" ? getAbagsReferenceModel(config)?.id ?? "custom" : ""].join("|");
+    config.accent === "bow" ? getAbagsReferenceModel(config)?.id ?? "custom" : "",
+    config.accent === "tassel" && getAbagsCrochetFlapTone(config) ? "flap-tip" : "side"].join("|");
   if (renderer.ornamentKey === key) return;
   for (const part of renderer.ornamentParts ?? []) {
     const mesh = renderer.meshes[part.name];
@@ -2803,15 +2813,30 @@ function renderSignature(config: Config) {
   ].join("|");
 }
 
-function referenceYarnProbePoints(family: Exclude<Family, "">, root: Float32Array, width: number, height: number) {
-  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family],f=1/Math.tan(Math.PI/10.6),aspect=width/height;
+function projectBagPoint(p: YarnPoint, root: Float32Array, width: number, height: number) {
+  const f=1/Math.tan(Math.PI/10.6),aspect=width/height;
+  const world=[0,1,2].map(i=>root[i]*p[0]+root[4+i]*p[1]+root[8+i]*p[2]+root[12+i]);
+  const distance=5-world[2];
+  return {x:(.5+world[0]*f/(aspect*distance)*.5)*width,y:(.5-(world[1]-.02)*f/distance*.5)*height};
+}
+
+function referenceYarnProbePoints(family: Exclude<Family, "">, root: Float32Array, width: number, height: number, vertical = false, row = -.45) {
+  const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   return [.12,.38,.64,.90].map(level=>{
-    const p=crochetPanelPoint(family,spec.rx*.34,spec.ry*(level*2-1));
+    const p=crochetPanelPoint(family,vertical ? spec.rx*(level*2-1) : spec.rx*.34, spec.ry*(vertical ? row : level*2-1));
     p[1]+=spec.bodyY;
-    const world=[0,1,2].map(i=>root[i]*p[0]+root[4+i]*p[1]+root[8+i]*p[2]+root[12+i]);
-    const distance=5-world[2];
-    return {level,x:(.5+world[0]*f/(aspect*distance)*.5)*width,y:(.5-(world[1]-.02)*f/distance*.5)*height};
+    return {level,...projectBagPoint(p,root,width,height)};
   });
+}
+
+function yarnGradientFrame(family: Exclude<Family, "">, root: Float32Array, verticalBands: boolean) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family], column = verticalBands ? 0 : 4;
+  const length2 = root[column] ** 2 + root[column+1] ** 2 + root[column+2] ** 2;
+  return {
+    axis: new Float32Array([root[column], root[column+1], root[column+2]].map(n => n / Math.max(.001, length2))),
+    min: verticalBands ? -spec.rx : spec.bodyY - spec.ry,
+    max: verticalBands ? spec.rx : spec.bodyY + spec.ry,
+  };
 }
 
 // The verifier owns the stage, while draw() owns the WebGL canvas. Publish the
@@ -2913,14 +2938,15 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     "#0E9AA7": 5, // zieleń, turkus i niebieski
   };
   renderer.ombrePalette = yarnPalettes[config.color] ?? 0;
+  const palette = getAbagsYarnPalette(config.color, renderFamily);
+  const verticalBands = palette?.id === "pastel-mini-columns";
+  if (verticalBands) renderer.ombrePalette = 6;
   renderer.ombre = renderer.ombrePalette !== 0;
-  // Recover height in bag coordinates, so ombré stays attached to the yarn
-  // through camera rotation and zoom rather than sliding across the screen.
-  const axisLength2 = root[4] * root[4] + root[5] * root[5] + root[6] * root[6];
-  gl.uniform3fv(uniforms.yarnGradientAxis, new Float32Array([root[4], root[5], root[6]].map(n => n / Math.max(.001, axisLength2))));
-  const familySpec = ABAGS_FIDELITY_V4_FAMILY_SPECS[renderFamily];
-  gl.uniform2f(uniforms.yarnGradientRange, familySpec.bodyY - familySpec.ry, familySpec.bodyY + familySpec.ry);
-  const palette = getAbagsYarnPalette(config.color);
+  // Recover the selected bag-space axis through rotation and zoom. The mini's
+  // vertical columns use its width; the other photographed dyes use height.
+  const gradient = yarnGradientFrame(renderFamily, root, verticalBands);
+  gl.uniform3fv(uniforms.yarnGradientAxis, gradient.axis);
+  gl.uniform2f(uniforms.yarnGradientRange, gradient.min, gradient.max);
   const reference = getAbagsReferenceModel(config);
   const body = palette?.colors[4] ?? (config.color || "#b87880");
   gl.uniform1f(uniforms.fabricStyle, reference?.fabric ?? 0);
@@ -3030,7 +3056,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (config.flap !== "none") {
-    const flapColor = config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? (renderFamily === "satchel" ? "#BC683B" : "#7c5034") : config.flap === "suede-burgundy" ? "#803248" : body;
+    const flapColor = getAbagsCrochetFlapTone(config) ?? (config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? (renderFamily === "satchel" ? "#BC683B" : "#7c5034") : config.flap === "suede-burgundy" ? "#803248" : body);
     const crochet = config.flap === "crochet";
     const material = crochet ? 6 : config.flap === "suede-burgundy" ? 3 : 2;
     ensureClosedFlapShell(renderer, renderFamily, crochet);
@@ -3086,7 +3112,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // The selected ornament uses the same depth buffer, lighting and camera as
   // the bag. The compatibility canvas is suppressed for this exact signature.
   ensureOrnamentMeshes(renderer, config);
-  const ornamentColors: Record<OrnamentTone, string> = { cord: body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
+  const ornamentColors: Record<OrnamentTone, string> = { cord: getAbagsCrochetFlapTone(config) ?? body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
   for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
 
   for (const part of renderer.referenceParts ?? []) {
@@ -3108,6 +3134,13 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityStrapBounds = renderer.shoulderBandBounds ? JSON.stringify(renderer.shoulderBandBounds) : "";
   canvas.dataset.abagsFidelityStrapTriangles = String(renderer.shoulderBandTriangles ?? 0);
   canvas.dataset.abagsFidelityReferenceModel = reference ? JSON.stringify({ id: reference.id, source: reference.sourceFile, palette: palette?.id ?? "solid", fabric: reference.fabric, probes: referenceYarnProbePoints(renderFamily,root,width,height), constructionTriangles: renderer.referenceTriangles ?? 0, strapTriangles: renderer.shoulderBandTriangles ?? 0 }) : "";
+  const blackFlap = getAbagsCrochetFlapTone(config);
+  const flapProbe = blackFlap ? crochetFlapSurface(renderFamily).sample(0, profile.flapY) : null;
+  const tip = blackFlap && config.accent === "tassel" ? fidelityAccessoryAnchor(config) : null;
+  canvas.dataset.abagsFidelityOwnerCorrection = verticalBands ? JSON.stringify({ id: "pastel-mini", axis: "x", palette: palette.id,
+    probes: [...referenceYarnProbePoints(renderFamily,root,width,height,true), ...referenceYarnProbePoints(renderFamily,root,width,height,true,-.70)] }) : blackFlap && flapProbe ? JSON.stringify({ id: "mustard-round", flapTone: blackFlap,
+    probes: [projectBagPoint([0,profile.flapY,flapProbe.z+.03],root,width,height),
+      ...(tip ? [projectBagPoint([tip[0],tip[1]-.42,tip[2]+.07],root,width,height)] : [])] }) : "";
   canvas.dataset.abagsFidelityCognac = renderFamily === "satchel" ? JSON.stringify({ version: "cognac-ombre-v1", source: "1000020714.png", ombre: renderer.ombre,
     handleTriangles: config.handles === "leather-braid" ? renderer.cognacParts?.filter(p => p.section === "handle").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,
     flapTriangles: config.flap !== "none" ? renderer.cognacParts?.filter(p => p.section === "flap").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,

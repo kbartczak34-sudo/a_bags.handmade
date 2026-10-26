@@ -64,3 +64,8 @@ export function getAbagsWoodHandleTone(config: {family: string; color: string; h
   if (model?.woodTone && config.handles === model.config.handles) return model.woodTone;
   return config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : null;
 }
+
+/** Confirmed by Agata's owner: the mustard round has a black crocheted flap. */
+export function getAbagsCrochetFlapTone(config: {family?: string; color?: string; flap?: string}): string | null {
+  return config.family === "round" && config.color?.toUpperCase() === "#C7962F" && config.flap === "crochet" ? "#222124" : null;
+}

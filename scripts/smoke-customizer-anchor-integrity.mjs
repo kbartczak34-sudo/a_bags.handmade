@@ -833,6 +833,82 @@ const analyze=(overlay,renderedPixels)=>{
       if(new Set(results.map(item=>item.hash)).size!==6)throw new Error(`${label}: photographed model cards reused one rendered image`);
       console.log(`${label}: six photographed model presets, actual gradient pixels, real taps/clicks, side views and persisted green model PASS`);
     };
+    const probeOwnerCorrections = async (label, viewport) => {
+      await setViewport(viewport); await clearAndReload(); await openBuilder();
+      const results = [];
+      const showPreview = async () => {
+        await evaluate(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-fidelity3d-canvas')?.scrollIntoView({block:'center',inline:'nearest'})`);
+        await sleep(180);
+      };
+      const read = async () => evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        const canvas=stage?.querySelector('.abags-fidelity3d-canvas'),gl=canvas?.getContext('webgl');
+        if(!gl||gl.isContextLost())return null;
+        const proof=JSON.parse(canvas.dataset.abagsFidelityOwnerCorrection||'null');
+        const w=gl.drawingBufferWidth,h=gl.drawingBufferHeight,pixels=new Uint8Array(w*h*4);
+        gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+        const colors=(proof?.probes||[]).map(p=>{
+          const x=Math.max(4,Math.min(w-5,Math.round(p.x))),y=Math.max(4,Math.min(h-5,h-1-Math.round(p.y))),channels=[[],[],[]];
+          for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+            const i=((y+dy)*w+x+dx)*4;if(pixels[i+3]<200)continue;
+            for(let c=0;c<3;c++)channels[c].push(pixels[i+c]);
+          }
+          if(channels[0].length<20)return null;
+          const rgb=channels.map(a=>a.sort((a,b)=>a-b)[Math.floor(a.length/2)]),[r,g,b]=rgb,max=Math.max(...rgb),d=max-Math.min(...rgb);
+          let hue=d?max===r?60*(((g-b)/d)%6):max===g?60*((b-r)/d+2):60*((r-g)/d+4):0;if(hue<0)hue+=360;
+          return {rgb,hue,sat:max?d/max:0,luma:.2126*r+.7152*g+.0722*b};
+        });
+        let hash=2166136261,opaque=0;
+        for(let i=0;i<pixels.length;i++){hash^=pixels[i];hash=Math.imul(hash,16777619)>>>0;if(i%4===3&&pixels[i]>24)opaque++;}
+        return {proof,colors,hash,opaque,error:gl.getError(),signature:stage.dataset.builderSignature};
+      })()`);
+      const waitState = signature => waitFor(`(() => {
+        const s=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        return s?.dataset.builderSignature===${JSON.stringify(signature)}&&s.dataset.abagsFidelity3dFrame===s.dataset.builderSignature&&
+          s.dataset.abagsFinal3d==='ready'&&s.dataset.abagsFinal3dSignature===s.dataset.builderSignature&&!s.dataset.abagsFidelity3dError;
+      })()`,`${label} corrected model ${signature}`,25_000);
+      for (const [id,signature] of [
+        ['pastel-mini','mini|#BA9ECF|basket|crochet|none|chain|gold|tassel'],
+        ['mustard-round','round|#C7962F|shell|crochet|none|woven|gold|tassel'],
+      ]) {
+        const point=await waitFor(`(() => {
+          const b=document.querySelector('button[data-ref-preset="${id}"]');if(!b||b.disabled)return null;
+          b.scrollIntoView({block:'center',inline:'center'});const r=b.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
+          return r.width>20&&r.height>20&&b.contains(document.elementFromPoint(x,y))?{x,y}:null;
+        })()`,`${label} visible ${id} inspiration`);
+        if(mobileViewport){await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...point,id:1}]});await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+        else{await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});}
+        await waitState(signature); await showPreview();
+        await capture(`correction-${label}-${id}-initial.png`);
+        await clickView('Przód'); await sleep(180);
+        const evidence=await read();
+        if(!evidence||evidence.error||evidence.opaque<1000||evidence.proof?.id!==id)throw new Error(`${label} ${id}: missing corrected 3D: ${JSON.stringify(evidence)}`);
+        if(id==='pastel-mini'){
+          if(evidence.proof.axis!=='x'||evidence.colors.length!==8||evidence.colors.some(c=>!c))throw new Error(`${label}: missing mini column samples`);
+          for(const offset of [0,4]){
+            const [teal,pink,cream,lilac]=evidence.colors.slice(offset,offset+4);
+            if(teal.hue<155||teal.hue>215||teal.sat<.2||!(pink.hue>=310||pink.hue<20)||cream.sat>.28||cream.luma<100||lilac.hue<250||lilac.hue>320)
+              throw new Error(`${label}: pastel mini must show four vertical colors at both heights: ${JSON.stringify(evidence.colors)}`);
+          }
+        }else if(evidence.proof.flapTone!=='#222124'||evidence.colors.length!==2||evidence.colors.some(c=>!c||c.luma>85||c.sat>.25)){
+          throw new Error(`${label}: mustard flap and centered tassel must both be black: ${JSON.stringify(evidence)}`);
+        }
+        await capture(`correction-${label}-${id}-front.png`);
+        evidence.views=[];
+        for(const view of ['3/4','Bok']){
+          await clickView(view);await sleep(180);const rotated=await read();
+          if(!rotated||rotated.error||rotated.opaque<1000||rotated.hash===evidence.hash)throw new Error(`${label} ${id}: rotation did not redraw actual 3D`);
+          evidence.views.push({view,hash:rotated.hash});await capture(`correction-${label}-${id}-${view==='Bok'?'side':'three-quarter'}.png`);
+        }
+        await waitFor(`(() => {const c=JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}');return [c.family,c.color,c.stitch,c.flap,c.handles,c.strap,c.hardware,c.accent].join('|')===${JSON.stringify(signature)};})()`,`${label} ${id} saved model`);
+        await send('Page.reload',{ignoreCache:true});await waitFor("document.readyState==='complete'",`${label} ${id} restore load`);await openBuilder();await waitState(signature);
+        await showPreview();await clickView('Przód');await sleep(180);const restored=await read();
+        if(restored?.proof?.id!==id||restored.signature!==signature||restored.hash!==evidence.hash)throw new Error(`${label} ${id}: restored correction differs: ${JSON.stringify(restored)}`);
+        results.push(evidence);await writeFile(path.join(qaDir,`correction-${label}-evidence.json`),JSON.stringify(results,null,2));
+      }
+      console.log(`${label}: vertical pastel-mini pixels, black crochet flap and centered black tassel, rotations and persistence PASS`);
+    };
+
     // Separate the expensive new reference-model GPU checks from the established
     // accessory/family browser scenarios; both remain required in CI.
     const qaSuite = process.env.ABAGS_ANCHOR_QA_SUITE || "all";
@@ -840,6 +916,8 @@ const analyze=(overlay,renderedPixels)=>{
     if (qaSuite !== "legacy") {
       await probeReferenceModels('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
       await probeReferenceModels('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+      await probeOwnerCorrections('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+      await probeOwnerCorrections('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
     }
     if (qaSuite === "reference") {
       console.log("REFERENCE MODEL DESKTOP/MOBILE QA PASS:", productionUrl);
@@ -854,7 +932,7 @@ const analyze=(overlay,renderedPixels)=>{
         'tote|#E4A9B5|classic|none|wood-light|none|gold|bow',
         'round|#E8DDCC|shell|crochet|none|woven|gold|tassel',
         'bucket|#E8DDCC|classic|suede-burgundy|none|leather|gold|none',
-        'mini|#A88AE0|basket|crochet|none|chain|gold|tassel',
+        'mini|#BA9ECF|basket|crochet|none|chain|gold|tassel',
         'satchel|#C7652F|classic|leather-cognac|leather-braid|woven-ornament|gold|none',
       ];
       const currentFamily = await evaluate(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset.family`);

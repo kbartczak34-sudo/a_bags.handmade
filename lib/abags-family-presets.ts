@@ -17,7 +17,7 @@ export const ABAGS_FAMILY_PRESETS = {
     handles: "none", strap: "leather", hardware: "gold", accent: "none",
   },
   mini: {
-    family: "mini", color: "#A88AE0", stitch: "basket", flap: "crochet",
+    family: "mini", color: "#BA9ECF", stitch: "basket", flap: "crochet",
     handles: "none", strap: "chain", hardware: "gold", accent: "tassel",
   },
   satchel: ABAGS_COGNAC_PRESET,
