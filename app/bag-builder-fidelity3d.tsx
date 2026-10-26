@@ -600,6 +600,21 @@ type CrochetPatch = {
   curveSteps?: number;
 };
 
+// A local stitch silhouette, deliberately bounded by the 5 mm yarn gauge.
+// Using the same curve for panels, gussets and crochet flaps preserves the
+// handmade stitch identity through front, side and top camera rotations.
+function atelierCordLoopOffset(t: number, width: number, height: number, radius: number, drift: number): YarnPoint {
+  const crown = Math.sin(t * Math.PI);
+  const crossed = Math.sin(t * Math.PI * 2) * crown;
+  return [
+    Math.sin((t - .5) * Math.PI) * width * .43 + drift * crown + radius * .28 * crossed,
+    (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height
+      + radius * .10 * crown * Math.cos(t * Math.PI * 2),
+    radius * (.24 * Math.sin(t * Math.PI * 2)
+      + .12 * Math.sin(t * Math.PI * 4) * crown),
+  ];
+}
+
 // One construction produces each selected stitch on panels, flaps and gussets.
 function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
   const { radius, columns, rows, seat, tube, curveSteps = 16 } = patch;
@@ -609,10 +624,9 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
     const points: YarnPoint[] = [];
     for (let i = 0; i <= curveSteps; i++) {
       const t = i / curveSteps;
-      // A smooth U/V loop, curling outwards at the shoulders like the atelier cord.
-      const x = cx + Math.sin((t - .5) * Math.PI) * width * .43 + drift * Math.sin(t * Math.PI);
-      const y = cy + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height;
-      points.push(seat(x, y, lift + radius * .24 * Math.sin(t * Math.PI * 2)));
+      // Soft shoulder turns and a real over/under twist replace graphic V wires.
+      const offset = atelierCordLoopOffset(t, width, height, radius, drift);
+      points.push(seat(cx + offset[0], cy + offset[1], lift + offset[2]));
     }
     tube(points);
   };
@@ -1747,10 +1761,22 @@ void main(){
     float braid=cordBraid(vUv,braidSlope);
     float resolved=braidVisibility(vUv);
     n=cordBraidNormal(n,braidSlope*resolved);
-    detail=mix(.97,.88+.15*braid,resolved);
-    cordOcclusion=mix(1.0,.88+.12*braid,resolved);
-    rough=.70+.04*(1.0-braid)*resolved;
-    fibreSheen=.022;
+    // Polyester cord is spun from fine diagonal filaments. Preserve their
+    // physical tube UVs (not screen-space noise) and suppress subpixel fibres
+    // to avoid a striped/moires shimmer on Android while zooming.
+    float fibrePhase=6.2831853*(vUv.y*19.0+vUv.x*.24
+      + .055*sin(vUv.x*6.2831853*2.0));
+    float fibreResolve=0.0;
+#ifdef ABAGS_HAS_DERIVATIVES
+    vec2 fibreUv=vec2(vUv.x*.24,vUv.y*19.0+vUv.x*.24);
+    float fibreFootprint=max(length(dFdx(fibreUv)),length(dFdy(fibreUv)));
+    fibreResolve=1.0-smoothstep(.18,.58,fibreFootprint);
+#endif
+    float filaments=sin(fibrePhase)*fibreResolve;
+    detail=mix(.97,.91+.10*braid,resolved)*(1.0+.022*filaments);
+    cordOcclusion=mix(1.0,.89+.11*braid,resolved);
+    rough=.75+.04*(1.0-braid)*resolved;
+    fibreSheen=.019+.012*fibreResolve*(.5+.5*sin(fibrePhase));
   } else if(uMaterial<8.5){
     // Floral satin and a slim bound border follow the fabric's own UVs.
     // The print remains attached to both faces as each loop turns in depth.
