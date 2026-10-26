@@ -96,11 +96,15 @@ jobs:
   reference-model-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [reference, corrections]
     env:
       ABAGS_SKIP_REMOTE_RESOURCE_DISCOVERY: "1"
       ABAGS_PRODUCTION_URL: "http://127.0.0.1:5173"
-      ABAGS_REALTIME_QA_DIR: "artifacts/customizer-reference-browser"
-      ABAGS_ANCHOR_QA_SUITE: "reference"
+      ABAGS_REALTIME_QA_DIR: "artifacts/customizer-${{ matrix.suite }}-browser"
+      ABAGS_ANCHOR_QA_SUITE: "${{ matrix.suite }}"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -114,7 +118,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Production build for customer browser
         run: npm run build
-      - name: Browser acceptance for all six real reference-model selections
+      - name: Browser acceptance for real model surfaces and corrected pixel samples
         shell: bash
         run: |
           set -euo pipefail
@@ -133,9 +137,9 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: customizer-reference-${{ github.run_number }}
+          name: customizer-${{ matrix.suite }}-${{ github.run_number }}
           path: |
-            artifacts/customizer-reference-browser/
+            artifacts/customizer-${{ matrix.suite }}-browser/
             artifacts/reference-qa-server.log
           if-no-files-found: warn
           retention-days: 7
