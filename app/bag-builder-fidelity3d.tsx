@@ -600,6 +600,21 @@ type CrochetPatch = {
   curveSteps?: number;
 };
 
+// A local stitch silhouette, deliberately bounded by the 5 mm yarn gauge.
+// Using the same curve for panels, gussets and crochet flaps preserves the
+// handmade stitch identity through front, side and top camera rotations.
+function atelierCordLoopOffset(t: number, width: number, height: number, radius: number, drift: number): YarnPoint {
+  const crown = Math.sin(t * Math.PI);
+  const crossed = Math.sin(t * Math.PI * 2) * crown;
+  return [
+    Math.sin((t - .5) * Math.PI) * width * .43 + drift * crown + radius * .28 * crossed,
+    (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height
+      + radius * .10 * crown * Math.cos(t * Math.PI * 2),
+    radius * (.24 * Math.sin(t * Math.PI * 2)
+      + .12 * Math.sin(t * Math.PI * 4) * crown),
+  ];
+}
+
 // One construction produces each selected stitch on panels, flaps and gussets.
 function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
   const { radius, columns, rows, seat, tube, curveSteps = 16 } = patch;
@@ -609,18 +624,9 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
     const points: YarnPoint[] = [];
     for (let i = 0; i <= curveSteps; i++) {
       const t = i / curveSteps;
-      // The shoulders turn in slightly and the cord passes over/under the
-      // neighbouring stitch. Perfectly symmetric V arches read as machine
-      // lattice; these small physical bends stay below one 5 mm cord radius.
-      const crown = Math.sin(t * Math.PI);
-      const crossed = Math.sin(t * Math.PI * 2) * crown;
-      const x = cx + Math.sin((t - .5) * Math.PI) * width * .43
-        + drift * crown + radius * .28 * crossed;
-      const y = cy + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height
-        + radius * .10 * crown * Math.cos(t * Math.PI * 2);
-      const crossingLift = radius * (.24 * Math.sin(t * Math.PI * 2)
-        + .12 * Math.sin(t * Math.PI * 4) * crown);
-      points.push(seat(x, y, lift + crossingLift));
+      // Soft shoulder turns and a real over/under twist replace graphic V wires.
+      const offset = atelierCordLoopOffset(t, width, height, radius, drift);
+      points.push(seat(cx + offset[0], cy + offset[1], lift + offset[2]));
     }
     tube(points);
   };
