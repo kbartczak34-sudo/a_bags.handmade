@@ -836,6 +836,10 @@ const analyze=(overlay,renderedPixels)=>{
     const probeOwnerCorrections = async (label, viewport) => {
       await setViewport(viewport); await clearAndReload(); await openBuilder();
       const results = [];
+      const showPreview = async () => {
+        await evaluate(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-fidelity3d-canvas')?.scrollIntoView({block:'center',inline:'nearest'})`);
+        await sleep(180);
+      };
       const read = async () => evaluate(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
         const canvas=stage?.querySelector('.abags-fidelity3d-canvas'),gl=canvas?.getContext('webgl');
@@ -874,7 +878,9 @@ const analyze=(overlay,renderedPixels)=>{
         })()`,`${label} visible ${id} inspiration`);
         if(mobileViewport){await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...point,id:1}]});await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
         else{await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});}
-        await waitState(signature); await clickView('Przód'); await sleep(180);
+        await waitState(signature); await showPreview();
+        await capture(`correction-${label}-${id}-initial.png`);
+        await clickView('Przód'); await sleep(180);
         const evidence=await read();
         if(!evidence||evidence.error||evidence.opaque<1000||evidence.proof?.id!==id)throw new Error(`${label} ${id}: missing corrected 3D: ${JSON.stringify(evidence)}`);
         if(id==='pastel-mini'){
@@ -896,7 +902,7 @@ const analyze=(overlay,renderedPixels)=>{
         }
         await waitFor(`(() => {const c=JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}');return [c.family,c.color,c.stitch,c.flap,c.handles,c.strap,c.hardware,c.accent].join('|')===${JSON.stringify(signature)};})()`,`${label} ${id} saved model`);
         await send('Page.reload',{ignoreCache:true});await waitFor("document.readyState==='complete'",`${label} ${id} restore load`);await openBuilder();await waitState(signature);
-        await clickView('Przód');await sleep(180);const restored=await read();
+        await showPreview();await clickView('Przód');await sleep(180);const restored=await read();
         if(restored?.proof?.id!==id||restored.signature!==signature||restored.hash!==evidence.hash)throw new Error(`${label} ${id}: restored correction differs: ${JSON.stringify(restored)}`);
         results.push(evidence);await writeFile(path.join(qaDir,`correction-${label}-evidence.json`),JSON.stringify(results,null,2));
       }
