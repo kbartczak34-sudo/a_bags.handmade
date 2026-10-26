@@ -11,6 +11,10 @@ test("wood handle grain is mapped in its physical two-dimensional cut plane", ()
   assert.ok(materialStart > 0 && leatherStart > materialStart);
   assert.match(source, /makeReferenceWoodHandle\(\)/);
   assert.match(source, /mesh\.uvs\.push\(\.5\+x\/1\.1,\.5\+y\)/);
+  assert.match(source, /function makeArchTube\([^\n]*woodGrain = false\)/);
+  assert.match(source, /woodGrain \? \.5 \+ \(cx \+ minor \* nx\) \/ 1\.1/);
+  assert.match(source, /woodGrain \? \.5 \+ cy \+ minor \* ny/);
+  assert.match(source, /woodHandle: createMesh\(gl, makeArchTube\(0\.46, 0\.42, 0, 0\.042, 96, 16, true, true\)\)/);
   assert.match(wood, /float grainPath=vUv\.y\*99\.0/);
   assert.match(wood, /sin\(vUv\.x\*18\.0\+vUv\.y\*9\.0\)/);
   assert.match(wood, /sin\(vUv\.x\*51\.0-vUv\.y\*12\.0\)/);
