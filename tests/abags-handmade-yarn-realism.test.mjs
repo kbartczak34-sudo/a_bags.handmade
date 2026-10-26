@@ -25,6 +25,10 @@ test("hand-made yarn gauge has repeatable tension variations without random fram
 
 test("5 mm polyester cord uses filtered two-scale filament surface in native WebGL", () => {
   assert.match(source, /function appendCord\(/);
+  assert.match(source, /const yarnRadius = thickness \* \(1/);
+  assert.match(source, /\.018 \* Math\.sin\(distance \* 19\.3/);
+  assert.match(source, /\.009 \* Math\.sin\(distance \* 43\.7/);
+  assert.match(source, /n\[axis\] \* yarnRadius/);
   assert.match(source, /distance \/ \(thickness \* 1\.6\)/);
   assert.match(source, /float yarnFilaments\(vec2 uv\)/);
   assert.match(source, /dFdx\(phase\)/);
