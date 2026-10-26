@@ -44,7 +44,14 @@ test("verified framebuffer must preserve the selected chromatic cord hue", () =>
   assert.match(controller, /framebuffer-color-mismatch-/);
   assert.match(controller, /abagsFinal3dHueMatches/);
   assert.match(controller, /abagsFinal3dExpectedHue/);
-  assert.match(controller, /inspectVisiblePixels\(canvas, stage\.dataset\.color \|\| ""\)/);
+  assert.match(controller, /getAbagsYarnPalette\(expectedColor, family\)/);
+  assert.match(controller, /const expectedHues =/);
+  assert.match(controller, /Math\.min\(\.\.\.expectedHues\.map/);
+  assert.match(controller, /palette\?\.id === "pastel-mini-columns"/);
+  assert.match(controller, /const raw = canvas\.dataset\.abagsFidelityOwnerCorrection;/);
+  assert.match(controller, /gl\.readPixels\(x - radius, y - radius, side, side/);
+  assert.match(controller, /patch\[i \+ 3\] <= 200/);
+  assert.match(controller, /inspectVisiblePixels\(canvas, stage\.dataset\.color \|\| "", stage\.dataset\.family \|\| ""\)/);
   assert.match(controller, /(?:function unbindCanvasEvents\(\)|const unbindCanvasEvents =)/);
   assert.match(controller, /event\.preventDefault\(\)/);
   assert.match(controller, /waiting-for-renderer/);

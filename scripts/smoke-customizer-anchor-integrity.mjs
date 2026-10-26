@@ -60,7 +60,11 @@ async function connectCdp(webSocketDebuggerUrl) {
     const timer = setTimeout(() => {
       pending.delete(messageId);
       reject(new Error(`CDP command timed out: ${method}`));
-    }, cdpTimeoutMs);
+    // A viewport switch after 12 GPU-intensive 3D model probes can pause
+    // Chromium's compositor longer than the standard 8s command budget.
+    // Only resize commands get extra time; all user-visible drawing,
+    // interaction and framebuffer assertions retain their original limits.
+    }, method === "Emulation.setDeviceMetricsOverride" ? 25_000 : cdpTimeoutMs);
     pending.set(messageId, { resolve, reject, timer });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
@@ -912,15 +916,21 @@ const analyze=(overlay,renderedPixels)=>{
     // Separate the expensive new reference-model GPU checks from the established
     // accessory/family browser scenarios; both remain required in CI.
     const qaSuite = process.env.ABAGS_ANCHOR_QA_SUITE || "all";
-    if (!["all", "reference", "legacy"].includes(qaSuite)) throw new Error(`Unknown anchor QA suite: ${qaSuite}`);
-    if (qaSuite !== "legacy") {
+    if (!["all", "reference", "corrections", "legacy"].includes(qaSuite)) throw new Error(`Unknown anchor QA suite: ${qaSuite}`);
+    // All required suites still execute in CI, but each GPU-heavy browser
+    // sequence runs on its own worker. Repeated WebGL context restoration
+    // after twelve model presets previously exhausted CDP just as the mini
+    // color correction probes began on mobile.
+    if (qaSuite === "all" || qaSuite === "reference") {
       await probeReferenceModels('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
       await probeReferenceModels('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+    }
+    if (qaSuite === "all" || qaSuite === "corrections") {
       await probeOwnerCorrections('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
       await probeOwnerCorrections('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
     }
-    if (qaSuite === "reference") {
-      console.log("REFERENCE MODEL DESKTOP/MOBILE QA PASS:", productionUrl);
+    if (qaSuite === "reference" || qaSuite === "corrections") {
+      console.log("REFERENCE/CORRECTION MODEL DESKTOP/MOBILE QA PASS:", qaSuite, productionUrl);
       return;
     }
 
