@@ -586,9 +586,26 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
       + .009 * Math.sin(distance * 43.7 - index * .11));
     for (let side = 0; side <= sides; side++) {
       const angle = side / sides * Math.PI * 2;
-      const n = across.map((v, axis) => v * Math.cos(angle) + outward[axis] * Math.sin(angle)) as YarnPoint;
-      mesh.positions.push(...point.map((v, axis) => v + n[axis] * yarnRadius));
-      mesh.normals.push(...n);
+      const cosine = Math.cos(angle), sine = Math.sin(angle);
+      const n = across.map((v, axis) => v * cosine + outward[axis] * sine) as YarnPoint;
+      const around = across.map((v, axis) => -v * sine + outward[axis] * cosine) as YarnPoint;
+      // Three interlaced carriers change the TRUE tube cross-section. A
+      // low, seam-continuous helical profile catches side light during orbit.
+      // This works alongside the lengthwise hand-tension radius above.
+      const twist = distance / (thickness * 1.6) * Math.PI * 2;
+      const plyPhase = 3 * angle - twist * .8;
+      const finePhase = 5 * angle + twist * 1.3;
+      const plyRadius = 1 + .023 * Math.cos(plyPhase) + .007 * Math.sin(finePhase);
+      const angularSlope = -.023 * 3 * Math.sin(plyPhase) + .007 * 5 * Math.cos(finePhase);
+      const axialSlope = .023 * (.8 * Math.PI * 2 / 1.6) * Math.sin(plyPhase)
+        + .007 * (1.3 * Math.PI * 2 / 1.6) * Math.cos(finePhase);
+      const surfaceNormal = normalize(
+        n[0] - around[0] * angularSlope - tangent[0] * axialSlope,
+        n[1] - around[1] * angularSlope - tangent[1] * axialSlope,
+        n[2] - around[2] * angularSlope - tangent[2] * axialSlope,
+      );
+      mesh.positions.push(...point.map((v, axis) => v + n[axis] * yarnRadius * plyRadius));
+      mesh.normals.push(...surfaceNormal);
       // The braid repeats at the same physical scale on short loops and long
       // bindings. A normalized 0..1 path stretched the fibres on every seam.
       mesh.uvs.push(distance / (thickness * 1.6), side / sides);
@@ -641,8 +658,8 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
           const points: YarnPoint[] = [];
           for (let i = 0; i <= Math.max(4, curveSteps / 2); i++) {
             const t = i / Math.max(4, curveSteps / 2) - .5;
-            const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10);
-            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19);
+            const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10) * widthGauge;
+            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19) * heightGauge;
             const over = (axis === 0) === verticalOver;
             points.push(seat(x, y, over ? radius * (.50 + .35 * Math.cos(t * Math.PI)) : -radius * .28));
           }
