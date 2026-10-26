@@ -2255,6 +2255,11 @@ function makeOrnamentGeometry(config: Config) {
   const bead = (target: FabricMesh, at: YarnPoint, size: YarnPoint) => appendOrnamentMesh(target, makeEllipsoid(1, 1, 1, 10, 14), matrix(at, size));
   if (config.accent === "tassel") {
     const metal = part("metal", 4), cord = part("cord", 7);
+    const fanFringe = Boolean(getAbagsCrochetFlapTone(config));
+    const fringePoint = ([x,y,z]: YarnPoint) => {
+      const t = clamp((-y-.115)/.70,0,1);
+      return point(x*(fanFringe ? .75+2.75*t : 1),y,z,.011);
+    };
     ring(metal, point(0, -.015, .025), .025, .031, .006);
     const cap = makeOrnamentLathe([[.013, .038], [.027, .031], [.037, .016], [.040, -.023], [.038, -.035], [.031, -.035]]);
     appendOrnamentMesh(cord, cap, matrix(point(0, -.087, .060, .042), [1, 1, 1]));
@@ -2266,8 +2271,8 @@ function makeOrnamentGeometry(config: Config) {
       }), .003);
     }
     for (const { path, frays } of tasselFringeStrands()) {
-      tube(cord, path.map(([x,y,z]) => point(x,y,z,.011)), .0085);
-      for (const fray of frays) tube(cord, fray.map(([x,y,z]) => point(x,y,z,.011)), .0018);
+      tube(cord, path.map(fringePoint), .0085);
+      for (const fray of frays) tube(cord, fray.map(fringePoint), .0018);
     }
     const winding = Array.from({ length: 65 }, (_, i) => {
       const t = i / 64, a = t * Math.PI * 6;

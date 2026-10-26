@@ -71,6 +71,14 @@ test("mustard crochet flap is black and its tassel starts at the actual lowest f
   const tassel = g.makeOrnamentGeometry(mustard);
   assert.ok(tassel.bounds.min[1]>specs.round.bodyY-specs.round.ry);
   assert.ok(tassel.bounds.min[0]<0 && tassel.bounds.max[0]>0);
+  const cord = tassel.parts.find(part=>part.tone==="cord").mesh, upper = [], lower = [];
+  for (let i=0;i<cord.positions.length;i+=3) {
+    const [x,y] = cord.positions.slice(i,i+3);
+    if(y>anchor[1]-.16)upper.push(x);
+    if(y<anchor[1]-.65)lower.push(x);
+  }
+  assert.ok(Math.max(...lower)-Math.min(...lower) > (Math.max(...upper)-Math.min(...upper))*3,
+    "the black tassel must fan out below its narrow wrapped head");
   for (const {mesh} of tassel.parts) assert.ok(mesh.positions.every(Number.isFinite));
 });
 
