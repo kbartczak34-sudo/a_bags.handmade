@@ -151,8 +151,9 @@ function inspectVisiblePixels(canvas: HTMLCanvasElement, expectedColor: string, 
   // We still require an opaque framebuffer and correctly dyed yarn pixels;
   // this does not auto-promote a blank canvas or a wrong-color model.
   if (palette?.id === "pastel-mini-columns" && family === "mini") {
-    const stage = canvas.closest<HTMLElement>(".abags-bag-builder-stage");
-    const raw = stage?.dataset.abagsFidelityOwnerCorrection;
+    // The geometry probe payload lives on the authoritative WebGL canvas,
+    // not on its parent stage. Read precisely the frame we are inspecting.
+    const raw = canvas.dataset.abagsFidelityOwnerCorrection;
     let correction: { id?: string; probes?: Array<{ x: number; y: number }> } | null = null;
     if (raw) {
       try { correction = JSON.parse(raw) as typeof correction; } catch { /* No geometry proof: retain strict grid validation. */ }
