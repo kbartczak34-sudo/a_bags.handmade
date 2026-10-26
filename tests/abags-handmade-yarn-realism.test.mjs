@@ -52,3 +52,39 @@ test("hand tension preserves volumetric yarn for basket and shell stitches", () 
     assert.ok(mesh.indices.every(index => Number.isInteger(index) && index < points), stitch);
   }
 });
+
+test("three-ply cord has genuine helical relief, continuous seams and tilted surface normals", () => {
+  assert.match(source, /const plyPhase = 3 \* angle - twist \* \.8/);
+  assert.match(source, /const plyRadius = 1 \+ \.023 \* Math\.cos/);
+  assert.match(source, /mesh\.normals\.push\(\.\.\.surfaceNormal\)/);
+  const thickness = .03, sides = 10;
+  const mesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const points = Array.from({ length: 36 }, (_, i) => [i * .02, 0, 0]);
+  geometry.appendCord(mesh, points, thickness, () => [0, 0, 1], () => true, sides);
+  const ringSize = sides + 1;
+  assert.equal(mesh.positions.length / 3, points.length * ringSize);
+  assert.equal(mesh.indices.length, (points.length - 1) * sides * 6);
+  let reliefDetected = false, normalTiltDetected = false;
+  for (let ring = 0; ring < points.length; ring++) {
+    const radii = [];
+    for (let side = 0; side <= sides; side++) {
+      const offset = 3 * (ring * ringSize + side);
+      const x = mesh.positions[offset], y = mesh.positions[offset + 1], z = mesh.positions[offset + 2];
+      const nx = mesh.normals[offset], ny = mesh.normals[offset + 1], nz = mesh.normals[offset + 2];
+      const radius = Math.hypot(y, z);
+      radii.push(radius);
+      assert.ok(radius > thickness * .93 && radius < thickness * 1.07, "5 mm gauge remains bounded");
+      assert.ok(Math.abs(x - points[ring][0]) < 1e-8, "ply remains anchored to its 3D stitch path");
+      assert.ok(Math.abs(Math.hypot(nx, ny, nz) - 1) < 1e-6, "normal is normalized");
+      if (Math.abs(nx) > .025) normalTiltDetected = true;
+    }
+    if (Math.max(...radii) - Math.min(...radii) > thickness * .02) reliefDetected = true;
+    for (const field of ["positions", "normals"]) {
+      const a = mesh[field].slice(3 * (ring * ringSize), 3 * (ring * ringSize) + 3);
+      const b = mesh[field].slice(3 * (ring * ringSize + sides), 3 * (ring * ringSize + sides) + 3);
+      for (let i = 0; i < 3; i++) assert.ok(Math.abs(a[i] - b[i]) < 1e-6, "seam closure");
+    }
+  }
+  assert.ok(reliefDetected, "visible yarn relief is part of actual mesh geometry");
+  assert.ok(normalTiltDetected, "mesh lighting follows twisting plies rather than a smooth plastic tube");
+});
