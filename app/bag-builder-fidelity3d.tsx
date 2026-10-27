@@ -636,19 +636,37 @@ type CrochetPatch = {
   curveSteps?: number;
 };
 
+// The open V in Agata's photographs is taller than a compact herringbone.
+// Use the same physical gauge on the body, gusset and flap, keeping 5 mm cord.
+function crochetRowCount(columns: number, rx: number, ry: number, stitch: Stitch, minimum: number) {
+  return Math.max(minimum, Math.round(columns * ry / rx * (stitch === "classic" ? .82 : 1.12)));
+}
+
+function interlockedVPoint(t: number, width: number, height: number, radius: number): YarnPoint {
+  const leg = 2 * t - 1;
+  const bend = (Math.sqrt(leg * leg + .025) - Math.sqrt(.025)) / (Math.sqrt(1.025) - Math.sqrt(.025));
+  // The crown rises in front, while both shoulders pass beneath the next row.
+  // A continuous rounded turn avoids a sharp kink at the bottom of the V.
+  return [Math.sin((t - .5) * Math.PI) * width * .43, (bend - .48) * height,
+    radius * (.36 * Math.sin(Math.PI * t) - .20 * Math.pow(Math.abs(leg), 6) + .10 * Math.sin(Math.PI * 2 * t))];
+}
+
 // One construction produces each selected stitch on panels, flaps and gussets.
 function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
   const { radius, columns, rows, seat, tube, curveSteps = 16 } = patch;
   const spec = { rx: patch.rx, ry: patch.ry };
   const dx = spec.rx * 1.94 / columns, dy = spec.ry * 1.94 / rows;
-  const curve = (cx: number, cy: number, width: number, height: number, lift: number, drift: number) => {
+  const curve = (cx: number, cy: number, width: number, height: number, lift: number, drift: number, interlocked = false) => {
     const points: YarnPoint[] = [];
     for (let i = 0; i <= curveSteps; i++) {
       const t = i / curveSteps;
       // A smooth U/V loop, curling outwards at the shoulders like the atelier cord.
-      const x = cx + Math.sin((t - .5) * Math.PI) * width * .43 + drift * Math.sin(t * Math.PI);
-      const y = cy + (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height;
-      points.push(seat(x, y, lift + radius * .24 * Math.sin(t * Math.PI * 2)));
+      const local = interlocked ? interlockedVPoint(t, width, height, radius) : [
+        Math.sin((t - .5) * Math.PI) * width * .43,
+        (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height,
+        radius * .24 * Math.sin(t * Math.PI * 2),
+      ];
+      points.push(seat(cx + local[0] + drift * Math.sin(t * Math.PI), cy + local[1], lift + local[2]));
     }
     tube(points);
   };
@@ -661,7 +679,8 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
       const crossTension = Math.sin((row + 3) * 7.47 - (column + 5) * 9.13);
       const widthGauge = 1 + variation * .035;
       const heightGauge = 1 + crossTension * .028;
-      const cx = -spec.rx * .97 + (column + .5 + (row % 2) * .5) * dx + variation * dx * .012;
+      const rowOffset = (row % 2) * .5;
+      const cx = -spec.rx * .97 + (column + .5 + rowOffset) * dx + variation * dx * .012;
       const cy = -spec.ry * .97 + (row + .5) * dy + crossTension * dy * .012;
       if (stitch === "basket") {
         const verticalOver = (row + column) % 2 === 0;
@@ -683,7 +702,7 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
       } else {
         const compact = stitch === "herringbone";
         curve(cx, cy, dx * (compact ? 1.06 : 1.18) * widthGauge, dy * (compact ? .84 : 1.06) * heightGauge,
-          variation * radius * .14, variation * dx * .035);
+          variation * radius * .14, variation * dx * .035, !compact);
       }
     }
   }
@@ -709,7 +728,7 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const radius = spec.rx * 5 / 160;
   const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
-  const rows = Math.max(9, Math.round(columns * spec.ry / spec.rx * 1.12));
+  const rows = crochetRowCount(columns, spec.rx, spec.ry, stitch, 9);
   const fractionAt = (x: number, y: number) => {
     const taper = 1 + spec.taper * y / spec.ry;
     return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
@@ -736,7 +755,7 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
   const gaugeColumns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
   const columns = Math.round(perimeter / (spec.rx * 1.94 / gaugeColumns));
   const depth = depthAt(family, 0);
-  const rows = Math.max(3, Math.round(columns * depth / perimeter * 1.12));
+  const rows = crochetRowCount(columns, perimeter * .5, depth * .5, stitch, 3);
   const radius = spec.rx * 5 / 160;
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const at = (arc: number, across: number, lift: number): YarnPoint => {
@@ -1086,7 +1105,7 @@ function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMes
   const radius = spec.rx * 5 / 160;
   const gauge = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
   const columns = Math.max(4, Math.round(gauge * rx / spec.rx));
-  const rows = Math.max(3, Math.round(columns * ry / rx * 1.12));
+  const rows = crochetRowCount(columns, rx, ry, stitch, 3);
   const seat = (x: number, y: number, lift: number): YarnPoint => {
     const point = surface.sample(x, y + centerY);
     return [x, y + centerY, (point?.z ?? PROFILES[family].frontZ + .20) + radius * .62 + lift];
@@ -1808,6 +1827,10 @@ void main(){
     // clearcoat. The low-amplitude microfibre pattern never changes yarn hue.
     detail=mix(.97,.88+.15*braid,resolved)*(1.0+.035*filament);
     cordOcclusion=mix(1.0,.88+.12*braid,resolved);
+    // Baked local fibre occlusion is independent of camera pose and zoom.
+    // The underside of a real strand receives less light from its neighbours.
+    float tubeCrown=.5+.5*sin(vUv.y*6.2831853);
+    cordOcclusion*=mix(.68,1.0,smoothstep(.05,.78,tubeCrown));
     rough=.735+.055*(1.0-braid)*resolved+.015*(1.0-filament);
     fibreSheen=.018+.012*max(filament,0.0);
   } else if(uMaterial<8.5){
@@ -1899,7 +1922,8 @@ void main(){
   float facing=max(dot(n,v),0.0);
   vec3 base=pow(max(pigment,vec3(.001)),vec3(2.2))*detail;
   float cavity=.94+.06*facing;
-  float illumination=.30+.66*ndl+.20*fillLight;
+  float hemisphere=mix(.66,1.05,.5+.5*n.y);
+  float illumination=.30*hemisphere+.66*ndl+.20*fillLight;
   vec3 f0=mix(vec3(.035),base,metal);
   vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
   color+=specularGGX(n,l,v,rough,f0)*1.6;
@@ -2232,10 +2256,11 @@ function referenceRibbonLoop(config: Config, u: number, v: number, side: number)
   const span = profile.span * (config.family === "tall-tote" ? 1.35 : 1) * (side < 0 ? 1 : .94);
   const width = .015 + profile.height * Math.pow(Math.max(0, arch), .66);
   const twist = side * (.16 + .20 * turn);
-  const gather = .014 * Math.sin(v * Math.PI * 3 + side * .5) * Math.pow(1 - arch, 2);
+  const gather = .026 * Math.sin(v * Math.PI * 3 + side * .5) * Math.pow(1 - arch, 2);
+  const fold = .020 * Math.sin(v * Math.PI * 2.5 + side * .6) * arch;
   return [side * span * arch * (1 - .09 * v * v) + width * v * Math.sin(twist) * .15,
-    (profile.tilt + side * .035) * arch + width * v * Math.cos(twist),
-    .070 + .080 * arch + .045 * turn + width * v * Math.sin(twist) + gather];
+    (profile.tilt + side * .035) * arch + width * v * Math.cos(twist) - .025 * arch * arch,
+    .070 + .095 * arch + .075 * turn + width * v * Math.sin(twist) + gather + fold];
 }
 
 function referenceRibbonTail(config: Config, u: number, v: number, side: number): YarnPoint {
@@ -2248,7 +2273,8 @@ function referenceRibbonTail(config: Config, u: number, v: number, side: number)
   return [side * (.012 + .18 * u + .035 * arch) + width * v * Math.cos(twist),
     -.025 - length * u + pointedEnd,
     .070 + .045 * arch + width * v * Math.sin(twist)
-      + .018 * Math.sin(v * Math.PI * 2 + side * .5) * arch
+      + .030 * Math.sin(v * Math.PI * 2 + side * .5) * arch
+      + .018 * Math.sin(u * Math.PI * 4 + side * .8) * arch * (1 - v * v)
       + (side < 0 ? .050 * Math.sin(Math.PI * u * .85) : 0)];
 }
 
@@ -2363,7 +2389,7 @@ function makeOrnamentGeometry(config: Config) {
     // wrap, while the front catches the same soft satin light as the loops.
     ribbon((u, v) => {
       const p = foldedRibbonKnot(u, v);
-      if (referenceBow) { p[0] *= 1.5; p[1] *= 1.25; }
+      if (referenceBow) { p[0] *= 1.6; p[1] *= 1.4; p[2] += .095; }
       return point(...p, .006);
     }, 36);
   } else if (config.accent === "charm") {

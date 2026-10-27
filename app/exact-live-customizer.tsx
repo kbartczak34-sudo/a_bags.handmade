@@ -73,7 +73,7 @@ import BagBuilderSidewallCrochetDepth from "./bag-builder-sidewall-crochet-depth
 import BagBuilderValidationGuard from "./bag-builder-validation-guard";
 import BagBuilderViewSync from "./bag-builder-view-sync";
 
-const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-24-six-reference-models";
+const ABAGS_CUSTOMIZER_RUNTIME_BUILD = "fidelity3d-2026-10-27-interlocked-cord-and-scarf-folds";
 
 export default function ExactLiveCustomizer() {
   useEffect(() => {
