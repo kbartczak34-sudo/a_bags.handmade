@@ -182,6 +182,10 @@ function darken(value: string, amount = 0.34) {
   return "#" + [r, g, b].map((channel) => Math.round(channel * factor).toString(16).padStart(2, "0")).join("");
 }
 
+function hardwareEngravingColor(hardware: Hardware) {
+  return hardware === "silver" ? "#3A3D43" : hardware === "black" ? "#97908A" : "#49382C";
+}
+
 function identity() {
   return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 }
@@ -1746,6 +1750,20 @@ vec3 specularGGX(vec3 n,vec3 l,vec3 v,float roughness,vec3 f0){
   vec3 fresnel=f0+(1.0-f0)*pow(1.0-vh,5.0);
   return fresnel*distribution*geometry/(4.0*nl*nv)*nl;
 }
+// Broad studio panels reflect across the curved links as the customer orbits.
+// Fresnel uses the selected metal's colour, including the dark coated fittings.
+vec3 studioMetalReflection(vec3 n,vec3 v,float roughness,vec3 f0){
+  vec3 r=reflect(-v,n);
+  float blur=.12+.55*roughness;
+  float left=exp(-pow((r.x+.45)/blur,2.0))*smoothstep(-.35,.10,r.z);
+  left*=.35+.65*smoothstep(-.50,.35,r.y);
+  float right=exp(-pow((r.x-.65)/(blur*.75),2.0))*smoothstep(-.15,.25,r.z);
+  float ceiling=pow(max(r.y,0.0),3.0);
+  float grazing=pow(1.0-max(dot(n,v),0.0),5.0);
+  vec3 fresnel=f0+(1.0-f0)*grazing;
+  vec3 room=vec3(.10,.095,.09)+vec3(1.15,1.10,1.0)*left+vec3(.46,.49,.54)*right+vec3(.18)*ceiling;
+  return fresnel*room;
+}
 void main(){
   vec3 n=normalize(vNormal);
   vec3 l=normalize(uLight);
@@ -1927,9 +1945,7 @@ void main(){
   vec3 f0=mix(vec3(.035),base,metal);
   vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
   color+=specularGGX(n,l,v,rough,f0)*1.6;
-  // Broad studio reflection on the satchel's small brushed metal plates.
-  // Without an environment term, flat polished faces become almost black.
-  if(uMaterial>4.1 && uMaterial<4.5)color+=base*(.20+.48*facing);
+  if(uMaterial>3.5 && uMaterial<4.5)color+=studioMetalReflection(n,v,rough,f0)*metal;
   color+=vec3(fibreSheen)*pow(1.0-facing,2.0)*(.3+.7*ndl);
   // Cavity light is tied to local fabric depth, so the mouth stays readable
   // while the lining darkens toward its actual base during any rotation.
@@ -2592,6 +2608,88 @@ function makeReferenceWoodHandle(): FabricMesh {
   return mesh;
 }
 
+// Smooth title-case lettering follows the small engraved plaques in the
+// supplied photographs. These are local vector strokes, with no font download.
+function handmadeBadgeLettering(): Point[][] {
+  const glyphs: Record<string, { advance: number; strokes: Point[][] }> = {
+    H: { advance: 4.5, strokes: [
+      [[-.2,4.4],[.2,5.1],[1,5.4],[1.2,4.8],[.4,.2],[0,-.1]],
+      [[4.4,5.3],[3.6,4.6],[2.8,2.4],[2.2,.2],[2.6,0],[3.5,.6]],
+      [[.6,2.4],[1.5,2.8],[2.6,2.9],[3.5,3.2]],
+    ] },
+    a: { advance: 3.2, strokes: [
+      [[2.4,2.4],[1.7,2.8],[.7,2.4],[.2,1.3],[.4,.3],[1.1,.1],[2.1,1.1],[2.7,2.8],[2.2,.5],[2.6,.1],[3.3,.7]],
+    ] },
+    n: { advance: 3.3, strokes: [
+      [[0,.1],[.8,2.8],[.4,.9],[1.6,2.7],[2.4,2.6],[2.3,1.5],[1.9,.3],[2.3,.1],[3.4,.8]],
+    ] },
+    d: { advance: 3.4, strokes: [
+      [[2.3,2.4],[1.5,2.8],[.6,2.3],[.2,1.2],[.5,.2],[1.2,.1],[2.3,1.4],[3.5,4.5],[3.5,5.4],[2.9,4.9],[2.1,1.3],[2.1,.3],[2.6,.1],[3.5,.8]],
+    ] },
+    m: { advance: 4.8, strokes: [
+      [[0,.1],[.8,2.8],[.4,.8],[1.5,2.6],[2.2,2.7],[2.4,2.2],[1.8,.2],[2.9,2.5],[3.7,2.7],[4,2.2],[3.5,.4],[3.9,.1],[4.9,.8]],
+    ] },
+    e: { advance: 3.1, strokes: [
+      [[0,1.2],[1.6,1.7],[2.3,2.4],[1.8,2.8],[.8,2.4],[.3,1.5],[.5,.5],[1.2,.1],[2.2,.3],[3.2,1.1]],
+    ] },
+  };
+  const paths: Point[][] = [];
+  let cursor = 0;
+  for (const letter of "Handmade") {
+    const glyph = glyphs[letter];
+    for (const stroke of glyph.strokes) {
+      const points: Point[] = [];
+      for (let i = 0; i < stroke.length - 1; i++) {
+        const a = stroke[Math.max(0,i-1)], b = stroke[i], c = stroke[i+1], d = stroke[Math.min(stroke.length-1,i+2)];
+        for (let sample = 0; sample < 8; sample++) {
+          const t = sample / 8;
+          const at = (axis: number) => .5*(2*b[axis]+(-a[axis]+c[axis])*t+(2*a[axis]-5*b[axis]+4*c[axis]-d[axis])*t*t+(-a[axis]+3*b[axis]-3*c[axis]+d[axis])*t*t*t);
+          points.push([cursor+at(0),at(1)]);
+        }
+      }
+      points.push([cursor+stroke[stroke.length-1][0],stroke[stroke.length-1][1]]);
+      paths.push(points);
+    }
+    cursor += glyph.advance;
+  }
+  const xs = paths.flat().map(p=>p[0]), ys = paths.flat().map(p=>p[1]);
+  const left = Math.min(...xs), right = Math.max(...xs), bottom = Math.min(...ys), top = Math.max(...ys);
+  const scale = .224 / (right-left);
+  return paths.map(stroke=>stroke.map(([x,y]): Point => [(x-(left+right)/2)*scale,(y-(bottom+top)/2)*scale]));
+}
+
+function handmadeBadgeOutline(width: number, height: number): Point[] {
+  const radius = height/2, halfStraight = (width-height)/2, points: Point[] = [];
+  // Two semicircles joined by straight top/bottom edges. An exactly maximal
+  // corner radius in roundedRectangle would duplicate eight side vertices.
+  for (const side of [-1,1]) for (let i=0;i<=24;i++) {
+    const angle = (side<0 ? Math.PI/2 : -Math.PI/2)+i/24*Math.PI;
+    points.push([side*halfStraight+radius*Math.cos(angle),radius*Math.sin(angle)]);
+  }
+  return points;
+}
+
+function makeHandmadeBadge() {
+  const metal: FabricMesh = {positions:[],normals:[],uvs:[],indices:[]};
+  const engraving: FabricMesh = {positions:[],normals:[],uvs:[],indices:[]};
+  const outline = handmadeBadgeOutline(.32,.088);
+  appendOrnamentMesh(metal,makeCognacPlate(outline,.009),identity());
+  const tube = (target: FabricMesh, points: YarnPoint[], radius: number, closed = false) =>
+    appendCord(target,points,radius,()=>[0,0,1],()=>true,8,closed);
+  const rim = handmadeBadgeOutline(.307,.075).map(([x,y]): YarnPoint => [x,y,.0064]);
+  rim.push(rim[0]);
+  tube(metal,rim,.0018,true);
+  for (const side of [-1,1]) {
+    const x = side*.138;
+    appendOrnamentMesh(metal,makeEllipsoid(1,1,1,8,12),matrix([x,0,.0065],[.0075,.0075,.003]));
+    // The two shallow screw slots sit below the rim, above the nearly flat face.
+    tube(engraving,[[x-.0038,-.002,.0092],[x+.0038,.002,.0092]],.00065);
+  }
+  for (const path of handmadeBadgeLettering())
+    tube(engraving,path.map(([x,y]): YarnPoint => [x,y,.0065]),.00075);
+  return {metal,engraving};
+}
+
 function makeReferenceConstruction(config: Config) {
   const family = config.family as "tall-tote" | "shoulder", spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const model = getAbagsReferenceModel(config);
@@ -2603,17 +2701,9 @@ function makeReferenceConstruction(config: Config) {
   const badgeX = family === "shoulder" ? spec.rx*.32 : 0;
   const badgeY = model?.fabric === 5 ? spec.bodyY+spec.ry*.72 : spec.bodyY-spec.ry*.73;
   const badgeZ = ornamentSurfaceZ({...config,flap:"none"},badgeX,badgeY,.015);
-  plate(metal,.32,.080,[badgeX,badgeY,badgeZ]);
-  for(const side of [-1,1])appendOrnamentMesh(metal,makeEllipsoid(1,1,1,8,12),matrix([badgeX+side*.137,badgeY,badgeZ+.009],[.007,.007,.004]));
-  const glyphs: Record<string,Point[][]> = {
-    H:[[[0,0],[0,5]],[[3,0],[3,5]],[[0,2.5],[3,2.5]]], A:[[[0,0],[1.5,5],[3,0]],[[.6,2],[2.4,2]]],
-    N:[[[0,0],[0,5],[3,0],[3,5]]], D:[[[0,0],[0,5],[2,5],[3,4],[3,1],[2,0],[0,0]]],
-    M:[[[0,0],[0,5],[1.5,2.5],[3,5],[3,0]]], E:[[[3,0],[0,0],[0,5],[3,5]],[[0,2.5],[2.5,2.5]]],
-  };
-  const label="HANDMADE",scale=.0068,width=(label.length*4-1)*scale;
-  [...label].forEach((letter,index)=>{
-    for(const stroke of glyphs[letter])tube(engraving,stroke.map(([x,y]):YarnPoint=>[badgeX-width/2+index*4*scale+x*scale,badgeY-.017+y*scale,badgeZ+.010]),.0009);
-  });
+  const badge = makeHandmadeBadge(), badgePose = matrix([badgeX,badgeY,badgeZ],[1,1,1]);
+  appendOrnamentMesh(metal,badge.metal,badgePose);
+  appendOrnamentMesh(engraving,badge.engraving,badgePose);
   if(family === "shoulder"){
     const top = Math.max(...openingPath(family).map(p=>p[1]))+.008;
     plate(fabric,spec.rx*1.78,depthAt(family,spec.ry)*.94,[0,top-.006,0],.009,[-Math.PI/2,0,0]);
@@ -3185,7 +3275,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (renderFamily === "satchel") {
-    const colors: Record<CognacPart["tone"], string> = { leather: "#BC683B", edge: "#713B20", seam: "#E4BC8B", metal, recess: darken(metal, .32), engraving: "#513325" };
+    const colors: Record<CognacPart["tone"], string> = { leather: "#BC683B", edge: "#713B20", seam: "#E4BC8B", metal, recess: darken(metal, .32), engraving: hardwareEngravingColor(config.hardware) };
     for (const part of renderer.cognacParts ?? []) {
       if (part.section === "handle" && config.handles !== "leather-braid") continue;
       if (part.section === "flap" && config.flap === "none") continue;
@@ -3201,7 +3291,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
 
   for (const part of renderer.referenceParts ?? []) {
-    const color = part.tone === "metal" ? metal : part.tone === "engraving" ? "#49382C" : part.tone === "fabric" || part.tone === "cord" ? body : "#302423";
+    const color = part.tone === "metal" ? metal : part.tone === "engraving" ? hardwareEngravingColor(config.hardware) : part.tone === "fabric" || part.tone === "cord" ? body : "#302423";
     const material = part.tone === "metal" ? 4.25 : part.tone === "zipper" ? 2 : part.tone === "fabric" ? 6 : part.tone === "cord" ? 7.1 : 3;
     drawMesh(renderer, meshes[part.name], root, color, material, stitch, 0);
   }
