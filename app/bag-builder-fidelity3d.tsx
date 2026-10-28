@@ -565,8 +565,9 @@ function woodHandleMatrix(family: Exclude<Family, "">, z: number) {
     [z < 0 ? 0.40 : -0.40, 0, 0]);
 }
 
-type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
+type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[]; occlusion?: number[]; cordOccluders?: CordOccluder[] };
 type YarnPoint = [number, number, number];
+type CordOccluder = { a: YarnPoint; b: YarnPoint; radius: number; owner: number };
 type WoodHandleShape = "round" | "flat-base";
 
 // The photographed rose handle has a straight lower rail with rounded corners.
@@ -602,10 +603,14 @@ function referenceWoodHandleFrame(angle: number, shape: WoodHandleShape = "round
   return { center, tangent, outward };
 }
 
-function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10, closed = false) {
+function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10, closed = false, occluders?: CordOccluder[]) {
   let previous = -1;
   let distance = 0;
   const firstRingVertex = mesh.positions.length / 3;
+  // Each physical length starts at a different carrier phase. Keep it in
+  // object space: orbiting or restoring a saved bag must never reseed its yarn.
+  const origin = points[0] ?? [0, 0, 0];
+  const cordPhase = Math.sin(origin[0] * 31.7 + origin[1] * 47.3 + origin[2] * 19.1) * Math.PI;
   points.forEach((point, index) => {
     if (index > 0) distance += Math.hypot(...point.map((value, axis) => value - points[index - 1][axis]));
     if (!contains(point)) { previous = -1; return; }
@@ -626,8 +631,8 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
     // physical soft-spun relief without more vertices, texture files, or
     // random per-frame deformation during orbit/zoom.
     const yarnRadius = thickness * (1
-      + .018 * Math.sin(distance * 19.3 + index * .19)
-      + .009 * Math.sin(distance * 43.7 - index * .11));
+      + .018 * Math.sin(distance * 19.3 + index * .19 + cordPhase)
+      + .009 * Math.sin(distance * 43.7 - index * .11 + cordPhase * 1.7));
     for (let side = 0; side <= sides; side++) {
       const angle = side / sides * Math.PI * 2;
       const cosine = Math.cos(angle), sine = Math.sin(angle);
@@ -637,8 +642,8 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
       // low, seam-continuous helical profile catches side light during orbit.
       // This works alongside the lengthwise hand-tension radius above.
       const twist = distance / (thickness * 1.6) * Math.PI * 2;
-      const plyPhase = 3 * angle - twist * .8;
-      const finePhase = 5 * angle + twist * 1.3;
+      const plyPhase = 3 * angle - twist * .8 + cordPhase;
+      const finePhase = 5 * angle + twist * 1.3 - cordPhase * .7;
       const plyRadius = 1 + .023 * Math.cos(plyPhase) + .007 * Math.sin(finePhase);
       const angularSlope = -.023 * 3 * Math.sin(plyPhase) + .007 * 5 * Math.cos(finePhase);
       const axialSlope = .023 * (.8 * Math.PI * 2 / 1.6) * Math.sin(plyPhase)
@@ -662,14 +667,64 @@ function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, gu
       }
       // The braid repeats at the same physical scale on short loops and long
       // bindings. A normalized 0..1 path stretched the fibres on every seam.
-      mesh.uvs.push(distance / (thickness * 1.6), side / sides);
+      mesh.uvs.push(distance / (thickness * 1.6) + cordPhase / (Math.PI * 2), side / sides);
       if (previous >= 0 && side < sides) {
         const a = previous + side, b = start + side;
         mesh.indices.push(a, b, a + 1, a + 1, b, b + 1);
       }
     }
+    if (occluders && previous >= 0) occluders.push({ a: points[index - 1], b: point, radius: thickness, owner: firstRingVertex });
     previous = start;
   });
+}
+
+// Bake neighbouring-cord visibility once when a stitch is constructed. A grid
+// limits each query to nearby capsule segments; dragging never repeats this work.
+// Taking the strongest contribution per cord avoids counting its subdivisions
+// as independent occluders. The bake is neutral and follows the actual 3D yarn.
+function bakeCordOcclusion(mesh: FabricMesh, occluders: CordOccluder[]) {
+  const vertices = mesh.positions.length / 3;
+  const values = new Array<number>(vertices).fill(1);
+  if (!occluders.length) { mesh.occlusion = values; return; }
+  const cell = Math.max(...occluders.map(span => span.radius)) * 4;
+  const grid = new Map<string, number[]>();
+  const key = (x: number, y: number, z: number) => `${x},${y},${z}`;
+  for (let i = 0; i < occluders.length; i++) {
+    const span = occluders[i], pad = span.radius * 3;
+    const low = span.a.map((n,j) => Math.floor((Math.min(n,span.b[j])-pad)/cell));
+    const high = span.a.map((n,j) => Math.floor((Math.max(n,span.b[j])+pad)/cell));
+    for (let x=low[0];x<=high[0];x++) for (let y=low[1];y<=high[1];y++) for (let z=low[2];z<=high[2];z++) {
+      const id=key(x,y,z), bucket=grid.get(id);
+      if (bucket) bucket.push(i); else grid.set(id,[i]);
+    }
+  }
+  const seen = new Uint32Array(vertices), maximum = new Float32Array(vertices);
+  for (let vertex=0;vertex<vertices;vertex++) {
+    const offset=vertex*3, x=mesh.positions[offset], y=mesh.positions[offset+1], z=mesh.positions[offset+2];
+    const nx=mesh.normals[offset], ny=mesh.normals[offset+1], nz=mesh.normals[offset+2];
+    const candidates=grid.get(key(Math.floor(x/cell),Math.floor(y/cell),Math.floor(z/cell)));
+    if (!candidates) continue;
+    let coverage=0;
+    for (const index of candidates) {
+      const {a,b,radius,owner}=occluders[index];
+      const ax=b[0]-a[0], ay=b[1]-a[1], az=b[2]-a[2];
+      const squared=ax*ax+ay*ay+az*az;
+      const t=squared>1e-12?clamp(((x-a[0])*ax+(y-a[1])*ay+(z-a[2])*az)/squared,0,1):0;
+      const dx=a[0]+ax*t-x, dy=a[1]+ay*t-y, dz=a[2]+az*t-z;
+      const facing=nx*dx+ny*dy+nz*dz;
+      if (facing<=0) continue;
+      const distanceSquared=dx*dx+dy*dy+dz*dz;
+      if (distanceSquared>radius*radius*9 || distanceSquared<1e-12) continue;
+      const contribution=Math.min(1,radius*radius/distanceSquared)*Math.min(1,facing/Math.sqrt(distanceSquared));
+      if (seen[owner]!==vertex+1) {
+        seen[owner]=vertex+1; maximum[owner]=contribution; coverage+=contribution;
+      } else if (contribution>maximum[owner]) {
+        coverage+=contribution-maximum[owner]; maximum[owner]=contribution;
+      }
+    }
+    values[vertex]=Math.max(.40,Math.exp(-coverage*1.3));
+  }
+  mesh.occlusion=values;
 }
 
 type CrochetPatch = {
@@ -769,6 +824,7 @@ function crochetPanelPoint(family: Exclude<Family, "">, x: number, y: number, li
 function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const occluders: CordOccluder[] = [];
   const radius = spec.rx * 5 / 160;
   const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
   const rows = crochetRowCount(columns, spec.rx, spec.ry, stitch, 9);
@@ -777,12 +833,13 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
     return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
   };
   const seat = (x: number, y: number, lift: number) => crochetPanelPoint(family, x, y, lift);
-  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974);
+  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974, 10, false, occluders);
   fillCrochetPatch({ rx: spec.rx, ry: spec.ry, radius, columns, rows, seat, tube }, stitch);
   // A continuous sewn binding hides clipped loop ends at the rounded panel edge.
   const binding = familyContour(family).map(([x, y]) => seat(x * .953, y * .953, radius * .05));
   binding.push(binding[0]);
   tube(binding, radius * .78);
+  mesh.cordOccluders = occluders;
   return mesh;
 }
 
@@ -801,6 +858,7 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
   const rows = crochetRowCount(columns, perimeter * .5, depth * .5, stitch, 3);
   const radius = spec.rx * 5 / 160;
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const occluders: CordOccluder[] = [];
   const at = (arc: number, across: number, lift: number): YarnPoint => {
     const distance = ((arc % perimeter) + perimeter) % perimeter;
     let i = 0;
@@ -815,7 +873,7 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
   const seat = (x: number, y: number, lift: number) => at(x + perimeter * .5, .5 - y / depth, lift);
   const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness,
     ([x, y]) => normalize(x / spec.rx, y / spec.ry, 0),
-    ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51, 8);
+    ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51, 8, false, occluders);
   fillCrochetPatch({ rx: perimeter * .5, ry: depth * .5, radius, columns, rows, seat, tube, curveSteps: 8 }, stitch);
   // Sewn piping covers the clipped ends where the gusset joins each panel.
   for (const side of [-1, 1]) {
@@ -824,8 +882,9 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
       return [x, y + softness.y, side * (depthAt(family, y) * .5 + softness.z)];
     });
     seam.push(seam[0]);
-    appendCord(mesh, seam, radius * 1.02, () => [0, 0, side], ([, y]) => y < spec.ry * .90, 8);
+    appendCord(mesh, seam, radius * 1.02, () => [0, 0, side], ([, y]) => y < spec.ry * .90, 8, false, occluders);
   }
+  mesh.cordOccluders = occluders;
   return mesh;
 }
 
@@ -837,13 +896,15 @@ function ensureCrochetMeshes(renderer: Renderer, family: Exclude<Family, "">, st
     if (mesh) for (const buffer of [mesh.position, mesh.normal, mesh.uv, mesh.index]) renderer.gl.deleteBuffer(buffer);
   }
   const front = makeCrochetPanel(family, stitch);
+  // Material visibility is prepared at GPU upload, after pure geometry work.
+  renderer.meshes.yarnFront = createMesh(renderer.gl, front);
   const back = {
     positions: front.positions.map((v, i) => i % 3 === 2 ? -v : v),
     normals: front.normals.map((v, i) => i % 3 === 2 ? -v : v),
     uvs: front.uvs,
+    occlusion: front.occlusion,
     indices: front.indices.map((v, i, indices) => i % 3 === 1 ? indices[i + 1] : i % 3 === 2 ? indices[i - 1] : v),
   };
-  renderer.meshes.yarnFront = createMesh(renderer.gl, front);
   renderer.meshes.yarnBack = createMesh(renderer.gl, back);
   const side = makeCrochetGusset(family, stitch);
   renderer.meshes.yarnSide = createMesh(renderer.gl, side);
@@ -1154,6 +1215,7 @@ function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMes
   const surface = crochetFlapSurface(family);
   const { rx, ry, centerY } = surface;
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const occluders: CordOccluder[] = [];
   const radius = spec.rx * 5 / 160;
   const gauge = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
   const columns = Math.max(4, Math.round(gauge * rx / spec.rx));
@@ -1164,11 +1226,12 @@ function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMes
   };
   const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness,
     ([x, y]) => surface.sample(x, y)?.normal ?? [0, 0, 1],
-    ([x, y]) => surface.sample(x, y) !== null);
+    ([x, y]) => surface.sample(x, y) !== null, 10, false, occluders);
   fillCrochetPatch({ rx, ry, radius, columns, rows, seat, tube }, stitch);
   const binding = surface.contour.map(([x, y]) => seat(x * .965, (y - centerY) * .965, radius * .04));
   binding.push(binding[0]);
   tube(binding, radius * .72);
+  mesh.cordOccluders = occluders;
   return mesh;
 }
 
@@ -1664,7 +1727,9 @@ float knit(vec2 uv,float m){
 const VERTEX = `
 attribute vec3 aPosition;
 attribute vec3 aNormal;
-attribute vec2 aUv;
+// UV.xy keeps textile coordinates; UV.z carries baked cord visibility without
+// allocating another GPU buffer or spending another WebGL 1 attribute slot.
+attribute vec3 aUv;
 uniform mat4 uProjection,uView,uModel;
 uniform mat3 uNormalMatrix;
 uniform vec2 uInteriorBounds;
@@ -1673,12 +1738,12 @@ uniform mediump float uRelief;
 uniform mediump float uStitch;
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
-varying float vFaceWeight,vLiningDepth,vYarnHeight;
+varying float vFaceWeight,vLiningDepth,vYarnHeight,vCordOcclusion;
 varying vec2 vUv;
 ${CROCHET_SURFACE}
 void main(){
   float h=0.0;
-  if(uRelief>0.0) h=knit(aUv,uStitch)*uRelief*.48;
+  if(uRelief>0.0) h=knit(aUv.xy,uStitch)*uRelief*.48;
   float frontFace=smoothstep(.45,.85,abs(aNormal.z));
   // The back keeps its outward normal; relief never bends it toward the front.
   float faceSign=aNormal.z<0.0?-1.0:1.0;
@@ -1694,7 +1759,8 @@ void main(){
   vBitangent=normalize(mat3(uModel)*localBitangent);
   vFaceWeight=frontFace;
   vLiningDepth=clamp((uInteriorBounds.x-aPosition.y)/max(.001,uInteriorBounds.x-uInteriorBounds.y),0.0,1.0);
-  vUv=aUv;
+  vUv=aUv.xy;
+  vCordOcclusion=aUv.z;
   gl_Position=uProjection*uView*world;
 }`;
 
@@ -1724,7 +1790,7 @@ precision mediump float;
 #endif
 varying vec3 vNormal,vWorld;
 varying vec3 vTangent,vBitangent;
-varying float vFaceWeight,vLiningDepth,vYarnHeight;
+varying float vFaceWeight,vLiningDepth,vYarnHeight,vCordOcclusion;
 varying vec2 vUv;
 uniform vec3 uColor,uLight;
 uniform float uMaterial;
@@ -1800,6 +1866,36 @@ vec3 specularGGX(vec3 n,vec3 l,vec3 v,float roughness,vec3 f0){
   float geometry=(nl/(nl*(1.0-k)+k))*(nv/(nv*(1.0-k)+k));
   vec3 fresnel=f0+(1.0-f0)*pow(1.0-vh,5.0);
   return fresnel*distribution*geometry/(4.0*nl*nv)*nl;
+}
+// Braided polyester has a directional highlight along the cord carriers.
+// Derive its tangent from physical cord UVs so the lobe follows every curved
+// stitch, seam and binding rather than a screen-space direction.
+vec3 cordSpecular(vec3 n,vec3 l,vec3 v,float roughness,vec3 f0){
+  if(dot(n,l)<=0.0 || dot(n,v)<=0.0)return vec3(0.0);
+#ifdef ABAGS_HAS_DERIVATIVES
+  vec3 dx=dFdx(vWorld),dy=dFdy(vWorld);
+  vec2 ux=dFdx(vUv),uy=dFdy(vUv);
+  float orientation=sign(ux.x*uy.y-ux.y*uy.x);
+  vec3 tangent=(dx*uy.y-dy*ux.y)*orientation;
+  tangent-=n*dot(n,tangent);
+  if(dot(tangent,tangent)>1.e-12){
+    tangent=normalize(tangent);
+    vec3 across=normalize(cross(n,tangent)),h=normalize(l+v);
+    float nl=max(dot(n,l),.001),nv=max(dot(n,v),.001);
+    float nh=max(dot(n,h),0.0),vh=max(dot(v,h),0.0);
+    float along=max(.18,roughness*roughness*.42);
+    float crosswise=min(.85,roughness*roughness*1.35);
+    vec2 halfSlope=vec2(dot(tangent,h)/along,dot(across,h)/crosswise);
+    float denominator=dot(halfSlope,halfSlope)+nh*nh;
+    float distribution=1.0/(3.14159*along*crosswise*denominator*denominator);
+    vec2 viewSlope=vec2(along*dot(tangent,v),crosswise*dot(across,v))/nv;
+    vec2 lightSlope=vec2(along*dot(tangent,l),crosswise*dot(across,l))/nl;
+    float geometry=2.0/(sqrt(1.0+dot(viewSlope,viewSlope))+sqrt(1.0+dot(lightSlope,lightSlope)));
+    vec3 fresnel=f0+(1.0-f0)*pow(1.0-vh,5.0);
+    return fresnel*distribution*geometry/(4.0*nv);
+  }
+#endif
+  return specularGGX(n,l,v,roughness,f0);
 }
 // Broad studio panels reflect across the curved links as the customer orbits.
 // Fresnel uses the selected metal's colour, including the dark coated fittings.
@@ -1900,6 +1996,7 @@ void main(){
     // The underside of a real strand receives less light from its neighbours.
     float tubeCrown=.5+.5*sin(vUv.y*6.2831853);
     cordOcclusion*=mix(.68,1.0,smoothstep(.05,.78,tubeCrown));
+    cordOcclusion*=vCordOcclusion;
     rough=.735+.055*(1.0-braid)*resolved+.015*(1.0-filament);
     fibreSheen=.018+.012*max(filament,0.0);
   } else if(uMaterial<8.5){
@@ -2005,9 +2102,14 @@ void main(){
   float illumination=.30*hemisphere+.66*ndl+.20*fillLight;
   vec3 f0=mix(vec3(.035),base,metal);
   vec3 color=base*illumination*cavity*cordOcclusion*(1.0-metal*.75);
-  color+=specularGGX(n,l,v,rough,f0)*1.6;
+  float physicalCord=step(6.5,uMaterial)*(1.0-step(7.5,uMaterial));
+  if(physicalCord>.5)color+=cordSpecular(n,l,v,rough,f0)*.85;
+  else color+=specularGGX(n,l,v,rough,f0)*1.6;
   if(uMaterial>3.5 && uMaterial<4.5)color+=studioMetalReflection(n,v,rough,f0)*metal;
-  color+=vec3(fibreSheen)*pow(1.0-facing,2.0)*(.3+.7*ndl);
+  // Multiple scattering inside dyed fibres retains their hue. An untinted
+  // white rim used to wash dark navy/brown cord into a uniform grey coating.
+  vec3 sheenTint=mix(vec3(1.0),mix(vec3(.20),sqrt(base),.80),physicalCord);
+  color+=sheenTint*fibreSheen*pow(1.0-facing,2.0)*(.3+.7*ndl);
   // Cavity light is tied to local fabric depth, so the mouth stays readable
   // while the lining darkens toward its actual base during any rotation.
   if((uMaterial>4.5 && uMaterial<5.5) || (uMaterial>10.5 && uMaterial<11.5))
@@ -2027,9 +2129,11 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
   return shader;
 }
 
-function createMesh(gl: WebGLRenderingContext, data: { positions: number[]; normals: number[]; uvs: number[]; indices: number[] }): Mesh {
+function createMesh(gl: WebGLRenderingContext, data: FabricMesh): Mesh {
   // WebGL 1 uses unsigned-short indices, including on older Android devices.
   if (data.positions.length / 3 > 65535) throw new Error("mesh-index-budget");
+  if (data.cordOccluders && !data.occlusion) bakeCordOcclusion(data, data.cordOccluders);
+  delete data.cordOccluders;
   const position = gl.createBuffer();
   const normal = gl.createBuffer();
   const uv = gl.createBuffer();
@@ -2037,7 +2141,13 @@ function createMesh(gl: WebGLRenderingContext, data: { positions: number[]; norm
   if (!position || !normal || !uv || !index) throw new Error("buffer");
   gl.bindBuffer(gl.ARRAY_BUFFER, position); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.positions), gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, normal); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.normals), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, uv); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.uvs), gl.STATIC_DRAW);
+  const uvAndOcclusion = new Float32Array(data.positions.length);
+  for (let i=0;i<data.positions.length/3;i++) {
+    uvAndOcclusion[i*3]=data.uvs[i*2];
+    uvAndOcclusion[i*3+1]=data.uvs[i*2+1];
+    uvAndOcclusion[i*3+2]=data.occlusion?.[i] ?? 1;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, uv); gl.bufferData(gl.ARRAY_BUFFER, uvAndOcclusion, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(data.indices), gl.STATIC_DRAW);
   return { position, normal, uv, index, count: data.indices.length };
 }
@@ -2103,7 +2213,7 @@ function drawMesh(renderer: Renderer, mesh: Mesh, model: Float32Array, color: st
   const { gl, attribs, uniforms } = renderer;
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.position); gl.enableVertexAttribArray(attribs.position); gl.vertexAttribPointer(attribs.position, 3, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.normal); gl.enableVertexAttribArray(attribs.normal); gl.vertexAttribPointer(attribs.normal, 3, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv); gl.enableVertexAttribArray(attribs.uv); gl.vertexAttribPointer(attribs.uv, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv); gl.enableVertexAttribArray(attribs.uv); gl.vertexAttribPointer(attribs.uv, 3, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.index);
   gl.uniformMatrix4fv(uniforms.model, false, model);
   gl.uniformMatrix3fv(uniforms.normalMatrix, false, normalMatrix(model));

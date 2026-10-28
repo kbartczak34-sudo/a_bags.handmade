@@ -163,7 +163,7 @@ test("Fidelity3D Photo-True textile pass uses distinct crochet stitch structures
 });
 
 test("Fidelity3D relief shares its height field and lighting normals rotate with physical yarn", () => {
-  assert.match(renderer, /if\(uRelief>0\.0\) h=knit\(aUv,uStitch\)\*uRelief\*\.48/);
+  assert.match(renderer, /if\(uRelief>0\.0\) h=knit\(aUv\.xy,uStitch\)\*uRelief\*\.48/);
   assert.equal((renderer.match(/\$\{CROCHET_SURFACE\}/g) || []).length, 2);
   assert.match(renderer, /knit\(vUv\+vec2\(e,0\.0\),uStitch\)-knit\(vUv-vec2\(e,0\.0\),uStitch\)/);
   assert.match(renderer, /knit\(vUv\+vec2\(0\.0,e\),uStitch\)-knit\(vUv-vec2\(0\.0,e\),uStitch\)/);
