@@ -58,14 +58,15 @@ async function connectCdp(webSocketDebuggerUrl) {
 
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const messageId = ++id;
+    // SwiftShader can block a restored model's first draw/readPixels while it
+    // finishes GPU work. This is a protocol budget, not a visual assertion:
+    // readiness deadlines and all framebuffer/contact checks remain unchanged.
+    const commandTimeoutMs = method === "Emulation.setDeviceMetricsOverride" || method === "Runtime.evaluate" ? 25_000 : cdpTimeoutMs;
     const timer = setTimeout(() => {
       pending.delete(messageId);
-      reject(new Error(`CDP command timed out: ${method}`));
-    // A viewport switch after 12 GPU-intensive 3D model probes can pause
-    // Chromium's compositor longer than the standard 8s command budget.
-    // Only resize commands get extra time; all user-visible drawing,
-    // interaction and framebuffer assertions retain their original limits.
-    }, method === "Emulation.setDeviceMetricsOverride" ? 25_000 : cdpTimeoutMs);
+      const detail = method === "Runtime.evaluate" ? ` [${String(params.expression).trim().replace(/\s+/g, " ").slice(0, 160)}]` : "";
+      reject(new Error(`CDP command timed out: ${method}${detail}`));
+    }, commandTimeoutMs);
     pending.set(messageId, { resolve, reject, timer, method });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
