@@ -2,6 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { reloadCdpDocument } from "./cdp-document-reload.mjs";
 
 const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade.pl";
 const port = Number(process.env.ABAGS_ANCHOR_CHROME_DEBUG_PORT || 9786);
@@ -51,7 +52,7 @@ async function connectCdp(webSocketDebuggerUrl) {
     if (!waiter) return;
     pending.delete(message.id);
     clearTimeout(waiter.timer);
-    if (message.error) waiter.reject(new Error(message.error.message || "CDP error"));
+    if (message.error) waiter.reject(new Error(`${waiter.method}: ${message.error.message || "CDP error"}`));
     else waiter.resolve(message.result);
   });
 
@@ -65,7 +66,7 @@ async function connectCdp(webSocketDebuggerUrl) {
     // Only resize commands get extra time; all user-visible drawing,
     // interaction and framebuffer assertions retain their original limits.
     }, method === "Emulation.setDeviceMetricsOverride" ? 25_000 : cdpTimeoutMs);
-    pending.set(messageId, { resolve, reject, timer });
+    pending.set(messageId, { resolve, reject, timer, method });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
 
@@ -234,8 +235,7 @@ async function main() {
         } catch {}
         return true;
       })()`);
-      await send("Page.reload", { ignoreCache: true });
-      await waitFor("document.readyState === 'complete'", "document reload");
+      await reloadCdpDocument(send, evaluate);
     };
 
     const openBuilder = async () => {
@@ -824,7 +824,7 @@ const analyze=(overlay,renderedPixels)=>{
         await capture(`model-${label}-${id}-three-quarter.png`);
         if(palette==='forest-ocean'){
           await waitFor(`JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}').color==='#0E9AA7'`,`${label} green model persisted`);
-          await send('Page.reload',{ignoreCache:true});await waitFor("document.readyState==='complete'",`${label} restored green model load`);
+          await reloadCdpDocument(send,evaluate);
           await openBuilder();await waitModel(id,signature);await sleep(180);
           const restored=await native();
           if(!restored?.current||restored.signature!==signature||restored.hash!==evidence.hash)throw new Error(`${label}: saved reference model did not restore the same visible pixels: ${JSON.stringify(restored)}`);
@@ -910,7 +910,7 @@ const analyze=(overlay,renderedPixels)=>{
           evidence.views.push({view,hash:rotated.hash});await capture(`correction-${label}-${id}-${view==='Bok'?'side':'three-quarter'}.png`);
         }
         await waitFor(`(() => {const c=JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}');return [c.family,c.color,c.stitch,c.flap,c.handles,c.strap,c.hardware,c.accent].join('|')===${JSON.stringify(signature)};})()`,`${label} ${id} saved model`);
-        await send('Page.reload',{ignoreCache:true});await waitFor("document.readyState==='complete'",`${label} ${id} restore load`);await openBuilder();await waitState(signature);
+        await reloadCdpDocument(send,evaluate);await openBuilder();await waitState(signature);
         await showPreview();await clickView('Przód');await sleep(180);const restored=await read();
         if(restored?.proof?.id!==id||restored.signature!==signature||restored.hash!==evidence.hash)throw new Error(`${label} ${id}: restored correction differs: ${JSON.stringify(restored)}`);
         results.push(evidence);await writeFile(path.join(qaDir,`correction-${label}-evidence.json`),JSON.stringify(results,null,2));
@@ -1062,8 +1062,7 @@ const analyze=(overlay,renderedPixels)=>{
         await choose(key,value);
       }
       await waitFor(`JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}').strap==='woven-ornament'`,`${label} cognac draft saved`);
-      await send('Page.reload',{ignoreCache:true});
-      await waitFor("document.readyState === 'complete'",`${label} saved model reload`);
+      await reloadCdpDocument(send,evaluate);
       await openBuilder();
       await waitFor(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset.abagsFidelity3dFrame===${JSON.stringify(signature)}`,`${label} complete saved model restored`);
       const restored=await frame();

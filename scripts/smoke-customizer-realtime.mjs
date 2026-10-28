@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { reloadCdpDocument } from "./cdp-document-reload.mjs";
 
 const productionUrl = process.env.ABAGS_PRODUCTION_URL || "https://abagshandmade.pl";
 const outputDir = process.env.ABAGS_REALTIME_QA_DIR || "";
@@ -49,13 +50,13 @@ async function connectCdp(webSocketDebuggerUrl) {
     if (!waiter) return;
     pending.delete(message.id);
     clearTimeout(waiter.timer);
-    if (message.error) waiter.reject(new Error(message.error.message || "CDP error"));
+    if (message.error) waiter.reject(new Error(`${waiter.method}: ${message.error.message || "CDP error"}`));
     else waiter.resolve(message.result);
   });
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const messageId = ++id;
     const timer = setTimeout(() => { pending.delete(messageId); reject(new Error(`CDP command timed out: ${method}`)); }, cdpTimeoutMs);
-    pending.set(messageId, { resolve, reject, timer });
+    pending.set(messageId, { resolve, reject, timer, method });
     socket.send(JSON.stringify({ id: messageId, method, params }));
   });
   return { socket, send };
@@ -104,8 +105,7 @@ async function main() {
     };
     const clearDraftAndReload = async () => {
       await evaluate(`(() => { try { localStorage.removeItem('abags-bag-builder-v3'); localStorage.removeItem('abags-photo-true-v1'); } catch {} return true; })()`);
-      await send("Page.reload", { ignoreCache: true });
-      await waitFor("document.readyState === 'complete'", "document reload");
+      await reloadCdpDocument(send, evaluate);
     };
     const openBuilder = async () => {
       await waitFor("Boolean(document.querySelector('#personalizacja'))", "personalization entry");
