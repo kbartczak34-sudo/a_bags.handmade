@@ -270,7 +270,10 @@ async function main() {
         return stage?.dataset.abagsFinal3d==='ready' &&
           stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature &&
           stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature &&
-          !stage.dataset.abagsFidelity3dError;
+          !stage.dataset.abagsFidelity3dError && (() => {
+            const print=JSON.parse(stage.dataset.abagsFidelityTextilePrint||'null');
+            return print && (!print.scarfUrl||print.scarf) && (!print.strapUrl||print.strap);
+          })();
       })()`, `${key}=${value} verified realtime composition`, 20_000);
       await sleep(160);
     };
@@ -782,7 +785,7 @@ const analyze=(overlay,renderedPixels)=>{
         return stage?.dataset.builderSignature===${JSON.stringify(signature)}&&stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&
           stage.dataset.abagsFinal3d==='ready'&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature&&
           JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.id===${JSON.stringify(id)}&&!stage.dataset.abagsFidelity3dError&&
-          (${JSON.stringify(id)}!=='rose-cream-dark-wood'||(() => {const print=JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.textilePrint;return print?.scarf&&print.strap;})());
+          (() => {const print=JSON.parse(stage.dataset.abagsFidelityTextilePrint||'null');return print?.scarf&&(!print.strapUrl||print.strap);})();
       })()`,`${label} reference model ${id}`,25_000);
       const results=[];
       for(const [id,signature,palette,thumbnail] of cases){
@@ -819,8 +822,10 @@ const analyze=(overlay,renderedPixels)=>{
         if(palette==='cacao-cream'&&(high.luma<low.luma*1.7||high.sat>.28))throw new Error(`${label}: cream-to-chocolate dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
         if(palette==='pastel-bands'&&(!hueBetween(low,255,320)||!hueBetween(blue,180,245)||!(pink.hue>=315||pink.hue<=12)||high.sat>.24||high.luma<100))throw new Error(`${label}: four ordered pastel bands absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
         if(palette==='rose-cream'&&(low.sat<.45||high.sat>.30||high.luma<low.luma*1.3))throw new Error(`${label}: cream/pink/fuchsia dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
-        if(id==='rose-cream-dark-wood'&&(evidence.proof.textilePrint?.id!=='rose-botanical-v1'||!evidence.proof.textilePrint.scarf||!evidence.proof.textilePrint.strap||evidence.textileUniform?.join(',')!=='1,1'))
-          throw new Error(`${label}: both botanical textile images must be uploaded and active in the real WebGL shader: ${JSON.stringify(evidence)}`);
+        const hasPrintedStrap=['woven-floral','woven-striped','woven-ornament'].includes(signature.split('|')[5]);
+        if(!evidence.proof.textilePrint?.scarf||evidence.textileUniform?.[0]!==1||
+          (hasPrintedStrap&&(!evidence.proof.textilePrint.strap||evidence.textileUniform?.[1]!==1)))
+          throw new Error(`${label} ${id}: selected textile images must be uploaded and active in the real WebGL shader: ${JSON.stringify(evidence)}`);
         await capture(`model-${label}-${id}-three-quarter.png`);
         if(palette==='forest-ocean'){
           await waitFor(`JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}').color==='#0E9AA7'`,`${label} green model persisted`);
@@ -1035,7 +1040,10 @@ const analyze=(overlay,renderedPixels)=>{
         if(${remember})canvas.__abagsCognacFullFrame=pixels;
         const rect=canvas.getBoundingClientRect(),style=getComputedStyle(canvas);
         return {signature:stage.dataset.builderSignature,current:stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature,
-          proof:JSON.parse(stage.dataset.abagsFidelityCognac||'null'),error:gl.getError(),hash,opaque,changed,
+          proof:JSON.parse(stage.dataset.abagsFidelityCognac||'null'),
+          textilePrint:JSON.parse(stage.dataset.abagsFidelityTextilePrint||'null'),
+          textileUniform:(() => {const program=gl.getParameter(gl.CURRENT_PROGRAM),location=program&&gl.getUniformLocation(program,'uTextileReady');return location?[...gl.getUniform(program,location)]:null;})(),
+          error:gl.getError(),hash,opaque,changed,
           reference:stage.dataset.abagsRealFamilyReference,visible:rect.width>40&&rect.height>40&&style.visibility==='visible'&&Number(style.opacity)>.05};
       })()`);
       const views=[];
@@ -1047,6 +1055,8 @@ const analyze=(overlay,renderedPixels)=>{
           evidence.proof.handleTriangles<1000||evidence.proof.flapTriangles<1000||evidence.proof.badgeTriangles<100||evidence.proof.jacquardTriangles<1000){
           throw new Error(`${label} cognac ${view}: missing the complete visible reference model: ${JSON.stringify(evidence)}`);
         }
+        if(!evidence.textilePrint?.strap||!evidence.textilePrint.strapUrl?.endsWith('/copper-jacquard-webbing-v1.jpg')||evidence.textileUniform?.[1]!==1)
+          throw new Error(`${label} cognac ${view}: jacquard texture is not active: ${JSON.stringify(evidence)}`);
         views.push({view,...evidence});
         await capture(`cognac-${label}-${view==='Przód'?'front':view==='Bok'?'side':'three-quarter'}.png`);
       }

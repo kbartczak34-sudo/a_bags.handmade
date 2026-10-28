@@ -1,10 +1,7 @@
-export const ABAGS_PRINTED_TEXTILE_ASSETS = {
-  scarf: "/images/configurator/textiles/rose-peony-satin-v1.jpg",
-  strap: "/images/configurator/textiles/raspberry-botanical-webbing-v1.jpg",
-} as const;
+import type { AbagsPrintedTextileProfile } from "./abags-textile-profiles";
 
-type TextileKey = keyof typeof ABAGS_PRINTED_TEXTILE_ASSETS;
-type PrintedTextile = { texture: WebGLTexture; image: HTMLImageElement | null; requested: boolean; ready: boolean };
+type TextileKey = "scarf" | "strap";
+type PrintedTextile = { texture: WebGLTexture; image: HTMLImageElement | null; url: string | null; ready: boolean };
 export type AbagsPrintedTextiles = { gl: WebGLRenderingContext; disposed: boolean; scarf: PrintedTextile; strap: PrintedTextile };
 
 export function createAbagsPrintedTextiles(gl: WebGLRenderingContext): AbagsPrintedTextiles {
@@ -19,23 +16,28 @@ export function createAbagsPrintedTextiles(gl: WebGLRenderingContext): AbagsPrin
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    return { texture, image: null, requested: false, ready: false };
+    return { texture, image: null, url: null, ready: false };
   };
   return { gl, disposed: false, scarf: create(), strap: create() };
 }
 
-export function requestAbagsPrintedTextiles(textiles: AbagsPrintedTextiles, onReady: () => void) {
-  if (textiles.disposed || typeof Image === "undefined") return;
+export function requestAbagsPrintedTextiles(textiles: AbagsPrintedTextiles, profile: AbagsPrintedTextileProfile, onReady: () => void) {
+  if (textiles.disposed) return;
   for (const key of ["scarf", "strap"] as TextileKey[]) {
     const entry = textiles[key];
-    if (entry.requested) continue;
-    entry.requested = true;
+    const url = profile[key]?.url ?? null;
+    if (entry.url === url) continue;
+    if (entry.image) { entry.image.onload = null; entry.image.onerror = null; }
+    entry.image = null;
+    entry.url = url;
+    entry.ready = false;
+    if (!url || typeof Image === "undefined") continue;
     const image = new Image();
     entry.image = image;
     image.decoding = "async";
     image.onload = () => {
       const { gl } = textiles;
-      if (textiles.disposed || gl.isContextLost()) return;
+      if (textiles.disposed || entry.image !== image || entry.url !== url || gl.isContextLost()) return;
       gl.bindTexture(gl.TEXTURE_2D, entry.texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
       const powerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
@@ -49,8 +51,8 @@ export function requestAbagsPrintedTextiles(textiles: AbagsPrintedTextiles, onRe
       entry.image = null;
       onReady();
     };
-    image.onerror = () => { entry.image = null; };
-    image.src = ABAGS_PRINTED_TEXTILE_ASSETS[key];
+    image.onerror = () => { if (entry.image === image) entry.image = null; };
+    image.src = url;
   }
 }
 

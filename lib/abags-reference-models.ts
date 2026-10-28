@@ -65,9 +65,10 @@ export function getAbagsWoodHandleTone(config: {family: string; color: string; h
   return config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : null;
 }
 
-/** The rose reference has a D-shaped wooden handle; the navy ring is round. */
+/** Rose and pastel photographs have a straight lower rail; the other rings are round. */
 export function getAbagsWoodHandleShape(config: {family: string; color: string; handles: string}): "round" | "flat-base" {
-  return config.handles.startsWith("wood") && getAbagsReferenceModel(config)?.id === "rose-cream-dark-wood"
+  const id = getAbagsReferenceModel(config)?.id;
+  return config.handles.startsWith("wood") && (id === "rose-cream-dark-wood" || id === "pastel-striped-wood-bow")
     ? "flat-base" : "round";
 }
 

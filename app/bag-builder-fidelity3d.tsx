@@ -11,6 +11,7 @@ import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fideli
 import { ABAGS_YARN_PALETTES, ABAGS_PASTEL_MINI_YARN_PALETTE, getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
 import { getAbagsReferenceModel, getAbagsWoodHandleTone, getAbagsWoodHandleShape, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 import { createAbagsPrintedTextiles, requestAbagsPrintedTextiles, disposeAbagsPrintedTextiles, type AbagsPrintedTextiles } from "../lib/abags-printed-textiles";
+import { getAbagsPrintedTextileProfile } from "../lib/abags-textile-profiles";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -74,7 +75,7 @@ type Renderer = {
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
   attribs: { position: number; normal: number; uv: number };
-  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds" | "yarnGradientAxis" | "yarnGradientRange" | "yarnOmbre" | "fabricStyle" | "fabricFlower" | "fabricLeaf" | "fabricBorder" | "bandPrint" | "textileReady" | "scarfPrint" | "strapPrint", WebGLUniformLocation>;
+  uniforms: Record<"projection" | "view" | "model" | "normalMatrix" | "color" | "material" | "stitch" | "relief" | "light" | "interiorBounds" | "yarnGradientAxis" | "yarnGradientRange" | "yarnOmbre" | "fabricStyle" | "fabricFlower" | "fabricLeaf" | "fabricBorder" | "bandPrint" | "textileReady" | "scarfPrint" | "strapPrint" | "scarfPrintUv" | "strapPrintUv", WebGLUniformLocation>;
 };
 
 type Point = [number, number];
@@ -1731,6 +1732,7 @@ uniform float uYarnOmbre;
 uniform float uFabricStyle,uBandPrint;
 uniform vec2 uTextileReady;
 uniform sampler2D uScarfPrint,uStrapPrint;
+uniform vec4 uScarfPrintUv,uStrapPrintUv;
 uniform vec3 uFabricFlower,uFabricLeaf,uFabricBorder;
 uniform vec2 uYarnGradientRange;
 uniform mediump float uRelief;
@@ -1933,10 +1935,10 @@ void main(){
     pigment=mix(pigment,flowerInk,petals*.85);
     pigment=mix(pigment,vec3(.72,.50,.23),center*.78);
     pigment=mix(pigment,uFabricStyle>0.0?uFabricBorder:vec3(.28,.32,.34),border*.78);
-    if(uFabricStyle>5.5 && uTextileReady.x>.5){
+    if(uTextileReady.x>.5){
       // Large botanical ink follows the folded cloth's own coordinates.
       // Mipmapped albedo keeps fine petals stable during mobile rotation.
-      pigment=texture2D(uScarfPrint,vUv*vec2(.90,.28)+vec2(.13,.14)).rgb;
+      pigment=texture2D(uScarfPrint,vUv*uScarfPrintUv.xy+uScarfPrintUv.zw).rgb;
       pigment=mix(pigment,uFabricBorder,border*.90);
     }
     detail=.98+.012*sin(vUv.x*120.0)*sin(vUv.y*74.0);
@@ -1982,14 +1984,14 @@ void main(){
       pigment=mix(vec3(.96,.90,.86),uFabricFlower,petals*.86);
       pigment=mix(pigment,uFabricLeaf,(1.0-smoothstep(.045,.08,abs(p.x-.24*sin(p.y*9.0))))*.5);
       pigment=mix(pigment,uFabricBorder,selvedge*.9);
-      if(uFabricStyle>5.5 && uTextileReady.y>.5){
-        pigment=texture2D(uStrapPrint,vec2(vUv.x*.20,vUv.y*.34)+vec2(.12,.09)).rgb;
-        pigment=mix(pigment,uFabricBorder,selvedge*.72);
-      }
     }else if(uBandPrint>1.5){
       float band=step(.24,vUv.y)-step(.41,vUv.y)+step(.59,vUv.y)-step(.76,vUv.y);
       pigment=mix(vec3(.89,.84,.75),vec3(.52,.49,.43),band*.65);
       pigment=mix(pigment,vec3(.80,.66,.47),(step(.45,vUv.y)-step(.55,vUv.y))*.65);
+    }
+    if(uTextileReady.y>.5){
+      pigment=texture2D(uStrapPrint,vUv*uStrapPrintUv.xy+uStrapPrintUv.zw).rgb;
+      pigment*=1.0-selvedge*.10;
     }
     detail=.96+.025*sin(vUv.x*820.0)*sin(vUv.y*240.0);
     rough=.88;fibreSheen=.02;
@@ -2092,7 +2094,7 @@ function init(canvas: HTMLCanvasElement): Renderer | null {
       uv: gl.getAttribLocation(program, "aUv"),
     },
     uniforms: {
-      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"), yarnGradientAxis: req("uYarnGradientAxis"), yarnGradientRange: req("uYarnGradientRange"), yarnOmbre: req("uYarnOmbre"), fabricStyle: req("uFabricStyle"), fabricFlower: req("uFabricFlower"), fabricLeaf: req("uFabricLeaf"), fabricBorder: req("uFabricBorder"), bandPrint: req("uBandPrint"), textileReady: req("uTextileReady"), scarfPrint: req("uScarfPrint"), strapPrint: req("uStrapPrint"),
+      projection: req("uProjection"), view: req("uView"), model: req("uModel"), normalMatrix: req("uNormalMatrix"), color: req("uColor"), material: req("uMaterial"), stitch: req("uStitch"), relief: req("uRelief"), light: req("uLight"), interiorBounds: req("uInteriorBounds"), yarnGradientAxis: req("uYarnGradientAxis"), yarnGradientRange: req("uYarnGradientRange"), yarnOmbre: req("uYarnOmbre"), fabricStyle: req("uFabricStyle"), fabricFlower: req("uFabricFlower"), fabricLeaf: req("uFabricLeaf"), fabricBorder: req("uFabricBorder"), bandPrint: req("uBandPrint"), textileReady: req("uTextileReady"), scarfPrint: req("uScarfPrint"), strapPrint: req("uStrapPrint"), scarfPrintUv: req("uScarfPrintUv"), strapPrintUv: req("uStrapPrintUv"),
     },
   };
 }
@@ -3102,6 +3104,7 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsFidelityOrnamentConstruction = canvas.dataset.abagsFidelityOrnamentConstruction || "";
   stage.dataset.abagsFidelityCognac = canvas.dataset.abagsFidelityCognac || "";
   stage.dataset.abagsFidelityReferenceModel = canvas.dataset.abagsFidelityReferenceModel || "";
+  stage.dataset.abagsFidelityTextilePrint = canvas.dataset.abagsFidelityTextilePrint || "";
   stage.dataset.abagsFidelityStrapOwner = canvas.dataset.abagsFidelityStrapOwner || "";
   stage.dataset.abagsFidelityStrapBounds = canvas.dataset.abagsFidelityStrapBounds || "";
   stage.dataset.abagsFidelityStrapTriangles = canvas.dataset.abagsFidelityStrapTriangles || "0";
@@ -3139,6 +3142,7 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
     node.removeAttribute("data-abags-fidelity-ornament-construction");
     node.removeAttribute("data-abags-fidelity-cognac");
     node.removeAttribute("data-abags-fidelity-reference-model");
+    node.removeAttribute("data-abags-fidelity-textile-print");
     node.removeAttribute("data-abags-fidelity-strap-owner");
     node.removeAttribute("data-abags-fidelity-strap-bounds");
     node.removeAttribute("data-abags-fidelity-strap-triangles");
@@ -3192,11 +3196,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   gl.uniform2f(uniforms.yarnGradientRange, gradient.min, gradient.max);
   const reference = getAbagsReferenceModel(config);
   const textiles = renderer.printedTextiles;
-  if (reference?.fabric === 6) requestAbagsPrintedTextiles(textiles, () => renderer.onTextileReady?.());
+  const textileProfile = getAbagsPrintedTextileProfile(config, reference?.fabric);
+  requestAbagsPrintedTextiles(textiles, textileProfile, () => renderer.onTextileReady?.());
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, textiles.scarf.texture);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, textiles.strap.texture);
   gl.uniform1i(uniforms.scarfPrint, 0); gl.uniform1i(uniforms.strapPrint, 1);
   gl.uniform2f(uniforms.textileReady, textiles.scarf.ready ? 1 : 0, textiles.strap.ready ? 1 : 0);
+  gl.uniform4f(uniforms.scarfPrintUv, ...(textileProfile.scarf?.uv ?? [1,1,0,0]));
+  gl.uniform4f(uniforms.strapPrintUv, ...(textileProfile.strap?.uv ?? [1,1,0,0]));
   const body = palette?.colors[4] ?? (config.color || "#b87880");
   gl.uniform1f(uniforms.fabricStyle, reference?.fabric ?? 0);
   gl.uniform3fv(uniforms.fabricFlower, hex(reference?.fabricFlower ?? "#CC6682"));
@@ -3385,7 +3392,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityStrapBounds = renderer.shoulderBandBounds ? JSON.stringify(renderer.shoulderBandBounds) : "";
   canvas.dataset.abagsFidelityStrapTriangles = String(renderer.shoulderBandTriangles ?? 0);
   canvas.dataset.abagsFidelityReferenceModel = reference ? JSON.stringify({ id: reference.id, source: reference.sourceFile, palette: palette?.id ?? "solid", fabric: reference.fabric, probes: referenceYarnProbePoints(renderFamily,root,width,height), constructionTriangles: renderer.referenceTriangles ?? 0, strapTriangles: renderer.shoulderBandTriangles ?? 0,
-    textilePrint: reference.fabric === 6 ? { id: "rose-botanical-v1", scarf: textiles.scarf.ready, strap: textiles.strap.ready } : undefined }) : "";
+    textilePrint: { id: textileProfile.id, scarf: textiles.scarf.ready, strap: textiles.strap.ready } }) : "";
+  canvas.dataset.abagsFidelityTextilePrint = JSON.stringify({ id: textileProfile.id, scarf: textiles.scarf.ready, strap: textiles.strap.ready, scarfUrl: textiles.scarf.url, strapUrl: textiles.strap.url });
   const blackFlap = getAbagsCrochetFlapTone(config);
   const flapProbe = blackFlap ? crochetFlapSurface(renderFamily).sample(0, profile.flapY) : null;
   const tip = blackFlap && config.accent === "tassel" ? fidelityAccessoryAnchor(config) : null;

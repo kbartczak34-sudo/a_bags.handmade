@@ -3,11 +3,13 @@ import test from "node:test";
 import { Matrix4, Triangle, Vector3 } from "three";
 import { geometry as g } from "./helpers/fidelity-geometry.mjs";
 
-test("the rose photograph selects a flat base while the navy retains a round ring", () => {
+test("rose and pastel photographs select flat bases while the navy retains a round ring", () => {
   const config = { family: "tall-tote", color: "#D58FAA", handles: "wood-dark" };
   assert.equal(g.getAbagsWoodHandleShape(config), "flat-base");
   assert.equal(g.getAbagsWoodHandleShape({ ...config, handles: "wood-light" }), "flat-base");
-  for (const color of ["#24324D", "#0E9AA7", "#88583F", "#BA9ECF", "#123456"])
+  assert.equal(g.getAbagsWoodHandleShape({ ...config, color: "#BA9ECF", handles: "wood-light" }), "flat-base");
+  assert.equal(g.getAbagsWoodHandleShape({ ...config, family: "mini", color: "#BA9ECF" }), "round");
+  for (const color of ["#24324D", "#0E9AA7", "#88583F", "#123456"])
     assert.equal(g.getAbagsWoodHandleShape({ ...config, color }), "round");
   assert.equal(g.getAbagsWoodHandleShape({ ...config, handles: "crochet" }), "round");
 });
