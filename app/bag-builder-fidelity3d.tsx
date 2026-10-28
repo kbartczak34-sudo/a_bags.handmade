@@ -9,7 +9,7 @@ import {
 } from "../lib/abags-fidelity-v4-family-spec";
 import { isAgataBuilderConstructionSupported } from "../lib/abags-builder-fidelity";
 import { ABAGS_YARN_PALETTES, ABAGS_PASTEL_MINI_YARN_PALETTE, getAbagsYarnPalette } from "../lib/abags-yarn-palettes";
-import { getAbagsReferenceModel, getAbagsWoodHandleTone, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
+import { getAbagsReferenceModel, getAbagsWoodHandleTone, getAbagsWoodHandleShape, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -60,6 +60,7 @@ type Renderer = {
   ornamentTriangles?: number;
   yarnKey?: string;
   woodBindingKey?: string;
+  referenceWoodHandleShape?: WoodHandleShape;
   strapBindingKey?: string;
   crochetFlapKey?: string;
   crochetFlapLockZ?: number;
@@ -562,6 +563,40 @@ function woodHandleMatrix(family: Exclude<Family, "">, z: number) {
 
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[] };
 type YarnPoint = [number, number, number];
+type WoodHandleShape = "round" | "flat-base";
+
+// The photographed rose handle has a straight lower rail with rounded corners.
+// Share this centreline between the wood and its cord binding so both turn as
+// one physical construction. The other references retain their circular rings.
+function referenceWoodHandleFrame(angle: number, shape: WoodHandleShape = "round") {
+  const a = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  let center: YarnPoint = [.46 * Math.cos(a), .42 * Math.sin(a), 0];
+  let tangent = normalize(-.46 * Math.sin(a), .42 * Math.cos(a), 0);
+  if (shape === "flat-base" && a > Math.PI) {
+    // The inner corner must also leave room for the 5 mm cord; a tighter
+    // bend would make its winding intersect the adjacent wooden rail.
+    const corner = .12, foot = .02, rail = .46 - corner;
+    const arc = Math.PI * corner / 2;
+    let distance = (a - Math.PI) / Math.PI * (2 * foot + 2 * arc + 2 * rail);
+    if (distance <= foot) {
+      center = [-.46, -distance, 0]; tangent = [0, -1, 0];
+    } else if ((distance -= foot) <= arc) {
+      const turn = Math.PI + distance / corner;
+      center = [-rail + corner * Math.cos(turn), -foot + corner * Math.sin(turn), 0];
+      tangent = [-Math.sin(turn), Math.cos(turn), 0];
+    } else if ((distance -= arc) <= 2 * rail) {
+      center = [-rail + distance, -foot - corner, 0]; tangent = [1, 0, 0];
+    } else if ((distance -= 2 * rail) <= arc) {
+      const turn = Math.PI * 1.5 + distance / corner;
+      center = [rail + corner * Math.cos(turn), -foot + corner * Math.sin(turn), 0];
+      tangent = [-Math.sin(turn), Math.cos(turn), 0];
+    } else {
+      center = [.46, -foot + distance - arc, 0]; tangent = [0, 1, 0];
+    }
+  }
+  const outward: YarnPoint = [tangent[1], -tangent[0], 0];
+  return { center, tangent, outward };
+}
 
 function appendCord(mesh: FabricMesh, points: YarnPoint[], thickness: number, guide: (point: YarnPoint) => YarnPoint, contains: (point: YarnPoint) => boolean, sides = 10, closed = false) {
   let previous = -1;
@@ -863,7 +898,7 @@ function flatWoodWrapSection(halfWidth: number, halfDepth: number, clearance: nu
   return [halfWidth + clearance, -halfDepth + distance - arc];
 }
 
-function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
+function woodHandleBindingPaths(family: Exclude<Family, "">, z: number, shape: WoodHandleShape = "round") {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const transform = woodHandleMatrix(family, z);
   const side = z < 0 ? -1 : 1;
@@ -879,11 +914,12 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
   const flat = family === "tall-tote", arcs = [0], stepsPerTurn = flat ? 40 : 14;
   const depth = normalize(transform[8], transform[9], transform[10]);
   const flatFrame = (angle: number) => {
-    const center = world(.46 * Math.cos(angle), .42 * Math.sin(angle), 0);
-    const tx = -.46 * Math.sin(angle), ty = .42 * Math.cos(angle);
+    const frame = referenceWoodHandleFrame(angle, shape);
+    const center = world(...frame.center);
+    const [tx, ty] = frame.tangent;
     const tangent = normalize(transform[0]*tx + transform[4]*ty, transform[1]*tx + transform[5]*ty, transform[2]*tx + transform[6]*ty);
     const outward = normalize(tangent[1]*depth[2]-tangent[2]*depth[1], tangent[2]*depth[0]-tangent[0]*depth[2], tangent[0]*depth[1]-tangent[1]*depth[0]);
-    const radial = normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0);
+    const radial = frame.outward;
     const halfWidth = .055 * Math.hypot(transform[0]*radial[0] + transform[4]*radial[1], transform[1]*radial[0] + transform[5]*radial[1], transform[2]*radial[0] + transform[6]*radial[1]);
     return { center, outward, halfWidth };
   };
@@ -939,7 +975,14 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
         seat[2] * (1 - t) + target[2] * t + side * Math.sin(t * Math.PI) * radius * .45];
     }));
   }
+  const guideFrames = shape === "flat-base" ? Array.from({ length: 129 }, (_, i) => flatFrame(start + span * i / 128)) : [];
   const guide = (point: YarnPoint): YarnPoint => {
+    if (guideFrames.length) {
+      const nearest = guideFrames.reduce((best, frame) =>
+        Math.hypot(...point.map((n,j)=>n-frame.center[j])) < Math.hypot(...point.map((n,j)=>n-best.center[j])) ? frame : best);
+      return normalize(nearest.outward[1]*depth[2]-nearest.outward[2]*depth[1],
+        nearest.outward[2]*depth[0]-nearest.outward[0]*depth[2], nearest.outward[0]*depth[1]-nearest.outward[1]*depth[0]);
+    }
     const delta = point.map((value, axis) => value - transform[12 + axis]);
     const local = (column: number) => (delta[0] * transform[column] + delta[1] * transform[column + 1] + delta[2] * transform[column + 2])
       / (transform[column] ** 2 + transform[column + 1] ** 2 + transform[column + 2] ** 2);
@@ -951,22 +994,23 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number) {
   return { winding, seams, radius, guide };
 }
 
-function makeWoodHandleBinding(family: Exclude<Family, "">): FabricMesh {
+function makeWoodHandleBinding(family: Exclude<Family, "">, shape: WoodHandleShape = "round"): FabricMesh {
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   for (const z of woodHandleDepthPlanes(family)) {
-    const { winding, seams, radius, guide } = woodHandleBindingPaths(family, z);
+    const { winding, seams, radius, guide } = woodHandleBindingPaths(family, z, shape);
     appendCord(mesh, winding, radius, guide, () => true, 8);
     for (const seam of seams) appendCord(mesh, seam, radius * .75, () => [0, 0, z < 0 ? -1 : 1], () => true, 8);
   }
   return mesh;
 }
 
-function ensureWoodHandleBinding(renderer: Renderer, family: Exclude<Family, "">) {
-  if (renderer.woodBindingKey === family) return;
+function ensureWoodHandleBinding(renderer: Renderer, family: Exclude<Family, "">, shape: WoodHandleShape = "round") {
+  const key = `${family}:${shape}`;
+  if (renderer.woodBindingKey === key) return;
   const previous = renderer.meshes.woodBinding;
   if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
-  renderer.meshes.woodBinding = createMesh(renderer.gl, makeWoodHandleBinding(family));
-  renderer.woodBindingKey = family;
+  renderer.meshes.woodBinding = createMesh(renderer.gl, makeWoodHandleBinding(family, shape));
+  renderer.woodBindingKey = key;
 }
 
 type ClosedFlapSurface = {
@@ -2585,27 +2629,36 @@ function ensureCognacConstruction(renderer: Renderer) {
   for (const part of renderer.cognacParts) renderer.meshes[part.name] = createMesh(renderer.gl, part.mesh);
 }
 
-function makeReferenceWoodHandle(): FabricMesh {
+function makeReferenceWoodHandle(shape: WoodHandleShape = "round"): FabricMesh {
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const w = .055, h = .026, r = .007, q = Math.SQRT1_2;
   const section = [[w-r,-h,0,-1],[w-r+r*q,-h+r-r*q,q,-q],[w,-h+r,1,0],
     [w,h-r,1,0],[w-r+r*q,h-r+r*q,q,q],[w-r,h,0,1],[-w+r,h,0,1],
     [-w+r-r*q,h-r+r*q,-q,q],[-w,h-r,-1,0],[-w,-h+r,-1,0],
     [-w+r-r*q,-h+r-r*q,-q,-q],[-w+r,-h,0,-1]];
-  for (let row = 0; row <= 96; row++) {
-    const a = row / 96 * Math.PI * 2, radial = normalize(Math.cos(a) / .46, Math.sin(a) / .42, 0);
+  const rows = shape === "flat-base" ? 160 : 96;
+  for (let row = 0; row <= rows; row++) {
+    const { center, outward: radial } = referenceWoodHandleFrame(row / rows * Math.PI * 2, shape);
     for (let col = 0; col <= 12; col++) {
       const [u,z,nx,nz] = section[col % 12];
-      const x = .46*Math.cos(a)+radial[0]*u, y = .42*Math.sin(a)+radial[1]*u;
+      const x = center[0]+radial[0]*u, y = center[1]+radial[1]*u;
       mesh.positions.push(x,y,z);
       mesh.normals.push(...normalize(radial[0]*nx,radial[1]*nx,nz));
       // Cut wood has grain across its broad face, rather than following the
       // angular index of the ring or stretching around its cross section.
       mesh.uvs.push(.5+x/1.1,.5+y);
-      if(row<96&&col<12){const i=row*13+col,j=i+13;mesh.indices.push(i,j,i+1,j,j+1,i+1);}
+      if(row<rows&&col<12){const i=row*13+col,j=i+13;mesh.indices.push(i,j,i+1,j,j+1,i+1);}
     }
   }
   return mesh;
+}
+
+function ensureReferenceWoodHandle(renderer: Renderer, shape: WoodHandleShape) {
+  if (renderer.referenceWoodHandleShape === shape) return;
+  const previous = renderer.meshes.referenceWoodHandle;
+  if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+  renderer.meshes.referenceWoodHandle = createMesh(renderer.gl, makeReferenceWoodHandle(shape));
+  renderer.referenceWoodHandleShape = shape;
 }
 
 // Smooth title-case lettering follows the small engraved plaques in the
@@ -2750,7 +2803,6 @@ function ensureReferenceConstruction(renderer: Renderer, config: Config) {
     renderer.meshes[family+"LiningSeam"]=createMesh(renderer.gl,makeOpeningLiningSeam(family));
     renderer.meshes[family+"Chain"]=createMesh(renderer.gl,familyShoulderChainMesh(family));
   }
-  if(family==="tall-tote"&&!renderer.meshes.referenceWoodHandle)renderer.meshes.referenceWoodHandle=createMesh(renderer.gl,makeReferenceWoodHandle());
   renderer.referenceParts=makeReferenceConstruction(config).map(({name,tone,mesh})=>{
     renderer.meshes[name]=createMesh(renderer.gl,mesh);
     renderer.referenceTriangles=(renderer.referenceTriangles??0)+mesh.indices.length/3;
@@ -3187,6 +3239,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const handleColor = getAbagsWoodHandleTone(config) ?? body;
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const isWoodHandle = config.handles.startsWith("wood");
+    const woodShape = getAbagsWoodHandleShape(config);
+    if (isWoodHandle && renderFamily === "tall-tote") ensureReferenceWoodHandle(renderer, woodShape);
     const mesh = isWoodHandle ? (renderFamily === "tall-tote" ? meshes.referenceWoodHandle : meshes.woodHandle) : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.30;
     // The wooden tote has one ring at the front rim and one at the back rim.
@@ -3210,7 +3264,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
           0,
         );
       }
-      ensureWoodHandleBinding(renderer, renderFamily);
+      ensureWoodHandleBinding(renderer, renderFamily, woodShape);
       drawMesh(renderer, meshes.woodBinding, root, body, 7, stitch, 0);
     } else {
       for (const side of [-1, 1]) {

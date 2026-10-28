@@ -65,6 +65,12 @@ export function getAbagsWoodHandleTone(config: {family: string; color: string; h
   return config.handles === "wood-light" ? "#b98a55" : config.handles === "wood-dark" ? "#573622" : null;
 }
 
+/** The rose reference has a D-shaped wooden handle; the navy ring is round. */
+export function getAbagsWoodHandleShape(config: {family: string; color: string; handles: string}): "round" | "flat-base" {
+  return config.handles.startsWith("wood") && getAbagsReferenceModel(config)?.id === "rose-cream-dark-wood"
+    ? "flat-base" : "round";
+}
+
 /** Confirmed by Agata's owner: the mustard round has a black crocheted flap. */
 export function getAbagsCrochetFlapTone(config: {family?: string; color?: string; flap?: string}): string | null {
   return config.family === "round" && config.color?.toUpperCase() === "#C7962F" && config.flap === "crochet" ? "#222124" : null;

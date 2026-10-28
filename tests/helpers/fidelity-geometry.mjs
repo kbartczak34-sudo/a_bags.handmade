@@ -16,6 +16,9 @@ const pure = source.slice(0, source.indexOf("export default function BagBuilderF
   .replace(/^import[\s\S]*?from "[^"]+";\s*/gm, "");
 runInNewContext(compile(pure + "\nObject.assign(exports, {yarnGradientFrame, makeReferenceWoodHandle, makeReferenceConstruction, ensureReferenceConstruction, crochetShoulderStrapPoint, roundedRectangle, makeCognacPlate, cognacHandlePoint, makeCognacConstruction, ensureCognacConstruction, ornamentStrapPoint, ornamentSurfaceZ, foldedRibbonKnot, foldedRibbonLoop, foldedRibbonTail, woodHandleRibbonPoint, tasselFringeStrands, makeOpeningInterior, makeOpeningLiningSeam, openingLiningLayout, liningWallPoint, depthAt, appendCord, openingBraidPaths, makeOpeningRim, ensureOpeningRim, groundContactFrame, groundSupportPoints, makeVariableDepthBody, makeCrochetPanel, makeCrochetGusset, makeCrochetFlap, crochetFlapSurface, closedFlapSurface, ensureClosedFlapShell, ensureCrochetFlapMesh, openingPath, woodHandleDepthPlanes, woodHandleMountHeight, woodHandleMatrix, woodHandleBindingPaths, makeWoodHandleBinding, ensureWoodHandleBinding, crochetPanelPoint, fidelityAccessoryAnchor, makeOrnamentGeometry, ensureOrnamentMeshes, appendOrnamentRibbon, strapHardwarePosition, strapBindingPaths, makeStrapBinding, ensureStrapBinding, shoulderStrapMatrix, familyShoulderStrapMesh, shoulderBandFrame, makeShoulderBandGeometry, ensureShoulderBandMeshes, familyShoulderChainMesh, makeDHardwareRing, makeLobsterClaspMesh, strapClaspPosition, normalMatrix, matrix, ensureCrochetMeshes});"), context);
 export const geometry = { ...context.exports,
+  getAbagsWoodHandleShape: context.getAbagsWoodHandleShape,
+  referenceWoodHandleFrame: context.referenceWoodHandleFrame,
+  ensureReferenceWoodHandle: context.ensureReferenceWoodHandle,
   makeHandmadeBadge: context.makeHandmadeBadge,
   handmadeBadgeLettering: context.handmadeBadgeLettering,
 };
