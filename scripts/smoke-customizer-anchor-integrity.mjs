@@ -747,6 +747,8 @@ const analyze=(overlay,renderedPixels)=>{
         const canvas=stage?.querySelector('.abags-fidelity3d-canvas'),gl=canvas?.getContext('webgl');
         if(!gl||gl.isContextLost())return null;
         const proof=JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null');
+        const program=gl.getParameter(gl.CURRENT_PROGRAM),printLocation=gl.getUniformLocation(program,'uTextileReady');
+        const textileUniform=printLocation?Array.from(gl.getUniform(program,printLocation)):null;
         const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
         gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
         let hash=2166136261,opaque=0;
@@ -771,7 +773,7 @@ const analyze=(overlay,renderedPixels)=>{
         const card=proof&&document.querySelector('button[data-abags-photo-model="'+proof.id+'"]');
         const thumb=card?.querySelector('.abags-ref-family-photo');
         return {signature:stage.dataset.builderSignature,current:stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature,
-          proof,colors,hash,opaque,error:gl.getError(),selected:card?.getAttribute('aria-pressed')==='true',thumbnail:thumb?.dataset.referenceKind||'',
+          proof,textileUniform,colors,hash,opaque,error:gl.getError(),selected:card?.getAttribute('aria-pressed')==='true',thumbnail:thumb?.dataset.referenceKind||'',
           canSave:Boolean(document.querySelector('button[data-builder-save-state]:not(:disabled)')),
           visible:rect.width>40&&rect.height>40&&rect.top<innerHeight&&rect.bottom>0&&style.visibility==='visible'&&Number(style.opacity)>.05};
       })()`);
@@ -779,7 +781,8 @@ const analyze=(overlay,renderedPixels)=>{
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
         return stage?.dataset.builderSignature===${JSON.stringify(signature)}&&stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&
           stage.dataset.abagsFinal3d==='ready'&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature&&
-          JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.id===${JSON.stringify(id)}&&!stage.dataset.abagsFidelity3dError;
+          JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.id===${JSON.stringify(id)}&&!stage.dataset.abagsFidelity3dError&&
+          (${JSON.stringify(id)}!=='rose-cream-dark-wood'||(() => {const print=JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.textilePrint;return print?.scarf&&print.strap;})());
       })()`,`${label} reference model ${id}`,25_000);
       const results=[];
       for(const [id,signature,palette,thumbnail] of cases){
@@ -816,6 +819,8 @@ const analyze=(overlay,renderedPixels)=>{
         if(palette==='cacao-cream'&&(high.luma<low.luma*1.7||high.sat>.28))throw new Error(`${label}: cream-to-chocolate dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
         if(palette==='pastel-bands'&&(!hueBetween(low,255,320)||!hueBetween(blue,180,245)||!(pink.hue>=315||pink.hue<=12)||high.sat>.24||high.luma<100))throw new Error(`${label}: four ordered pastel bands absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
         if(palette==='rose-cream'&&(low.sat<.45||high.sat>.30||high.luma<low.luma*1.3))throw new Error(`${label}: cream/pink/fuchsia dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
+        if(id==='rose-cream-dark-wood'&&(evidence.proof.textilePrint?.id!=='rose-botanical-v1'||!evidence.proof.textilePrint.scarf||!evidence.proof.textilePrint.strap||evidence.textileUniform?.join(',')!=='1,1'))
+          throw new Error(`${label}: both botanical textile images must be uploaded and active in the real WebGL shader: ${JSON.stringify(evidence)}`);
         await capture(`model-${label}-${id}-three-quarter.png`);
         if(palette==='forest-ocean'){
           await waitFor(`JSON.parse(localStorage.getItem('abags-bag-builder-v3')||'{}').color==='#0E9AA7'`,`${label} green model persisted`);
