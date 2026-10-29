@@ -73,9 +73,11 @@ export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, F
   },
   shoulder: {
     label: "Listonoszka", reference: "chocolate-crossbody-bow",
-    rx: 1.04, ry: .76, power: 5.4, taper: .015, bodyY: -.10,
-    depth: .44, bevel: .050, topY: .66, sideAnchor: .96, ringY: .46,
-    handleScale: [.94, .72], flapScale: [.76, .58], flapY: .33,
+    // Front silhouette matched to original 1000019763.jpg. These are visual
+    // proportions in renderer units, not newly confirmed physical dimensions.
+    rx: 1.04, ry: .83, power: 5.4, taper: .015, bodyY: -.10,
+    depth: .44, bevel: .050, topY: .73, sideAnchor: .96, ringY: .53,
+    handleScale: [.94, .72], flapScale: [.76, .58], flapY: .37,
     softnessFactor: .95, attachmentWidthFactor: .94, attachmentYOffset: -.20,
     attachmentZFactor: .74, handleSpanFactor: .84, handleScaleFactor: 1,
     handleYScaleFactor: 1, chain: [1.12, 1.72, 34, .043, .011],

@@ -32,7 +32,7 @@ function assertMesh(mesh, label) {
 }
 
 test("six supplied references create complete compatible projects that survive save and restore", () => {
-  assert.deepEqual(plain(models.map(model => model.sourceFile).sort()), ["1000019763.png","1000019645.png","1000019552.jpg","1000019407.png","1000019121.jpg","1000018863.jpg"].sort());
+  assert.deepEqual(plain(models.map(model => model.sourceFile).sort()), ["1000019763.jpg","1000019645.jpg","1000019552.jpg","1000019407.png","1000019121.jpg","1000018863.jpg"].sort());
   for (const model of models) {
     const config = reference.createAbagsReferenceModelConfig(model.id);
     const restored = JSON.parse(JSON.stringify(config));
@@ -66,7 +66,9 @@ test("reference copies remain independent and legacy owner settings invent no ne
 
 test("tall and shoulder silhouettes have separate proportions and valid closed-depth textile meshes", () => {
   assert.ok(specs["tall-tote"].ry / specs["tall-tote"].rx > 1);
-  assert.ok(specs.shoulder.rx / specs.shoulder.ry > 1.3);
+  // The original chocolate crossbody is visibly taller than its old thumbnail.
+  const shoulderAspect = specs.shoulder.rx / specs.shoulder.ry;
+  assert.ok(shoulderAspect > 1.20 && shoulderAspect < 1.30);
   for (const family of ["tall-tote","shoulder"]) {
     assertMesh(geometry.makeVariableDepthBody(family), `${family} body`);
     for(const stitch of ["classic","herringbone","basket","shell"]){

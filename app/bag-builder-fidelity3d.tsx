@@ -736,16 +736,24 @@ type CrochetPatch = {
 
 // The open V in Agata's photographs is taller than a compact herringbone.
 // Use the same physical gauge on the body, gusset and flap, keeping 5 mm cord.
+function crochetGaugeColumns(stitch: Stitch) {
+  // The supplied originals have about twelve open V columns across the body.
+  // Sixteen at the same cord diameter closed the gaps into a scale-like skin.
+  return stitch === "basket" ? 10 : stitch === "classic" || stitch === "shell" ? 12 : 16;
+}
+
 function crochetRowCount(columns: number, rx: number, ry: number, stitch: Stitch, minimum: number) {
   return Math.max(minimum, Math.round(columns * ry / rx * (stitch === "classic" ? .82 : 1.12)));
 }
 
 function interlockedVPoint(t: number, width: number, height: number, radius: number): YarnPoint {
   const leg = 2 * t - 1;
-  const bend = (Math.sqrt(leg * leg + .025) - Math.sqrt(.025)) / (Math.sqrt(1.025) - Math.sqrt(.025));
+  const bend = (Math.sqrt(leg * leg + .008) - Math.sqrt(.008)) / (Math.sqrt(1.008) - Math.sqrt(.008));
   // The crown rises in front, while both shoulders pass beneath the next row.
-  // A continuous rounded turn avoids a sharp kink at the bottom of the V.
-  return [Math.sin((t - .5) * Math.PI) * width * .43, (bend - .48) * height,
+  // The originals 1000019763/1000019645 show long, nearly straight diagonal
+  // legs. A sinusoidal X made them curl into short, scale-like U shapes.
+  // Keep a small round turn at the tip so the physical cord has no sharp kink.
+  return [leg * width * .43, (bend - .48) * height,
     radius * (.36 * Math.sin(Math.PI * t) - .20 * Math.pow(Math.abs(leg), 6) + .10 * Math.sin(Math.PI * 2 * t))];
 }
 
@@ -799,7 +807,7 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
         curve(cx, cy + dy * .28, dx * .78 * widthGauge, dy * .72 * heightGauge, radius * (.24 + crossTension * .055), -variation * dx * .025);
       } else {
         const compact = stitch === "herringbone";
-        curve(cx, cy, dx * (compact ? 1.06 : 1.18) * widthGauge, dy * (compact ? .84 : 1.06) * heightGauge,
+        curve(cx, cy, dx * (compact ? 1.06 : 1.18) * widthGauge, dy * (compact ? .84 : 1.36) * heightGauge,
           variation * radius * .14, variation * dx * .035, !compact);
       }
     }
@@ -826,7 +834,7 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const occluders: CordOccluder[] = [];
   const radius = spec.rx * 5 / 160;
-  const columns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const columns = crochetGaugeColumns(stitch);
   const rows = crochetRowCount(columns, spec.rx, spec.ry, stitch, 9);
   const fractionAt = (x: number, y: number) => {
     const taper = 1 + spec.taper * y / spec.ry;
@@ -852,7 +860,7 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
     arcs.push(arcs[i] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
   const perimeter = arcs[arcs.length - 1];
-  const gaugeColumns = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const gaugeColumns = crochetGaugeColumns(stitch);
   const columns = Math.round(perimeter / (spec.rx * 1.94 / gaugeColumns));
   const depth = depthAt(family, 0);
   const rows = crochetRowCount(columns, perimeter * .5, depth * .5, stitch, 3);
@@ -1217,7 +1225,7 @@ function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMes
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const occluders: CordOccluder[] = [];
   const radius = spec.rx * 5 / 160;
-  const gauge = stitch === "basket" ? 10 : stitch === "shell" ? 12 : 16;
+  const gauge = crochetGaugeColumns(stitch);
   const columns = Math.max(4, Math.round(gauge * rx / spec.rx));
   const rows = crochetRowCount(columns, rx, ry, stitch, 3);
   const seat = (x: number, y: number, lift: number): YarnPoint => {
@@ -2312,7 +2320,7 @@ function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
   if (!config.family || config.accent === "none") return null;
   const family = config.family, spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   if (family === "shoulder" && (config.accent === "scarf" || config.accent === "bow")) {
-    const x = -spec.rx * .28, y = spec.bodyY + spec.ry * .58;
+    const x = -spec.rx * .40, y = spec.bodyY + spec.ry * .52;
     return [x, y, ornamentSurfaceZ(config, x, y, .018)];
   }
   if (config.accent === "tassel" && getAbagsCrochetFlapTone(config)) {
@@ -2879,8 +2887,9 @@ function makeReferenceConstruction(config: Config) {
   const plate = (target: FabricMesh, width: number, height: number, at: YarnPoint, depth = .008, rotation: YarnPoint = [0,0,0]) =>
     appendOrnamentMesh(target,makeCognacPlate(roundedRectangle(width,height,Math.min(height*.4,.032)),depth),matrix(at,[1,1,1],rotation));
   const tube = (target: FabricMesh, points: YarnPoint[], radius: number) => appendCord(target,points,radius,()=>[0,0,1],()=>true,8);
-  const badgeX = family === "shoulder" ? spec.rx*.32 : 0;
-  const badgeY = model?.fabric === 5 ? spec.bodyY+spec.ry*.72 : spec.bodyY-spec.ry*.73;
+  const badgeX = family === "shoulder" ? spec.rx*.48 : 0;
+  const suppliedOriginal = model?.id === "chocolate-crossbody-bow" || model?.id === "forest-ocean-wood-bow";
+  const badgeY = model?.fabric === 5 ? spec.bodyY+spec.ry*.72 : spec.bodyY-spec.ry*(suppliedOriginal ? .56 : .73);
   const badgeZ = ornamentSurfaceZ({...config,flap:"none"},badgeX,badgeY,.015);
   const badge = makeHandmadeBadge(), badgePose = matrix([badgeX,badgeY,badgeZ],[1,1,1]);
   appendOrnamentMesh(metal,badge.metal,badgePose);
@@ -3053,7 +3062,7 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
     for(let lane=0;lane<3;lane++){
       const points=Array.from({length:321},(_,i):YarnPoint=>{
         const t=i/320,f=shoulderBandFrame(family,t,"crochet"),a=t*Math.PI*34+lane*Math.PI*2/3;
-        const width=.062*Math.sin(a)*(.40+.60*Math.sin(Math.PI*t)),depth=.022*Math.sin(2*a);
+        const width=.078*Math.sin(a)*(.40+.60*Math.sin(Math.PI*t)),depth=.022*Math.sin(2*a);
         return f.center.map((n,j)=>n+f.widthAxis[j]*width+f.normal[j]*depth) as YarnPoint;
       });
       appendCord(mesh,points,radius,()=>[0,0,1],()=>true,8);
