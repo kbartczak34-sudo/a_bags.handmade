@@ -219,10 +219,10 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
     width: min(184px, calc(100% - 16px)) !important;
     min-width: 0 !important;
     max-width: 184px !important;
-    height: 42px !important;
-    min-height: 42px !important;
+    height: 48px !important;
+    min-height: 48px !important;
     max-height: 48px !important;
-    grid-template-columns: 28px minmax(34px, 1fr) 28px 38px !important;
+    grid-template-columns: 32px minmax(34px, 1fr) 32px 42px !important;
     gap: 4px !important;
     padding: 4px !important;
     box-sizing: border-box !important;
@@ -232,15 +232,15 @@ body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview{
   .abags-bag-builder-stage .abags-fidelity3d-zoom button {
     width: 100% !important;
     min-width: 0 !important;
-    height: 32px !important;
-    min-height: 28px !important;
+    height: 38px !important;
+    min-height: 38px !important;
     padding: 0 !important;
-    font-size: 10px !important;
+    font-size: 15px !important;
     white-space: nowrap !important;
   }
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
   .abags-bag-builder-stage .abags-fidelity3d-zoom button:last-child {
-    font-size: 7px !important;
+    font-size: 10px !important;
   }
   body.abags-vc-open .abags-vc-dialog.abags-reference-layout-v4
   .abags-bag-builder-stage .abags-fidelity3d-zoom input[type="range"] {

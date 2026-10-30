@@ -11,9 +11,11 @@ test("canonical Fidelity3D canvas remains interactive after final promotion", ()
   assert.match(renderer, /style=\{\{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" \}\}/);
   assert.match(renderer, /onPointerDown=\{\(event\) =>/);
   assert.match(renderer, /setPointerCapture/);
-  assert.match(renderer, /pointers\.current\.size >= 2/);
-  assert.match(renderer, /onWheel=\{\(event\) =>/);
-  assert.match(renderer, /setZoom\(clamp/);
+  assert.match(renderer, /gesture\.current\.start/);
+  assert.match(renderer, /gesture\.current\.move/);
+  assert.match(renderer, /onLostPointerCapture=/);
+  assert.match(renderer, /addEventListener\("wheel", onWheel, \{ passive: false \}\)/);
+  assert.match(renderer, /removeEventListener\("wheel", onWheel\)/);
   const layerMarker = renderer.indexOf('className="abags-pro3d-layer abags-fidelity3d-layer"');
   const layerEnd = renderer.indexOf('<div className="abags-neutral-3d"', layerMarker);
   assert.ok(layerMarker >= 0 && layerEnd > layerMarker);

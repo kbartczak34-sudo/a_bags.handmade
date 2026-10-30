@@ -35,7 +35,7 @@ test("legacy fidelity calibration still documents distinct variable-depth silhou
 test("legacy fidelity calibration retains realtime interaction and material references", async () => {
   const source = await read("app/bag-builder-fidelity3d.tsx");
   assert.match(source, /onPointerMove/);
-  assert.match(source, /pointers\.current\.size >= 2/);
+  assert.match(source, /new AbagsCameraGesture\(CAMERA_LIMITS\)/);
   assert.match(source, /type="range"/);
   assert.match(source, /MODEL ATELIER 3D · REALNE PROPORCJE/);
   assert.match(source, /uMaterial/);

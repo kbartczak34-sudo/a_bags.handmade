@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ABAGS_FIDELITY_V4_FAMILY_SPECS,
@@ -12,6 +12,7 @@ import { ABAGS_YARN_PALETTES, ABAGS_PASTEL_MINI_YARN_PALETTE, getAbagsYarnPalett
 import { getAbagsReferenceModel, getAbagsWoodHandleTone, getAbagsWoodHandleShape, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 import { createAbagsPrintedTextiles, requestAbagsPrintedTextiles, disposeAbagsPrintedTextiles, type AbagsPrintedTextiles } from "../lib/abags-printed-textiles";
 import { getAbagsPrintedTextileProfile } from "../lib/abags-textile-profiles";
+import { AbagsCameraGesture, keyboardCamera, wheelCameraZoom, type AbagsCamera } from "../lib/abags-camera-controls";
 
 type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
 type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
@@ -126,6 +127,7 @@ function physicalDepth(family: Exclude<Family, "">) {
 }
 const MIN_ZOOM = 0.34;
 const MAX_ZOOM = 1.45;
+const CAMERA_LIMITS = { minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM };
 
 const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
   (Object.keys(ABAGS_FIDELITY_V4_FAMILY_SPECS) as FidelityV4Family[]).map((family) => {
@@ -3542,19 +3544,56 @@ export default function BagBuilderFidelity3D() {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [ready, setReady] = useState(false);
   const [rendererEpoch, setRendererEpoch] = useState(0);
-  const [view, setViewState] = useState<"front" | "three" | "side">("three");
+  const [view, setViewState] = useState<"front" | "three" | "side" | "custom">("three");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvasNode, setCanvasNode] = useState<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const cameraRef = useRef({ rotation: DEFAULT_ROTATION, zoom: DEFAULT_ZOOM });
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
-  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+  const gesture = useRef(new AbagsCameraGesture(CAMERA_LIMITS));
+  const instructionsId = useId();
+
+  const commitCamera = (next: AbagsCamera) => {
+    // Pointer events can arrive before React commits the previous frame.
+    // Rebase the next gesture on the latest pose immediately.
+    cameraRef.current = next;
+    setRotation(next.rotation);
+    setZoom(next.zoom);
+  };
 
   useLayoutEffect(() => {
     // Initialization and ResizeObserver callbacks outlive a single camera state.
     cameraRef.current = { rotation, zoom };
   }, [rotation, zoom]);
+
+  useEffect(() => {
+    const currentGesture = gesture.current;
+    const clear = () => currentGesture.clear();
+    const onVisibility = () => { if (document.hidden) clear(); };
+    window.addEventListener("blur", clear);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clear();
+      window.removeEventListener("blur", clear);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [stage]);
+
+  useEffect(() => {
+    if (!canvasNode) return;
+    const onWheel = (event: WheelEvent) => {
+      // Leave browser magnification shortcuts available.
+      if (event.ctrlKey || event.metaKey) return;
+      if (event.cancelable) event.preventDefault();
+      const current = cameraRef.current;
+      const next = { ...current, zoom: wheelCameraZoom(current.zoom, event.deltaY, event.deltaMode, canvasNode.clientHeight, CAMERA_LIMITS) };
+      cameraRef.current = next;
+      setZoom(next.zoom);
+    };
+    // React delegates wheel events passively. Bind to the canvas itself so
+    // zooming the bag does not also scroll the customer dialog.
+    canvasNode.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvasNode.removeEventListener("wheel", onWheel);
+  }, [canvasNode]);
 
   useEffect(() => {
     const find = () => setStage((current) => {
@@ -3844,14 +3883,16 @@ export default function BagBuilderFidelity3D() {
   const label = useMemo(() => config.family ? "Interaktywny model 3D A-Bags z kalibrowaną głębokością" : "Wybierz fason, aby rozpocząć model 3D", [config.family]);
   if (!stage) return null;
 
-  const distance = () => {
-    const points = Array.from(pointers.current.values());
-    return points.length < 2 ? 0 : Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+  const setView = (next: "front" | "three" | "side") => {
+    gesture.current.clear();
+    setViewState(next);
+    commitCamera({ ...cameraRef.current, rotation: next === "front" ? { x: -0.02, y: 0 } : next === "side" ? { x: -0.07, y: Math.PI / 2 } : DEFAULT_ROTATION });
   };
 
-  const setView = (next: "front" | "three" | "side") => {
-    setViewState(next);
-    setRotation(next === "front" ? { x: -0.02, y: 0 } : next === "side" ? { x: -0.07, y: Math.PI / 2 } : DEFAULT_ROTATION);
+  const resetCamera = () => {
+    gesture.current.clear();
+    setViewState("three");
+    commitCamera({ rotation: DEFAULT_ROTATION, zoom: DEFAULT_ZOOM });
   };
 
   return createPortal(
@@ -3860,38 +3901,25 @@ export default function BagBuilderFidelity3D() {
       data-abags-pro3d
       data-abags-fidelity3d
       onPointerDown={(event) => {
+        if (event.button !== 0) return;
         const target = event.target as HTMLElement | null;
         if (target?.closest("button, input, select, textarea, .abags-pro3d-view-controls, .abags-pro3d-zoom, .abags-fidelity3d-view-controls, .abags-fidelity3d-zoom")) return;
         event.preventDefault();
-        pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        canvasRef.current?.focus({ preventScroll: true });
+        gesture.current.start(event.pointerId, event.clientX, event.clientY, cameraRef.current);
         event.currentTarget.setPointerCapture?.(event.pointerId);
-        if (pointers.current.size >= 2) { pinch.current = { distance: distance(), zoom }; drag.current = null; }
-        else drag.current = { x: event.clientX, y: event.clientY, rx: rotation.x, ry: rotation.y };
       }}
       onPointerMove={(event) => {
-        if (!pointers.current.has(event.pointerId)) return;
+        const current = cameraRef.current;
+        const next = gesture.current.move(event.pointerId, event.clientX, event.clientY, current);
+        if (!next) return;
         event.preventDefault();
-        pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-        if (pointers.current.size >= 2 && pinch.current) {
-          const next = distance();
-          if (pinch.current.distance > 0) setZoom(clamp(pinch.current.zoom * (next / pinch.current.distance), MIN_ZOOM, MAX_ZOOM));
-          return;
-        }
-        if (!drag.current) return;
-        setViewState("three");
-        setRotation({
-          x: clamp(drag.current.rx + (event.clientY - drag.current.y) * 0.008, -0.72, 0.56),
-          y: drag.current.ry + (event.clientX - drag.current.x) * 0.012,
-        });
+        if (next.rotation !== current.rotation) setViewState("custom");
+        commitCamera(next);
       }}
-      onPointerUp={(event) => { pointers.current.delete(event.pointerId); if (pointers.current.size < 2) pinch.current = null; if (!pointers.current.size) drag.current = null; }}
-      onPointerCancel={(event) => { pointers.current.delete(event.pointerId); pinch.current = null; drag.current = null; }}
-      onWheel={(event) => {
-        const target = event.target as HTMLElement | null;
-        if (target?.closest("button, input, select, textarea, .abags-pro3d-view-controls, .abags-pro3d-zoom, .abags-fidelity3d-view-controls, .abags-fidelity3d-zoom")) return;
-        event.preventDefault();
-        setZoom((value) => clamp(value - event.deltaY * 0.0008, MIN_ZOOM, MAX_ZOOM));
-      }}
+      onPointerUp={(event) => gesture.current.end(event.pointerId, cameraRef.current)}
+      onPointerCancel={(event) => gesture.current.end(event.pointerId, cameraRef.current)}
+      onLostPointerCapture={(event) => gesture.current.end(event.pointerId, cameraRef.current)}
     >
       <div className="abags-neutral-3d" aria-hidden="true">
           <div className="abags-neutral-3d-shadow" />
@@ -3916,24 +3944,37 @@ export default function BagBuilderFidelity3D() {
         }}
         className="abags-pro3d-canvas abags-fidelity3d-canvas"
         style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
+        tabIndex={0}
+        role="region"
         aria-label={label}
-
+        aria-describedby={instructionsId}
+        onKeyDown={(event) => {
+          if (event.ctrlKey || event.metaKey || event.altKey) return;
+          const next = keyboardCamera(event.key, cameraRef.current, { rotation: DEFAULT_ROTATION, zoom: DEFAULT_ZOOM }, CAMERA_LIMITS, event.shiftKey);
+          if (!next) return;
+          event.preventDefault();
+          gesture.current.clear();
+          if (event.key === "Home") setViewState("three");
+          else if (event.key.startsWith("Arrow")) setViewState("custom");
+          commitCamera(next);
+        }}
       />
+      <p id={instructionsId} className="abags-fidelity3d-instructions">Przeciągnij, aby obrócić. Powiększ dwoma palcami lub kółkiem myszy. Klawiatura: strzałki obracają, + i − zmieniają skalę, Home przywraca widok.</p>
 
       <div className="abags-pro3d-chip">MODEL ATELIER 3D · REALNE PROPORCJE</div>
-      <div className="abags-pro3d-view-controls" aria-label="Widok modelu 3D">
+      <div className="abags-pro3d-view-controls" role="group" aria-label="Widok modelu 3D">
         <button type="button" className={view === "front" ? "is-active" : ""} aria-pressed={view === "front"} onClick={() => setView("front")}>Przód</button>
         <button type="button" className={view === "three" ? "is-active" : ""} aria-pressed={view === "three"} onClick={() => setView("three")}>3/4</button>
         <button type="button" className={view === "side" ? "is-active" : ""} aria-pressed={view === "side"} onClick={() => setView("side")}>Bok</button>
       </div>
 
-      <div className="abags-pro3d-zoom" aria-label="Zoom modelu 3D">
-        <button type="button" onClick={() => setZoom((value) => clamp(value - 0.10, MIN_ZOOM, MAX_ZOOM))} aria-label="Oddal model">−</button>
+      <div className="abags-pro3d-zoom" role="group" aria-label="Zoom modelu 3D">
+        <button type="button" disabled={zoom <= MIN_ZOOM} onClick={() => commitCamera({ ...cameraRef.current, zoom: clamp(cameraRef.current.zoom - .10, MIN_ZOOM, MAX_ZOOM) })} aria-label="Oddal model">−</button>
         <span>ODDAL</span>
-        <input type="range" min={34} max={145} step={1} value={Math.round(zoom * 100)} onChange={(event) => setZoom(clamp(Number(event.currentTarget.value) / 100, MIN_ZOOM, MAX_ZOOM))} aria-label="Skala modelu 3D" />
+        <input type="range" min={34} max={145} step={1} value={Math.round(zoom * 100)} onChange={(event) => commitCamera({ ...cameraRef.current, zoom: clamp(Number(event.currentTarget.value) / 100, MIN_ZOOM, MAX_ZOOM) })} aria-label="Skala modelu 3D" aria-valuetext={`${Math.round(zoom * 100)}%`} />
         <span>PRZYBLIŻ</span>
-        <button type="button" onClick={() => setZoom((value) => clamp(value + 0.10, MIN_ZOOM, MAX_ZOOM))} aria-label="Przybliż model">+</button>
-        <button type="button" className="abags-pro3d-reset" onClick={() => { setRotation(DEFAULT_ROTATION); setViewState("three"); setZoom(DEFAULT_ZOOM); }}>{Math.round(zoom * 100)}%</button>
+        <button type="button" disabled={zoom >= MAX_ZOOM} onClick={() => commitCamera({ ...cameraRef.current, zoom: clamp(cameraRef.current.zoom + .10, MIN_ZOOM, MAX_ZOOM) })} aria-label="Przybliż model">+</button>
+        <button type="button" className="abags-pro3d-reset" onClick={resetCamera} aria-label={`Przywróć widok początkowy. Obecna skala ${Math.round(zoom * 100)}%`} title="Przywróć widok początkowy">{Math.round(zoom * 100)}%</button>
       </div>
 
       <p className="abags-pro3d-hint">Obrót 360° pokazuje rzeczywistą zmianę głębokości korpusu · pinch zoom · fason i dodatki aktualizują się na żywo.</p>

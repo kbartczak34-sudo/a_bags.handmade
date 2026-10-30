@@ -25,10 +25,10 @@ test("active Fidelity3D controls are migrated away from legacy Pro3D selector na
 
 test("isolated mobile controls have bounded product-safe geometry", () => {
   assert.match(css, /\.abags-fidelity3d-view-controls\s*\{/);
-  assert.match(css, /max-height:35px/);
+  assert.match(css, /max-height:44px/);
   assert.match(css, /\.abags-fidelity3d-zoom\s*\{/);
   assert.match(css, /max-width:250px/);
-  assert.match(css, /max-height:38px/);
+  assert.match(css, /max-height:46px/);
 });
 
 test("view synchronization prefers the Fidelity3D zoom namespace", () => {
