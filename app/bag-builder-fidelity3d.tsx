@@ -1965,7 +1965,9 @@ void main(){
     rough=.64;
   } else if(uMaterial<3.5){
     detail=.92+.035*sin(vUv.x*210.0)*sin(vUv.y*136.0);
-    rough=.85;
+    // The solid gathered satin bands use the same weave with a softer sheen.
+    rough=uMaterial>3.1?.53:.85;
+    fibreSheen=uMaterial>3.1?.025:0.0;
   } else if(uMaterial<4.5){
     // Black fittings have a dark protective coating; silver is polished steel,
     // gold is softly brushed brass. The different BRDFs keep hardware from
@@ -2330,9 +2332,8 @@ function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
     return [tip[0], tip[1], ornamentSurfaceZ(config, tip[0], tip[1], .018)];
   }
   if ((config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")) {
-    const model = woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]);
-    const angle = Math.PI - .16;
-    const x = .46 * Math.cos(angle), y = .42 * Math.sin(angle), z = .055;
+    const { model, center: [x, y] } = woodHandleRibbonFrame(family, config);
+    const z = .055;
     return [model[0] * x + model[4] * y + model[8] * z + model[12],
       model[1] * x + model[5] * y + model[9] * z + model[13],
       model[2] * x + model[6] * y + model[10] * z + model[14]];
@@ -2358,7 +2359,7 @@ function ornamentSurfaceZ(config: Config, x: number, worldY: number, clearance: 
   return z + clearance;
 }
 
-type OrnamentTone = "cord" | "metal" | "scarf" | "hem" | "rose" | "lilac" | "teal";
+type OrnamentTone = "cord" | "metal" | "scarf" | "hem" | "knot" | "rose" | "lilac" | "teal";
 type OrnamentPart = { name: string; tone: OrnamentTone; material: number; mesh: FabricMesh };
 
 function appendOrnamentMesh(target: FabricMesh, source: FabricMesh, pose: Float32Array) {
@@ -2476,20 +2477,33 @@ function referenceRibbonTail(config: Config, u: number, v: number, side: number)
       + (side < 0 ? .050 * Math.sin(Math.PI * u * .85) : 0)];
 }
 
-const woodRibbonFrames = new Map<Exclude<Family, "">, { model: Float32Array; radial: YarnPoint; tangent: YarnPoint; center: YarnPoint }>();
-function woodHandleRibbonPoint(family: Exclude<Family, "">, u: number, v: number): YarnPoint {
-  let frame = woodRibbonFrames.get(family);
+type WoodRibbonFrame = { model: Float32Array; radial: YarnPoint; tangent: YarnPoint; center: YarnPoint; bound: boolean };
+const woodRibbonFrames = new Map<string, WoodRibbonFrame>();
+function woodHandleRibbonFrame(family: Exclude<Family, "">, config?: Config): WoodRibbonFrame {
+  const tie = config ? getAbagsReferenceModel(config)?.ribbon.woodTie ?? -.16 : -.16;
+  const shape = config ? getAbagsWoodHandleShape(config) : "round";
+  const key = `${family}|${shape}|${tie}`;
+  let frame = woodRibbonFrames.get(key);
   if (!frame) {
-    const angle = Math.PI - .16;
+    const { center, tangent, outward } = referenceWoodHandleFrame(Math.PI + tie, shape);
     frame = { model: woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]),
-      radial: normalize(Math.cos(angle) / .46, Math.sin(angle) / .42, 0),
-      tangent: normalize(-.46 * Math.sin(angle), .42 * Math.cos(angle), 0),
-      center: [.46 * Math.cos(angle), .42 * Math.sin(angle), 0] };
-    woodRibbonFrames.set(family, frame);
+      radial: outward, tangent, center, bound: family === "tall-tote" && tie > 0 };
+    woodRibbonFrames.set(key, frame);
   }
+  return frame;
+}
+
+function woodHandleRibbonPoint(family: Exclude<Family, "">, u: number, v: number, config?: Config): YarnPoint {
+  const frame = woodHandleRibbonFrame(family, config);
   const { model, radial, tangent, center } = frame, turn = u * Math.PI * 2;
-  const local = [center[0] + radial[0] * .050 * Math.cos(turn) + tangent[0] * .027 * v,
-    center[1] + radial[1] * .050 * Math.cos(turn) + tangent[1] * .027 * v, .050 * Math.sin(turn)];
+  // The tall tote has broad wooden faces. Below its side the scarf also wraps
+  // around the existing cord winding, whose outer envelope is two yarn radii
+  // beyond the wood. Keep the fabric's inner face outside both materials.
+  const padding = frame.bound ? ABAGS_FIDELITY_V4_FAMILY_SPECS[family].rx * 5 / 160 * .78 * 2 + .009 : 0;
+  const [r, d] = family === "tall-tote" ? flatWoodWrapSection(.055 + padding, .026 + padding, .007, u)
+    : [.050 * Math.cos(turn), .050 * Math.sin(turn)];
+  const local = [center[0] + radial[0] * r + tangent[0] * .027 * v,
+    center[1] + radial[1] * r + tangent[1] * .027 * v, d];
   return [model[0] * local[0] + model[4] * local[1] + model[8] * local[2] + model[12],
     model[1] * local[0] + model[5] * local[1] + model[9] * local[2] + model[13],
     model[2] * local[0] + model[6] * local[1] + model[10] * local[2] + model[14]];
@@ -2564,8 +2578,8 @@ function makeOrnamentGeometry(config: Config) {
     tube(cord, winding, .006);
   } else if (config.accent === "scarf" || config.accent === "bow") {
     const fabric = part("scarf", 8), hem = part("hem", 3);
-    const ribbon = (sample: (u: number, v: number) => YarnPoint, rows = 40) => {
-      appendOrnamentRibbon(fabric, sample, rows);
+    const ribbon = (sample: (u: number, v: number) => YarnPoint, rows = 40, target = fabric) => {
+      appendOrnamentRibbon(target, sample, rows);
       for (const edge of [-1, 1]) tube(hem, Array.from({ length: rows + 1 }, (_, i) => sample(i / rows, edge)), .0018);
     };
     const compact = config.accent === "bow" && family !== "tall-tote" && family !== "shoulder";
@@ -2581,15 +2595,20 @@ function makeOrnamentGeometry(config: Config) {
       return point(...p,side < 0 ? .018 : .007);
     },48);
     if (config.handles.startsWith("wood")) {
-      appendOrnamentRibbon(fabric, (u, v) => woodHandleRibbonPoint(family, u, v), 40, 8);
+      appendOrnamentRibbon(fabric, (u, v) => woodHandleRibbonPoint(family, u, v, config), 48, 8);
     }
     // A gathered band encircles the tied fabric. Its rear touches the handle
     // wrap, while the front catches the same soft satin light as the loops.
+    const reference = getAbagsReferenceModel(config);
+    const solidBand = referenceBow && Boolean(reference?.ribbon.knotTone);
     ribbon((u, v) => {
       const p = foldedRibbonKnot(u, v);
-      if (referenceBow) { p[0] *= 1.6; p[1] *= 1.4; p[2] += .095; }
+      if (referenceBow) {
+        p[0] *= 2.0; p[1] *= 1.6; p[2] += .095;
+        p[2] += .003 * Math.sin(v * Math.PI * 4) * Math.sin(u * Math.PI * 2) ** 3;
+      }
       return point(...p, .006);
-    }, 36);
+    }, 36, solidBand ? part("knot", 3.25) : fabric);
   } else if (config.accent === "charm") {
     const metal = part("metal", 4);
     ring(metal, point(0, -.012, .028), .022, .028, .0055);
@@ -2614,7 +2633,9 @@ function makeOrnamentGeometry(config: Config) {
 
 function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
   const flapConstruction = config.flap === "crochet" ? "crochet" : config.flap && config.flap !== "none" ? "rigid" : "none";
-  const key = [config.family, config.accent, (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood"), flapConstruction,
+  const woodTie = (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")
+    ? `${getAbagsWoodHandleShape(config)}:${getAbagsReferenceModel(config)?.ribbon.woodTie ?? -.16}` : "none";
+  const key = [config.family, config.accent, woodTie, flapConstruction,
     config.accent === "bow" ? getAbagsReferenceModel(config)?.id ?? "custom" : "",
     config.accent === "tassel" && getAbagsCrochetFlapTone(config) ? "flap-tip" : "side"].join("|");
   if (renderer.ornamentKey === key) return;
@@ -3491,7 +3512,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // The selected ornament uses the same depth buffer, lighting and camera as
   // the bag. The compatibility canvas is suppressed for this exact signature.
   ensureOrnamentMeshes(renderer, config);
-  const ornamentColors: Record<OrnamentTone, string> = { cord: getAbagsCrochetFlapTone(config) ?? body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
+  const ornamentColors: Record<OrnamentTone, string> = { cord: getAbagsCrochetFlapTone(config) ?? body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", knot: reference?.ribbon.knotTone ?? reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
   for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
 
   for (const part of renderer.referenceParts ?? []) {
