@@ -734,6 +734,7 @@ type CrochetPatch = {
   seat: (x: number, y: number, lift: number) => YarnPoint;
   tube: (points: YarnPoint[], thickness?: number) => void;
   curveSteps?: number;
+  rowDirection?: (center: number) => number;
 };
 
 // The open V in Agata's photographs is taller than a compact herringbone.
@@ -766,6 +767,7 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
   const dx = spec.rx * 1.94 / columns, dy = spec.ry * 1.94 / rows;
   const curve = (cx: number, cy: number, width: number, height: number, lift: number, drift: number, interlocked = false) => {
     const points: YarnPoint[] = [];
+    const direction = patch.rowDirection?.(cy) ?? 1;
     for (let i = 0; i <= curveSteps; i++) {
       const t = i / curveSteps;
       // A smooth U/V loop, curling outwards at the shoulders like the atelier cord.
@@ -774,7 +776,7 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
         (Math.pow(Math.abs(2 * t - 1), 1.65) - .48) * height,
         radius * .24 * Math.sin(t * Math.PI * 2),
       ];
-      points.push(seat(cx + local[0] + drift * Math.sin(t * Math.PI), cy + local[1], lift + local[2]));
+      points.push(seat(cx + local[0] + drift * Math.sin(t * Math.PI), cy + local[1] * direction, lift + local[2]));
     }
     tube(points);
   };
@@ -792,12 +794,13 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
       const cy = -spec.ry * .97 + (row + .5) * dy + crossTension * dy * .012;
       if (stitch === "basket") {
         const verticalOver = (row + column) % 2 === 0;
+        const direction = patch.rowDirection?.(cy) ?? 1;
         for (const axis of [0, 1]) for (const strand of [-1, 1]) {
           const points: YarnPoint[] = [];
           for (let i = 0; i <= Math.max(4, curveSteps / 2); i++) {
             const t = i / Math.max(4, curveSteps / 2) - .5;
             const x = cx + (axis === 0 ? strand * dx * .19 : t * dx * 1.10) * widthGauge;
-            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19) * heightGauge;
+            const y = cy + (axis === 0 ? t * dy * 1.10 : strand * dy * .19) * heightGauge * direction;
             const over = (axis === 0) === verticalOver;
             points.push(seat(x, y, over ? radius * (.50 + .35 * Math.cos(t * Math.PI)) : -radius * .28));
           }
@@ -853,7 +856,7 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
   return mesh;
 }
 
-function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classic"): FabricMesh {
+function crochetGussetLayout(family: Exclude<Family, "">, stitch: Stitch = "classic") {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const contour = familyContour(family);
   const arcs = [0];
@@ -863,28 +866,49 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
   }
   const perimeter = arcs[arcs.length - 1];
   const gaugeColumns = crochetGaugeColumns(stitch);
-  const columns = Math.round(perimeter / (spec.rx * 1.94 / gaugeColumns));
   const depth = depthAt(family, 0);
-  const rows = crochetRowCount(columns, perimeter * .5, depth * .5, stitch, 3);
+  const width = spec.rx * 1.94 / gaugeColumns;
+  const panelRows = crochetRowCount(gaugeColumns, spec.rx, spec.ry, stitch, 9);
+  const height = spec.ry * 1.94 / panelRows;
+  // Columns cross the depth; rows climb the sidewall at the front's gauge.
+  // The old transposed layout stretched V legs across the whole side as Xs.
+  const columns = Math.max(2, Math.round(depth * .97 / width));
+  const rows = Math.max(3, Math.round(perimeter * .97 / height));
+  return { contour, arcs, perimeter, depth, columns, rows };
+}
+
+function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classic"): FabricMesh {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const { contour, arcs, perimeter, depth, columns, rows } = crochetGussetLayout(family, stitch);
   const radius = spec.rx * 5 / 160;
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const occluders: CordOccluder[] = [];
-  const at = (arc: number, across: number, lift: number): YarnPoint => {
+  const segmentAt = (arc: number) => {
     const distance = ((arc % perimeter) + perimeter) % perimeter;
     let i = 0;
     while (i < contour.length - 1 && arcs[i + 1] < distance) i++;
     const t = (distance - arcs[i]) / Math.max(.0001, arcs[i + 1] - arcs[i]);
     const a = contour[i], b = contour[(i + 1) % contour.length];
+    return { a, b, t };
+  };
+  const at = (arc: number, across: number, lift: number): YarnPoint => {
+    const { a, b, t } = segmentAt(arc);
     const normal = normalize(b[1] - a[1], a[0] - b[0], 0);
     const x = a[0] * (1 - t) + b[0] * t, y = a[1] * (1 - t) + b[1] * t;
     const softness = softBodyOffset(family, x, y);
     return [x + normal[0] * (radius * .15 + lift), y + softness.y + normal[1] * (radius * .15 + lift), (.5 - across) * (depthAt(family, y) + softness.z * 2)];
   };
-  const seat = (x: number, y: number, lift: number) => at(x + perimeter * .5, .5 - y / depth, lift);
+  const seat = (x: number, y: number, lift: number) => at(y + perimeter * .5, .5 - x / depth, lift);
+  const rowDirection = (center: number) => {
+    const { a, b } = segmentAt(center + perimeter * .5);
+    // Both sidewalls point their V crowns toward the base. The orientation
+    // meets underneath the bag, where the two sidewall runs turn around it.
+    return b[1] < a[1] ? -1 : 1;
+  };
   const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness,
     ([x, y]) => normalize(x / spec.rx, y / spec.ry, 0),
     ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51, 8, false, occluders);
-  fillCrochetPatch({ rx: perimeter * .5, ry: depth * .5, radius, columns, rows, seat, tube, curveSteps: 8 }, stitch);
+  fillCrochetPatch({ rx: depth * .5, ry: perimeter * .5, radius, columns, rows, seat, tube, curveSteps: 6, rowDirection }, stitch);
   // Sewn piping covers the clipped ends where the gusset joins each panel.
   for (const side of [-1, 1]) {
     const seam = contour.map(([x, y]): YarnPoint => {
