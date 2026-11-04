@@ -31,8 +31,8 @@ function assertMesh(mesh, label) {
   for (let i = 0; i < mesh.normals.length; i += 3) assert.ok(Math.abs(Math.hypot(...mesh.normals.slice(i,i+3)) - 1) < .001, `${label}: unit normal`);
 }
 
-test("six supplied references create complete compatible projects that survive save and restore", () => {
-  assert.deepEqual(plain(models.map(model => model.sourceFile).sort()), ["1000019763.jpg","1000019645.jpg","1000019552.jpg","1000019407.png","1000019121.jpg","1000018863.jpg"].sort());
+test("all supplied references create complete compatible projects that survive save and restore", () => {
+  assert.deepEqual(plain(models.map(model => model.sourceFile).sort()), ["1000019763.jpg","1000019645.jpg","1000019552.jpg","1000019407.png","1000019121.jpg","1000018863.jpg","1000021564.png"].sort());
   for (const model of models) {
     const config = reference.createAbagsReferenceModelConfig(model.id);
     const restored = JSON.parse(JSON.stringify(config));
@@ -51,7 +51,7 @@ test("six supplied references create complete compatible projects that survive s
 
 test("reference copies remain independent and legacy owner settings invent no new price or product", () => {
   const migrated = settings.normalizeBagBuilderSettings({pricingEnabled:true,familyBaseCents:{tote:25000}});
-  for (const family of ["tall-tote","shoulder"]) {
+  for (const family of ["tall-tote","shoulder","crescent"]) {
     assert.equal(migrated.familyBaseCents[family], null);
     assert.equal(migrated.familyProductIds[family], null);
   }
@@ -114,7 +114,7 @@ test("all reference badges and shoulder zipper parts are physical indexed geomet
 });
 
 test("crochet, floral, striped and mixed leather-chain straps meet both clasps and stay above the ground", () => {
-  for (const [family,kind] of [["shoulder","crochet"],["tall-tote","floral"],["tall-tote","striped"],["tall-tote","chain-leather"]]) {
+  for (const [family,kind] of [["shoulder","crochet"],["tall-tote","floral"],["tall-tote","striped"],["tall-tote","chain-leather"],["crescent","leather-cream"]]) {
     const spec=specs[family],span=spec.rx*spec.attachmentWidthFactor;
     for(const t of [0,1]) {
       const frame=geometry.shoulderBandFrame(family,t,kind);
@@ -132,7 +132,7 @@ test("crochet, floral, striped and mixed leather-chain straps meet both clasps a
 });
 
 test("large reference bows retain folded faces, long tails and body clearance", () => {
-  for(const model of models) {
+  for(const model of models.filter(model => model.config.accent === "bow")) {
     const data=geometry.makeOrnamentGeometry(model.config);
     assert.ok(data.bounds.max[0]-data.bounds.min[0]>.75,model.id);
     assert.ok(data.bounds.max[1]-data.bounds.min[1]>.9,model.id);
@@ -141,8 +141,9 @@ test("large reference bows retain folded faces, long tails and body clearance", 
 });
 
 test("reference bows retain individually calibrated folds and tails instead of reusing the scarf", () => {
+  const bows = models.filter(model => model.config.accent === "bow");
   const silhouettes = new Set();
-  for (const model of models) {
+  for (const model of bows) {
     const bow = geometry.makeOrnamentGeometry(model.config);
     const scarf = geometry.makeOrnamentGeometry({...model.config,accent:"scarf"});
     silhouettes.add(JSON.stringify(bow.bounds));
@@ -150,7 +151,47 @@ test("reference bows retain individually calibrated folds and tails instead of r
     assert.ok(bow.bounds.min[1] > specs[model.config.family].bodyY-specs[model.config.family].ry,
       `${model.id}: falling fabric must not pass through the ground`);
   }
-  assert.equal(silhouettes.size, models.length);
+  assert.equal(silhouettes.size, bows.length);
+});
+
+test("the crescent has long physical braid courses, a fitted lining and detachable cream construction", () => {
+  const model = models.find(model => model.config.family === "crescent");
+  const { config } = model;
+  const panel = geometry.makeCrochetPanel(config.family, config.stitch);
+  assertMesh(panel, "crescent front");
+  assertMesh(geometry.makeCrochetGusset(config.family, config.stitch), "crescent side");
+  const strands = new Map();
+  for (const { a, b, owner } of panel.cordOccluders) {
+    const strand = strands.get(owner) ?? [];
+    strand.push(a, b);
+    strands.set(owner, strand);
+  }
+  const courses = [...strands.values()].filter(points => points.length > 80 && points[0][0] < -.30 && points.at(-1)[0] > .30);
+  assert.ok(courses.length >= 9, "long cord paths must turn around the bowl");
+  const loops = [...strands.values()].filter(points => points.length === 24);
+  assert.ok(loops.length > 100, "short raised loops cross adjacent courses");
+  for (const loop of loops) {
+    const [a, b] = [loop[0], loop.at(-1)];
+    const crest = loop.slice(8, 16).reduce((front, point) => Math.max(front, point[2]), -Infinity);
+    assert.ok(crest - Math.max(a[2], b[2]) > .07, "crossing loops turn below the cord at both ends");
+  }
+  for (const course of courses) {
+    const low = Math.min(...course.map(point => point[1]));
+    assert.ok(low < Math.min(course[0][1], course.at(-1)[1]) - .25);
+  }
+  const layout = geometry.openingLiningLayout("crescent");
+  for (let i = 0; i <= 48; i++) for (let j = 0; j <= 24; j++) {
+    const [x, y] = geometry.liningWallPoint(layout, i / 48, j / 24);
+    const down = Math.max(0, (.67 - y) / 1.54);
+    assert.ok(Math.abs(x) ** 2.7 + down ** 2.7 < 1, "lining remains inside the rounded bowl");
+  }
+  const parts = geometry.makeReferenceConstruction(config);
+  const bare = geometry.makeReferenceConstruction({ ...config, flap: "none" });
+  assert.ok(parts.some(part => part.name === "crescent-turn-lock" && part.mesh.indices.length > 300));
+  assert.ok(parts.some(part => part.name === "crescent-stitches" && part.mesh.indices.length > 300));
+  assert.ok(!bare.some(part => part.name === "crescent-turn-lock" || part.name === "crescent-leather"));
+  assert.ok(bare.some(part => part.name === "reference-engraving"));
+  assert.equal(settings.normalizeBagBuilderProjectConfig({ ...config, family: "round" }), null);
 });
 
 test("switching reference colors rebuilds their bow geometry and frees its former GPU buffers", () => {
@@ -222,11 +263,15 @@ test("yarn height is invariant under every new model's camera rotation and fitte
   }
 });
 
-test("generated model thumbnails are labelled as 3D previews and real photographs use existing atlas cells", async () => {
+test("generated model thumbnails are labelled as 3D previews and real photographs use atlas cells or a dedicated source image", async () => {
   const library=await moduleFrom("lib/exact-customizer-library.ts");
   for(const model of models) {
     if(model.referenceId) assert.ok(library.EXACT_ATELIER_LIBRARY.some(item=>item.id===model.referenceId),model.id);
-    else {
+    else if (model.imageKind === "photograph") {
+      const jpg = await readFile(new URL(`../public${model.image}`, import.meta.url));
+      assert.equal(jpg.readUInt16BE(0), 0xffd8);
+      assert.equal(jpg.readUInt16BE(jpg.length - 2), 0xffd9);
+    } else {
       const png=await readFile(new URL(`../public${model.image}`,import.meta.url));
       assert.equal(png.subarray(1,4).toString(),"PNG");
       assert.equal(png.readUInt32BE(16),360);
@@ -234,5 +279,5 @@ test("generated model thumbnails are labelled as 3D previews and real photograph
     }
   }
   const source=await readFile(new URL("../app/bag-builder-reference-experience.tsx",import.meta.url),"utf8");
-  assert.match(source,/element\.dataset\.referenceKind = modelPreview \? "model-3d" : "photograph"/);
+  assert.match(source,/element\.dataset\.referenceKind = isRender \? "model-3d" : "photograph"/);
 });

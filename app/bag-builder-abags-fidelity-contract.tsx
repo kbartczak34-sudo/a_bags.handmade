@@ -6,6 +6,7 @@ import { ABAGS_REFERENCE_MODELS, getAbagsReferenceModel } from "../lib/abags-ref
 type Copy = { label: string; description: string; reference: string };
 
 const FAMILY_COPY: Record<string, Copy> = {
+  crescent: { label: "Półksiężyc", description: "Łukowy przeplot, kremowa klapa z przeszyciem i zapięcie obrotowe.", reference: "mustard-crescent-cream" },
   "tall-tote": { label: "Wysoki kuferek", description: "Wysoki korpus z parą płaskich drewnianych uchwytów i kokardą.", reference: "forest-ocean-wood-bow" },
   shoulder: { label: "Listonoszka", description: "Prostokątny korpus z zamkiem, plecionym paskiem i dużą kokardą.", reference: "chocolate-crossbody-bow" },
   satchel: {

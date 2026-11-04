@@ -745,6 +745,7 @@ const analyze=(overlay,renderedPixels)=>{
         ['cacao-cream-wood-bow','tall-tote|#88583F|classic|none|wood-light|none|gold|bow','cacao-cream','photograph'],
         ['pastel-striped-wood-bow','tall-tote|#BA9ECF|classic|none|wood-light|none|gold|bow','pastel-bands','photograph'],
         ['rose-cream-dark-wood','tall-tote|#D58FAA|classic|none|wood-dark|woven-floral|gold|bow','rose-cream','photograph'],
+        ['mustard-crescent-cream','crescent|#E5A13A|radial-braid|leather-cream|none|leather-cream|gold|none','solid','photograph'],
       ];
       const native = async () => evaluate(`(() => {
         const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
@@ -786,7 +787,7 @@ const analyze=(overlay,renderedPixels)=>{
         return stage?.dataset.builderSignature===${JSON.stringify(signature)}&&stage.dataset.abagsFidelity3dFrame===stage.dataset.builderSignature&&
           stage.dataset.abagsFinal3d==='ready'&&stage.dataset.abagsFinal3dSignature===stage.dataset.builderSignature&&
           JSON.parse(stage.dataset.abagsFidelityReferenceModel||'null')?.id===${JSON.stringify(id)}&&!stage.dataset.abagsFidelity3dError&&
-          (() => {const print=JSON.parse(stage.dataset.abagsFidelityTextilePrint||'null');return print?.scarf&&(!print.strapUrl||print.strap);})();
+          (() => {const print=JSON.parse(stage.dataset.abagsFidelityTextilePrint||'null');return print&&(!print.scarfUrl||print.scarf)&&(!print.strapUrl||print.strap);})();
       })()`,`${label} reference model ${id}`,25_000);
       const results=[];
       for(const [id,signature,palette,thumbnail] of cases){
@@ -823,8 +824,10 @@ const analyze=(overlay,renderedPixels)=>{
         if(palette==='cacao-cream'&&(high.luma<low.luma*1.7||high.sat>.28))throw new Error(`${label}: cream-to-chocolate dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
         if(palette==='pastel-bands'&&(!hueBetween(low,255,320)||!hueBetween(blue,180,245)||!(pink.hue>=315||pink.hue<=12)||high.sat>.24||high.luma<100))throw new Error(`${label}: four ordered pastel bands absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
         if(palette==='rose-cream'&&(low.sat<.45||high.sat>.30||high.luma<low.luma*1.3))throw new Error(`${label}: cream/pink/fuchsia dye absent in actual body pixels: ${JSON.stringify(evidence.colors)}`);
-        const hasPrintedStrap=['woven-floral','woven-striped','woven-ornament'].includes(signature.split('|')[5]);
-        if(!evidence.proof.textilePrint?.scarf||evidence.textileUniform?.[0]!==1||
+        const fields=signature.split('|');
+        const hasScarf=['scarf','bow'].includes(fields[7]);
+        const hasPrintedStrap=['woven-floral','woven-striped','woven-ornament'].includes(fields[5]);
+        if((hasScarf&&(!evidence.proof.textilePrint?.scarf||evidence.textileUniform?.[0]!==1))||
           (hasPrintedStrap&&(!evidence.proof.textilePrint.strap||evidence.textileUniform?.[1]!==1)))
           throw new Error(`${label} ${id}: selected textile images must be uploaded and active in the real WebGL shader: ${JSON.stringify(evidence)}`);
         await capture(`model-${label}-${id}-three-quarter.png`);
@@ -836,17 +839,30 @@ const analyze=(overlay,renderedPixels)=>{
           if(!restored?.current||restored.signature!==signature||restored.hash!==evidence.hash)throw new Error(`${label}: saved reference model did not restore the same visible pixels: ${JSON.stringify(restored)}`);
           evidence.restored={signature:restored.signature,hash:restored.hash};
         }
-        if(palette!=='solid'){
+        if(palette!=='solid'||id==='mustard-crescent-cream'){
           await clickView('Bok');const side=await native();
           if(!side?.current||side.error||side.opaque<1000||side.hash===evidence.hash)throw new Error(`${label} ${id}: side rotation did not redraw real geometry`);
           evidence.side={hash:side.hash,error:side.error,opaque:side.opaque};
           await capture(`model-${label}-${id}-side.png`);await clickView('3/4');
         }
+        if(id==='mustard-crescent-cream'){
+          if(evidence.proof.strapTriangles<1000)throw new Error(`${label}: cream strap has no 3D surface`);
+          await choose('flap','none');
+          const open=await native();
+          if(!open?.current||open.hash===evidence.hash||open.proof.constructionTriangles>=evidence.proof.constructionTriangles)
+            throw new Error(`${label}: removing the cream flap must also remove its lock and seam`);
+          await choose('strap','none');
+          const bare=await native();
+          if(!bare?.current||bare.hash===open.hash||bare.proof.strapTriangles!==0)
+            throw new Error(`${label}: removing the cream strap left its mesh in the scene`);
+          await choose('flap','leather-cream');await choose('strap','leather-cream');
+          await waitModel(id,signature);
+        }
         results.push(evidence);
         await writeFile(path.join(qaDir,`model-${label}-evidence.json`),JSON.stringify(results,null,2));
       }
-      if(new Set(results.map(item=>item.hash)).size!==6)throw new Error(`${label}: photographed model cards reused one rendered image`);
-      console.log(`${label}: six photographed model presets, actual gradient pixels, real taps/clicks, side views and persisted green model PASS`);
+      if(new Set(results.map(item=>item.hash)).size!==cases.length)throw new Error(`${label}: photographed model cards reused one rendered image`);
+      console.log(`${label}: ${cases.length} photographed presets, gradients, side views, saved state and removable crescent parts PASS`);
     };
     const probeOwnerCorrections = async (label, viewport) => {
       await setViewport(viewport); await clearAndReload(); await openBuilder();

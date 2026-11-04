@@ -24,14 +24,15 @@ test("each photographed bow shares its actual handle mount with the surrounding 
 });
 
 const woodTriangles = new Map(), bindings = new Map();
-function rigidWood(shape) {
-  if(!woodTriangles.has(shape)) {
-    const mesh=g.makeReferenceWoodHandle(shape), pose=new Matrix4().fromArray(g.woodHandleMatrix("tall-tote",g.woodHandleDepthPlanes("tall-tote")[1]));
+function rigidWood(shape, crown) {
+  const key = `${shape}:${crown}`;
+  if(!woodTriangles.has(key)) {
+    const mesh=g.makeReferenceWoodHandle(shape,crown), pose=new Matrix4().fromArray(g.woodHandleMatrix("tall-tote",g.woodHandleDepthPlanes("tall-tote")[1]));
     const vertex=i=>new Vector3().fromArray(mesh.positions,i*3).applyMatrix4(pose), triangles=[];
     for(let i=0;i<mesh.indices.length;i+=3)triangles.push(new Triangle(...mesh.indices.slice(i,i+3).map(vertex)));
-    woodTriangles.set(shape,triangles);
+    woodTriangles.set(key,triangles);
   }
-  return woodTriangles.get(shape);
+  return woodTriangles.get(key);
 }
 function distanceToWinding(p,shape) {
   if(!bindings.has(shape))bindings.set(shape,g.woodHandleBindingPaths("tall-tote",g.woodHandleDepthPlanes("tall-tote")[1],shape));
@@ -49,12 +50,14 @@ test("both faces of the scarf cuff clear the real broad wood and the cord alread
   const generic={...wooden[0].config,color:"#123456"};
   for(const config of [generic,...wooden.map(model=>model.config)]) {
     const shape=g.getAbagsWoodHandleShape(config), frame=g.woodHandleRibbonFrame(config.family,config), cuff=empty();
+    const crown=wooden.find(model=>model.config.color===config.color)?.woodCrown;
+    const triangles=rigidWood(shape,crown);
     g.appendOrnamentRibbon(cuff,(u,v)=>g.woodHandleRibbonPoint(config.family,u,v,config),48,8);
     const probe=new Vector3(),nearest=new Vector3();
     for(let vertex=0;vertex<cuff.positions.length/3;vertex+=13) {
       probe.fromArray(cuff.positions,vertex*3);
       let distance=Infinity;
-      for(const triangle of rigidWood(shape)) {triangle.closestPointToPoint(probe,nearest);distance=Math.min(distance,probe.distanceTo(nearest));}
+      for(const triangle of triangles) {triangle.closestPointToPoint(probe,nearest);distance=Math.min(distance,probe.distanceTo(nearest));}
       assert.ok(distance>.002,`${config.color}: fabric enters the wooden face (${distance})`);
       if(frame.bound) assert.ok(distanceToWinding([probe.x,probe.y,probe.z],shape)>.001,`${config.color}: fabric enters the existing cord winding`);
     }

@@ -32,6 +32,8 @@ test("wooden handle ends are seated at the real stitched rim and both arches can
     const mountingY = geometry.woodHandleMountHeight(family);
     assert.ok(mountingY <= seamTopY, `${family}: arch feet must not float above the rim`);
     assert.ok(seamTopY - mountingY < 0.025, `${family}: arch feet stay in direct rim contact`);
+    const [backZ, frontZ] = geometry.woodHandleDepthPlanes(family);
+    assert.ok(geometry.woodHandleMatrix(family, backZ)[6] > 0, `${family}: rear arch leans inward`);
+    assert.ok(geometry.woodHandleMatrix(family, frontZ)[6] < 0, `${family}: front arch leans inward`);
   }
-  assert.match(renderer, /\[z < 0 \? 0\.40 : -0\.40, 0, 0\]/);
 });

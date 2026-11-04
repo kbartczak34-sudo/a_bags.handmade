@@ -20,7 +20,7 @@ async function load(path, dependencies = {}, extra = "") {
 const palettes = await load("lib/abags-yarn-palettes.ts");
 const references = await load("lib/abags-reference-models.ts");
 const cognac = await load("lib/abags-cognac-model.ts");
-const families = await load("lib/abags-family-presets.ts", cognac);
+const families = await load("lib/abags-family-presets.ts", { ...cognac, ...await load("lib/abags-reference-models.ts") });
 const fidelity = await load("lib/abags-builder-fidelity.ts");
 const measurements = await load("lib/abags-fidelity-v4-family-spec.ts");
 const engine = await load("app/bag-builder-engine.tsx", { ...palettes, ...references, ...fidelity, ...measurements }, "\nexports.BagPreview = BagPreview;");

@@ -11,6 +11,12 @@ export const AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY = {
     straps: ["none", "crochet-braid"],
     accents: ["none", "scarf", "bow"],
   },
+  crescent: {
+    handles: ["none"],
+    flaps: ["none", "leather-cream"],
+    straps: ["none", "leather-cream"],
+    accents: ["none"],
+  },
   tote: {
     handles: ["none", "wood-light", "wood-dark"],
     flaps: ["none"],
@@ -46,6 +52,7 @@ export const AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY = {
 export const AGATA_BUILDER_HANDLE_COMPATIBILITY = {
   "tall-tote": AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY["tall-tote"].handles,
   shoulder: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.shoulder.handles,
+  crescent: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.crescent.handles,
   tote: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.tote.handles,
   round: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.round.handles,
   bucket: AGATA_BUILDER_CONSTRUCTION_COMPATIBILITY.bucket.handles,
@@ -69,4 +76,8 @@ export function isAgataBuilderConstructionSupported(
 
 export function isAgataBuilderHandleSupported(family: string, handle: string) {
   return isAgataBuilderConstructionSupported(family, "handles", handle);
+}
+
+export function isAgataBuilderStitchSupported(family: string, stitch: string) {
+  return stitch !== "radial-braid" || family === "crescent";
 }

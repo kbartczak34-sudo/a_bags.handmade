@@ -1,4 +1,4 @@
-export type FidelityV4Family = "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
+export type FidelityV4Family = "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder" | "crescent";
 
 /** Approximate measured width of the physical bag body for each current family.
  * Height/depth are intentionally NOT inferred from the renderer's arbitrary units.
@@ -62,9 +62,20 @@ export type FidelityV4FamilySpec = {
  * unchanged because they are persisted in saved customer projects and QA.
  */
 export const ABAGS_FIDELITY_V4_FAMILY_SPECS: Readonly<Record<FidelityV4Family, FidelityV4FamilySpec>> = {
+  crescent: {
+    label: "Półksiężyc", reference: "mustard-crescent-cream",
+    // Front photo: a straight rim above a rounded bowl, about 0.78 as tall as wide.
+    rx: 1, ry: .77, power: 2.7, taper: 0, bodyY: -.10,
+    depth: .55, bevel: .049, topY: .67, sideAnchor: .96, ringY: .57,
+    handleScale: [.90, .72], flapScale: [1, 1], flapY: .32, lockY: -.02,
+    softnessFactor: .85, attachmentWidthFactor: .98, attachmentYOffset: .01,
+    attachmentZFactor: .74, handleSpanFactor: .84, handleScaleFactor: 1,
+    handleYScaleFactor: 1, chain: [1.12, 1.66, 34, .043, .011],
+  },
   "tall-tote": {
     label: "Wysoki kuferek", reference: "forest-ocean-wood-bow",
-    rx: .91, ry: .99, power: 5.8, taper: -.035, bodyY: -.14,
+    // The photographed kuferki widen towards the opening and turn in at the base.
+    rx: .91, ry: .99, power: 5.8, taper: .055, bodyY: -.14,
     depth: .48, bevel: .050, topY: .85, sideAnchor: .84, ringY: .65,
     handleScale: [.98, .90], flapScale: [.76, .58], flapY: .40,
     softnessFactor: .85, attachmentWidthFactor: .94, attachmentYOffset: -.20,

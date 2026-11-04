@@ -52,6 +52,23 @@ test("thin fitted flap shells clear every real stitch crown and remain close to 
   }
 });
 
+test("the crescent leather flap clears the raised braid and seats closer with a flat stitch", () => {
+  const family = "crescent", panel = g.makeCrochetPanel(family, "radial-braid");
+  const surface = g.closedFlapSurface(family, false, "radial-braid");
+  const flat = g.closedFlapSurface(family, false, "classic");
+  assert.ok(surface.sample(0, .3).z > flat.sample(0, .3).z);
+  let closest = Infinity, checked = 0;
+  for (let i = 0; i < panel.positions.length; i += 3) {
+    const face = surface.sample(panel.positions[i], panel.positions[i + 1] + specs[family].bodyY);
+    if (!face) continue;
+    const gap = face.z - surface.thickness - panel.positions[i + 2];
+    assert.ok(gap > .001, `flap backing intersects the braid (${gap})`);
+    closest = Math.min(closest, gap);
+    checked++;
+  }
+  assert.ok(checked > 1000 && closest < specs[family].rx * 5 / 160);
+});
+
 test("leather snap follows the fitted face normal and seats against its actual surface", () => {
   for (const family of ["round", "mini"]) {
     const renderer = { gl: gpu(), meshes: {} };

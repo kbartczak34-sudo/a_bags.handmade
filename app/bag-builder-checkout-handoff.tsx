@@ -7,7 +7,7 @@ import {
   type BagBuilderClientConfig,
 } from "./bag-builder-config-store";
 
-type Family = "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
+type Family = Exclude<BagBuilderClientConfig["family"], "">;
 type Config = BagBuilderClientConfig;
 type Settings = {
   pricingEnabled: boolean;

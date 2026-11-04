@@ -2,21 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { isAgataBuilderConstructionSupported, isAgataBuilderHandleSupported } from "../lib/abags-builder-fidelity";
+import { isAgataBuilderConstructionSupported, isAgataBuilderHandleSupported, isAgataBuilderStitchSupported } from "../lib/abags-builder-fidelity";
 import { ABAGS_AGATA_REAL_BAG_MEASUREMENTS } from "../lib/abags-fidelity-v4-family-spec";
 import { usePublicContact, whatsappHref } from "./public-contact";
 
 import { createBagBuilderFamilyConfig } from "../lib/abags-family-presets";
 import { ABAGS_REFERENCE_MODELS, createAbagsReferenceModelConfig, getAbagsReferenceModel, getAbagsCrochetFlapTone } from "../lib/abags-reference-models";
 import { getAbagsYarnPalette, getAbagsYarnSvgStops } from "../lib/abags-yarn-palettes";
+import type { BuilderFamily, BuilderFlap, BuilderStitch, BuilderStrap } from "../lib/bag-builder-settings";
 
 const DRAFT_KEY = "abags-bag-builder-v3";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
-type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
-type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
+type Family = "" | BuilderFamily;
+type Stitch = "" | BuilderStitch;
+type Flap = BuilderFlap;
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
-type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament" | "crochet-braid" | "woven-floral" | "woven-striped" | "chain-leather";
+type Strap = BuilderStrap;
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
@@ -45,6 +46,7 @@ const EMPTY: BagBuilderConfig = {
 };
 
 const FAMILIES: Option<Family>[] = [
+  { value: "crescent", label: "Półksiężyc", description: "Półokrągły korpus, łukowy przeplot i kremowa klapa" },
   { value: "tall-tote", label: "Wysoki kuferek", description: "Wysoki korpus i para płaskich drewnianych uchwytów" },
   { value: "shoulder", label: "Listonoszka", description: "Miękki prostokątny korpus z zamkiem i szydełkowym paskiem" },
   { value: "satchel", label: "Kuferek koniakowy", description: "Model ze zdjęcia · ombré, skórzana klapa i pleciona rączka" },
@@ -65,6 +67,7 @@ const COLORS: Option<string>[] = [
   { value: "#24324D", label: "Głęboki granat", swatch: "#24324D" },
   { value: "#65493D", label: "Czekoladowy brąz", swatch: "#65493D" },
   { value: "#C7962F", label: "Musztardowy", swatch: "#C7962F" },
+  { value: "#E5A13A", label: "Złota musztarda", swatch: "#E5A13A" },
   { value: "#222124", label: "Czarny", swatch: "#222124" },
   { value: "#B93A42", label: "Czerwony", swatch: "#B93A42" },
   { value: "#275C4A", label: "Butelkowa zieleń", swatch: "#275C4A" },
@@ -77,6 +80,7 @@ const STITCHES: Option<Stitch>[] = [
   { value: "herringbone", label: "Pionowy ażurowy", description: "Szydełkowy rytm wydłużonych pionowych kolumn" },
   { value: "basket", label: "Koszykowy", description: "Gęstsza szydełkowa struktura oczek" },
   { value: "shell", label: "Promienisty", description: "Szydełkowy rytm wachlarzy prowadzony promieniście" },
+  { value: "radial-braid", label: "Łukowy przeplot", description: "Pasmy sznurka przeplatają się nad i pod sobą wzdłuż łuków korpusu" },
 ];
 
 const FLAPS: Option<Flap>[] = [
@@ -84,6 +88,7 @@ const FLAPS: Option<Flap>[] = [
   { value: "crochet", label: "Szydełkowa", description: "Sznurek dopasowany do wybranego modelu" },
   { value: "leather-black", label: "Skórzana czarna" },
   { value: "leather-cognac", label: "Skórzana koniak" },
+  { value: "leather-cream", label: "Kremowa z zamkiem obrotowym" },
   { value: "suede-burgundy", label: "Zamszowa bordo" },
 ];
 
@@ -103,6 +108,7 @@ const STRAPS: Option<Strap>[] = [
   { value: "woven-ornament", label: "Pasek ornamentowy", description: "Czarno-kremowy wzór z miedzianymi detalami" },
   { value: "none", label: "Bez paska" },
   { value: "leather", label: "Pasek skórzany" },
+  { value: "leather-cream", label: "Kremowy z przeszyciem" },
   { value: "woven", label: "Pasek tkany" },
   { value: "chain", label: "Łańcuszek" },
 ];
@@ -129,6 +135,7 @@ function readDraft(): BagBuilderConfig {
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<BagBuilderConfig>;
     const next = { ...EMPTY, ...parsed };
+    if (!isAgataBuilderStitchSupported(next.family, next.stitch)) next.stitch = "classic";
     if (next.family && !isAgataBuilderHandleSupported(next.family, next.handles)) {
       next.handles = "none";
     }
@@ -152,6 +159,7 @@ function labelFor<T extends string>(options: Option<T>[], value: T | string) {
 }
 
 function bodyPath(family: Family) {
+  if (family === "crescent") return "M135 193 Q135 180 150 180 H450 Q465 180 465 193 V226 C465 389 418 496 300 496 C182 496 135 389 135 226 Z";
   if (family === "tall-tote") return "M170 160 Q170 135 205 135 L395 135 Q430 135 430 160 L438 475 Q438 522 395 525 L205 525 Q162 522 162 475 Z";
   if (family === "shoulder") return "M120 200 Q120 170 155 170 L445 170 Q480 170 480 200 L485 455 Q485 505 440 510 L160 510 Q115 505 115 455 Z";
   if (family === "round") return "M135 235 Q140 185 205 165 Q300 132 395 165 Q460 185 465 235 L478 335 Q486 414 432 470 Q378 525 300 525 Q222 525 168 470 Q114 414 122 335 Z";
@@ -161,6 +169,7 @@ function bodyPath(family: Family) {
 }
 
 function topY(family: Family) {
+  if (family === "crescent") return 180;
   if (family === "mini") return 190;
   if (family === "round") return 175;
   return 150;
@@ -177,11 +186,13 @@ function flapColor(config: BagBuilderConfig) {
   if (crochet) return crochet;
   if (config.flap === "leather-black") return "#242124";
   if (config.flap === "leather-cognac") return "#7B4F34";
+  if (config.flap === "leather-cream") return "#E8D3BB";
   if (config.flap === "suede-burgundy") return "#7F3043";
   return config.color || "#E8DDCC";
 }
 
 function strapColor(config: BagBuilderConfig) {
+  if (config.strap === "leather-cream") return "#E8D3BB";
   if (config.strap === "leather") return config.flap.includes("black") ? "#242124" : "#6A493C";
   return "#8A666C";
 }
@@ -223,7 +234,7 @@ function FamilyChoices({ config, onFamily, onModel }: {
         <span className="abags-builder-family-thumb" data-family={model.config.family} aria-hidden="true"><span /></span>
         <span className="abags-builder-option-copy"><strong>{model.label}</strong><small>{model.description}</small></span>
       </button>)}
-      {FAMILIES.filter(option => option.value && option.value !== "tall-tote" && option.value !== "shoulder").map(option => <button
+      {FAMILIES.filter(option => option.value && option.value !== "tall-tote" && option.value !== "shoulder" && option.value !== "crescent").map(option => <button
         key={option.value} type="button" className={!selected && config.family === option.value ? "is-active" : ""}
         aria-pressed={!selected && config.family === option.value} data-builder-key="family" data-builder-value={option.value}
         onClick={() => onFamily(option.value)}>
@@ -255,7 +266,7 @@ function BagPreview({ config }: { config: BagBuilderConfig }) {
   const blackCrochet = getAbagsCrochetFlapTone(config);
   const yarnBaseFill = yarnStops ? "url(#abags-yarn-ombre)" : bagColor;
 
-  return <div className="abags-bag-builder-stage" data-abags-live-stage="true" data-abags-engine-stage="true" data-builder-signature={signature} data-approx-width-cm={config.family ? ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm : ""} data-matching-crochet-back="true" data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
+  return <div className="abags-bag-builder-stage" data-abags-live-stage="true" data-abags-engine-stage="true" data-builder-signature={signature} data-approx-width-cm={config.family && config.family !== "crescent" ? ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm : ""} data-matching-crochet-back="true" data-family={config.family} data-color={config.color} data-stitch={config.stitch} data-flap={supportedFlap} data-handles={config.handles} data-strap={config.strap} data-hardware={config.hardware} data-accent={config.accent}>
     <svg viewBox="0 0 600 600" role="img" aria-label={hasShape ? `Podgląd tworzonej torebki: ${labelFor(FAMILIES, config.family)}` : "Pusty podgląd konfiguratora"}>
       <defs>
         {yarnStops && <linearGradient id="abags-yarn-ombre" gradientUnits="userSpaceOnUse" x1={verticalBands ? 160 : 0} y1={verticalBands ? 0 : 140} x2={verticalBands ? 440 : 0} y2={verticalBands ? 0 : 520}>
@@ -345,7 +356,8 @@ export default function BagBuilderEngine() {
           !STRAPS.some(item => item.value === detail.strap) ||
           !HARDWARE.some(item => item.value === detail.hardware) ||
           !ACCENTS.some(item => item.value === detail.accent)) return;
-      if (!isAgataBuilderHandleSupported(detail.family, detail.handles) ||
+      if (!isAgataBuilderStitchSupported(detail.family, detail.stitch) ||
+          !isAgataBuilderHandleSupported(detail.family, detail.handles) ||
           !isAgataBuilderConstructionSupported(detail.family, "flaps", detail.flap) ||
           !isAgataBuilderConstructionSupported(detail.family, "straps", detail.strap) ||
           !isAgataBuilderConstructionSupported(detail.family, "accents", detail.accent)) return;
@@ -402,13 +414,15 @@ export default function BagBuilderEngine() {
       <div className="abags-exact-live-heading abags-builder-heading"><div><p className="eyebrow">A-Bags Atelier · Bag Builder 3.0</p><h3 id="abags-builder-title">Buduj torebkę krok po kroku.</h3><p>Wybierz fason, aby od razu zobaczyć kompletną torebkę. Następnie dopasuj kolor, ścieg szydełkowy, klapę, uchwyty, pasek, okucia i ozdoby. Podgląd pozostaje aktywny przez cały czas.</p></div><span>{completed}/8 decyzji</span></div>
       <FamilyChoices config={config} onFamily={(family) => update("family", family)} onModel={(id) => { const next = createAbagsReferenceModelConfig(id); if (next) { setConfig(next); setSaved(false); } }} />
       <ChoiceGroup title="Kolor sznurka" step={2} options={COLORS.map(option => ({ ...option, swatch: getAbagsYarnPalette(option.value, config.family)?.swatch ?? option.swatch }))} value={config.color} onChange={(value) => update("color", value)} disabled={!config.family} compact dataKey="color" />
-      <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
+      <ChoiceGroup title="Ścieg szydełkowy" step={3} options={STITCHES.filter((item): item is Option<Exclude<Stitch, "">> => Boolean(item.value) && isAgataBuilderStitchSupported(config.family, item.value))} value={config.stitch} onChange={(value) => update("stitch", value)} disabled={!config.color} dataKey="stitch" />
       <ChoiceGroup title="Klapa" step={4} options={familyFlaps} value={supportedFlap} onChange={(value) => update("flap", value)} disabled={!canCustomize} dataKey="flap" />
       <ChoiceGroup title="Uchwyty" step={5} options={familyHandles} value={config.handles} onChange={(value) => update("handles", value)} disabled={!canCustomize} dataKey="handles" />
       <ChoiceGroup title="Pasek" step={6} options={familyStraps} value={supportedStrap} onChange={(value) => update("strap", value)} disabled={!canCustomize} dataKey="strap" />
       <ChoiceGroup title="Okucia" step={7} options={HARDWARE} value={config.hardware} onChange={(value) => update("hardware", value)} disabled={!canCustomize} compact dataKey="hardware" />
       <ChoiceGroup title="Detal / ozdoba" step={8} options={familyAccents} value={supportedAccent} onChange={(value) => update("accent", value)} disabled={!canCustomize} dataKey="accent" />
-      <div className="abags-builder-summary" aria-live="polite"><div><strong>Twój projekt</strong><span>{saved ? "zapisany lokalnie ✓" : canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i ścieg szydełkowy"}</span></div><p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p><small>Szerokość korpusu: około {ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm} cm. Wysokość i głębokość do potwierdzenia przez pracownię. Personalizacja jest wyceniana indywidualnie.</small></div>
+      <div className="abags-builder-summary" aria-live="polite"><div><strong>Twój projekt</strong><span>{saved ? "zapisany lokalnie ✓" : canSave ? "gotowy do zapisania" : "uzupełnij fason, kolor i ścieg szydełkowy"}</span></div><p>{config.family ? `${labelFor(FAMILIES, config.family)} · ${labelFor(COLORS, config.color)} · ${labelFor(STITCHES, config.stitch)}` : "Wybierz fason, aby rozpocząć projekt."}</p><small>{config.family === "crescent"
+        ? "Proporcje dopasowane do zdjęcia. Wymiary do potwierdzenia przez pracownię."
+        : `Szerokość korpusu: około ${ABAGS_AGATA_REAL_BAG_MEASUREMENTS.approximateBodyWidthCm} cm. Wysokość i głębokość do potwierdzenia przez pracownię.`} Personalizacja jest wyceniana indywidualnie.</small></div>
       <div className="abags-exact-live-actions abags-builder-actions" data-builder-saved={saved ? "true" : "false"}>
         <button type="button" onClick={reset}>Wyczyść</button>
         <button type="button" onClick={save} disabled={!canSave} data-builder-save-state={saved ? "saved" : "ready"}>{saved ? "Zapisano ✓" : "Zapisz projekt"}</button>

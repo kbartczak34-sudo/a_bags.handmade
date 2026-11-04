@@ -141,7 +141,8 @@ test("each photographed scarf and every supported optional textile gets its matc
   const urls = new Set();
   for (const model of models.exports.ABAGS_REFERENCE_MODELS) {
     const selected = profiles.exports.getAbagsPrintedTextileProfile(model.config, model.fabric);
-    assert.ok(selected.scarf?.url); urls.add(selected.scarf.url);
+    assert.equal(Boolean(selected.scarf?.url), model.config.accent === "bow" || model.config.accent === "scarf");
+    if (selected.scarf) urls.add(selected.scarf.url);
     for (const item of [selected.scarf,selected.strap].filter(Boolean)) assert.ok(item.uv.every(Number.isFinite));
   }
   assert.equal(urls.size, 6);

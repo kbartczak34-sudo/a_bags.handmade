@@ -32,16 +32,17 @@ const STEPS = [
 ] as const;
 
 const LABELS: Record<string, Record<string, string>> = {
-  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy", "tall-tote": "Wysoki kuferek", shoulder: "Listonoszka" },
-  stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty" },
-  flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skóra czarna", "leather-cognac": "Skóra koniak", "suede-burgundy": "Zamsz bordo" },
+  family: { tote: "Kuferek / tote", round: "Okrągła", bucket: "Z klapą", mini: "Strukturalna / mini", satchel: "Kuferek koniakowy", "tall-tote": "Wysoki kuferek", shoulder: "Listonoszka", crescent: "Półksiężyc" },
+  stitch: { classic: "Ażurowy V", herringbone: "Pionowy ażurowy", basket: "Koszykowy", shell: "Promienisty", "radial-braid": "Łukowy przeplot" },
+  flap: { none: "Bez klapy", crochet: "Szydełkowa", "leather-black": "Skóra czarna", "leather-cognac": "Skóra koniak", "suede-burgundy": "Zamsz bordo", "leather-cream": "Kremowa z zamkiem obrotowym" },
   handles: { none: "Bez uchwytu", "wood-light": "Drewno jasne", "wood-dark": "Drewno ciemne", crochet: "Uchwyt szydełkowy", "leather-braid": "Pleciona rączka skórzana" },
-  strap: { none: "Bez paska", leather: "Pasek skórzany", woven: "Pasek tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy", "crochet-braid": "Szydełkowy pasek", "woven-floral": "Pasek kwiatowy", "woven-striped": "Pasek w pasy", "chain-leather": "Łańcuszek ze skórą" },
+  strap: { none: "Bez paska", leather: "Pasek skórzany", "leather-cream": "Kremowy z przeszyciem", woven: "Pasek tkany", chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy", "crochet-braid": "Szydełkowy pasek", "woven-floral": "Pasek kwiatowy", "woven-striped": "Pasek w pasy", "chain-leather": "Łańcuszek ze skórą" },
   hardware: { gold: "Złote", silver: "Srebrne", black: "Czarne" },
   accent: { none: "Bez ozdoby", tassel: "Chwost", scarf: "Apaszka", bow: "Kokarda", charm: "Zawieszka" },
 };
 
 const COLOR_LABELS: Record<string, string> = {
+  "#E5A13A": "Złota musztarda",
   "#E8DDCC": "Naturalny beż",
   "#E4A9B5": "Pudrowy róż",
   "#24324D": "Głęboki granat",
@@ -189,8 +190,9 @@ function applySpriteCell(element: HTMLElement, spriteUrl: string, referenceId: s
   element.style.backgroundSize = direct ? "cover" : "500% 400%";
   element.style.backgroundPosition = direct ? "center" : spritePosition(reference!.index);
   element.dataset.referenceId = referenceId;
-  element.dataset.referenceKind = modelPreview ? "model-3d" : "photograph";
-  element.title = modelPreview ? `Podgląd modelu 3D na podstawie zdjęcia: ${model!.label}` : `Rzeczywisty wzorzec A-Bags: ${model?.label ?? reference!.label}`;
+  const isRender = modelPreview && !(model && "imageKind" in model && model.imageKind === "photograph");
+  element.dataset.referenceKind = isRender ? "model-3d" : "photograph";
+  element.title = isRender ? `Podgląd modelu 3D na podstawie zdjęcia: ${model!.label}` : `Rzeczywisty wzorzec A-Bags: ${model?.label ?? reference!.label}`;
 }
 
 function decorateFamilyButtons(dialog: HTMLElement, spriteUrl: string) {
@@ -240,7 +242,9 @@ function ensureAtelierExample(preview: HTMLElement, stage: HTMLElement, spriteUr
   const family = stage.dataset.family || "";
   const model = getAbagsReferenceModel({family,color:stage.dataset.color||""});
   const referenceId = model ? model.referenceId : FAMILY_REFERENCE[family];
-  const realReference = EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
+  const realReference = model && "imageKind" in model && model.imageKind === "photograph"
+    ? model
+    : EXACT_ATELIER_LIBRARY.find((item) => item.id === referenceId);
   let viewer = preview.querySelector<HTMLElement>(':scope > [data-abags-example-ui]');
   if (!spriteUrl || !realReference) {
     if (viewer) viewer.hidden = true;

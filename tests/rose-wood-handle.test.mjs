@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Matrix4, Triangle, Vector3 } from "three";
-import { geometry as g } from "./helpers/fidelity-geometry.mjs";
+import { geometry as g, referenceModels } from "./helpers/fidelity-geometry.mjs";
 
 test("rose and pastel photographs select flat bases while the navy retains a round ring", () => {
   const config = { family: "tall-tote", color: "#D58FAA", handles: "wood-dark" };
@@ -71,25 +71,39 @@ test("the rose binding surrounds the actual wood and remains mirrored through th
     assert.ok(Math.abs(Math.hypot(...binding.normals.slice(i, i + 3)) - 1) < 1e-5);
 });
 
-test("switching handle shapes replaces GPU buffers while recoloring reuses them", () => {
+test("switching crown height rebuilds only the wood, while changing the lower rail also rebuilds its binding", () => {
   let allocated = 0, deleted = 0;
   const renderer = { meshes: {}, gl: {
     ARRAY_BUFFER: 1, ELEMENT_ARRAY_BUFFER: 2, STATIC_DRAW: 3,
     createBuffer() { allocated++; return {}; },
     bindBuffer() {}, bufferData() {}, deleteBuffer() { deleted++; },
   } };
-  const ensure = shape => {
-    g.ensureReferenceWoodHandle(renderer, shape);
+  const ensure = (shape, crown) => {
+    g.ensureReferenceWoodHandle(renderer, shape, crown);
     g.ensureWoodHandleBinding(renderer, "tall-tote", shape);
   };
   ensure("round");
   assert.equal(allocated, 8);
   ensure("round");
   assert.equal(allocated, 8);
-  ensure("flat-base");
-  assert.equal(allocated, 16);
-  assert.equal(deleted, 8);
-  ensure("round");
-  assert.equal(allocated, 24);
-  assert.equal(deleted, 16);
+  ensure("round", .65);
+  assert.equal(allocated, 12);
+  assert.equal(deleted, 4);
+  ensure("flat-base", .52);
+  assert.equal(allocated, 20);
+  assert.equal(deleted, 12);
+});
+
+test("the two photographed arches stay clear of each other above the mouth", () => {
+  for (const reference of referenceModels.filter(model => model.woodCrown !== null)) {
+    const { config, woodCrown } = reference;
+    const frontZ = g.woodHandleDepthPlanes(config.family)[1];
+    const pose = new Matrix4().fromArray(g.woodHandleMatrix(config.family, frontZ));
+    const mesh = g.makeReferenceWoodHandle(g.getAbagsWoodHandleShape(config), woodCrown);
+    const point = new Vector3();
+    for (let i = 0; i < mesh.positions.length; i += 3) {
+      point.fromArray(mesh.positions, i).applyMatrix4(pose);
+      assert.ok(point.z > .02, reference.id + ": the front handle reaches the rear handle");
+    }
+  }
 });

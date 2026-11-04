@@ -27,7 +27,7 @@ const FAMILY_LABELS: Record<string, string> = {
   bucket: "Z klapą",
   mini: "Strukturalna / mini",
   satchel: "Kuferek koniakowy",
-  "tall-tote": "Wysoki kuferek", shoulder: "Listonoszka",
+  "tall-tote": "Wysoki kuferek", shoulder: "Listonoszka", crescent: "Półksiężyc",
 };
 
 const COLOR_LABELS: Record<string, string> = {
@@ -36,6 +36,7 @@ const COLOR_LABELS: Record<string, string> = {
   "#24324D": "Głęboki granat",
   "#65493D": "Czekoladowy brąz",
   "#C7962F": "Musztardowy",
+  "#E5A13A": "Złota musztarda",
   "#222124": "Czarny",
   "#B93A42": "Czerwony",
   "#275C4A": "Butelkowa zieleń",
@@ -53,6 +54,7 @@ const STITCH_LABELS: Record<string, string> = {
   herringbone: "Pionowy ażurowy",
   basket: "Koszykowy",
   shell: "Promienisty",
+  "radial-braid": "Łukowy przeplot",
 };
 
 const FLAP_LABELS: Record<string, string> = {
@@ -60,6 +62,7 @@ const FLAP_LABELS: Record<string, string> = {
   crochet: "Szydełkowa",
   "leather-black": "Skórzana czarna",
   "leather-cognac": "Skórzana koniak",
+  "leather-cream": "Kremowa z zamkiem obrotowym",
   "suede-burgundy": "Zamszowa bordo",
 };
 
@@ -73,6 +76,7 @@ const HANDLE_LABELS: Record<string, string> = {
 const STRAP_LABELS: Record<string, string> = {
   none: "Bez paska",
   leather: "Pasek skórzany",
+  "leather-cream": "Kremowy z przeszyciem",
   woven: "Pasek tkany",
   chain: "Łańcuszek", "woven-ornament": "Pasek ornamentowy",
   "crochet-braid": "Szydełkowy pasek", "woven-floral": "Pasek kwiatowy", "woven-striped": "Pasek w pasy", "chain-leather": "Łańcuszek ze skórą",

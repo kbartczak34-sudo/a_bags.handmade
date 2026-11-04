@@ -13,12 +13,13 @@ import { getAbagsReferenceModel, getAbagsWoodHandleTone, getAbagsWoodHandleShape
 import { createAbagsPrintedTextiles, requestAbagsPrintedTextiles, disposeAbagsPrintedTextiles, type AbagsPrintedTextiles } from "../lib/abags-printed-textiles";
 import { getAbagsPrintedTextileProfile } from "../lib/abags-textile-profiles";
 import { AbagsCameraGesture, keyboardCamera, wheelCameraZoom, type AbagsCamera } from "../lib/abags-camera-controls";
+import type { BuilderFlap, BuilderStitch, BuilderStrap } from "../lib/bag-builder-settings";
 
-type Family = "" | "tote" | "round" | "bucket" | "mini" | "satchel" | "tall-tote" | "shoulder";
-type Stitch = "" | "classic" | "herringbone" | "basket" | "shell";
-type Flap = "none" | "crochet" | "leather-black" | "leather-cognac" | "suede-burgundy";
+type Family = "" | FidelityV4Family;
+type Stitch = "" | BuilderStitch;
+type Flap = BuilderFlap;
 type Handles = "none" | "wood-light" | "wood-dark" | "crochet" | "leather-braid";
-type Strap = "none" | "leather" | "woven" | "chain" | "woven-ornament" | "crochet-braid" | "woven-floral" | "woven-striped" | "chain-leather";
+type Strap = BuilderStrap;
 type Hardware = "gold" | "silver" | "black";
 type Accent = "none" | "tassel" | "scarf" | "bow" | "charm";
 
@@ -41,11 +42,13 @@ type Mesh = {
   count: number;
 };
 
+type ReferenceTone = "metal" | "engraving" | "zipper" | "fabric" | "cord" | "cream" | "cream-edge" | "thread" | "recess";
+
 type Renderer = {
   printedTextiles: AbagsPrintedTextiles;
   onTextileReady?: () => void;
   referenceKey?: string;
-  referenceParts?: Array<{ name: string; tone: "metal" | "engraving" | "zipper" | "fabric" | "cord" }>;
+  referenceParts?: Array<{ name: string; tone: ReferenceTone }>;
   referenceTriangles?: number;
   bandPrint?: number;
   ombre?: boolean;
@@ -65,7 +68,7 @@ type Renderer = {
   ornamentTriangles?: number;
   yarnKey?: string;
   woodBindingKey?: string;
-  referenceWoodHandleShape?: WoodHandleShape;
+  referenceWoodHandleKey?: string;
   strapBindingKey?: string;
   crochetFlapKey?: string;
   crochetFlapLockZ?: number;
@@ -301,9 +304,31 @@ function quad(points: Point[], a: Point, control: Point, b: Point, steps = 10) {
   }
 }
 
+const CRESCENT_SHOULDER_DROP = .065;
+const CRESCENT_BRAID_CLEARANCE = 3.15;
+const CRESCENT_LEATHER = "#E8D3BB";
+
+function crescentArc(t: number, scale = 1): Point {
+  const { rx, ry, power } = ABAGS_FIDELITY_V4_FAMILY_SPECS.crescent;
+  const a = Math.PI * t, exponent = 2 / power;
+  const x = -Math.cos(a);
+  return [
+    rx * scale * Math.sign(x) * Math.pow(Math.abs(x), exponent),
+    ry - CRESCENT_SHOULDER_DROP - (2 * ry - CRESCENT_SHOULDER_DROP) * scale * Math.pow(Math.sin(a), exponent),
+  ];
+}
+
 function familyContour(family: Exclude<Family, "">): Point[] {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const points: Point[] = [];
+  if (family === "crescent") {
+    const { rx, ry } = spec;
+    quad(points, [rx, ry - CRESCENT_SHOULDER_DROP], [rx, ry], [rx * .94, ry], 6);
+    quad(points, [rx * .94, ry], [0, ry], [-rx * .94, ry], 24);
+    quad(points, [-rx * .94, ry], [-rx, ry], [-rx, ry - CRESCENT_SHOULDER_DROP], 6);
+    for (let i = 0; i < 60; i++) points.push(crescentArc(i / 60));
+    return points;
+  }
   const samples = 96;
   const exponent = 2 / Math.max(1.01, spec.power);
   for (let i = 0; i < samples; i += 1) {
@@ -320,6 +345,16 @@ function familyContour(family: Exclude<Family, "">): Point[] {
 
 function flapContour(family?: Exclude<Family, "">): Point[] {
   const p: Point[] = [];
+  if (family === "crescent") {
+    quad(p, [-.87, .395], [0, .395], [.87, .395], 24);
+    quad(p, [.87, .395], [.94, .39], [.90, .27], 8);
+    quad(p, [.90, .27], [.79, -.08], [.43, -.30], 20);
+    quad(p, [.43, -.30], [.28, -.357], [0, -.353], 12);
+    quad(p, [0, -.353], [-.28, -.357], [-.43, -.30], 12);
+    quad(p, [-.43, -.30], [-.79, -.08], [-.90, .27], 20);
+    quad(p, [-.90, .27], [-.94, .39], [-.87, .395], 8);
+    return p;
+  }
   if (family === "satchel") {
     quad(p, [-.95, .55], [0, .57], [.95, .55], 18);
     quad(p, [.95, .55], [1.04, .16], [.72, -.28], 16);
@@ -562,23 +597,27 @@ function woodHandleMountHeight(family: Exclude<Family, "">) {
 // cant. Binding created in screen space used to separate when the bag rotated.
 function woodHandleMatrix(family: Exclude<Family, "">, z: number) {
   const profile = PROFILES[family];
+  const cant = family === "tall-tote" ? .28 : .40;
   return matrix([0, woodHandleMountHeight(family), z],
-    [profile.width * (family === "tall-tote" ? 1.12 : .84), Math.max(.28, profile.handleScaleY * 1.35), 1],
-    [z < 0 ? 0.40 : -0.40, 0, 0]);
+    [profile.width * (family === "tall-tote" ? 1.04 : .84), Math.max(.28, profile.handleScaleY * 1.35), 1],
+    [z < 0 ? cant : -cant, 0, 0]);
 }
 
 type FabricMesh = { positions: number[]; normals: number[]; uvs: number[]; indices: number[]; occlusion?: number[]; cordOccluders?: CordOccluder[] };
 type YarnPoint = [number, number, number];
 type CordOccluder = { a: YarnPoint; b: YarnPoint; radius: number; owner: number };
 type WoodHandleShape = "round" | "flat-base";
+const DEFAULT_WOOD_CROWN = .42;
 
 // The photographed rose handle has a straight lower rail with rounded corners.
 // Share this centreline between the wood and its cord binding so both turn as
 // one physical construction. The other references retain their circular rings.
-function referenceWoodHandleFrame(angle: number, shape: WoodHandleShape = "round") {
+function referenceWoodHandleFrame(angle: number, shape: WoodHandleShape = "round", crown = DEFAULT_WOOD_CROWN) {
   const a = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  let center: YarnPoint = [.46 * Math.cos(a), .42 * Math.sin(a), 0];
-  let tangent = normalize(-.46 * Math.sin(a), .42 * Math.cos(a), 0);
+  // The photograph sets the upper arch. Keep the sewn lower rail at its seat.
+  const radiusY = a <= Math.PI ? crown : DEFAULT_WOOD_CROWN;
+  let center: YarnPoint = [.46 * Math.cos(a), radiusY * Math.sin(a), 0];
+  let tangent = normalize(-.46 * Math.sin(a), radiusY * Math.cos(a), 0);
   if (shape === "flat-base" && a > Math.PI) {
     // The inner corner must also leave room for the 5 mm cord; a tighter
     // bend would make its winding intersect the adjacent wooden rail.
@@ -838,17 +877,87 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
 
 // Actual 5 mm cord, seated on the same soft shell as the lining and opening.
 // Each stitch has a round cross-section, depth and its own surface normals.
+function panelFraction(family: Exclude<Family, "">, x: number, y: number) {
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const taper = 1 + spec.taper * y / spec.ry;
+  if (family === "crescent") {
+    const top = spec.ry - CRESCENT_SHOULDER_DROP;
+    const down = Math.max(0, (top - y) / (top + spec.ry));
+    return Math.max(y / spec.ry, Math.pow(Math.pow(Math.abs(x) / spec.rx, spec.power) + Math.pow(down, spec.power), 1 / spec.power));
+  }
+  return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
+}
+
 function crochetPanelPoint(family: Exclude<Family, "">, x: number, y: number, lift = 0): YarnPoint {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const radius = spec.rx * 5 / 160;
-  const taper = 1 + spec.taper * y / spec.ry;
-  const fraction = Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
+  const fraction = panelFraction(family, x, y);
   const softness = softBodyOffset(family, x, y);
   const dome = Math.max(0, 1 - Math.pow(fraction / .965, 2));
   const bevel = Math.min(spec.bevel, spec.depth * .14);
-  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : 1.42;
+  const depthScale = family === "round" ? 1.34 : family === "tote" ? 1.78 : family === "bucket" ? 1.52 : family === "crescent" ? 1 : 1.42;
   const bulge = spec.depth * .12 * depthScale;
   return [x, y + softness.y, depthAt(family, y + softness.y) * .5 - bevel + softness.z + bulge * dome + radius * .62 + lift];
+}
+
+function appendCrescentBraid(
+  radius: number,
+  seat: (x: number, y: number, lift: number) => YarnPoint,
+  tube: (points: YarnPoint[]) => void,
+) {
+  const { ry } = ABAGS_FIDELITY_V4_FAMILY_SPECS.crescent;
+  const courses = Math.round(2 * ry / (radius * 3.17));
+  const arc = Array.from({ length: 129 }, (_, i) => crescentArc(i / 128));
+  const lengths = [0];
+  for (let i = 1; i < arc.length; i++) {
+    lengths.push(lengths[i - 1] + Math.hypot(arc[i][0] - arc[i - 1][0], arc[i][1] - arc[i - 1][1]));
+  }
+  const length = lengths.at(-1)!;
+  const shoulder = ry - CRESCENT_SHOULDER_DROP;
+  const arcPoint = (t: number, scale: number, lift: number) => {
+    const distance = length * Math.max(0, Math.min(1, t));
+    let i = 1;
+    while (i < lengths.length - 1 && lengths[i] < distance) i++;
+    const a = arc[i - 1], b = arc[i];
+    const f = (distance - lengths[i - 1]) / (lengths[i] - lengths[i - 1]);
+    return seat((a[0] + (b[0] - a[0]) * f) * scale,
+      shoulder + (a[1] + (b[1] - a[1]) * f - shoulder) * scale, lift);
+  };
+  const pitch = .94 / courses;
+  const courseScale = (course: number) => .055 + pitch * (course + .25 + (course % 2) * .10);
+
+  for (let course = 0; course < courses; course++) {
+    const scale = courseScale(course);
+    const count = Math.max(20, Math.ceil(length * scale / (radius * .67)));
+    const repeat = length * scale / (radius * 5.9);
+    tube(Array.from({ length: count + 1 }, (_, i) => {
+      const t = i / count;
+      const wave = Math.sin(t * repeat * Math.PI * 2 + course * 1.8);
+      return arcPoint(t, scale + .004 * wave, radius * (.17 + .14 * wave));
+    }));
+  }
+
+  // Each visible crossing loop wraps across two adjacent courses. Its ends
+  // turn below the cord, and the following row staggers the next set of loops.
+  for (let course = 0; course < courses - 1; course++) {
+    const inner = courseScale(course) - pitch * .39;
+    const outer = courseScale(course + 1) + pitch * .38;
+    const middle = (inner + outer) * .5;
+    const cells = length * middle / (radius * 6.1);
+    const lean = radius * 1.22 / (length * middle);
+    const half = Math.ceil(cells * .5);
+    for (let loop = -half; loop <= half; loop++) {
+      const stagger = (course % 2) * .48 + .09 * Math.sin(loop * 2.2 + course * 1.9);
+      const phase = .5 + (loop + stagger) / cells;
+      if (phase <= lean * 1.4 || phase >= 1 - lean * 1.4) continue;
+      tube(Array.from({ length: 13 }, (_, i) => {
+        const t = i / 12;
+        const crown = Math.min(1, Math.sin(Math.PI * t) * 1.85);
+        return arcPoint(phase + lean * (2 * t - 1), inner + (outer - inner) * t,
+          radius * (-1.26 + 3.24 * crown));
+      }));
+    }
+  }
 }
 
 function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
@@ -858,13 +967,10 @@ function makeCrochetPanel(family: Exclude<Family, "">, stitch: Stitch): FabricMe
   const radius = spec.rx * 5 / 160;
   const columns = crochetGaugeColumns(stitch);
   const rows = crochetRowCount(columns, spec.rx, spec.ry, stitch, 9);
-  const fractionAt = (x: number, y: number) => {
-    const taper = 1 + spec.taper * y / spec.ry;
-    return Math.pow(Math.pow(Math.abs(x / (spec.rx * taper)), spec.power) + Math.pow(Math.abs(y / spec.ry), spec.power), 1 / spec.power);
-  };
   const seat = (x: number, y: number, lift: number) => crochetPanelPoint(family, x, y, lift);
-  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => fractionAt(point[0], point[1]) <= .974, 10, false, occluders);
-  fillCrochetPatch({ rx: spec.rx, ry: spec.ry, radius, columns, rows, seat, tube }, stitch);
+  const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness, () => [0, 0, 1], (point) => panelFraction(family, point[0], point[1]) <= .974, 10, false, occluders);
+  if (family === "crescent" && stitch === "radial-braid") appendCrescentBraid(radius, seat, tube);
+  else fillCrochetPatch({ rx: spec.rx, ry: spec.ry, radius, columns, rows, seat, tube }, stitch);
   // A continuous sewn binding hides clipped loop ends at the rounded panel edge.
   const binding = familyContour(family).map(([x, y]) => seat(x * .953, y * .953, radius * .05));
   binding.push(binding[0]);
@@ -925,7 +1031,7 @@ function makeCrochetGusset(family: Exclude<Family, "">, stitch: Stitch = "classi
   const tube = (points: YarnPoint[], thickness = radius) => appendCord(mesh, points, thickness,
     ([x, y]) => normalize(x / spec.rx, y / spec.ry, 0),
     ([, y, z]) => y < spec.ry * .90 && Math.abs(z) < depthAt(family, y) * .51, 8, false, occluders);
-  fillCrochetPatch({ rx: depth * .5, ry: perimeter * .5, radius, columns, rows, seat, tube, curveSteps: 6, rowDirection }, stitch);
+  fillCrochetPatch({ rx: depth * .5, ry: perimeter * .5, radius, columns, rows, seat, tube, curveSteps: 6, rowDirection }, stitch === "radial-braid" ? "basket" : stitch);
   // Sewn piping covers the clipped ends where the gusset joins each panel.
   for (const side of [-1, 1]) {
     const seam = contour.map(([x, y]): YarnPoint => {
@@ -1014,6 +1120,18 @@ function flatWoodWrapSection(halfWidth: number, halfDepth: number, clearance: nu
   return [halfWidth + clearance, -halfDepth + distance - arc];
 }
 
+function flatWoodHandleWorldFrame(model: Float32Array, frame: ReturnType<typeof referenceWoodHandleFrame>) {
+  const vector = ([x, y, z]: YarnPoint): YarnPoint =>
+    [0, 1, 2].map(i => model[i] * x + model[4 + i] * y + model[8 + i] * z) as YarnPoint;
+  const center = vector(frame.center).map((value, i) => value + model[12 + i]) as YarnPoint;
+  const tangent = normalize(...vector(frame.tangent));
+  const depth = normalize(model[8], model[9], model[10]);
+  const outward = normalize(tangent[1] * depth[2] - tangent[2] * depth[1],
+    tangent[2] * depth[0] - tangent[0] * depth[2], tangent[0] * depth[1] - tangent[1] * depth[0]);
+  const halfWidth = .055 * Math.hypot(...vector(frame.outward));
+  return { center, tangent, outward, depth, halfWidth };
+}
+
 function woodHandleBindingPaths(family: Exclude<Family, "">, z: number, shape: WoodHandleShape = "round") {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const transform = woodHandleMatrix(family, z);
@@ -1029,16 +1147,7 @@ function woodHandleBindingPaths(family: Exclude<Family, "">, z: number, shape: W
   ];
   const flat = family === "tall-tote", arcs = [0], stepsPerTurn = flat ? 40 : 14;
   const depth = normalize(transform[8], transform[9], transform[10]);
-  const flatFrame = (angle: number) => {
-    const frame = referenceWoodHandleFrame(angle, shape);
-    const center = world(...frame.center);
-    const [tx, ty] = frame.tangent;
-    const tangent = normalize(transform[0]*tx + transform[4]*ty, transform[1]*tx + transform[5]*ty, transform[2]*tx + transform[6]*ty);
-    const outward = normalize(tangent[1]*depth[2]-tangent[2]*depth[1], tangent[2]*depth[0]-tangent[0]*depth[2], tangent[0]*depth[1]-tangent[1]*depth[0]);
-    const radial = frame.outward;
-    const halfWidth = .055 * Math.hypot(transform[0]*radial[0] + transform[4]*radial[1], transform[1]*radial[0] + transform[5]*radial[1], transform[2]*radial[0] + transform[6]*radial[1]);
-    return { center, outward, halfWidth };
-  };
+  const flatFrame = (angle: number) => flatWoodHandleWorldFrame(transform, referenceWoodHandleFrame(angle, shape));
   if (flat) {
     // Space the turns along the outside of the bend: spacing only along the
     // centreline spreads them apart on this longer edge and reveals the wood.
@@ -1136,8 +1245,12 @@ type ClosedFlapSurface = {
 // Immutable fitted surfaces are cached per family and construction.
 const closedFlapSurfaces = new Map<string, ClosedFlapSurface>();
 
-function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean): ClosedFlapSurface {
-  const key = family + (crochet ? ":crochet" : ":leather");
+function flapSurfaceKey(family: Exclude<Family, "">, crochet: boolean, stitch: Stitch) {
+  return family + (crochet ? ":crochet" : ":leather") + (stitch === "radial-braid" ? ":braid" : "");
+}
+
+function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean, stitch: Stitch = ""): ClosedFlapSurface {
+  const key = flapSurfaceKey(family, crochet, stitch);
   const cached = closedFlapSurfaces.get(key);
   if (cached) return cached;
   const profile = PROFILES[family];
@@ -1154,8 +1267,9 @@ function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean): Close
   const thickness = crochet ? radius * .50 : .018;
   // The backing follows the same dome as the body. Clearance covers the tallest
   // basket crossing; the flap no longer has a thick flat wedge behind its yarn.
+  const clearance = stitch === "radial-braid" ? CRESCENT_BRAID_CLEARANCE : 1.75;
   const frontZ = (x: number, y: number) => crochetPanelPoint(family, x, y - spec.bodyY)[2]
-    + radius * 1.75 + .003 + thickness;
+    + radius * clearance + .003 + thickness;
   const normalAt = (x: number, y: number): YarnPoint => {
     const e = .001;
     return normalize(-(frontZ(x + e, y) - frontZ(x - e, y)) / (2 * e),
@@ -1247,12 +1361,12 @@ function crochetFlapSurface(family: Exclude<Family, "">) {
   return closedFlapSurface(family, true);
 }
 
-function ensureClosedFlapShell(renderer: Renderer, family: Exclude<Family, "">, crochet: boolean) {
-  const key = family + (crochet ? ":crochet" : ":leather");
+function ensureClosedFlapShell(renderer: Renderer, family: Exclude<Family, "">, crochet: boolean, stitch: Stitch = "") {
+  const key = flapSurfaceKey(family, crochet, stitch);
   if (renderer.flapShellKey === key) return;
   const previous = renderer.meshes.flapShell;
   if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
-  const surface = closedFlapSurface(family, crochet);
+  const surface = closedFlapSurface(family, crochet, stitch);
   renderer.meshes.flapShell = createMesh(renderer.gl, surface.mesh);
   const snap = surface.sample(0, PROFILES[family].lockY);
   renderer.flapLockZ = (snap?.z ?? surface.contour[0][2]) + .023;
@@ -1395,7 +1509,9 @@ function liningWallPoint(layout: ReturnType<typeof openingLiningLayout>, u: numb
   const phase = ((u % 1 + 1) % 1) * Math.PI * 2;
   const fold = .012 * Math.sin(Math.PI * t) * (Math.sin(phase * 11 + t * .75) + .45 * Math.sin(phase * 17 - t));
   const depthRatio = depthAt(family, y - spec.bodyY) / depthAt(family, spec.ry);
-  return [x * (.96 - .13 * t - fold), y, z * depthRatio * (.92 - .08 * t - fold * 2)];
+  const down = clamp((spec.ry - CRESCENT_SHOULDER_DROP - (y - spec.bodyY)) / (2 * spec.ry - CRESCENT_SHOULDER_DROP), 0, 1);
+  const bowlWidth = family === "crescent" ? Math.pow(1 - Math.pow(down, spec.power), 1 / spec.power) : 1;
+  return [x * bowlWidth * (.96 - .13 * t - fold), y, z * depthRatio * (.92 - .08 * t - fold * 2)];
 }
 
 function makeOpeningInterior(family: Exclude<Family, "">): FabricMesh {
@@ -2387,9 +2503,10 @@ function fidelityAccessoryAnchor(config: Config): YarnPoint | null {
 function ornamentSurfaceZ(config: Config, x: number, worldY: number, clearance: number) {
   const family = config.family as Exclude<Family, "">, spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const radius = spec.rx * 5 / 160;
-  let z = crochetPanelPoint(family, x, worldY - spec.bodyY)[2] + radius * 1.75;
+  const cordClearance = config.stitch === "radial-braid" ? CRESCENT_BRAID_CLEARANCE : 1.75;
+  let z = crochetPanelPoint(family, x, worldY - spec.bodyY)[2] + radius * cordClearance;
   if (config.flap && config.flap !== "none") {
-    const crochet = config.flap === "crochet", surface = closedFlapSurface(family, crochet);
+    const crochet = config.flap === "crochet", surface = closedFlapSurface(family, crochet, config.stitch);
     // Include the fabric thickness at the flap's curved edge. A ribbon's
     // offset back face can otherwise enter the flap just past its centreline.
     for (const [dx, dy] of [[0, 0], [-.004, 0], [.004, 0], [0, -.004], [0, .004]]) {
@@ -2518,17 +2635,24 @@ function referenceRibbonTail(config: Config, u: number, v: number, side: number)
       + (side < 0 ? .050 * Math.sin(Math.PI * u * .85) : 0)];
 }
 
-type WoodRibbonFrame = { model: Float32Array; radial: YarnPoint; tangent: YarnPoint; center: YarnPoint; bound: boolean };
+type WoodRibbonFrame = {
+  model: Float32Array; radial: YarnPoint; tangent: YarnPoint; center: YarnPoint; bound: boolean;
+  flat?: ReturnType<typeof flatWoodHandleWorldFrame>;
+};
 const woodRibbonFrames = new Map<string, WoodRibbonFrame>();
 function woodHandleRibbonFrame(family: Exclude<Family, "">, config?: Config): WoodRibbonFrame {
-  const tie = config ? getAbagsReferenceModel(config)?.ribbon.woodTie ?? -.16 : -.16;
+  const reference = config && getAbagsReferenceModel(config);
+  const tie = reference?.ribbon?.woodTie ?? -.16;
+  const crown = reference?.woodCrown ?? DEFAULT_WOOD_CROWN;
   const shape = config ? getAbagsWoodHandleShape(config) : "round";
-  const key = `${family}|${shape}|${tie}`;
+  const key = `${family}|${shape}|${crown}|${tie}`;
   let frame = woodRibbonFrames.get(key);
   if (!frame) {
-    const { center, tangent, outward } = referenceWoodHandleFrame(Math.PI + tie, shape);
-    frame = { model: woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]),
-      radial: outward, tangent, center, bound: family === "tall-tote" && tie > 0 };
+    const local = referenceWoodHandleFrame(Math.PI + tie, shape, crown);
+    const model = woodHandleMatrix(family, woodHandleDepthPlanes(family)[1]);
+    frame = { model, radial: local.outward, tangent: local.tangent, center: local.center,
+      bound: family === "tall-tote" && tie > 0,
+      flat: family === "tall-tote" ? flatWoodHandleWorldFrame(model, local) : undefined };
     woodRibbonFrames.set(key, frame);
   }
   return frame;
@@ -2540,9 +2664,13 @@ function woodHandleRibbonPoint(family: Exclude<Family, "">, u: number, v: number
   // The tall tote has broad wooden faces. Below its side the scarf also wraps
   // around the existing cord winding, whose outer envelope is two yarn radii
   // beyond the wood. Keep the fabric's inner face outside both materials.
-  const padding = frame.bound ? ABAGS_FIDELITY_V4_FAMILY_SPECS[family].rx * 5 / 160 * .78 * 2 + .009 : 0;
-  const [r, d] = family === "tall-tote" ? flatWoodWrapSection(.055 + padding, .026 + padding, .007, u)
-    : [.050 * Math.cos(turn), .050 * Math.sin(turn)];
+  if (frame.flat) {
+    const { center, outward, tangent, depth, halfWidth } = frame.flat;
+    const padding = frame.bound ? ABAGS_FIDELITY_V4_FAMILY_SPECS[family].rx * 5 / 160 * .78 * 2 + .020 : 0;
+    const [r, d] = flatWoodWrapSection(halfWidth + padding, .026 + padding, .007, u);
+    return center.map((value, i) => value + outward[i] * r + depth[i] * d + tangent[i] * .027 * v) as YarnPoint;
+  }
+  const r = .050 * Math.cos(turn), d = .050 * Math.sin(turn);
   const local = [center[0] + radial[0] * r + tangent[0] * .027 * v,
     center[1] + radial[1] * r + tangent[1] * .027 * v, d];
   return [model[0] * local[0] + model[4] * local[1] + model[8] * local[2] + model[12],
@@ -2624,7 +2752,8 @@ function makeOrnamentGeometry(config: Config) {
       for (const edge of [-1, 1]) tube(hem, Array.from({ length: rows + 1 }, (_, i) => sample(i / rows, edge)), .0018);
     };
     const compact = config.accent === "bow" && family !== "tall-tote" && family !== "shoulder";
-    const referenceBow = config.accent === "bow" && Boolean(getAbagsReferenceModel(config));
+    const reference = getAbagsReferenceModel(config);
+    const referenceBow = config.accent === "bow" && Boolean(reference?.ribbon);
     for (const side of [-1, 1]) ribbon((u, v) => {
       const p = referenceBow ? referenceRibbonLoop(config, u, v, side) : foldedRibbonLoop(u,v,side,compact);
       if(!referenceBow && (family === "tall-tote" || family === "shoulder")){p[0]*=family === "tall-tote"?1.12:1;p[1]*=1.35;}
@@ -2640,8 +2769,7 @@ function makeOrnamentGeometry(config: Config) {
     }
     // A gathered band encircles the tied fabric. Its rear touches the handle
     // wrap, while the front catches the same soft satin light as the loops.
-    const reference = getAbagsReferenceModel(config);
-    const solidBand = referenceBow && Boolean(reference?.ribbon.knotTone);
+    const solidBand = referenceBow && Boolean(reference?.ribbon?.knotTone);
     ribbon((u, v) => {
       const p = foldedRibbonKnot(u, v);
       if (referenceBow) {
@@ -2674,10 +2802,11 @@ function makeOrnamentGeometry(config: Config) {
 
 function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
   const flapConstruction = config.flap === "crochet" ? "crochet" : config.flap && config.flap !== "none" ? "rigid" : "none";
+  const reference = getAbagsReferenceModel(config);
   const woodTie = (config.accent === "scarf" || config.accent === "bow") && config.handles.startsWith("wood")
-    ? `${getAbagsWoodHandleShape(config)}:${getAbagsReferenceModel(config)?.ribbon.woodTie ?? -.16}` : "none";
+    ? `${getAbagsWoodHandleShape(config)}:${reference?.woodCrown ?? DEFAULT_WOOD_CROWN}:${reference?.ribbon?.woodTie ?? -.16}` : "none";
   const key = [config.family, config.accent, woodTie, flapConstruction,
-    config.accent === "bow" ? getAbagsReferenceModel(config)?.id ?? "custom" : "",
+    config.accent === "bow" ? reference?.id ?? "custom" : "",
     config.accent === "tassel" && getAbagsCrochetFlapTone(config) ? "flap-tip" : "side"].join("|");
   if (renderer.ornamentKey === key) return;
   for (const part of renderer.ornamentParts ?? []) {
@@ -2829,7 +2958,7 @@ function ensureCognacConstruction(renderer: Renderer) {
   for (const part of renderer.cognacParts) renderer.meshes[part.name] = createMesh(renderer.gl, part.mesh);
 }
 
-function makeReferenceWoodHandle(shape: WoodHandleShape = "round"): FabricMesh {
+function makeReferenceWoodHandle(shape: WoodHandleShape = "round", crown = DEFAULT_WOOD_CROWN): FabricMesh {
   const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const w = .055, h = .026, r = .007, q = Math.SQRT1_2;
   const section = [[w-r,-h,0,-1],[w-r+r*q,-h+r-r*q,q,-q],[w,-h+r,1,0],
@@ -2838,7 +2967,7 @@ function makeReferenceWoodHandle(shape: WoodHandleShape = "round"): FabricMesh {
     [-w+r-r*q,-h+r-r*q,-q,-q],[-w+r,-h,0,-1]];
   const rows = shape === "flat-base" ? 160 : 96;
   for (let row = 0; row <= rows; row++) {
-    const { center, outward: radial } = referenceWoodHandleFrame(row / rows * Math.PI * 2, shape);
+    const { center, outward: radial } = referenceWoodHandleFrame(row / rows * Math.PI * 2, shape, crown);
     for (let col = 0; col <= 12; col++) {
       const [u,z,nx,nz] = section[col % 12];
       const x = center[0]+radial[0]*u, y = center[1]+radial[1]*u;
@@ -2853,12 +2982,13 @@ function makeReferenceWoodHandle(shape: WoodHandleShape = "round"): FabricMesh {
   return mesh;
 }
 
-function ensureReferenceWoodHandle(renderer: Renderer, shape: WoodHandleShape) {
-  if (renderer.referenceWoodHandleShape === shape) return;
+function ensureReferenceWoodHandle(renderer: Renderer, shape: WoodHandleShape, crown = DEFAULT_WOOD_CROWN) {
+  const key = `${shape}:${crown}`;
+  if (renderer.referenceWoodHandleKey === key) return;
   const previous = renderer.meshes.referenceWoodHandle;
   if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
-  renderer.meshes.referenceWoodHandle = createMesh(renderer.gl, makeReferenceWoodHandle(shape));
-  renderer.referenceWoodHandleShape = shape;
+  renderer.meshes.referenceWoodHandle = createMesh(renderer.gl, makeReferenceWoodHandle(shape, crown));
+  renderer.referenceWoodHandleKey = key;
 }
 
 // Smooth title-case lettering follows the small engraved plaques in the
@@ -2943,8 +3073,67 @@ function makeHandmadeBadge() {
   return {metal,engraving};
 }
 
+function makeCrescentFlapDetails(stitch: Stitch) {
+  const surface = closedFlapSurface("crescent", false, stitch);
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS.crescent;
+  const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
+  const cream = empty(), edge = empty(), thread = empty(), gold = empty(), recess = empty();
+  const tube = (target: FabricMesh, points: YarnPoint[], radius: number) =>
+    appendCord(target, points, radius, () => [0, 0, 1], () => true, 8);
+  const plate = (target: FabricMesh, outline: Point[], y: number, z: number, thickness: number) =>
+    appendOrnamentMesh(target, makeCognacPlate(outline, thickness), matrix([0, y, z], [1, 1, 1]));
+
+  const outline = [...surface.contour, surface.contour[0]];
+  tube(edge, outline, .008);
+  const stitchAt = ([x, y, z]: YarnPoint): YarnPoint => {
+    const insetX = x * .974, insetY = surface.centerY + (y - surface.centerY) * .966;
+    return [insetX, insetY, (surface.sample(insetX, insetY)?.z ?? z) + .003];
+  };
+  for (let i = 1; i < outline.length; i++) {
+    const a = stitchAt(outline[i - 1]), b = stitchAt(outline[i]);
+    tube(thread, [a, a.map((value, axis) => value * .40 + b[axis] * .60) as YarnPoint], .0019);
+  }
+
+  // The same sheet turns over the straight mouth and attaches at the rear.
+  const top = spec.topY + .035;
+  appendOrnamentRibbon(cream, (u, v) => {
+    const x = v * .858;
+    const front = surface.sample(x, top)?.z ?? surface.contour[0][2];
+    const rear = -depthAt("crescent", spec.ry) * .49;
+    return [x, top + .034 * Math.sin(Math.PI * u) - .070 * u, front * (1 - u) + rear * u];
+  }, 20, 28);
+
+  const y = spec.lockY!, z = (surface.sample(0, y)?.z ?? surface.contour[0][2]) + .019;
+  const tab: Point[] = Array.from({ length: 37 }, (_, i) => {
+    const a = Math.PI + Math.PI * i / 36;
+    return [.202 * Math.cos(a), .242 * Math.sin(a)];
+  });
+  plate(cream, tab, y, z - .012, .023);
+  for (let i = 1; i < tab.length; i++) {
+    const a = tab[i - 1], b = tab[i];
+    tube(thread, [[a[0] * .85, y + a[1] * .88, z + .003],
+      [(a[0] * .42 + b[0] * .58) * .85, y + (a[1] * .42 + b[1] * .58) * .88, z + .003]], .0026);
+  }
+  const dome: Point[] = Array.from({ length: 49 }, (_, i) => {
+    const a = Math.PI * i / 48;
+    return [.226 * Math.cos(a), .227 * Math.sin(a)];
+  });
+  appendOrnamentMesh(gold, makeExtrudedContour(dome, .020), matrix([0, y, z], [1, 1, .58]));
+  plate(recess, roundedRectangle(.185, .095, .010), y - .004, z + .022, .012);
+  const bezel = roundedRectangle(.182, .102, .013).map(([x, dy]): YarnPoint => [x, y + dy - .004, z + .030]);
+  tube(gold, [...bezel, bezel[0]], .008);
+  plate(gold, roundedRectangle(.052, .143, .015), y + .006, z + .039, .031);
+  return [
+    { name: "crescent-leather", tone: "cream", mesh: cream },
+    { name: "crescent-piping", tone: "cream-edge", mesh: edge },
+    { name: "crescent-stitches", tone: "thread", mesh: thread },
+    { name: "crescent-turn-lock", tone: "metal", mesh: gold },
+    { name: "crescent-lock-recess", tone: "recess", mesh: recess },
+  ] as const;
+}
+
 function makeReferenceConstruction(config: Config) {
-  const family = config.family as "tall-tote" | "shoulder", spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const family = config.family as "tall-tote" | "shoulder" | "crescent", spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const model = getAbagsReferenceModel(config);
   const empty = (): FabricMesh => ({positions:[],normals:[],uvs:[],indices:[]});
   const metal = empty(), engraving = empty(), zipper = empty(), fabric = empty(), cord = empty();
@@ -2953,11 +3142,13 @@ function makeReferenceConstruction(config: Config) {
   const tube = (target: FabricMesh, points: YarnPoint[], radius: number) => appendCord(target,points,radius,()=>[0,0,1],()=>true,8);
   const badgeX = family === "shoulder" ? spec.rx*.48 : 0;
   const suppliedOriginal = model?.id === "chocolate-crossbody-bow" || model?.id === "forest-ocean-wood-bow";
-  const badgeY = model?.fabric === 5 ? spec.bodyY+spec.ry*.72 : spec.bodyY-spec.ry*(suppliedOriginal ? .56 : .73);
+  const badgeY = model?.fabric === 5 ? spec.bodyY+spec.ry*.72 : spec.bodyY-spec.ry*(family === "crescent" ? .47 : suppliedOriginal ? .56 : .73);
   const badgeZ = ornamentSurfaceZ({...config,flap:"none"},badgeX,badgeY,.015);
   const badge = makeHandmadeBadge(), badgePose = matrix([badgeX,badgeY,badgeZ],[1,1,1]);
   appendOrnamentMesh(metal,badge.metal,badgePose);
   appendOrnamentMesh(engraving,badge.engraving,badgePose);
+  const badgeBacking = empty();
+  if (family === "crescent") plate(badgeBacking, .329, .108, [0, badgeY, badgeZ - .006], .014);
   if(family === "shoulder"){
     const top = Math.max(...openingPath(family).map(p=>p[1]))+.008;
     plate(fabric,spec.rx*1.78,depthAt(family,spec.ry)*.94,[0,top-.006,0],.009,[-Math.PI/2,0,0]);
@@ -2977,6 +3168,10 @@ function makeReferenceConstruction(config: Config) {
   return [
     {name:"reference-metal",tone:"metal" as const,mesh:metal},
     {name:"reference-engraving",tone:"engraving" as const,mesh:engraving},
+    ...(family === "crescent" ? [
+      { name: "crescent-badge-backing", tone: "recess" as const, mesh: badgeBacking },
+      ...(config.flap === "leather-cream" ? makeCrescentFlapDetails(config.stitch) : []),
+    ] : []),
     ...(zipper.indices.length?[
       {name:"reference-zipper",tone:"zipper" as const,mesh:zipper},
       {name:"reference-fabric",tone:"fabric" as const,mesh:fabric},
@@ -2987,9 +3182,9 @@ function makeReferenceConstruction(config: Config) {
 
 function ensureReferenceConstruction(renderer: Renderer, config: Config) {
   const family = config.family;
-  const active = family === "tall-tote" || family === "shoulder";
+  const active = family === "tall-tote" || family === "shoulder" || family === "crescent";
   const reference = getAbagsReferenceModel(config);
-  const key = active ? family+":"+(reference?.id??"custom") : "none";
+  const key = active ? family+":"+(reference?.id??"custom")+(family === "crescent" ? ":" + config.flap + (config.stitch === "radial-braid" ? ":braid" : "") : "") : "none";
   if(renderer.referenceKey===key)return;
   for(const part of renderer.referenceParts??[]){
     const mesh=renderer.meshes[part.name];
@@ -3012,7 +3207,7 @@ function ensureReferenceConstruction(renderer: Renderer, config: Config) {
 }
 
 type BandTone = "surface" | "edge" | "stitch" | "metal";
-type BandKind = "woven" | "leather" | "ornament" | "crochet" | "floral" | "striped" | "chain-leather";
+type BandKind = "woven" | "leather" | "leather-cream" | "ornament" | "crochet" | "floral" | "striped" | "chain-leather";
 
 function crochetShoulderStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
   const spec=ABAGS_FIDELITY_V4_FAMILY_SPECS[family],span=spec.rx*spec.attachmentWidthFactor;
@@ -3026,7 +3221,11 @@ function crochetShoulderStrapPoint(family: Exclude<Family, "">, t: number): Yarn
 function ornamentStrapPoint(family: Exclude<Family, "">, t: number): YarnPoint {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family], span = spec.rx * spec.attachmentWidthFactor;
   const back = -PROFILES[family].baseDepth - .10;
-  const points: YarnPoint[] = [[-span,0,0],[-span-.16,.02,-.35],[-span*.50,.06,back],[span*.55,.05,back],
+  const points: YarnPoint[] = family === "crescent" ? [
+    [-span, 0, 0], [-span * 1.27, -.50, .10], [-span * 1.42, -1.06, .35],
+    [-span * 1.12, -1.45, .65], [-span * .48, -1.57, .91], [span * .61, -1.47, .79],
+    [span * 1.35, -1.16, .41], [span * 1.31, -.55, .14], [span, 0, 0],
+  ] : [[-span,0,0],[-span-.16,.02,-.35],[-span*.50,.06,back],[span*.55,.05,back],
     [span+.30,-.10,-.18],[span+.38,-1.27,-.08],[span+.26,-1.46,.08],[span+.15,-1.27,.24],[span,0,0]];
   const u = clamp(t,0,1) * (points.length - 1), i = Math.min(points.length - 2, Math.floor(u)), f = u - i;
   const a = points[Math.max(0,i-1)], b = points[i], c = points[i+1], d = points[Math.min(points.length-1,i+2)];
@@ -3051,8 +3250,9 @@ function shoulderBandFrame(family: Exclude<Family, "">, progress: number, kind: 
   const twist = .12 * Math.sin(a * 2), c = Math.cos(twist), s = Math.sin(twist);
   const widthAxis = across.map((n, axis) => n * c + face[axis] * s) as YarnPoint;
   const normal = face.map((n, axis) => n * c - across[axis] * s) as YarnPoint;
-  const halfWidth = (kind === "leather" || kind === "chain-leather" ? .050 : hanging ? .095 : .062) * (.67 + .33 * Math.sin(a));
-  const halfThickness = kind === "leather" ? .009 : .006;
+  const leather = kind === "leather" || kind === "leather-cream";
+  const halfWidth = (leather || kind === "chain-leather" ? .050 : hanging ? .095 : .062) * (.67 + .33 * Math.sin(a));
+  const halfThickness = leather ? .009 : .006;
   return { center, tangent, widthAxis, normal, halfWidth, halfThickness };
 }
 
@@ -3159,26 +3359,37 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
     ]);
   }
   const edge = empty(), seam = empty();
+  const leather = kind === "leather" || kind === "leather-cream";
   const point = (t: number, side: number, face: number, inset: number, lift = 0): YarnPoint => {
     const f = shoulderBandFrame(family, t, kind);
     return f.center.map((n, axis) => n + f.widthAxis[axis] * side * (f.halfWidth - inset) + f.normal[axis] * face * (f.halfThickness + lift)) as YarnPoint;
   };
   for (const side of [-1, 1]) {
     const path = Array.from({ length: 85 }, (_, i) => point(.012 + .976 * i / 84, side, 0, 0));
-    appendCord(edge, path, kind === "leather" ? .0020 : .0026, () => [0, 0, 1], () => true, 8);
+    appendCord(edge, path, leather ? .0020 : .0026, () => [0, 0, 1], () => true, 8);
     for (const face of [-1, 1]) for (let i = 0; i < 96; i++) {
       const t = .020 + i * .010, end = t + .0058;
       const path = [point(t, side, face, .009, .0006), point((t + end) / 2, side, face, .009, .0014), point(end, side, face, .009, .0006)];
-      appendCord(seam, path, kind === "leather" ? .0014 : .0016, () => [0, 0, 1], () => true, 8);
+      appendCord(seam, path, leather ? .0014 : .0016, () => [0, 0, 1], () => true, 8);
     }
   }
   const parts: Array<{ name: string; tone: BandTone; material: number; mesh: FabricMesh }> = [
-    { name: "shoulderBandSurface", tone: "surface", material: kind === "leather" ? 2 : kind === "ornament" || kind === "floral" || kind === "striped" ? 12 : 10, mesh: familyShoulderStrapMesh(family, kind) },
-    { name: "shoulderBandEdge", tone: "edge", material: kind === "leather" ? 2 : 3, mesh: edge },
+    { name: "shoulderBandSurface", tone: "surface", material: leather ? 2 : kind === "ornament" || kind === "floral" || kind === "striped" ? 12 : 10, mesh: familyShoulderStrapMesh(family, kind) },
+    { name: "shoulderBandEdge", tone: "edge", material: leather ? 2 : 3, mesh: edge },
     { name: "shoulderBandStitch", tone: "stitch", material: 3, mesh: seam },
   ];
-  if (kind !== "leather") parts.push({ name: "shoulderBandAdjuster", tone: "metal", material: 4.25,
+  if (!leather) parts.push({ name: "shoulderBandAdjuster", tone: "metal", material: 4.25,
     mesh: makeStrapAdjuster(family, kind) });
+  if (kind === "leather-cream") {
+    const rivets = empty();
+    for (const t of [.030, .970]) {
+      const frame = shoulderBandFrame(family, t, kind);
+      const pose = new Float32Array([...frame.widthAxis, 0, ...frame.tangent, 0, ...frame.normal, 0, ...frame.center, 1]);
+      for (const side of [-1, 1]) appendOrnamentMesh(rivets, makeEllipsoid(1, 1, 1, 8, 12),
+        multiply(pose, matrix([0, 0, side * (frame.halfThickness + .004)], [.019, .019, .005])));
+    }
+    parts.push({ name: "shoulderBandRivets", tone: "metal", material: 4.25, mesh: rivets });
+  }
   const min: YarnPoint = [Infinity, Infinity, Infinity], max: YarnPoint = [-Infinity, -Infinity, -Infinity], pose = shoulderStrapMatrix(family);
   for (const { mesh } of parts) for (let i = 0; i < mesh.positions.length; i++) {
     const axis = i % 3, value = mesh.positions[i] + pose[12 + axis];
@@ -3188,7 +3399,7 @@ function makeShoulderBandGeometry(family: Exclude<Family, "">, kind: BandKind) {
 }
 
 function ensureShoulderBandMeshes(renderer: Renderer, config: Config) {
-  const kind = config.strap === "crochet-braid" ? "crochet" : config.strap === "woven-floral" ? "floral" : config.strap === "woven-striped" ? "striped" : config.strap === "chain-leather" ? "chain-leather" : config.strap === "woven-ornament" ? "ornament" : config.strap === "woven" || config.strap === "leather" ? config.strap : null;
+  const kind = config.strap === "crochet-braid" ? "crochet" : config.strap === "woven-floral" ? "floral" : config.strap === "woven-striped" ? "striped" : config.strap === "chain-leather" ? "chain-leather" : config.strap === "woven-ornament" ? "ornament" : config.strap === "woven" || config.strap === "leather" || config.strap === "leather-cream" ? config.strap : null;
   const key = kind && config.family ? config.family + "|" + kind : "none";
   if (renderer.shoulderBandKey === key) return;
   for (const part of renderer.shoulderBandParts ?? []) {
@@ -3357,7 +3568,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // WebGL surface switches to the live configuration.
   const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
-  const fittedZoom = zoom * (renderFamily === "tall-tote" ? .86 : 1);
+  const fittedZoom = zoom * (renderFamily === "tall-tote" || renderFamily === "crescent" ? .86 : 1);
   const root = multiply(scale(fittedZoom, fittedZoom, fittedZoom), multiply(rotX(rotation.x), rotY(rotation.y)));
   if (renderFamily === "satchel") ensureCognacConstruction(renderer);
   const yarnPalettes: Record<string, number> = {
@@ -3426,9 +3637,11 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   ensureShoulderBandMeshes(renderer, config);
   if (config.strap !== "none" && config.strap !== "chain") {
-    const surface = config.strap === "crochet-braid" || config.strap === "chain-leather" ? body : config.strap === "woven-floral" ? "#F3E6DD" : config.strap === "woven-striped" ? "#D9CEBA" : config.strap === "woven-ornament" ? "#18140F" : config.strap === "leather" ? "#6b4738" : "#a77d87";
+    const surface = config.strap === "leather-cream" ? CRESCENT_LEATHER
+      : config.strap === "crochet-braid" || config.strap === "chain-leather" ? body : config.strap === "woven-floral" ? "#F3E6DD" : config.strap === "woven-striped" ? "#D9CEBA" : config.strap === "woven-ornament" ? "#18140F" : config.strap === "leather" ? "#6b4738" : "#a77d87";
     const bandMetal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
-    const colors: Record<BandTone, string> = { surface, metal: bandMetal, edge: darken(surface, .28), stitch: config.strap === "leather" ? "#C3A38A" : "#D3B9AD" };
+    const colors: Record<BandTone, string> = { surface, metal: bandMetal, edge: darken(surface, .28),
+      stitch: config.strap === "leather-cream" ? "#B39173" : config.strap === "leather" ? "#C3A38A" : "#D3B9AD" };
     const pose = multiply(root, shoulderStrapMatrix(renderFamily));
     for (const part of renderer.shoulderBandParts ?? []) drawMesh(renderer, meshes[part.name], pose, colors[part.tone], part.material, stitch, 0);
   } else if (config.strap === "chain") {
@@ -3452,7 +3665,9 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const material = config.handles.startsWith("wood") ? 1 : 0;
     const isWoodHandle = config.handles.startsWith("wood");
     const woodShape = getAbagsWoodHandleShape(config);
-    if (isWoodHandle && renderFamily === "tall-tote") ensureReferenceWoodHandle(renderer, woodShape);
+    if (isWoodHandle && renderFamily === "tall-tote") {
+      ensureReferenceWoodHandle(renderer, woodShape, reference?.woodCrown ?? DEFAULT_WOOD_CROWN);
+    }
     const mesh = isWoodHandle ? (renderFamily === "tall-tote" ? meshes.referenceWoodHandle : meshes.woodHandle) : meshes.crochetHandle;
     const zOffset = profile.topDepth * 0.30;
     // The wooden tote has one ring at the front rim and one at the back rim.
@@ -3497,10 +3712,11 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   }
 
   if (config.flap !== "none") {
-    const flapColor = getAbagsCrochetFlapTone(config) ?? (config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? (renderFamily === "satchel" ? "#BC683B" : "#7c5034") : config.flap === "suede-burgundy" ? "#803248" : body);
+    const flapColor = getAbagsCrochetFlapTone(config) ?? (config.flap === "leather-cream" ? CRESCENT_LEATHER
+      : config.flap === "leather-black" ? "#242124" : config.flap === "leather-cognac" ? (renderFamily === "satchel" ? "#BC683B" : "#7c5034") : config.flap === "suede-burgundy" ? "#803248" : body);
     const crochet = config.flap === "crochet";
     const material = crochet ? 6 : config.flap === "suede-burgundy" ? 3 : 2;
-    ensureClosedFlapShell(renderer, renderFamily, crochet);
+    ensureClosedFlapShell(renderer, renderFamily, crochet, config.stitch);
     drawMesh(renderer, meshes.flapShell, root, crochet ? darken(flapColor, .22) : flapColor, material, stitch, 0);
     if (crochet) {
       ensureCrochetFlapMesh(renderer, renderFamily, config.stitch || "classic");
@@ -3510,7 +3726,7 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   const metal = config.hardware === "silver" ? "#d7dbe0" : config.hardware === "black" ? "#29272a" : "#caa55d";
   // Closure hardware is only present when a flap/closure is selected.
-  if (config.flap !== "none" && renderFamily !== "satchel") {
+  if (config.flap !== "none" && renderFamily !== "satchel" && config.flap !== "leather-cream") {
     const lockZ = (config.flap === "crochet" ? renderer.crochetFlapLockZ : renderer.flapLockZ) ?? profile.frontZ;
     // A seated press stud has a raised rim and a smaller domed cap. Both share
     // the measured flap normal: the closure must not flatten at three-quarter.
@@ -3526,7 +3742,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       drawMesh(
         renderer,
         meshes.ring,
-        multiply(root, matrix(strapHardwarePosition(renderFamily, side), [0.74, 0.88, 1], [0, Math.PI / 2, 0])),
+        multiply(root, matrix(strapHardwarePosition(renderFamily, side), [0.74, 0.88, 1],
+          renderFamily === "crescent" ? [0, side * .28, side * .22] : [0, Math.PI / 2, 0])),
         metal,
         4,
         0,
@@ -3534,7 +3751,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       // Reusable 3D swivel hook and sprung gate between the shoulder strap
       // and D-ring. No duplicated flat chain or fake painted carabiner.
       const claspPoint = strapClaspPosition(renderFamily, side);
-      const claspRotation: [number, number, number] = [0, Math.PI / 2, side < 0 ? -.12 : .12];
+      const claspRotation: [number, number, number] = renderFamily === "crescent"
+        ? [0, side * .28, side * .22] : [0, Math.PI / 2, side < 0 ? -.12 : .12];
       drawMesh(renderer, meshes.claspHook, multiply(root, matrix(claspPoint, [1, 1, 1], claspRotation)), metal, 4, 0);
       drawMesh(renderer, meshes.sphere, multiply(root, matrix([claspPoint[0], claspPoint[1] + .044, claspPoint[2]], [.028, .035, .022], claspRotation)), metal, 4, 0);
     }
@@ -3553,12 +3771,17 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // The selected ornament uses the same depth buffer, lighting and camera as
   // the bag. The compatibility canvas is suppressed for this exact signature.
   ensureOrnamentMeshes(renderer, config);
-  const ornamentColors: Record<OrnamentTone, string> = { cord: getAbagsCrochetFlapTone(config) ?? body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", knot: reference?.ribbon.knotTone ?? reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
+  const ornamentColors: Record<OrnamentTone, string> = { cord: getAbagsCrochetFlapTone(config) ?? body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", knot: reference?.ribbon?.knotTone ?? reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
   for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
 
+  const referenceFinish: Record<ReferenceTone, [string, number]> = {
+    metal: [metal, 4.25], engraving: [hardwareEngravingColor(config.hardware), 3],
+    zipper: ["#302423", 2], fabric: [body, 6], cord: [body, 7.1],
+    cream: [CRESCENT_LEATHER, 2], "cream-edge": ["#E6CCB2", 2],
+    thread: ["#B6916F", 3], recess: ["#38291F", 4.25],
+  };
   for (const part of renderer.referenceParts ?? []) {
-    const color = part.tone === "metal" ? metal : part.tone === "engraving" ? hardwareEngravingColor(config.hardware) : part.tone === "fabric" || part.tone === "cord" ? body : "#302423";
-    const material = part.tone === "metal" ? 4.25 : part.tone === "zipper" ? 2 : part.tone === "fabric" ? 6 : part.tone === "cord" ? 7.1 : 3;
+    const [color, material] = referenceFinish[part.tone];
     drawMesh(renderer, meshes[part.name], root, color, material, stitch, 0);
   }
 

@@ -1,5 +1,6 @@
 import type { BagBuilderProjectConfig, BuilderFamily } from "./bag-builder-settings";
 import { ABAGS_COGNAC_PRESET } from "./abags-cognac-model";
+import { ABAGS_MUSTARD_CRESCENT_PRESET } from "./abags-reference-models";
 
 // A family card starts a complete, editable construction in one state update.
 // These combinations follow each family's supported Agata components.
@@ -21,6 +22,7 @@ export const ABAGS_FAMILY_PRESETS = {
     handles: "none", strap: "chain", hardware: "gold", accent: "tassel",
   },
   satchel: ABAGS_COGNAC_PRESET,
+  crescent: ABAGS_MUSTARD_CRESCENT_PRESET,
   "tall-tote": {
     family: "tall-tote", color: "#0E9AA7", stitch: "classic", flap: "none",
     handles: "wood-light", strap: "woven-striped", hardware: "gold", accent: "bow",
