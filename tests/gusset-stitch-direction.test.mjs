@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { geometry as g, specs } from "./helpers/fidelity-geometry.mjs";
 
-function loops(mesh) {
+function loops(mesh, minimumSegments = 4) {
   const groups=new Map();
   for(const span of mesh.cordOccluders) {
     if(!groups.has(span.owner))groups.set(span.owner,[]);
     groups.get(span.owner).push(span);
   }
-  return [...groups.entries()].filter(([,spans])=>spans.length>=4&&spans.length<=20).map(([owner,spans])=>{
+  return [...groups.entries()].filter(([,spans])=>spans.length>=minimumSegments&&spans.length<=20).map(([owner,spans])=>{
     const points=[spans[0].a,...spans.map(span=>span.b)];
     const mean=[0,1,2].map(axis=>points.reduce((sum,p)=>sum+p[axis],0)/points.length);
     const low=[0,1,2].map(axis=>Math.min(...points.map(p=>p[axis])));
@@ -18,10 +18,12 @@ function loops(mesh) {
 }
 const quantile=(values,fraction)=>values.sort((a,b)=>a-b)[Math.round((values.length-1)*fraction)];
 const stitches=["classic","herringbone","shell"];
+// Short return stitches support the classic V but are not upright loops.
+const uprightLoops = (mesh, stitch) => loops(mesh, stitch === "classic" ? 5 : 4);
 
 test("V and fan loops point toward the base on both sidewalls of every bag family", () => {
   for(const [family,spec] of Object.entries(specs))for(const stitch of stitches) {
-    const candidates=loops(g.makeCrochetGusset(family,stitch))
+    const candidates=uprightLoops(g.makeCrochetGusset(family,stitch),stitch)
       .filter(p=>Math.abs(p.mean[0])>spec.rx*.82&&Math.abs(p.mean[1])<spec.ry*.30&&Math.abs(p.mean[2])<g.depthAt(family,0)*.25);
     for(const side of [-1,1]) {
       const selected=candidates.filter(p=>p.mean[0]*side>0);
@@ -36,9 +38,9 @@ test("V and fan loops point toward the base on both sidewalls of every bag famil
 
 test("sidewall stitch height and width remain at the same physical gauge as the front", () => {
   for(const [family,spec] of Object.entries(specs))for(const stitch of stitches) {
-    const front=loops(g.makeCrochetPanel(family,stitch))
+    const front=uprightLoops(g.makeCrochetPanel(family,stitch),stitch)
       .filter(p=>Math.abs(p.mean[0])<spec.rx*.4&&Math.abs(p.mean[1])<spec.ry*.3);
-    const side=loops(g.makeCrochetGusset(family,stitch))
+    const side=uprightLoops(g.makeCrochetGusset(family,stitch),stitch)
       .filter(p=>Math.abs(p.mean[0])>spec.rx*.82&&Math.abs(p.mean[1])<spec.ry*.3&&Math.abs(p.mean[2])<g.depthAt(family,0)*.25);
     assert.ok(front.length&&side.length,`${family}/${stitch}: enough textile to compare`);
     // Shell has a broad outer fan and a smaller inner loop; compare both

@@ -780,6 +780,15 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
     }
     tube(points);
   };
+  const returnStitch = (cx: number, cy: number, width: number, height: number, tilt: number, direction: number) => {
+    const points = Array.from({ length: 5 }, (_, i) => {
+      const t = i / 4;
+      const crown = Math.sin(Math.PI * t);
+      return seat(cx + (t - .5) * width, cy + ((t - .5) * tilt + .15 * crown) * height * direction,
+        radius * (-.36 + .26 * crown));
+    });
+    tube(points);
+  };
   for (let row = -1; row <= rows; row++) {
     for (let column = -1; column <= columns; column++) {
       // Real hand-crocheted 5 mm cord does not keep machine-identical gauge.
@@ -812,6 +821,14 @@ function fillCrochetPatch(patch: CrochetPatch, stitch: Stitch) {
         curve(cx, cy + dy * .28, dx * .78 * widthGauge, dy * .72 * heightGauge, radius * (.24 + crossTension * .055), -variation * dx * .025);
       } else {
         const compact = stitch === "herringbone";
+        if (!compact) {
+          // Two short returns fill alternating gaps between the long V legs
+          // seen in the pastel and chocolate close-ups. Their ends tuck back
+          // into the textile. They use the same round 5 mm cord as the legs.
+          const direction = patch.rowDirection?.(cy) ?? 1;
+          returnStitch(cx, cy + dy * .30 * direction, dx * .94 * widthGauge, dy * heightGauge, .34 + variation * .07, direction);
+          returnStitch(cx + dx * .5, cy - dy * .19 * direction, dx * .94 * widthGauge, dy * heightGauge, -.34 + crossTension * .07, direction);
+        }
         curve(cx, cy, dx * (compact ? 1.06 : 1.18) * widthGauge, dy * (compact ? .84 : 1.36) * heightGauge,
           variation * radius * .14, variation * dx * .035, !compact);
       }
