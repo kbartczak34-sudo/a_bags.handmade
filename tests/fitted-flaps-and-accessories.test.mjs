@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import { Matrix4, Vector3 } from "three";
 import { geometry as g, specs } from "./helpers/fidelity-geometry.mjs";
 
 const families = Object.keys(specs);
@@ -69,11 +70,57 @@ test("the crescent leather flap clears the raised braid and seats closer with a 
   assert.ok(checked > 1000 && closest < specs[family].rx * 5 / 160);
 });
 
+test("every fitted flap lifts from the rear seam and returns to its exact closed pose", () => {
+  for (const [family, crochet] of [["crescent", false], ["round", true], ["bucket", false], ["mini", true], ["satchel", false]]) {
+    const { seat, halfWidth, lip } = g.flapHinge(family);
+    const surface = g.closedFlapSurface(family, crochet, family === "crescent" ? "radial-braid" : "classic");
+    const lowest = surface.contour.reduce((a, b) => a[1] < b[1] ? a : b);
+    const opened = g.flapSwing(family, 1), closed = g.flapSwing(family, 0);
+    for (const x of [-halfWidth, 0, halfWidth]) {
+      const hinge = [x, seat[1], seat[2]];
+      assert.ok(Math.hypot(...g.transformBagPoint(opened, hinge).map((n, axis) => n - hinge[axis])) < 1e-6, family);
+      if (surface.fold) assert.ok(Math.hypot(...surface.fold(1, x / halfWidth).map((n, axis) => n - hinge[axis])) < 1e-6, family);
+    }
+    assert.ok(g.transformBagPoint(opened, lowest)[1] > lip[1] + .25, `${family}: the free edge rises clear of the mouth`);
+    assert.ok(Math.hypot(...g.transformBagPoint(closed, lowest).map((n, axis) => n - lowest[axis])) < 1e-6, family);
+  }
+});
+
+test("the mini's wooden grips clear the moving flap and their yarn remains attached", () => {
+  const family = "mini", surface = g.closedFlapSurface(family, true);
+  const fabric = g.makeCrochetFlap(family, "basket");
+  const planes = g.woodHandleDepthPlanes(family);
+  const rings = planes.map(z => ({ ...g.woodHandleBindingPaths(family, z), z }));
+  const start = g.makeMiniGripSeams(rings, 0), open = g.makeMiniGripSeams(rings, 1);
+  assert.equal(open.positions.length, start.positions.length);
+  assert.deepEqual(open.indices, start.indices);
+  for (let i = 0; i < open.positions.length; i += 7 * 9 * 3) {
+    // Rotating the moving end can change a vertex frame, but its ring centre
+    // at the body end remains in the same place.
+    const center = mesh => [0, 1, 2].map(axis => Array.from({ length: 8 }, (_, side) => mesh.positions[i + side * 3 + axis]).reduce((a, b) => a + b, 0) / 8);
+    const a = center(start), b = center(open);
+    assert.ok(Math.hypot(...a.map((value, axis) => value - b[axis])) < .001);
+  }
+  for (const z of planes) {
+    const inverse = new Matrix4().fromArray(g.miniGripSwing(z, 1)).multiply(new Matrix4().fromArray(g.woodHandleMatrix(family, z))).invert();
+    for (const phase of [.10, .25, .40, .55, .70, .85, 1]) {
+      const matrix = new Matrix4().fromArray(g.flapSwing(family, phase)).premultiply(inverse);
+      for (const mesh of [surface.mesh, fabric, fabric.fold, fabric.binding]) for (let i = 0; i < mesh.positions.length; i += 12) {
+        const p = new Vector3().fromArray(mesh.positions, i).applyMatrix4(matrix);
+        if (p.y < .08) continue;
+        const angle = Math.atan2(p.y / .42, p.x / .46);
+        const distance = Math.hypot(p.x - .46 * Math.cos(angle), p.y - .42 * Math.sin(angle), p.z);
+        assert.ok(distance > .041, `wooden grip intersects the flap at ${phase} (${distance})`);
+      }
+    }
+  }
+});
+
 test("leather snap follows the fitted face normal and seats against its actual surface", () => {
   for (const family of ["round", "mini"]) {
     const renderer = { gl: gpu(), meshes: {} };
     g.ensureClosedFlapShell(renderer, family, false);
-    const lockY = specs[family].ringY - .32;
+    const lockY = specs[family].lockY ?? specs[family].ringY - .32;
     const face = g.closedFlapSurface(family, false).sample(0, lockY);
     assert.ok(face);
     const pose = g.matrix([0, lockY, renderer.flapLockZ], [1, 1, 1], renderer.flapLockRotation);

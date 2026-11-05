@@ -41,6 +41,19 @@
   box-shadow:0 2px 9px rgba(90,66,69,.10);
 }
 
+.abags-fidelity3d-layer button[data-abags-flap-toggle]{
+  background:#f3e1db;
+  color:#593d41;
+  white-space:nowrap;
+  touch-action:manipulation;
+}
+.abags-fidelity3d-layer button[data-abags-flap-toggle][aria-expanded="true"]{
+  background:#e8c9c7;
+}
+.abags-bag-builder-stage:not([data-abags-final3d="ready"]) button[data-abags-flap-toggle]{
+  display:none!important;
+}
+
 .abags-fidelity3d-zoom{
   position:absolute;
   left:50%;

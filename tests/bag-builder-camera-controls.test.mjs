@@ -119,7 +119,8 @@ test("keyboard rotation, fine adjustment, zoom and Home share the pointer camera
 // Execute the real component's handlers without a browser or GPU. Deliberately
 // dispatch several events before a React commit to reproduce high-rate input.
 const renderer = await readFile(new URL("../app/bag-builder-fidelity3d.tsx", import.meta.url), "utf8");
-const component = ts.transpileModule(renderer.slice(renderer.indexOf("export default function BagBuilderFidelity3D")), {
+const flapKeySource = renderer.slice(renderer.indexOf("function flapPreviewKey"), renderer.indexOf("function clamp"));
+const component = ts.transpileModule(flapKeySource + renderer.slice(renderer.indexOf("export default function BagBuilderFidelity3D")), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 
@@ -136,14 +137,14 @@ function mountedControls() {
     require: name => { assert.equal(name, "react/jsx-runtime"); return { jsx, jsxs: jsx }; },
     useState: value => {
       const index = state++;
-      values[index] = index === 0 ? {} : index === 7 ? canvas : value;
+      values[index] = index === 0 ? {} : index === 8 ? canvas : value;
       return [values[index], next => { values[index] = typeof next === "function" ? next(values[index]) : next; }];
     },
     useRef: current => ({ current }), useId: () => "camera-instructions",
     useMemo: fn => fn(), useEffect: fn => effects.push(fn), useLayoutEffect: () => {},
     createPortal: node => node, AbagsCameraGesture, keyboardCamera, wheelCameraZoom,
     DEFAULT_ROTATION: initial().rotation, DEFAULT_ZOOM: initial().zoom, CAMERA_LIMITS: limits,
-    MIN_ZOOM: limits.minZoom, MAX_ZOOM: limits.maxZoom, EMPTY: { family: "tote" },
+    MIN_ZOOM: limits.minZoom, MAX_ZOOM: limits.maxZoom, EMPTY: { family: "tote", flap: "none" },
     clamp: (value, low, high) => Math.max(low, Math.min(high, value)),
   };
   runInNewContext(component, runtime);

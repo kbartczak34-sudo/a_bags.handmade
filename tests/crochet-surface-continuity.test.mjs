@@ -60,13 +60,14 @@ function gpu() {
 test("flap rotation and recoloring reuse buffers while construction changes release them", () => {
   const gl = gpu(), renderer = { gl, meshes: {} };
   geometry.ensureCrochetFlapMesh(renderer, "round", "classic");
-  assert.equal(gl.state.allocated, 4);
-  geometry.ensureCrochetFlapMesh(renderer, "round", "classic");
-  assert.equal(gl.state.allocated, 4);
-  geometry.ensureCrochetFlapMesh(renderer, "mini", "basket");
-  assert.equal(gl.state.deleted, 4);
+  assert.deepEqual(Object.keys(renderer.meshes).sort(), ["yarnFlap", "yarnFlapFold"]);
   assert.equal(gl.state.allocated, 8);
-  assert.equal(Object.keys(renderer.meshes).length, 1);
+  geometry.ensureCrochetFlapMesh(renderer, "round", "classic");
+  assert.equal(gl.state.allocated, 8);
+  geometry.ensureCrochetFlapMesh(renderer, "mini", "basket");
+  assert.equal(gl.state.deleted, 8);
+  assert.equal(gl.state.allocated, 20);
+  assert.deepEqual(Object.keys(renderer.meshes).sort(), ["yarnFlap", "yarnFlapBinding", "yarnFlapFold"]);
 });
 
 test("the metal snap clears the real cord crowns for every supported crocheted flap", () => {
@@ -74,7 +75,7 @@ test("the metal snap clears the real cord crowns for every supported crocheted f
     const renderer = { gl: gpu(), meshes: {} };
     geometry.ensureCrochetFlapMesh(renderer, family, stitch);
     const positions = renderer.meshes.yarnFlap.position.data;
-    const lockY = specs[family].ringY - .32;
+    const lockY = specs[family].lockY ?? specs[family].ringY - .32;
     let highest = -Infinity;
     for (let i = 0; i < positions.length; i += 3) {
       if (Math.abs(positions[i]) < .077 && Math.abs(positions[i + 1] - lockY) < .050) highest = Math.max(highest, positions[i + 2]);

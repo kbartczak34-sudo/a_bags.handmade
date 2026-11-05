@@ -943,7 +943,7 @@ const analyze=(overlay,renderedPixels)=>{
     // Separate the expensive new reference-model GPU checks from the established
     // accessory/family browser scenarios; both remain required in CI.
     const qaSuite = process.env.ABAGS_ANCHOR_QA_SUITE || "all";
-    if (!["all", "reference", "corrections", "legacy"].includes(qaSuite)) throw new Error(`Unknown anchor QA suite: ${qaSuite}`);
+    if (!["all", "reference", "corrections", "flaps", "legacy"].includes(qaSuite)) throw new Error(`Unknown anchor QA suite: ${qaSuite}`);
     // All required suites still execute in CI, but each GPU-heavy browser
     // sequence runs on its own worker. Repeated WebGL context restoration
     // after twelve model presets previously exhausted CDP just as the mini
@@ -961,6 +961,61 @@ const analyze=(overlay,renderedPixels)=>{
       return;
     }
 
+    const probeFlap = async (label, signature) => {
+      const family = signature.split('|')[0];
+      const frame = () => evaluate(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        const gl=stage?.querySelector('.abags-fidelity3d-canvas')?.getContext('webgl');
+        if(!gl||gl.isContextLost())return null;
+        const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
+        gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+        let hash=2166136261,opaque=0;
+        for(let i=0;i<pixels.length;i++){
+          hash=Math.imul(hash^pixels[i],16777619)>>>0;
+          if(i%4===3&&pixels[i]>24)opaque++;
+        }
+        return {hash,opaque,error:gl.getError(),signature:stage.dataset.builderSignature,
+          position:stage.dataset.abagsFidelityFlapPosition,ready:stage.dataset.abagsFinal3d==='ready'};
+      })()`);
+      const waitFlap = (position) => waitFor(`(() => {
+        const stage=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]');
+        const print=JSON.parse(stage?.dataset.abagsFidelityTextilePrint||'null');
+        return stage?.dataset.abagsFidelityFlapPosition===${JSON.stringify(String(position))}&&
+          stage.dataset.builderSignature===${JSON.stringify(signature)}&&stage.dataset.abagsFinal3d==='ready'&&
+          print&&(!print.strapUrl||print.strap)&&(!print.scarfUrl||print.scarf);
+      })()`, `${label} ${family} flap position ${position}`, 20_000);
+      const toggle = async (expanded) => {
+        const point = await waitFor(`(() => {
+          const button=document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview [data-abags-flap-toggle][aria-expanded="${expanded}"]');
+          if(!button)return null;
+          const r=button.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2;
+          if(r.width<20||r.height<20||!button.contains(document.elementFromPoint(x,y)))return null;
+          return {x,y};
+        })()`, `${label} ${family} accessible flap control`, 15_000);
+        if (mobileViewport) {
+          await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...point,id:1}]});
+          await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        } else {
+          await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
+          await send('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});
+        }
+      };
+      await waitFlap(0);
+      const before = await frame();
+      await toggle(false);
+      await waitFlap(1);
+      const open = await frame();
+      await capture(`flap-${label}-${family}-open.png`);
+      await toggle(true);
+      await waitFlap(0);
+      const closed = await frame();
+      if ([before, open, closed].some(value => !value?.ready || value.error || value.opaque < 1000 || value.signature !== signature) ||
+          open.hash === before.hash || closed.hash !== before.hash) {
+        throw new Error(`${label} ${family}: the flap must open in WebGL and return to its exact previous configuration: ${JSON.stringify({before,open,closed})}`);
+      }
+      return { before, open, closed };
+    };
+
     const probeFamilyCards = async (label, viewport) => {
       await setViewport(viewport);
       await clearAndReload();
@@ -971,12 +1026,13 @@ const analyze=(overlay,renderedPixels)=>{
         'bucket|#E8DDCC|classic|suede-burgundy|none|leather|gold|none',
         'mini|#BA9ECF|basket|crochet|none|chain|gold|tassel',
         'satchel|#C7652F|classic|leather-cognac|leather-braid|woven-ornament|gold|none',
+        'crescent|#E5A13A|radial-braid|leather-cream|none|leather-cream|gold|none',
       ];
       const currentFamily = await evaluate(`document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview .abags-bag-builder-stage[data-abags-live-stage="true"]')?.dataset.family`);
       if (currentFamily) throw new Error(`${label}: family cards did not start from an empty selection.`);
       const results = [];
       // Each model must appear after just one real Fason card click/tap.
-      // Return from the cognac satchel to tote to cover component replacement.
+      // Return from a flapped model to tote to cover component replacement.
       for (const signature of [...signatures, signatures[0]]) {
         const family = signature.split('|')[0];
         const point = await waitFor(`(() => {
@@ -1026,13 +1082,18 @@ const analyze=(overlay,renderedPixels)=>{
         }
         results.push(evidence);
         await capture(`family-${label}-${family}.png`);
+        if (signature.split('|')[3] === 'none') {
+          const hasFlapControl = await evaluate(`Boolean(document.querySelector('.abags-vc-dialog.abags-reference-layout-v4 .abags-vc-preview [data-abags-flap-toggle]'))`);
+          if (hasFlapControl) throw new Error(`${label} ${family}: a flapless bag has a flap control`);
+        } else evidence.flap = await probeFlap(label, signature);
         await writeFile(path.join(qaDir,`family-${label}-evidence.json`),JSON.stringify(results,null,2));
       }
-      if(new Set(results.slice(0,5).map(item=>item.hash)).size!==5)throw new Error(`${label}: Fason cards reused the same rendered model.`);
-      console.log(`${label}: all five complete editable models generated by single visible Fason card clicks/taps PASS`);
+      if(new Set(results.slice(0,signatures.length).map(item=>item.hash)).size!==signatures.length)throw new Error(`${label}: Fason cards reused the same rendered model.`);
+      console.log(`${label}: complete editable models and all five animated flaps PASS`);
     };
     await probeFamilyCards('desktop',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
     await probeFamilyCards('mobile',{width:390,height:844,deviceScaleFactor:2,mobile:true});
+    if (qaSuite === "flaps") return;
 
     const probeCognac = async (label, viewport) => {
       await setViewport(viewport);

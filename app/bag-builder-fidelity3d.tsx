@@ -43,12 +43,14 @@ type Mesh = {
 };
 
 type ReferenceTone = "metal" | "engraving" | "zipper" | "fabric" | "cord" | "cream" | "cream-edge" | "thread" | "recess";
+type ReferencePart = { name: string; tone: ReferenceTone; motion?: "flap" | "turn-lock" };
+type MiniGripBinding = { z: number; winding: Mesh; seams: YarnPoint[][]; radius: number };
 
 type Renderer = {
   printedTextiles: AbagsPrintedTextiles;
   onTextileReady?: () => void;
   referenceKey?: string;
-  referenceParts?: Array<{ name: string; tone: ReferenceTone }>;
+  referenceParts?: ReferencePart[];
   referenceTriangles?: number;
   bandPrint?: number;
   ombre?: boolean;
@@ -68,6 +70,7 @@ type Renderer = {
   ornamentTriangles?: number;
   yarnKey?: string;
   woodBindingKey?: string;
+  miniGripBinding?: { rings: MiniGripBinding[]; seams: Mesh; amount: number };
   referenceWoodHandleKey?: string;
   strapBindingKey?: string;
   crochetFlapKey?: string;
@@ -75,6 +78,7 @@ type Renderer = {
   flapShellKey?: string;
   flapLockZ?: number;
   flapLockRotation?: [number, number, number];
+  flapMotion?: { key: string; target: number; from: number; amount: number; start: number; duration: number };
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   meshes: Record<string, Mesh>;
@@ -159,6 +163,7 @@ const PROFILES: Record<Exclude<Family, "">, FamilyProfile> = Object.fromEntries(
 function readConfig(stage: HTMLElement): Config {
   const family = (stage.dataset.family || "") as Family;
   const rawFlap = (stage.dataset.flap || "none") as Flap;
+  // Old drafts may contain a flap that this family cannot construct.
   const flap = family && !isAgataBuilderConstructionSupported(family, "flaps", rawFlap) ? "none" : rawFlap;
   return {
     family,
@@ -174,6 +179,10 @@ function readConfig(stage: HTMLElement): Config {
 
 function sameConfig(a: Config, b: Config) {
   return (Object.keys(a) as Array<keyof Config>).every((key) => a[key] === b[key]);
+}
+
+function flapPreviewKey(config: Config) {
+  return config.family && config.flap !== "none" ? `${config.family}:${config.flap}:${config.handles}` : "";
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -235,6 +244,15 @@ function rotX(a: number) {
   o[9] = -s;
   o[10] = c;
   return o;
+}
+
+function rotateAt(pivot: YarnPoint, rotation: Float32Array) {
+  const [x, y, z] = pivot;
+  return multiply(translation(x, y, z), multiply(rotation, translation(-x, -y, -z)));
+}
+
+function transformBagPoint(transform: Float32Array, [x, y, z]: YarnPoint): YarnPoint {
+  return [0, 1, 2].map(i => transform[i] * x + transform[4 + i] * y + transform[8 + i] * z + transform[12 + i]) as YarnPoint;
 }
 
 // Inverse transpose keeps highlights correct on nonuniformly scaled wood/leather.
@@ -362,6 +380,23 @@ function flapContour(family?: Exclude<Family, "">): Point[] {
     quad(p, [.40, -.48], [0, -.50], [-.40, -.48], 16);
     quad(p, [-.40, -.48], [-.62, -.48], [-.72, -.28], 12);
     quad(p, [-.72, -.28], [-1.04, .16], [-.95, .55], 16);
+    return p;
+  }
+  if (family === "bucket") {
+    quad(p, [-.94, .4], [0, .43], [.94, .4], 18);
+    quad(p, [.94, .4], [.94, -.16], [.68, -.42], 16);
+    quad(p, [.68, -.42], [.46, -.62], [0, -.62], 12);
+    quad(p, [0, -.62], [-.46, -.62], [-.68, -.42], 12);
+    quad(p, [-.68, -.42], [-.94, -.16], [-.94, .4], 16);
+    return p;
+  }
+  if (family === "mini") {
+    quad(p, [-.92, .40], [0, .42], [.92, .40], 18);
+    quad(p, [.92, .40], [.96, .15], [.91, -.25], 12);
+    quad(p, [.91, -.25], [.90, -.47], [.69, -.49], 10);
+    quad(p, [.69, -.49], [0, -.55], [-.69, -.49], 20);
+    quad(p, [-.69, -.49], [-.90, -.47], [-.91, -.25], 10);
+    quad(p, [-.91, -.25], [-.96, .15], [-.92, .40], 12);
     return p;
   }
   quad(p, [-0.94, 0.4], [0, 0.46], [0.94, 0.4], 18);
@@ -579,6 +614,30 @@ function openingPath(family: Exclude<Family, "">): Array<[number, number, number
     return [x, y + softness.y + spec.bodyY, side * (depthAt(family, y) * .5 + softness.z)];
   };
   return [...upper.map((point) => edge(point, 1)), ...[...upper].reverse().map((point) => edge(point, -1))];
+}
+
+const flapHinges = new Map<FidelityV4Family, { seat: YarnPoint; halfWidth: number; lip: YarnPoint }>();
+
+function flapHinge(family: FidelityV4Family) {
+  const cached = flapHinges.get(family);
+  if (cached) return cached;
+  const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
+  const front = openingPath(family).filter(point => point[2] > 0);
+  const lip = front.reduce((highest, point) => point[1] > highest[1] ? point : highest);
+  // The hinge is a sewn line at the back of the mouth. Its width follows the
+  // flat part of the rim, so the round flap narrows into its smaller opening.
+  const halfWidth = family === "crescent" ? .858 : Math.max(...front.filter(point => point[1] >= lip[1] - .035).map(point => Math.abs(point[0]))) * .88;
+  const seat: YarnPoint = family === "crescent"
+    ? [0, spec.topY + .035 - .070, -depthAt(family, spec.ry) * .49]
+    : [0, lip[1] - .025, -lip[2] + .013];
+  const hinge = { seat, halfWidth, lip };
+  flapHinges.set(family, hinge);
+  return hinge;
+}
+
+function flapSwing(family: FidelityV4Family, amount: number) {
+  // The round bag's tassel needs room to hang clear of the front rim.
+  return rotateAt(flapHinge(family).seat, rotX(-(family === "round" ? 1.54 : 1.91) * amount));
 }
 
 function woodHandleDepthPlanes(family: Exclude<Family, "">): [number, number] {
@@ -1238,8 +1297,53 @@ function ensureWoodHandleBinding(renderer: Renderer, family: Exclude<Family, "">
   renderer.woodBindingKey = key;
 }
 
+function miniGripSwing(z: number, amount: number) {
+  const mount = woodHandleMatrix("mini", z);
+  const rail = transformBagPoint(mount, [0, -.24, 0]);
+  // The small wooden rings fold along their sewn lower rails to clear the lid.
+  return rotateAt(rail, rotX(-.96 * amount));
+}
+
+function makeMiniGripSeams(rings: readonly Pick<MiniGripBinding, "z" | "seams" | "radius">[], amount: number) {
+  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  for (const { z, seams, radius } of rings) {
+    const pose = miniGripSwing(z, amount);
+    for (const seam of seams) {
+      const end = seam.at(-1)!;
+      const moved = transformBagPoint(pose, end);
+      const path = seam.map((point, i) => point.map((value, axis) => value + (moved[axis] - end[axis]) * i / (seam.length - 1)) as YarnPoint);
+      appendCord(mesh, path, radius * .75, () => [0, 0, Math.sign(z)], () => true, 8);
+    }
+  }
+  return mesh;
+}
+
+function ensureMiniGripBinding(renderer: Renderer, amount: number) {
+  const { gl } = renderer;
+  if (!renderer.miniGripBinding) {
+    const rings = woodHandleDepthPlanes("mini").map(z => {
+      const { winding, guide, seams, radius } = woodHandleBindingPaths("mini", z);
+      const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+      appendCord(mesh, winding, radius, guide, () => true, 8);
+      return { z, winding: createMesh(gl, mesh), seams, radius };
+    });
+    renderer.miniGripBinding = { rings, seams: createMesh(gl, makeMiniGripSeams(rings, amount)), amount };
+  }
+  const binding = renderer.miniGripBinding;
+  if (binding.amount !== amount) {
+    const mesh = makeMiniGripSeams(binding.rings, amount);
+    for (const [buffer, data] of [[binding.seams.position, mesh.positions], [binding.seams.normal, mesh.normals], [binding.seams.uv, mesh.uvs]] as const) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW);
+    }
+    binding.amount = amount;
+  }
+  return binding;
+}
+
 type ClosedFlapSurface = {
   mesh: FabricMesh; contour: YarnPoint[]; rx: number; ry: number; centerY: number; thickness: number;
+  fold?: (u: number, v: number) => YarnPoint;
   sample: (x: number, y: number) => { z: number; normal: YarnPoint } | null;
 };
 // Immutable fitted surfaces are cached per family and construction.
@@ -1351,8 +1455,32 @@ function closedFlapSurface(family: Exclude<Family, "">, crochet: boolean, stitch
     return null;
   };
   const contour: YarnPoint[] = outline.map(([x, y]) => [x, y, frontZ(x, y)]);
+  let fold: ClosedFlapSurface["fold"];
+  if (family === "round" || family === "mini" || family === "bucket" || family === "satchel") {
+    const { seat, lip, halfWidth } = flapHinge(family);
+    const topSegments = 18;
+    // The fitted front and its narrow upper fold share the same rigid pose.
+    // Start at the real top edge and turn over the front rim before returning
+    // to the stitched hinge. The back edge lies on the rotation axis.
+    fold = (u, v) => {
+      const position = (v + 1) * .5 * topSegments;
+      const i = Math.min(topSegments - 1, Math.floor(position)), t = position - i;
+      const [x, y, z] = contour[i].map((value, axis) => value * (1 - t) + contour[i + 1][axis] * t);
+      const crown = Math.max(y, lip[1]) + .048;
+      const overFront = Math.min(1, u / .43), acrossMouth = Math.max(0, (u - .43) / .57);
+      const frontZ = Math.max(z, lip[2] + .036);
+      return [x * (1 - u * u) + halfWidth * v * u * u,
+        y + (crown - y) * Math.sin(overFront * Math.PI / 2) + (seat[1] - crown) * acrossMouth * acrossMouth,
+        z + (frontZ - z) * overFront + (seat[2] - frontZ) * acrossMouth];
+    };
+    appendOrnamentRibbon(mesh, fold, 24, 24);
+  }
+  if (family === "bucket" && !crochet) {
+    const edge = contour.map(([x, y, z]): YarnPoint => [x, y, z - thickness * .27]);
+    appendCord(mesh, [...edge, edge[0]], .0048, () => [0, 0, 1], () => true, 8, true);
+  }
   const rx = Math.max(...contour.map((p) => Math.abs(p[0]))), ry = (maxY - minY) * .5;
-  const surface = { mesh, sample, contour, rx, ry, centerY: (minY + maxY) * .5, thickness };
+  const surface = { mesh, sample, contour, rx, ry, centerY: (minY + maxY) * .5, thickness, fold };
   closedFlapSurfaces.set(key, surface);
   return surface;
 }
@@ -1375,11 +1503,13 @@ function ensureClosedFlapShell(renderer: Renderer, family: Exclude<Family, "">, 
   renderer.flapShellKey = key;
 }
 
-function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMesh {
+type CrochetFlapMesh = FabricMesh & { binding?: FabricMesh; fold?: FabricMesh };
+
+function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): CrochetFlapMesh {
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[family];
   const surface = crochetFlapSurface(family);
   const { rx, ry, centerY } = surface;
-  const mesh: FabricMesh = { positions: [], normals: [], uvs: [], indices: [] };
+  const mesh: CrochetFlapMesh = { positions: [], normals: [], uvs: [], indices: [] };
   const occluders: CordOccluder[] = [];
   const radius = spec.rx * 5 / 160;
   const gauge = crochetGaugeColumns(stitch);
@@ -1393,9 +1523,40 @@ function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMes
     ([x, y]) => surface.sample(x, y)?.normal ?? [0, 0, 1],
     ([x, y]) => surface.sample(x, y) !== null, 10, false, occluders);
   fillCrochetPatch({ rx, ry, radius, columns, rows, seat, tube }, stitch);
+  const fold = surface.fold;
+  if (fold) {
+    const cover: FabricMesh = { positions: [], normals: [], uvs: [], indices: [], cordOccluders: [] };
+    const samples = 32;
+    const edge = Array.from({ length: samples + 1 }, (_, i) => fold(i / samples, 0));
+    const distances = [0];
+    for (let i = 1; i <= samples; i++) distances.push(distances[i - 1] + Math.hypot(edge[i][1] - edge[i - 1][1], edge[i][2] - edge[i - 1][2]));
+    const length = distances[samples];
+    const height = length * .5;
+    const inside = new WeakSet<YarnPoint>();
+    const foldSeat = (x: number, y: number, lift: number): YarnPoint => {
+      const distance = clamp(y + height, 0, length);
+      let i = 1;
+      while (i < samples && distances[i] < distance) i++;
+      const u = (i - 1 + (distance - distances[i - 1]) / (distances[i] - distances[i - 1])) / samples;
+      const v = clamp(x / rx, -1, 1);
+      const a = fold(Math.max(0, u - .003), v), b = fold(Math.min(1, u + .003), v);
+      const n = normalize(0, a[2] - b[2], b[1] - a[1]);
+      const p = fold(u, v), offset = radius * .61 + lift;
+      const point: YarnPoint = [p[0], p[1] + n[1] * offset, p[2] + n[2] * offset];
+      if (Math.abs(x) < rx * .97 && Math.abs(y) < height * .97) inside.add(point);
+      return point;
+    };
+    const foldTube = (points: YarnPoint[], thickness = radius) =>
+      appendCord(cover, points, thickness, () => [0, 1, 1], point => inside.has(point), 8, false, cover.cordOccluders);
+    fillCrochetPatch({ rx, ry: height, radius, columns, rows: crochetRowCount(columns, rx, height, stitch, 4), seat: foldSeat, tube: foldTube }, stitch);
+    mesh.fold = cover;
+  }
   const binding = surface.contour.map(([x, y]) => seat(x * .965, (y - centerY) * .965, radius * .04));
   binding.push(binding[0]);
-  tube(binding, radius * .72);
+  if (family === "mini") {
+    mesh.binding = { positions: [], normals: [], uvs: [], indices: [] };
+    appendCord(mesh.binding, binding, radius * .72, () => [0, 0, 1], () => true, 10, true);
+  } else tube(binding, radius * .72);
   mesh.cordOccluders = occluders;
   return mesh;
 }
@@ -1403,10 +1564,16 @@ function makeCrochetFlap(family: Exclude<Family, "">, stitch: Stitch): FabricMes
 function ensureCrochetFlapMesh(renderer: Renderer, family: Exclude<Family, "">, stitch: Stitch) {
   const key = family + ":" + stitch;
   if (renderer.crochetFlapKey === key) return;
-  const previous = renderer.meshes.yarnFlap;
-  if (previous) for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+  for (const name of ["yarnFlap", "yarnFlapFold", "yarnFlapBinding"]) {
+    const previous = renderer.meshes[name];
+    if (!previous) continue;
+    for (const buffer of [previous.position, previous.normal, previous.uv, previous.index]) renderer.gl.deleteBuffer(buffer);
+    delete renderer.meshes[name];
+  }
   const data = makeCrochetFlap(family, stitch);
   renderer.meshes.yarnFlap = createMesh(renderer.gl, data);
+  if (data.fold) renderer.meshes.yarnFlapFold = createMesh(renderer.gl, data.fold);
+  if (data.binding) renderer.meshes.yarnFlapBinding = createMesh(renderer.gl, data.binding);
   let contactZ = crochetFlapSurface(family).sample(0, PROFILES[family].lockY)?.z ?? PROFILES[family].frontZ;
   for (let i = 0; i < data.positions.length; i += 3) {
     if (Math.abs(data.positions[i]) < .09 && Math.abs(data.positions[i + 1] - PROFILES[family].lockY) < .06) {
@@ -2824,7 +2991,7 @@ function ensureOrnamentMeshes(renderer: Renderer, config: Config) {
   renderer.ornamentKey = key;
 }
 
-type CognacPart = { name: string; tone: "leather" | "edge" | "seam" | "metal" | "recess" | "engraving"; section: "handle" | "flap" | "badge"; mesh: FabricMesh };
+type CognacPart = { name: string; tone: "leather" | "edge" | "seam" | "metal" | "recess" | "engraving"; section: "handle" | "flap" | "strike" | "badge"; mesh: FabricMesh; braidedGrip: boolean };
 
 function roundedRectangle(width: number, height: number, radius: number): Point[] {
   const p: Point[] = [], x = width / 2, y = height / 2;
@@ -2887,16 +3054,19 @@ function makeCognacPlate(outline: Point[], depth: number) {
 function makeCognacConstruction(): CognacPart[] {
   const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
   const parts: CognacPart[] = [];
-  const part = (tone: CognacPart["tone"], section: CognacPart["section"]) => {
-    let p = parts.find(p => p.tone === tone && p.section === section);
-    if (!p) { p = { name: `cognac-${section}-${tone}`, tone, section, mesh: empty() }; parts.push(p); }
+  const part = (tone: CognacPart["tone"], section: CognacPart["section"], braidedGrip = false) => {
+    let p = parts.find(p => p.tone === tone && p.section === section && p.braidedGrip === braidedGrip);
+    if (!p) {
+      p = { name: `cognac-${section}-${tone}${braidedGrip ? "-grip" : ""}`, tone, section, mesh: empty(), braidedGrip };
+      parts.push(p);
+    }
     return p.mesh;
   };
   const tube = (mesh: FabricMesh, path: YarnPoint[], radius: number, closed = false) => appendCord(mesh, path, radius, () => [0, 0, 1], () => true, 8, closed);
   const solid = (mesh: FabricMesh, outline: Point[], at: YarnPoint, depth: number) => appendOrnamentMesh(mesh, makeCognacPlate(outline, depth), matrix(at, [1, 1, 1]));
   const bead = (mesh: FabricMesh, at: YarnPoint, size: YarnPoint) => appendOrnamentMesh(mesh, makeEllipsoid(1, 1, 1, 10, 14), matrix(at, size));
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS.satchel, surface = closedFlapSurface("satchel", false);
-  for (let lane = 0; lane < 3; lane++) appendLeatherStrand(part("leather", "handle"), Array.from({ length: 145 }, (_, i) => cognacHandlePoint(i / 144, lane)));
+  for (let lane = 0; lane < 3; lane++) appendLeatherStrand(part("leather", "handle", true), Array.from({ length: 145 }, (_, i) => cognacHandlePoint(i / 144, lane)));
   for (const side of [-1, 1]) {
     const endpoint = cognacHandlePoint(side < 0 ? 0 : 1);
     const mount: YarnPoint = [side * .60, spec.topY + .025, endpoint[2] - .035];
@@ -2929,6 +3099,8 @@ function makeCognacConstruction(): CognacPart[] {
   tube(part("metal", "flap"), [...lockRim, lockRim[0]], .010, true);
   solid(part("metal", "flap"), roundedRectangle(.112, .139, .042), [0, lockY + .006, lockZ + .045], .014);
   solid(part("metal", "flap"), roundedRectangle(.223, .057, .025), [0, lockY + .133, lockZ + .048], .019);
+  solid(part("metal", "strike"), roundedRectangle(.139, .099, .035), [0, lockY, lockZ - .027], .014);
+  solid(part("recess", "strike"), roundedRectangle(.081, .027, .010), [0, lockY, lockZ - .018], .005);
   const badgeY = spec.bodyY - .57;
   const badgeZ = crochetPanelPoint("satchel", 0, badgeY - spec.bodyY)[2] + radius * 1.75 + .012;
   solid(part("metal", "badge"), roundedRectangle(.32, .085, .034), [0, badgeY, badgeZ], .009);
@@ -3073,11 +3245,18 @@ function makeHandmadeBadge() {
   return {metal,engraving};
 }
 
+function crescentLockSeat(stitch: Stitch): YarnPoint {
+  const surface = closedFlapSurface("crescent", false, stitch);
+  const y = ABAGS_FIDELITY_V4_FAMILY_SPECS.crescent.lockY!;
+  return [0, y, (surface.sample(0, y)?.z ?? surface.contour[0][2]) + .019];
+}
+
 function makeCrescentFlapDetails(stitch: Stitch) {
   const surface = closedFlapSurface("crescent", false, stitch);
   const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS.crescent;
   const empty = (): FabricMesh => ({ positions: [], normals: [], uvs: [], indices: [] });
   const cream = empty(), edge = empty(), thread = empty(), gold = empty(), recess = empty();
+  const leatherTab = empty(), tabThread = empty(), turnBar = empty();
   const tube = (target: FabricMesh, points: YarnPoint[], radius: number) =>
     appendCord(target, points, radius, () => [0, 0, 1], () => true, 8);
   const plate = (target: FabricMesh, outline: Point[], y: number, z: number, thickness: number) =>
@@ -3095,23 +3274,23 @@ function makeCrescentFlapDetails(stitch: Stitch) {
   }
 
   // The same sheet turns over the straight mouth and attaches at the rear.
+  const { seat, halfWidth } = flapHinge("crescent");
   const top = spec.topY + .035;
   appendOrnamentRibbon(cream, (u, v) => {
-    const x = v * .858;
+    const x = v * halfWidth;
     const front = surface.sample(x, top)?.z ?? surface.contour[0][2];
-    const rear = -depthAt("crescent", spec.ry) * .49;
-    return [x, top + .034 * Math.sin(Math.PI * u) - .070 * u, front * (1 - u) + rear * u];
+    return [x, top + .034 * Math.sin(Math.PI * u) + (seat[1] - top) * u, front * (1 - u) + seat[2] * u];
   }, 20, 28);
 
-  const y = spec.lockY!, z = (surface.sample(0, y)?.z ?? surface.contour[0][2]) + .019;
+  const [, y, z] = crescentLockSeat(stitch);
   const tab: Point[] = Array.from({ length: 37 }, (_, i) => {
     const a = Math.PI + Math.PI * i / 36;
     return [.202 * Math.cos(a), .242 * Math.sin(a)];
   });
-  plate(cream, tab, y, z - .012, .023);
+  plate(leatherTab, tab, y, z - .012, .023);
   for (let i = 1; i < tab.length; i++) {
     const a = tab[i - 1], b = tab[i];
-    tube(thread, [[a[0] * .85, y + a[1] * .88, z + .003],
+    tube(tabThread, [[a[0] * .85, y + a[1] * .88, z + .003],
       [(a[0] * .42 + b[0] * .58) * .85, y + (a[1] * .42 + b[1] * .58) * .88, z + .003]], .0026);
   }
   const dome: Point[] = Array.from({ length: 49 }, (_, i) => {
@@ -3122,13 +3301,16 @@ function makeCrescentFlapDetails(stitch: Stitch) {
   plate(recess, roundedRectangle(.185, .095, .010), y - .004, z + .022, .012);
   const bezel = roundedRectangle(.182, .102, .013).map(([x, dy]): YarnPoint => [x, y + dy - .004, z + .030]);
   tube(gold, [...bezel, bezel[0]], .008);
-  plate(gold, roundedRectangle(.052, .143, .015), y + .006, z + .039, .031);
+  plate(turnBar, roundedRectangle(.052, .143, .015), y + .006, z + .039, .031);
   return [
-    { name: "crescent-leather", tone: "cream", mesh: cream },
-    { name: "crescent-piping", tone: "cream-edge", mesh: edge },
-    { name: "crescent-stitches", tone: "thread", mesh: thread },
-    { name: "crescent-turn-lock", tone: "metal", mesh: gold },
-    { name: "crescent-lock-recess", tone: "recess", mesh: recess },
+    { name: "crescent-leather", tone: "cream", mesh: cream, motion: "flap" },
+    { name: "crescent-piping", tone: "cream-edge", mesh: edge, motion: "flap" },
+    { name: "crescent-stitches", tone: "thread", mesh: thread, motion: "flap" },
+    { name: "crescent-turn-lock", tone: "metal", mesh: gold, motion: "flap" },
+    { name: "crescent-lock-recess", tone: "recess", mesh: recess, motion: "flap" },
+    { name: "crescent-lock-tab", tone: "cream", mesh: leatherTab },
+    { name: "crescent-tab-stitches", tone: "thread", mesh: tabThread },
+    { name: "crescent-turn-bar", tone: "metal", mesh: turnBar, motion: "turn-lock" },
   ] as const;
 }
 
@@ -3199,10 +3381,11 @@ function ensureReferenceConstruction(renderer: Renderer, config: Config) {
     renderer.meshes[family+"LiningSeam"]=createMesh(renderer.gl,makeOpeningLiningSeam(family));
     renderer.meshes[family+"Chain"]=createMesh(renderer.gl,familyShoulderChainMesh(family));
   }
-  renderer.referenceParts=makeReferenceConstruction(config).map(({name,tone,mesh})=>{
+  renderer.referenceParts=makeReferenceConstruction(config).map(part=>{
+    const {name,tone,mesh}=part;
     renderer.meshes[name]=createMesh(renderer.gl,mesh);
     renderer.referenceTriangles=(renderer.referenceTriangles??0)+mesh.indices.length/3;
-    return {name,tone};
+    return {name,tone,motion: "motion" in part ? part.motion : undefined};
   });
 }
 
@@ -3454,7 +3637,7 @@ function renderSignature(config: Config) {
 
 function projectBagPoint(p: YarnPoint, root: Float32Array, width: number, height: number) {
   const f=1/Math.tan(Math.PI/10.6),aspect=width/height;
-  const world=[0,1,2].map(i=>root[i]*p[0]+root[4+i]*p[1]+root[8+i]*p[2]+root[12+i]);
+  const world=transformBagPoint(root, p);
   const distance=5-world[2];
   return {x:(.5+world[0]*f/(aspect*distance)*.5)*width,y:(.5-(world[1]-.02)*f/distance*.5)*height};
 }
@@ -3498,6 +3681,7 @@ function publishFrameMetadata(stage: HTMLElement, canvas: HTMLCanvasElement, con
   stage.dataset.abagsFidelityOrnamentConstruction = canvas.dataset.abagsFidelityOrnamentConstruction || "";
   stage.dataset.abagsFidelityCognac = canvas.dataset.abagsFidelityCognac || "";
   stage.dataset.abagsFidelityReferenceModel = canvas.dataset.abagsFidelityReferenceModel || "";
+  stage.dataset.abagsFidelityFlapPosition = canvas.dataset.abagsFidelityFlapPosition || "";
   stage.dataset.abagsFidelityTextilePrint = canvas.dataset.abagsFidelityTextilePrint || "";
   stage.dataset.abagsFidelityStrapOwner = canvas.dataset.abagsFidelityStrapOwner || "";
   stage.dataset.abagsFidelityStrapBounds = canvas.dataset.abagsFidelityStrapBounds || "";
@@ -3522,8 +3706,10 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
   canvas.removeAttribute("data-abags-fidelity3d-frame");
   canvas.removeAttribute("data-abags-fidelity3d-frame-at");
   canvas.removeAttribute("data-abags-crochet-owner");
+  canvas.removeAttribute("data-abags-fidelity-flap-position");
   canvas.dataset.abagsFidelity3dError = message;
   stage.removeAttribute("data-abags-fidelity3d-frame");
+  stage.removeAttribute("data-abags-fidelity-flap-position");
   stage.removeAttribute("data-abags-fidelity3d-frame-at");
   stage.removeAttribute("data-abags-crochet-owner");
   stage.dataset.abagsFidelity3dError = message;
@@ -3547,7 +3733,8 @@ function publishRendererError(stage: HTMLElement, canvas: HTMLCanvasElement, err
   stage.style.setProperty("--abags-ground-visible", "0");
 }
 
-function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number) {
+function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rotation: { x: number; y: number }, zoom: number,
+  opening = renderer.flapMotion?.key === flapPreviewKey(config) ? renderer.flapMotion.amount : 0) {
   const { gl, uniforms, meshes } = renderer;
   if (gl.isContextLost()) throw new Error("webgl-context-lost");
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -3568,8 +3755,16 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // WebGL surface switches to the live configuration.
   const renderFamily: Exclude<Family, ""> = config.family || "tote";
   const profile = config.family ? PROFILES[config.family] : PROFILES.tote;
-  const fittedZoom = zoom * (renderFamily === "tall-tote" || renderFamily === "crescent" ? .86 : 1);
-  const root = multiply(scale(fittedZoom, fittedZoom, fittedZoom), multiply(rotX(rotation.x), rotY(rotation.y)));
+  const flapPhase = config.flap === "none" ? 0 : opening;
+  const turnLock = renderFamily === "crescent";
+  const braidedGrip = renderFamily === "satchel" && config.handles === "leather-braid";
+  const miniGrip = renderFamily === "mini" && config.handles.startsWith("wood");
+  const release = turnLock || braidedGrip || miniGrip ? .22 : 0;
+  const lift = clamp((flapPhase - release) / (1 - release), 0, 1);
+  const fittedZoom = zoom * (renderFamily === "tall-tote" || renderFamily === "crescent" ? .86 : 1) * (1 - .16 * lift);
+  const root = multiply(scale(fittedZoom, fittedZoom, fittedZoom), multiply(rotX(rotation.x + .56 * lift), rotY(rotation.y)));
+  const swing = lift > 0 ? flapSwing(renderFamily, lift) : null;
+  const flapModel = swing ? multiply(root, swing) : root;
   if (renderFamily === "satchel") ensureCognacConstruction(renderer);
   const yarnPalettes: Record<string, number> = {
     "#C7652F": 1, // miedziany ombré
@@ -3677,22 +3872,30 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
       // Both rigid rings attach to the actual front/back seam. The old depth
       // multiplier put the rear ring outside the now-corrected opening.
       const depthPlanes = woodHandleDepthPlanes(renderFamily);
+      const gripAmount = miniGrip ? clamp(flapPhase / release, 0, 1) : 0;
+      const gripBinding = gripAmount > 0 ? ensureMiniGripBinding(renderer, gripAmount) : null;
       for (const z of depthPlanes) {
+        const gripModel = gripBinding ? multiply(root, miniGripSwing(z, gripAmount)) : root;
         drawMesh(
           renderer,
           mesh,
           // Real pairs of wooden arches lean slightly towards the centre of
           // the mouth. Their feet stay on the front/back rim while the top
           // of the rear arch falls partly behind the front in a 3/4 view.
-          multiply(root, woodHandleMatrix(renderFamily, z)),
+          multiply(gripModel, woodHandleMatrix(renderFamily, z)),
           handleColor,
           material,
           stitch,
           0,
         );
+        const winding = gripBinding?.rings.find(ring => ring.z === z)?.winding;
+        if (winding) drawMesh(renderer, winding, gripModel, body, 7, stitch, 0);
       }
-      ensureWoodHandleBinding(renderer, renderFamily, woodShape);
-      drawMesh(renderer, meshes.woodBinding, root, body, 7, stitch, 0);
+      if (gripBinding) drawMesh(renderer, gripBinding.seams, root, body, 7, stitch, 0);
+      else {
+        ensureWoodHandleBinding(renderer, renderFamily, woodShape);
+        drawMesh(renderer, meshes.woodBinding, root, body, 7, stitch, 0);
+      }
     } else {
       for (const side of [-1, 1]) {
         const transform = handleTransform(profile, renderFamily, side);
@@ -3717,10 +3920,12 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     const crochet = config.flap === "crochet";
     const material = crochet ? 6 : config.flap === "suede-burgundy" ? 3 : 2;
     ensureClosedFlapShell(renderer, renderFamily, crochet, config.stitch);
-    drawMesh(renderer, meshes.flapShell, root, crochet ? darken(flapColor, .22) : flapColor, material, stitch, 0);
+    drawMesh(renderer, meshes.flapShell, flapModel, crochet ? darken(flapColor, .22) : flapColor, material, stitch, 0);
     if (crochet) {
       ensureCrochetFlapMesh(renderer, renderFamily, config.stitch || "classic");
-      drawMesh(renderer, meshes.yarnFlap, root, flapColor, 7, stitch, 0);
+      drawMesh(renderer, meshes.yarnFlap, flapModel, flapColor, 7, stitch, 0);
+      if (meshes.yarnFlapFold) drawMesh(renderer, meshes.yarnFlapFold, flapModel, flapColor, 7, stitch, 0);
+      if (meshes.yarnFlapBinding) drawMesh(renderer, meshes.yarnFlapBinding, flapModel, verticalBands ? "#E8DDCC" : flapColor, verticalBands ? 7.1 : 7, stitch, 0);
     }
   }
 
@@ -3731,8 +3936,17 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     // A seated press stud has a raised rim and a smaller domed cap. Both share
     // the measured flap normal: the closure must not flatten at three-quarter.
     const snapRotation = renderer.flapLockRotation;
-    drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, lockZ], [0.088, 0.060, 0.014], snapRotation)), darken(metal, .24), 4, 0);
-    drawMesh(renderer, meshes.sphere, multiply(root, multiply(matrix([0, profile.lockY, lockZ], [1, 1, 1], snapRotation), matrix([0, 0, .012], [0.065, 0.044, 0.021]))), metal, 4, 0);
+    const snapPose = matrix([0, profile.lockY, lockZ], [1, 1, 1], snapRotation);
+    const snapModel = multiply(flapModel, snapPose);
+    drawMesh(renderer, meshes.sphere, multiply(snapModel, scale(.088, .060, .014)), darken(metal, .24), 4, 0);
+    drawMesh(renderer, meshes.sphere, multiply(snapModel, matrix([0, 0, .012], [.065, .044, .021])), metal, 4, 0);
+    if (swing) {
+      // The matching half is set into the front panel and stays under the flap.
+      const spec = ABAGS_FIDELITY_V4_FAMILY_SPECS[renderFamily];
+      const bodySeat = crochetPanelPoint(renderFamily, 0, profile.lockY - spec.bodyY)[2] + spec.rx * 5 / 160 * 1.65;
+      drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, bodySeat], [.052, .050, .016])), metal, 4, 0);
+      drawMesh(renderer, meshes.sphere, multiply(root, matrix([0, profile.lockY, bodySeat + .013], [.022, .021, .005])), darken(metal, .36), 4, 0);
+    }
   }
 
   if (config.strap !== "none") {
@@ -3760,11 +3974,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   if (renderFamily === "satchel") {
     const colors: Record<CognacPart["tone"], string> = { leather: "#BC683B", edge: "#713B20", seam: "#E4BC8B", metal, recess: darken(metal, .32), engraving: hardwareEngravingColor(config.hardware) };
+    const gripModel = braidedGrip && flapPhase > 0
+      ? multiply(root, rotateAt(cognacHandlePoint(0), rotX(1.68 * clamp(flapPhase / release, 0, 1)))) : root;
     for (const part of renderer.cognacParts ?? []) {
       if (part.section === "handle" && config.handles !== "leather-braid") continue;
       if (part.section === "flap" && config.flap === "none") continue;
+      if (part.section === "strike" && !swing) continue;
       const material = part.tone === "metal" || part.tone === "recess" ? 4.25 : part.tone === "leather" || part.tone === "edge" ? 2 : 3;
-      drawMesh(renderer, meshes[part.name], root, colors[part.tone], material, stitch, 0);
+      drawMesh(renderer, meshes[part.name], part.section === "flap" ? flapModel : part.braidedGrip ? gripModel : root, colors[part.tone], material, stitch, 0);
     }
   }
 
@@ -3772,7 +3989,14 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   // the bag. The compatibility canvas is suppressed for this exact signature.
   ensureOrnamentMeshes(renderer, config);
   const ornamentColors: Record<OrnamentTone, string> = { cord: getAbagsCrochetFlapTone(config) ?? body, metal, scarf: reference?.fabricBase ?? "#E9C5CB", hem: reference?.fabricEdge ?? "#777C72", knot: reference?.ribbon?.knotTone ?? reference?.fabricEdge ?? "#777C72", rose: "#B86F82", lilac: "#8E7DB8", teal: "#4F9B9B" };
-  for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], root, ornamentColors[part.tone], part.material, stitch, 0);
+  const accessoryAnchor = fidelityAccessoryAnchor(config);
+  const raisedAnchor = swing && accessoryAnchor && config.accent === "tassel" && getAbagsCrochetFlapTone(config)
+    ? transformBagPoint(swing, accessoryAnchor) : accessoryAnchor;
+  // A flap-mounted tassel follows the clasp but hangs towards the ground.
+  const fringeOffset = raisedAnchor && accessoryAnchor && raisedAnchor !== accessoryAnchor
+    ? raisedAnchor.map((value, axis) => value - accessoryAnchor[axis]) as YarnPoint : null;
+  const ornamentModel = fringeOffset ? multiply(root, translation(...fringeOffset)) : root;
+  for (const part of renderer.ornamentParts ?? []) drawMesh(renderer, meshes[part.name], ornamentModel, ornamentColors[part.tone], part.material, stitch, 0);
 
   const referenceFinish: Record<ReferenceTone, [string, number]> = {
     metal: [metal, 4.25], engraving: [hardwareEngravingColor(config.hardware), 3],
@@ -3780,9 +4004,16 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     cream: [CRESCENT_LEATHER, 2], "cream-edge": ["#E6CCB2", 2],
     thread: ["#B6916F", 3], recess: ["#38291F", 4.25],
   };
+  let turnBarModel = root;
+  if (turnLock && flapPhase > 0) {
+    const [, y, z] = crescentLockSeat(config.stitch);
+    const post: YarnPoint = [0, y + .006, z + .039];
+    turnBarModel = multiply(root, rotateAt(post, rotZ(-Math.PI / 2 * clamp(flapPhase / release, 0, 1))));
+    drawMesh(renderer, meshes.sphere, multiply(root, matrix([post[0], post[1], z + .004], [.029, .027, .035])), metal, 4, 0);
+  }
   for (const part of renderer.referenceParts ?? []) {
     const [color, material] = referenceFinish[part.tone];
-    drawMesh(renderer, meshes[part.name], root, color, material, stitch, 0);
+    drawMesh(renderer, meshes[part.name], part.motion === "flap" ? flapModel : part.motion === "turn-lock" ? turnBarModel : root, color, material, stitch, 0);
   }
 
   const renderError = gl.getError();
@@ -3791,7 +4022,11 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
 
   canvas.dataset.abagsCrochetOwner = "webgl-yarn";
   canvas.dataset.abagsFidelityOrnamentOwner = "webgl";
-  canvas.dataset.abagsFidelityOrnamentBounds = renderer.ornamentBounds ? JSON.stringify(renderer.ornamentBounds) : "";
+  const ornamentBounds = renderer.ornamentBounds;
+  canvas.dataset.abagsFidelityOrnamentBounds = ornamentBounds ? JSON.stringify(fringeOffset ? {
+    min: ornamentBounds.min.map((value, axis) => value + fringeOffset[axis]),
+    max: ornamentBounds.max.map((value, axis) => value + fringeOffset[axis]),
+  } : ornamentBounds) : "";
   canvas.dataset.abagsFidelityOrnamentTriangles = String(renderer.ornamentTriangles ?? 0);
   canvas.dataset.abagsFidelityOrnamentConstruction = renderer.ornamentTriangles ? "folded-fabric-gravity-fringe-v3" : "";
   canvas.dataset.abagsFidelityStrapOwner = config.strap !== "none" && config.strap !== "chain" ? "webgl-band" : "";
@@ -3802,10 +4037,10 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
   canvas.dataset.abagsFidelityTextilePrint = JSON.stringify({ id: textileProfile.id, scarf: textiles.scarf.ready, strap: textiles.strap.ready, scarfUrl: textiles.scarf.url, strapUrl: textiles.strap.url });
   const blackFlap = getAbagsCrochetFlapTone(config);
   const flapProbe = blackFlap ? crochetFlapSurface(renderFamily).sample(0, profile.flapY) : null;
-  const tip = blackFlap && config.accent === "tassel" ? fidelityAccessoryAnchor(config) : null;
+  const tip = blackFlap && config.accent === "tassel" ? raisedAnchor : null;
   canvas.dataset.abagsFidelityOwnerCorrection = verticalBands ? JSON.stringify({ id: "pastel-mini", axis: "x", palette: palette.id,
     probes: [...referenceYarnProbePoints(renderFamily,root,width,height,true), ...referenceYarnProbePoints(renderFamily,root,width,height,true,-.70)] }) : blackFlap && flapProbe ? JSON.stringify({ id: "mustard-round", flapTone: blackFlap,
-    probes: [projectBagPoint([0,profile.flapY,flapProbe.z+.03],root,width,height),
+    probes: [projectBagPoint([0,profile.flapY,flapProbe.z+.03],flapModel,width,height),
       ...(tip ? [projectBagPoint([tip[0],tip[1]-.42,tip[2]+.07],root,width,height)] : [])] }) : "";
   canvas.dataset.abagsFidelityCognac = renderFamily === "satchel" ? JSON.stringify({ version: "cognac-ombre-v1", source: "1000020714.png", ombre: renderer.ombre,
     handleTriangles: config.handles === "leather-braid" ? renderer.cognacParts?.filter(p => p.section === "handle").reduce((n,p) => n + p.mesh.indices.length / 3, 0) : 0,
@@ -3814,8 +4049,8 @@ function draw(renderer: Renderer, canvas: HTMLCanvasElement, config: Config, rot
     jacquardTriangles: config.strap === "woven-ornament" ? renderer.shoulderBandTriangles : 0 }) : "";
   canvas.dataset.abagsFidelityRimTriangles = String(renderer.rimTriangles ?? 0);
   canvas.dataset.abagsFidelityGrounding = JSON.stringify(groundContactFrame(renderer.groundPoints ?? [], root, width / height, canvas.clientHeight));
-  const accessoryAnchor = fidelityAccessoryAnchor(config);
-  canvas.dataset.abagsFidelityAccessoryAnchor = accessoryAnchor ? JSON.stringify(accessoryAnchor) : "";
+  canvas.dataset.abagsFidelityFlapPosition = config.flap === "none" ? "" : String(flapPhase);
+  canvas.dataset.abagsFidelityAccessoryAnchor = raisedAnchor ? JSON.stringify(raisedAnchor) : "";
   canvas.dataset.abagsFidelityAccessorySignature = renderSignature(config);
   canvas.dataset.abagsFidelity3dFrame = renderSignature(config);
   canvas.dataset.abagsFidelity3dFrameAt = String(Date.now());
@@ -3830,12 +4065,15 @@ export default function BagBuilderFidelity3D() {
   const [ready, setReady] = useState(false);
   const [rendererEpoch, setRendererEpoch] = useState(0);
   const [view, setViewState] = useState<"front" | "three" | "side" | "custom">("three");
+  const [flapPreview, setFlapPreview] = useState<{ stage: HTMLElement; key: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvasNode, setCanvasNode] = useState<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const cameraRef = useRef({ rotation: DEFAULT_ROTATION, zoom: DEFAULT_ZOOM });
   const gesture = useRef(new AbagsCameraGesture(CAMERA_LIMITS));
   const instructionsId = useId();
+  const flapKey = flapPreviewKey(config);
+  const flapOpen = Boolean(flapKey && flapPreview?.key === flapKey && flapPreview.stage === stage);
 
   const commitCamera = (next: AbagsCamera) => {
     // Pointer events can arrive before React commits the previous frame.
@@ -3924,14 +4162,11 @@ export default function BagBuilderFidelity3D() {
 
   useEffect(() => {
     if (!stage) return;
-    const sync = () => setConfig((current) => {
+    const sync = () => {
       const next = readConfig(stage);
-      // Keep persisted/legacy drafts from rendering a flap that the selected
-      // family does not support. The visual renderer must never invent a
-      // construction that the customer cannot actually select in the UI.
-      if (stage.dataset.flap !== next.flap) stage.dataset.flap = next.flap;
-      return sameConfig(current, next) ? current : next;
-    });
+      setConfig((current) => sameConfig(current, next) ? current : next);
+      setFlapPreview((current) => current?.stage === stage && current.key === flapPreviewKey(next) ? current : null);
+    };
     sync();
     const observer = new MutationObserver(sync);
     observer.observe(stage, { attributes: true, attributeFilter: ["data-family", "data-color", "data-stitch", "data-flap", "data-handles", "data-strap", "data-hardware", "data-accent"] });
@@ -4127,13 +4362,26 @@ export default function BagBuilderFidelity3D() {
     const canvas = canvasRef.current;
     if (!renderer || !canvas) return;
 
-    const renderFrame = () => {
+    const target = flapOpen ? 1 : 0;
+    const previous = renderer.flapMotion;
+    if (previous?.key !== flapKey || previous.target !== target) {
+      const from = previous?.key === flapKey ? previous.amount : 0;
+      const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450 * Math.abs(target - from);
+      renderer.flapMotion = { key: flapKey, target, from, amount: from, start: performance.now(), duration };
+    }
+    const motion = renderer.flapMotion!;
+    let frame = 0;
+    const renderFrame = (time: number) => {
       if (rendererRef.current !== renderer || canvasRef.current !== canvas) return;
       try {
         const rect = stage?.getBoundingClientRect();
         if (rect && (rect.width < 40 || rect.height < 40)) return;
+        const t = motion.duration ? clamp((time - motion.start) / motion.duration, 0, 1) : 1;
+        const ease = t * t * (3 - 2 * t);
+        motion.amount = motion.from + (motion.target - motion.from) * ease;
         draw(renderer, canvas, config, rotation, zoom);
         if (stage) publishFrameMetadata(stage, canvas, config);
+        if (t < 1) frame = requestAnimationFrame(renderFrame);
       } catch (error) {
         disposeAbagsPrintedTextiles(renderer.printedTextiles);
         rendererRef.current = null;
@@ -4153,7 +4401,7 @@ export default function BagBuilderFidelity3D() {
       }
     };
 
-    let frame = requestAnimationFrame(renderFrame);
+    frame = requestAnimationFrame(renderFrame);
     const redraw = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(renderFrame);
@@ -4163,7 +4411,7 @@ export default function BagBuilderFidelity3D() {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", redraw);
     };
-  }, [config, rotation, zoom, ready, stage]);
+  }, [config, rotation, zoom, ready, stage, flapKey, flapOpen]);
 
   const label = useMemo(() => config.family ? "Interaktywny model 3D A-Bags z kalibrowaną głębokością" : "Wybierz fason, aby rozpocząć model 3D", [config.family]);
   if (!stage) return null;
@@ -4251,6 +4499,10 @@ export default function BagBuilderFidelity3D() {
         <button type="button" className={view === "front" ? "is-active" : ""} aria-pressed={view === "front"} onClick={() => setView("front")}>Przód</button>
         <button type="button" className={view === "three" ? "is-active" : ""} aria-pressed={view === "three"} onClick={() => setView("three")}>3/4</button>
         <button type="button" className={view === "side" ? "is-active" : ""} aria-pressed={view === "side"} onClick={() => setView("side")}>Bok</button>
+        {ready && flapKey && <button type="button" data-abags-flap-toggle aria-expanded={flapOpen}
+          onClick={() => setFlapPreview(current => current?.stage === stage && current.key === flapKey ? null : { stage, key: flapKey })}>
+          {flapOpen ? "Zamknij klapę" : "Otwórz klapę"}
+        </button>}
       </div>
 
       <div className="abags-pro3d-zoom" role="group" aria-label="Zoom modelu 3D">
