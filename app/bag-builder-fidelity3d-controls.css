@@ -50,6 +50,11 @@
 .abags-fidelity3d-layer button[data-abags-flap-toggle][aria-expanded="true"]{
   background:#e8c9c7;
 }
+.abags-flap-toggle-compact{display:none}
+@media(max-width:980px){
+  .abags-flap-toggle-full{display:none}
+  .abags-flap-toggle-compact{display:inline}
+}
 .abags-bag-builder-stage:not([data-abags-final3d="ready"]) button[data-abags-flap-toggle]{
   display:none!important;
 }

@@ -4074,6 +4074,7 @@ export default function BagBuilderFidelity3D() {
   const instructionsId = useId();
   const flapKey = flapPreviewKey(config);
   const flapOpen = Boolean(flapKey && flapPreview?.key === flapKey && flapPreview.stage === stage);
+  const flapAction = flapOpen ? "Zamknij klapę" : "Otwórz klapę";
 
   const commitCamera = (next: AbagsCamera) => {
     // Pointer events can arrive before React commits the previous frame.
@@ -4499,9 +4500,10 @@ export default function BagBuilderFidelity3D() {
         <button type="button" className={view === "front" ? "is-active" : ""} aria-pressed={view === "front"} onClick={() => setView("front")}>Przód</button>
         <button type="button" className={view === "three" ? "is-active" : ""} aria-pressed={view === "three"} onClick={() => setView("three")}>3/4</button>
         <button type="button" className={view === "side" ? "is-active" : ""} aria-pressed={view === "side"} onClick={() => setView("side")}>Bok</button>
-        {ready && flapKey && <button type="button" data-abags-flap-toggle aria-expanded={flapOpen}
+        {ready && flapKey && <button type="button" data-abags-flap-toggle aria-expanded={flapOpen} aria-label={flapAction}
           onClick={() => setFlapPreview(current => current?.stage === stage && current.key === flapKey ? null : { stage, key: flapKey })}>
-          {flapOpen ? "Zamknij klapę" : "Otwórz klapę"}
+          <span className="abags-flap-toggle-full">{flapAction}</span>
+          <span className="abags-flap-toggle-compact" aria-hidden="true">Klapa {flapOpen ? "⌄" : "⌃"}</span>
         </button>}
       </div>
 
